@@ -94,6 +94,37 @@ The text output lists each metric's baseline, candidate, delta and source-report
 
 The opt-in `python scripts/assessment_runtime_compare_cohort_cli_1513.py baseline-cohort.json candidate-cohort.json` reads two **explicit local** JSON arrays, each containing 1–64 same-schema single-case `{"record":...,"context":...}` envelopes. Max 262,144 bytes per file. Every item must pass the same exact lab-record/context checks as the single-case CLI. Both scenario sets must match exactly. One regressed scenario => global `HOLD`; incomplete, duplicate or malformed files => generic `HOLD` with **no partial comparisons or input echo**. Valid non-degraded results => `REVIEW_ONLY`. Exit codes strictly 3 or 2, **never 0**. Results carry all four immutable false security-authority flags; this is an offline diagnostic only and cannot substitute real consent, provenance or release evidence.
 
+### Optional byte-pinned cohort sources
+
+Both the **plain cohort** comparator and the **ground-truth-scored cohort**
+comparator now accept the same all-or-nothing
+`--expected-baseline-sha256` / `--expected-candidate-sha256` options as the
+single-case CLI. Two local source arrays (1–64 lab scenarios each) are
+read through the same bounded, inode-pinned routine; when both external digests
+are supplied, each exact JSON byte stream must match before any scenario
+materialization or analysis. This is particularly useful after offline transfer
+of multi-scenario baseline and candidate snapshots.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
+  --expected-baseline-sha256 "$BASELINE_COHORT_SHA256" \
+  --expected-candidate-sha256 "$CANDIDATE_COHORT_SHA256" \
+  baseline-cohort.json candidate-cohort.json
+
+PYTHONPATH=src python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py \
+  --expected-baseline-sha256 "$BASELINE_SCORED_SHA256" \
+  --expected-candidate-sha256 "$CANDIDATE_SCORED_SHA256" \
+  old-scored.json new-scored.json
+```
+
+Both digest flags must be present and have strict 64-hex values whenever
+either is supplied. Missing, duplicate, wrong or changed bytes mean
+**atomic generic HOLD** with no partial scenario output or hashes.
+Unpinned usage remains available. An independently authenticated digest
+establishes byte identity only, **not** genuine planted ground truth,
+consent, provenance, permission to access any target or release authority.
+All cohort outputs retain the four explicit `false` authority flags.
+
 ## Optional exact lab scenario and ground-truth fence
 
 Use `compare_ground_truthed_lab_evaluations(baseline_scenario, candidate_scenario, baseline_record, candidate_record, baseline_context, candidate_context)` from `lightup.ai.assessment_runtime_scenario_1513` for trustworthy **like-for-like** interpretations. This purely in-memory wrapper requires canonical exact `LabScenario` types, the **identical** name/description, normalized loopback/private targets and original endpoints, and complete equal expected-finding identifier/title/capability/severity lists. An unscored scenario (`expected_findings=None`), duplicate planted identifier, target drift, unexpected ground truth change, malformed scenario, or mismatched tenant -> generic `HOLD` **without input echo**. `expected_findings=()` explicitly scores a zero-finding lab and is permitted.

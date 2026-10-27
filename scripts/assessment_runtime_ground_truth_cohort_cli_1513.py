@@ -1,6 +1,6 @@
 """Offline scored lab cohort review: 2 REVIEW_ONLY / 3 HOLD, NEVER a grant.
 
-Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html|review-json|review-bundle-json|review-bundle-html] [--focus all|scope|adverse|unknown|source] old.json new.json
+Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html|review-json|review-bundle-json|review-bundle-html] [--focus all|scope|adverse|unknown|source] [--expected-baseline-sha256 HEX --expected-candidate-sha256 HEX] old.json new.json
 Focus selectors overlap when a case has multiple source-reported signals.
 Source focus covers every admitted unauthenticated case; focus questions match the selected signal.
 Only two explicitly supplied local files are read, never a network endpoint.
@@ -20,7 +20,9 @@ from assessment_runtime_report_html_1513 import (
     render_review_bundle_html,
 )
 
-from assessment_runtime_compare_cli_1513 import _parse_case_document, _read_json
+from assessment_runtime_compare_cli_1513 import (
+    _parse_case_document, _read_json, _split_expected_pair_hashes,
+)
 from assessment_runtime_compare_cohort_cli_1513 import _display, COHORT_BYTES
 from lightup.ai.assessment_runtime_cohort_1513 import LabCohortComparison
 from lightup.ai.assessment_runtime_ground_truth_cohort_1513 import compare_ground_truthed_lab_cohorts
@@ -63,8 +65,10 @@ def _parse_scored_case(packet):
     return scenario, record, context
 
 
-def _load(path):
-    packets = _read_json(path, maximum_bytes=COHORT_BYTES)
+def _load(path, *, expected_sha256=None):
+    packets = _read_json(
+        path, maximum_bytes=COHORT_BYTES, expected_sha256=expected_sha256,
+    )
     if type(packets) is not list or not 1 <= len(packets) <= 64:
         raise ValueError('invalid scored cohort shape')
     return tuple(_parse_scored_case(packet) for packet in packets)
@@ -107,14 +111,24 @@ def _display_text(review: LabCohortComparison) -> str:
 
 
 def main(argv=None):
-    output_format, focus_filter, positional, malformed = parse_offline_cli_args(
+    clean_args, expected, bad_hash_flags = _split_expected_pair_hashes(
         sys.argv[1:] if argv is None else argv
     )
+    output_format, focus_filter, positional, malformed = parse_offline_cli_args(
+        clean_args
+    )
     review = LabCohortComparison('HOLD')
-    if len(positional) == 2 and not malformed:
+    if len(positional) == 2 and not malformed and not bad_hash_flags:
         try:
             review = compare_ground_truthed_lab_cohorts(
-                _load(positional[0]), _load(positional[1]),
+                _load(
+                    positional[0],
+                    expected_sha256=expected.get("--expected-baseline-sha256"),
+                ),
+                _load(
+                    positional[1],
+                    expected_sha256=expected.get("--expected-candidate-sha256"),
+                ),
             )
         except (
             OSError, ValueError, KeyError, TypeError, OverflowError,

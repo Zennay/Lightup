@@ -1,6 +1,6 @@
 """Read-only atomic cohort comparison over two explicit local JSON arrays.
 
-Usage: python scripts/assessment_runtime_compare_cohort_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html|review-json|review-bundle-json|review-bundle-html] [--focus all|scope|adverse|unknown|source] base.json next.json
+Usage: python scripts/assessment_runtime_compare_cohort_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html|review-json|review-bundle-json|review-bundle-html] [--focus all|scope|adverse|unknown|source] [--expected-baseline-sha256 HEX --expected-candidate-sha256 HEX] base.json next.json
 Focus selectors overlap when a case has multiple source-reported signals.
 Source focus covers every admitted unauthenticated case; focus questions match the selected signal.
 Each file is an array of 1..64 single-case JSON envelopes.
@@ -21,7 +21,9 @@ from assessment_runtime_report_html_1513 import (
     render_review_bundle_html,
 )
 
-from assessment_runtime_compare_cli_1513 import _read_json, _parse_case_document
+from assessment_runtime_compare_cli_1513 import (
+    _read_json, _parse_case_document, _split_expected_pair_hashes,
+)
 from lightup.ai.assessment_runtime_cohort_1513 import (
     LabCohortComparison, compare_lab_cohorts,
 )
@@ -29,8 +31,10 @@ from lightup.ai.assessment_runtime_cohort_1513 import (
 COHORT_BYTES = 262_144
 
 
-def _load(path):
-    items = _read_json(path, maximum_bytes=COHORT_BYTES)
+def _load(path, *, expected_sha256=None):
+    items = _read_json(
+        path, maximum_bytes=COHORT_BYTES, expected_sha256=expected_sha256,
+    )
     if type(items) is not list or not 1 <= len(items) <= 64:
         raise ValueError("bad cohort envelope")
     return tuple(_parse_case_document(item) for item in items)
@@ -98,14 +102,23 @@ def _display_text(review: LabCohortComparison) -> str:
 
 
 def main(argv=None):
-    output_format, focus_filter, positional, malformed = parse_offline_cli_args(
+    clean_args, expected, bad_hash_flags = _split_expected_pair_hashes(
         sys.argv[1:] if argv is None else argv
     )
+    output_format, focus_filter, positional, malformed = parse_offline_cli_args(
+        clean_args
+    )
     review = LabCohortComparison("HOLD")
-    if len(positional) == 2 and not malformed:
+    if len(positional) == 2 and not malformed and not bad_hash_flags:
         try:
-            before = _load(positional[0])
-            after = _load(positional[1])
+            before = _load(
+                positional[0],
+                expected_sha256=expected.get("--expected-baseline-sha256"),
+            )
+            after = _load(
+                positional[1],
+                expected_sha256=expected.get("--expected-candidate-sha256"),
+            )
             review = compare_lab_cohorts(before, after)
         except (OSError, ValueError, KeyError, TypeError, OverflowError,
                 UnicodeError, RecursionError):
