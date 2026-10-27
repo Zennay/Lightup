@@ -350,9 +350,23 @@ def _human_signals(item) -> tuple[str, ...]:
         found.append("adverse")
     if unknown > 0:
         found.append("unknown")
-    if group == "Source verification":
-        found.append("source")
+    # No admitted source is authenticated, including cases with higher-priority
+    # reported scope, adverse or unknown signals. Source review is universal.
+    found.append("source")
     return tuple(found)
+
+
+_HUMAN_FOCUS_QUESTIONS = {
+    "scope": "Ask the original owner to clarify reported scope/policy signals.",
+    "adverse": "Request independent review of source-reported adverse metrics.",
+    "unknown": "Clarify the source-reported unknown-coverage gap.",
+    "source": "Reconcile original source identity; no flags is not approval.",
+}
+
+
+def _human_focus_question(focus: str, priority_question: str) -> str:
+    """Keep the original priority rank, but ask the selected HUMAN question."""
+    return priority_question if focus == "all" else _HUMAN_FOCUS_QUESTIONS[focus]
 
 
 def _select_human_actions(result, *, cohort: bool, focus: str):
@@ -381,7 +395,7 @@ def render_human_actions_csv(result, *, cohort: bool = False,
     out = csv_writer(file, lineterminator="\r\n")
     out.writerow((
         "report_type", "source_status", "input_admitted", "focus_filter",
-        "accepted_case_count", "selected_case_count", "review_order",
+        "accepted_case_count", "selected_case_count", "excluded_case_count", "review_order",
         "scenario_ordinal", "human_review_group", "scope_policy_signal",
         "source_adverse_metric_count", "source_unknown_coverage",
         "matching_focus_signals", "suggested_human_question", "authorized", "consent_verified",
@@ -392,21 +406,22 @@ def render_human_actions_csv(result, *, cohort: bool = False,
     for rank, ordinal, group, flags, unknown, question, scope in selected:
         out.writerow((
             kind, status, "true", focus, len(actions), len(selected),
-            rank, ordinal, group, "true" if scope else "false",
+            len(actions) - len(selected), rank, ordinal, group, "true" if scope else "false",
             flags, unknown,
             "|".join(_human_signals((rank, ordinal, group, flags, unknown, question, scope))),
-            question, "false", "false", "false", "false", "false",
+            _human_focus_question(focus, question),
+            "false", "false", "false", "false", "false",
         ))
     if not actions:
         out.writerow((
-            kind, "HOLD", "false", focus, 0, 0, 0, 0, "Input HOLD",
+            kind, "HOLD", "false", focus, 0, 0, 0, 0, 0, "Input HOLD",
             "false", 0, "", "",
             "Ask the original owner to check input admission and consistency.",
             "false", "false", "false", "false", "false",
         ))
     elif not selected:
         out.writerow((
-            kind, status, "true", focus, len(actions), 0, 0, 0,
+            kind, status, "true", focus, len(actions), 0, len(actions), 0, 0,
             "No matching HUMAN cases", "false", 0, "", "",
             "No case in this selected group; review the full source separately.",
             "false", "false", "false", "false", "false",
@@ -617,6 +632,7 @@ def render_human_actions_json(result, *, cohort: bool = False,
         "focus_filter": focus,
         "accepted_case_count": len(actions),
         "selected_case_count": len(selected),
+        "excluded_case_count": len(actions) - len(selected),
         "notice": (
             "input_hold" if not actions else
             "no_matching_human_cases" if not selected else
@@ -631,7 +647,7 @@ def render_human_actions_json(result, *, cohort: bool = False,
                 "source_adverse_metric_count": flags,
                 "source_unknown_coverage": unknown,
                 "matching_focus_signals": list(_human_signals((rank, ordinal, group, flags, unknown, question, scope))),
-                "suggested_human_question": question,
+                "suggested_human_question": _human_focus_question(focus, question),
             }
             for rank, ordinal, group, flags, unknown, question, scope in selected
         ],
@@ -666,7 +682,8 @@ def render_human_actions_html(result, *, cohort: bool = False,
     for rank, ordinal, group, flags, unknown, question, scope in selected:
         fields = (
             str(rank), "Scenario " + str(ordinal).zfill(2), group,
-            str(flags), str(unknown), " / ".join(_human_signals((rank, ordinal, group, flags, unknown, question, scope))), question,
+            str(flags), str(unknown), " / ".join(_human_signals((rank, ordinal, group, flags, unknown, question, scope))),
+            _human_focus_question(focus, question),
         )
         rows.append("<tr>" + "".join("<td>" + _safe(v) + "</td>" for v in fields) + "</tr>")
     if not actions:
@@ -698,6 +715,7 @@ def render_human_actions_html(result, *, cohort: bool = False,
         '<div class="grid" aria-label="Source and selection counts">'
         + _stat(len(actions), "All admitted anonymous cases")
         + _stat(len(selected), "Cases in this selection")
+        + _stat(len(actions) - len(selected), "Excluded from this view")
         + _stat(focus, "HUMAN focus filter")
         + "</div>"
         '<section class="panel warning"><h2>Not an authorization or release</h2>'

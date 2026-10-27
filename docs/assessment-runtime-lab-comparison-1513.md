@@ -378,9 +378,9 @@ was a visibility defect, not an authorization failure.
 All three original comparison CLIs now filter using **every matching signal**:
 `scope` matches a reported scope/policy violation present in the candidate;
 `adverse` matches any source-reported regression; `unknown` matches
-candidate unknown coverage greater than zero; `source` matches the
-residual source-verification review group; `all` retains every admitted
-case. For example, a single anonymous case with scope, adverse and unknown
+candidate unknown coverage greater than zero; `source` matches **every
+admitted, unauthenticated source case** (including scope/adverse/unknown
+priority cases); `all` retains every admitted case. For example, a single anonymous case with scope, adverse and unknown
 signals appears in all three corresponding filtered handoffs, but still
 has just one original global HUMAN rank and **Scope/policy** as its highest
 priority label. Filter counts can overlap and must never be summed into
@@ -426,3 +426,32 @@ comparisons retain their original full-source parser, status
 (`2 REVIEW_ONLY` / `3 HOLD`), source-minimal outputs and permanently
 false authority fields. Source validation, owner approval and HUMAN GO
 are still separate release gates.
+
+## Complete unauthenticated source review and filter coverage
+
+Every admitted lab comparison remains **source-provenance unauthenticated**.
+An earlier `--focus source` export selected only cases whose highest
+priority label was `Source verification`; it omitted unauthenticated
+sources with reported scope/policy, adverse or unknown-coverage signals.
+Those cases still need original source-owner verification. The corrected
+`source` filter now includes **all admitted cases**, independently of
+their primary review group. It preserves each original global rank,
+anonymous case ordinal, priority group and source-reported signal counts.
+
+Focused `actions-csv`, `actions-json` and `actions-html` exports now
+ask the **selected signal's fixed HUMAN question**, even if a different
+primary group has higher rank. With `--focus all`, the existing primary
+group question remains unchanged. No prompt or field embeds untrusted
+source text. Selection remains informational, not a completed verification.
+
+Each actions format now explicitly reports `excluded_case_count`, equal
+to `accepted_case_count - selected_case_count`. Zero excluded cases for
+`--focus source` means every admitted unauthenticated case is **visible
+for review**, not verified, cleared, consented to or safe for execution.
+Scope/adverse/unknown groups overlap by design; excluded counts are per
+view and must not be combined across exports. Input HOLD reports
+`0/0/0` admitted/selected/excluded and cannot masquerade as a verified
+empty source; a valid no-match view reports its complete accepted and
+excluded counts. All authorization, consent, dispatch, release and source
+authentication fields remain false. This is still Incubate M3/M7
+PLAN/LAB ONLY until independent owner/security/privacy/HUMAN GO gates.

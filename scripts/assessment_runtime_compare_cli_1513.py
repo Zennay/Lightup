@@ -2,6 +2,7 @@
 
 Usage: python scripts/assessment_runtime_compare_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html] [--focus all|scope|adverse|unknown|source] base.json next.json
 Focus selectors match every source signal, even under a higher-priority label.
+Source focus covers every admitted unauthenticated case; focus questions match the selected signal.
 Returns 2 REVIEW_ONLY or 3 HOLD; never 0. Only explicit local files are read.
 """
 from __future__ import annotations

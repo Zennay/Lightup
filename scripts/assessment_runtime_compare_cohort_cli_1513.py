@@ -2,6 +2,7 @@
 
 Usage: python scripts/assessment_runtime_compare_cohort_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html] [--focus all|scope|adverse|unknown|source] base.json next.json
 Focus selectors overlap when a case has multiple source-reported signals.
+Source focus covers every admitted unauthenticated case; focus questions match the selected signal.
 Each file is an array of 1..64 single-case JSON envelopes.
 Never a release or authorization gate: exits 2 REVIEW_ONLY / 3 HOLD only.
 """
