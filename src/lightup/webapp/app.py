@@ -1195,9 +1195,15 @@ class LightUpWebApp:
             key=lambda item: (item.created_at, item.request_id),
             reverse=True,
         )
+        risk_reviews = self.store.list_risk_approvals(ctx)
+        allowed_risk_states = {"pending", "approved", "denied"}
+        if any(item.status.value not in allowed_risk_states for item in risk_reviews):
+            raise ValueError("unknown persisted risk decision state")
         approvals = [
-            item for item in self.store.list_risk_approvals(ctx)
-            if item.status.value == "pending"
+            item for item in risk_reviews if item.status.value == "pending"
+        ]
+        decided_risk_reviews = [
+            item for item in risk_reviews if item.status.value in {"approved", "denied"}
         ]
         pending_requests = []
         decided_requests = []
@@ -1245,6 +1251,20 @@ class LightUpWebApp:
                 f'<a href="/assessments/elevations/{_e(approval.approval_id)}/review">'
                 'Open deliberate risk review</a></section>'
             )
+        risk_history_cards = []
+        for decision in decided_risk_reviews:
+            risk_history_cards.append(
+                '<section class="card"><div class="row">'
+                f'<strong>Risk elevation to {_risk(decision.requested_risk)}</strong>'
+                f'<span class="badge">{_e(decision.status.value)}</span></div>'
+                f'<p class="meta">Engagement {_e(decision.engagement_id)} · '
+                f'Recorded by {_e(decision.decided_by or "Not recorded")} · '
+                f'At {_e(decision.decided_at or "Not recorded")}</p>'
+                '<p class="meta">This decision does not extend a scope grant '
+                'or authorize testing.</p>'
+                f'<a href="/assessments/elevations/{_e(decision.approval_id)}/review">'
+                'Open recorded risk decision</a></section>'
+            )
         body = (
             '<h1>Human assessment decisions</h1>'
             '<p class="sub">Review original client requests and risk elevations. '
@@ -1257,6 +1277,8 @@ class LightUpWebApp:
             '<div class="kpi-label">Risk elevations awaiting review</div></section>'
             f'<section class="card"><div class="kpi">{len(decided_requests)}</div>'
             '<div class="kpi-label">Recorded request decisions</div></section>'
+            f'<section class="card"><div class="kpi">{len(risk_history_cards)}</div>'
+            '<div class="kpi-label">Recorded risk decisions</div></section>'
             '</div>'
             f'<h2>Review client requests ({len(pending_requests)})</h2>'
             + ("".join(pending_requests) or
@@ -1267,6 +1289,10 @@ class LightUpWebApp:
             + f'<details><summary>Decided request history ({len(decided_requests)})</summary>'
             + ("".join(decided_requests) or
                '<p class="empty">No previous human request decisions.</p>')
+            + '</details>'
+            + f'<details><summary>Decided risk-elevation history ({len(risk_history_cards)})</summary>'
+            + ("".join(risk_history_cards) or
+               '<p class="empty">No previous human risk decisions.</p>')
             + '</details>'
             + '<p class="meta">A human review is never independent client consent '
             'or permission to contact a target. '
