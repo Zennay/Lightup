@@ -896,6 +896,18 @@ PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.
 # Exit 2 = source REVIEW_ONLY; 3 = HOLD. Neither grants permission.
 ```
 
+Every fully admitted receiving-side `bundle-html`, `bundle-csv`, or
+`bundle-md` output now carries the SHA-256 of the **exact bounded JSON bytes
+that the importer actually read and admitted**. HTML shows a local, script-free
+receipt, Markdown puts it above the HUMAN questions, and CSV includes the
+`received_json_sha256` column on its aggregate `source_summary` row without
+moving the HUMAN-priority question rows. Three
+exports from the same input therefore have a human-comparable fingerprint;
+mismatched fingerprints mean their JSON inputs differ. The digest is computed
+after the optional separately supplied `--expected-sha256` equality check;
+it cannot authenticate the sender or validate source evidence, consent,
+authority or release. Do not treat it as a signature or automatic sign-off.
+
 Rejected, malformed, changed or digest-mismatched input produces a **fixed,
 source-free HOLD** message with no checkboxes, metrics or case content.
 An admitted source-reported HOLD does retain all anonymous HUMAN questions

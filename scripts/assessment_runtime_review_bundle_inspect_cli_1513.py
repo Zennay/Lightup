@@ -654,6 +654,7 @@ def main(argv=None) -> int:
     )
     outcome = _inspection_outcome(None)
     review_packet = None
+    received_sha256 = None
     if path is not None:
         try:
             raw = _read_private_bundle(path)
@@ -666,27 +667,31 @@ def main(argv=None) -> int:
             # No rejected input, original path or partial case can be rendered.
             packet = _validated_review_bundle_packet(raw)
             outcome = _inspection_outcome(packet)
-            if output_format in ("bundle-html", "bundle-csv", "bundle-md"):
+            if (packet is not None and packet["input_admitted"]
+                    and output_format in ("bundle-html", "bundle-csv", "bundle-md")):
                 review_packet = packet
+                # Hash the exact inode-pinned bytes that passed admission.
+                # Never fingerprint a rejected input in an output artifact.
+                received_sha256 = sha256(raw).hexdigest()
         except (OSError, ValueError):
             pass
     if output_format == "bundle-html":
         print(reports._render_review_bundle_packet_html(
             review_packet if review_packet is not None else {
                 "input_admitted": False, "source_status": "HOLD",
-            }
+            }, source_sha256=received_sha256,
         ), end="")
     elif output_format == "bundle-csv":
         print(reports._render_review_bundle_packet_csv(
             review_packet if review_packet is not None else {
                 "input_admitted": False, "source_status": "HOLD",
-            }
+            }, source_sha256=received_sha256,
         ), end="")
     elif output_format == "bundle-md":
         print(reports._render_review_bundle_packet_markdown(
             review_packet if review_packet is not None else {
                 "input_admitted": False, "source_status": "HOLD",
-            }
+            }, source_sha256=received_sha256,
         ), end="")
     elif output_format == "html":
         print(render_inspection_html(outcome), end="")

@@ -1039,7 +1039,7 @@ def render_review_bundle_json(result, *, cohort: bool = False,
     ) + "\n"
 
 
-def _render_review_bundle_packet_csv(packet) -> str:
+def _render_review_bundle_packet_csv(packet, *, source_sha256=None) -> str:
     """Spreadsheet-ready, source-anonymous rows from a fully admitted bundle.
 
     The received-packet caller must inspect the complete private JSON first.
@@ -1062,6 +1062,7 @@ def _render_review_bundle_packet_csv(packet) -> str:
         "increased_cases", "decreased_cases",
         "authorized", "consent_verified", "dispatch_allowed",
         "release_allowed", "source_provenance_authenticated",
+        "received_json_sha256",
     )
     out = StringIO()
     writer = csv_writer(out, lineterminator="\r\n")
@@ -1140,6 +1141,9 @@ def _render_review_bundle_packet_csv(packet) -> str:
         source_adverse_case_count=metrics["source_adverse_case_count"],
         source_unknown_coverage_case_count=metrics["source_unknown_coverage_case_count"],
         human_question_count=len(packet["human_actions"]["human_review_questions"]),
+        # Bound to the exact received bytes only after full packet admission;
+        # no claimed sender authenticity, even when a separate digest matches.
+        received_json_sha256=source_sha256 or "",
     )
     for item in metrics["metric_summary"]:
         emit(
@@ -1167,7 +1171,7 @@ def _render_review_bundle_packet_csv(packet) -> str:
     return out.getvalue()
 
 
-def _render_review_bundle_packet_markdown(packet) -> str:
+def _render_review_bundle_packet_markdown(packet, *, source_sha256=None) -> str:
     """Complete anonymous HUMAN worksheet from an admitted private lab packet.
 
     Only the offline inspector may pass a complete packet. That inspector has
@@ -1214,6 +1218,11 @@ def _render_review_bundle_packet_markdown(packet) -> str:
         "dispatch_allowed=false; release_allowed=false; "
         "source_provenance_authenticated=false.",
         "",
+        *([
+            "**Received JSON SHA-256 (byte match only, no source authentication):** `"
+            + source_sha256 + "`",
+            "",
+        ] if source_sha256 is not None else []),
         "## HUMAN review checklist (reconciled priority order)",
         "",
     ]
@@ -1350,7 +1359,7 @@ def render_review_bundle_html(result, *, cohort: bool = False,
     return _render_review_bundle_packet_html(packet)
 
 
-def _render_review_bundle_packet_html(packet) -> str:
+def _render_review_bundle_packet_html(packet, *, source_sha256=None) -> str:
     """Print only the exporter packet or a fully validated offline import.
 
     A receiving caller must structurally admit the *entire* packet first.
@@ -1608,6 +1617,13 @@ def _render_review_bundle_packet_html(packet) -> str:
             ' No source metrics, questions or partial cohort data are shown.</p>'
             '</section>'
         )
+    digest_receipt = (
+        '<section class="panel"><h2>Received JSON byte fingerprint</h2>'
+        '<p><code>' + _safe(source_sha256) + '</code></p>'
+        '<p>SHA-256 checks byte identity only. It is not a sender signature, '
+        'validated evidence, consent, cost approval or HUMAN GO.</p></section>'
+        if admitted and source_sha256 is not None else ""
+    )
     style_pin = b64encode(sha256(_STYLES.encode("utf-8")).digest()).decode("ascii")
     policy = ("default-src 'none'; base-uri 'none'; form-action 'none'; "
               "connect-src 'none'; img-src 'none'; font-src 'none'; "
@@ -1634,6 +1650,7 @@ def _render_review_bundle_packet_html(packet) -> str:
         "<p><strong>authorized=false · consent_verified=false · "
         "dispatch_allowed=false · release_allowed=false · "
         "source_provenance_authenticated=false</strong></p></section>"
+        + digest_receipt
         + content
         + "<footer class='panel foot'>Private unsigned offline diagnostic. "
         "No scripts, network, external assets, original IDs or execution hooks. "
