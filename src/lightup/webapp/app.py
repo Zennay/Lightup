@@ -146,6 +146,13 @@ label { font-size:.85rem; color:var(--muted); }
 .task-links strong, .task-links span { display:block; }
 .task-links span { color:var(--muted); font-size:.85rem; margin-top:4px; }
 .task-links a:hover { border-color:var(--accent); }
+.grant-request { padding-top:12px; border-top:1px solid var(--line); margin-top:20px; }
+.grant-request h3 { font-size:1rem; margin:4px 0 10px; }
+.grant-step { min-width:0; margin:16px 0; padding:14px;
+              border:1px solid var(--line); border-radius:10px; }
+.grant-step legend { color:var(--ink); font-weight:650; padding:0 6px; }
+.grant-step label { display:block; margin-top:12px; }
+.grant-step input, .grant-step select { max-width:100%; }
 .risk-options { min-width:0; border:0; padding:0; margin:12px 0 18px; }
 .risk-options legend { color:var(--ink); font-weight:650; padding:0; }
 .risk-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:10px 0; }
@@ -1121,6 +1128,9 @@ class LightUpWebApp:
             else:
                 grant_forms = []
                 for request in approved_requests:
+                    # Unique labels remain associated with their controls even
+                    # when several approved requests share one engagement.
+                    field_prefix = f"grant-{eng.engagement_id}-{request.request_id}"
                     risk_options = "".join(
                         f'<option value="{level.value}">{level.value} — {_e(label)}</option>'
                         for level, label in (
@@ -1133,42 +1143,89 @@ class LightUpWebApp:
                     )
                     requested_assets = ", ".join(request.requested_assets)
                     grant_forms.append(
-                        '<section class="grant-request">'
-                        '<p><strong>Approved client request</strong> '
-                        f'<code>{_e(request.request_id)}</code> · '
-                        f'Client risk ceiling: {_risk(request.requested_risk)}</p>'
-                        f'<p class="meta">Reviewed requested assets: {_e(requested_assets)}</p>'
-                        f'<form method="post" action="/engagements/{_e(eng.engagement_id)}/grants">'
+                        f'<section class="grant-request" aria-labelledby="{_e(field_prefix)}-heading">'
+                        f'<h3 id="{_e(field_prefix)}-heading">Engagement: {_e(eng.name)}</h3>'
+                        '<div class="row">'
+                        '<strong>Independent client request approved for scope review</strong>'
+                        '<span class="badge lock">PLAN ONLY · no execution</span></div>'
+                        f'<p class="meta">Client-requested risk ceiling: '
+                        f'{_risk(request.requested_risk)}. A recorded request decision '
+                        'is not verified asset ownership, client consent or HUMAN GO.</p>'
+                        '<details><summary>Read original client request and approved asset list</summary>'
+                        f'<p class="meta">Request ID: <code>{_e(request.request_id)}</code></p>'
+                        f'<p>Original requested assets: {_e(requested_assets)}</p>'
+                        '<p class="meta">Use the exact approved asset identifiers; '
+                        'never add a destination absent from the original request.</p>'
+                        '</details>'
+                        f'<form method="post" action="/engagements/{_e(eng.engagement_id)}/grants"'
+                        f' aria-describedby="{_e(field_prefix)}-hold">'
                         f'{csrf}'
                         f'<input type="hidden" name="approved_request_id" value="{_e(request.request_id)}">'
-                        '<label>Approved by (client signatory; verify separately)</label>'
-                        '<input name="approved_by" required>'
-                        '<label>Authorization reference</label>'
-                        '<input name="reference" required placeholder="AUTH-2026-...">'
-                        '<label>Authorized assets (explicit subset, comma-separated)</label>'
-                        f'<input name="assets" required placeholder="{_e(requested_assets[:96])}">'
-                        '<label>Excluded assets (comma-separated, optional)</label>'
-                        '<input name="excluded_assets">'
-                        '<label>Allowed planning capability IDs (comma-separated; required)</label>'
-                        '<input name="capabilities" required placeholder="web-baseline">'
-                        '<details><summary>Show available planning capability IDs</summary>'
+                        '<fieldset class="grant-step">'
+                        '<legend>1. Identify the authorization record</legend>'
+                        f'<label for="{_e(field_prefix)}-approved-by">'
+                        'Client signatory recorded on the authorization</label>'
+                        f'<input id="{_e(field_prefix)}-approved-by" name="approved_by" '
+                        'autocomplete="off" required>'
+                        '<p class="meta">Recording a signatory name does not independently '
+                        'verify their identity or consent.</p>'
+                        f'<label for="{_e(field_prefix)}-reference">Authorization reference</label>'
+                        f'<input id="{_e(field_prefix)}-reference" name="reference" required '
+                        'autocomplete="off" placeholder="Document or agreement reference">'
+                        '</fieldset>'
+                        '<fieldset class="grant-step">'
+                        '<legend>2. Restrict the requested scope</legend>'
+                        f'<label for="{_e(field_prefix)}-assets">Authorized assets '
+                        '(exact approved subset; comma-separated)</label>'
+                        f'<input id="{_e(field_prefix)}-assets" name="assets" '
+                        f'aria-describedby="{_e(field_prefix)}-assets-help" '
+                        'autocomplete="off" required>'
+                        f'<p class="meta" id="{_e(field_prefix)}-assets-help">'
+                        'Copy only the explicitly authorized asset identifiers '
+                        'from the original request shown above. An empty or wider '
+                        'scope is not acceptable.</p>'
+                        f'<label for="{_e(field_prefix)}-excluded">Excluded assets (optional)</label>'
+                        f'<input id="{_e(field_prefix)}-excluded" name="excluded_assets" '
+                        'autocomplete="off">'
+                        f'<label for="{_e(field_prefix)}-capabilities">'
+                        'Allowed planning capability IDs (comma-separated)</label>'
+                        f'<input id="{_e(field_prefix)}-capabilities" name="capabilities" '
+                        f'aria-describedby="{_e(field_prefix)}-capabilities-help" '
+                        'autocomplete="off" required>'
+                        f'<p class="meta" id="{_e(field_prefix)}-capabilities-help">'
+                        'Only explicitly named, known planning capabilities '
+                        'are accepted. Listing one never enables execution.</p>'
+                        '<details><summary>See available planning capability IDs</summary>'
                         f'<ul>{capability_guide}</ul></details>'
-                        '<label>Maximum risk level (within this request)</label>'
-                        '<select name="max_risk" required>'
-                        '<option value="" selected disabled>Explicitly choose an allowed ceiling</option>'
+                        '</fieldset>'
+                        '<fieldset class="grant-step">'
+                        '<legend>3. Set a narrower risk ceiling and expiry</legend>'
+                        f'<label for="{_e(field_prefix)}-max-risk">Maximum recorded risk level</label>'
+                        f'<select id="{_e(field_prefix)}-max-risk" name="max_risk" required '
+                        f'aria-describedby="{_e(field_prefix)}-risk-help">'
+                        '<option value="" selected disabled>Choose within approved request</option>'
                         f'{risk_options}</select>'
-                        '<label>Valid for (days)</label>'
-                        '<input name="valid_days" type="number" min="1" max="365" required>'
-                        '<button>Record grant for this request</button>'
-                        '<p class="meta">Grant recording binds scope to this exact reviewed request, '
-                        'but does not prove independent client consent or permit execution. '
-                        'Destructive simulation (level 5) is lab-only, never available here.</p>'
+                        f'<p class="meta" id="{_e(field_prefix)}-risk-help">'
+                        'Only levels at or below the original approved request are '
+                        'shown. Elevated risk still requires an independent risk '
+                        'decision; level 5 is never allowed for client assets.</p>'
+                        f'<label for="{_e(field_prefix)}-days">Record validity (days)</label>'
+                        f'<input id="{_e(field_prefix)}-days" name="valid_days" '
+                        'type="number" min="1" max="365" inputmode="numeric" required>'
+                        '</fieldset>'
+                        f'<p class="meta" id="{_e(field_prefix)}-hold">'
+                        '<strong>Stop line:</strong> recording this request-bound scope '
+                        'does not verify current consent, revocation at use or HUMAN GO. '
+                        'No scan, target contact or activation is available here.</p>'
+                        '<button>Record this request-bound scope only</button>'
                         '</form></section>'
                     )
                 grant_detail = (
                     '<details><summary>Record authorization grant</summary>'
-                    '<p class="meta">Each form is bound to one approved client request. '
-                    'Select assets, planning capabilities, risk and validity deliberately.</p>'
+                    '<p class="meta">Choose an original approved client request for each '
+                    'record. The three review steps distinguish signatory provenance, '
+                    'the exact asset/capability boundaries, and expiry. None of these '
+                    'form inputs independently proves consent or permits testing.</p>'
                     + "".join(grant_forms)
                     + '</details>'
                 )
