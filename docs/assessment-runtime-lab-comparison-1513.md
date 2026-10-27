@@ -539,3 +539,43 @@ is an additive extension to the new opt-in `review-json` surface;
 the three CLIs' default JSON output remains unchanged. All authority,
 consent, dispatch, release and source-authentication fields remain false;
 source-owner and independent HUMAN GO gates remain required.
+
+## Unified offline review bundle (opt-in)
+
+Each original local-only assessment-runtime CLI also accepts
+`--format review-bundle-json`. This returns **one** deterministic JSON
+document for the same two explicitly supplied finished-lab inputs.
+The three nested readouts are computed from the **same admitted comparison
+result**, without re-reading, rescanning or changing a source record:
+
+- `metric_review`: complete anonymous original per-case benchmark deltas,
+  canonical cohort metric movement and adverse/unknown case counts.
+- `human_actions`: the complete (`focus=all`) sorted HUMAN question
+  selection, with original anonymous scenario ordinals and no source IDs.
+- `resource_observations`: per-case and aggregate runtime/tool/cost changes,
+  **informational only**, never budget, release or deployment approval.
+
+The parent includes `schema_version=1`, `report_type`,
+`source_status`, `input_admitted`, `notice` and
+`accepted_case_count`. All three components must agree on report type,
+status and the **complete case count**; the HUMAN selection must contain
+every admitted case. If any component rejects or disagrees, the parent
+fails closed: `source_status=HOLD`, `input_admitted=false`,
+`accepted_case_count=0` and all three nested payloads `null`.
+A valid **adverse-metric HOLD** with complete admitted cases is still
+visible in full, and requires HUMAN review.
+
+This format deliberately cannot take `--focus`: using it would hide
+cases while implying a complete dossier; use separate `actions-*`
+exports for explicit focus views instead. Existing formats, their
+default responses and exit codes remain unchanged. It is a portable
+**unsigned, unauthenticated offline diagnostic**, never an authorization,
+release decision or a real scan instruction. The parent and each nested
+section explicitly keep source authentication, consent, authority,
+dispatch and release false.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
+  --format review-bundle-json old-cohort.json new-cohort.json
+# 2 REVIEW_ONLY / 3 HOLD; only local already-recorded lab packets are read
+```

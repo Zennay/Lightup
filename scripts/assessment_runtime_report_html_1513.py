@@ -11,7 +11,7 @@ from collections import Counter
 from csv import writer as csv_writer
 from decimal import Decimal, localcontext
 from io import StringIO
-from json import dumps as json_dumps
+from json import dumps as json_dumps, loads as json_loads
 from hashlib import sha256
 from html import escape
 
@@ -768,6 +768,60 @@ def render_human_actions_json(result, *, cohort: bool = False,
     }
     # No scenario IDs, paths, targets, identities, notes or freeform input data.
     return json_dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+
+
+def render_review_bundle_json(result, *, cohort: bool = False,
+                              scored: bool = False) -> str:
+    """Single source-minimal offline HUMAN handoff; never execution authority.
+
+    All three component reports must admit the exact same complete population.
+    Otherwise the *whole* bundle is a generic HOLD with no partial payload.
+    """
+    metrics = json_loads(render_metric_review_json(
+        result, cohort=cohort, scored=scored,
+    ))
+    human = json_loads(render_human_actions_json(
+        result, cohort=cohort, scored=scored, focus="all",
+    ))
+    efficiency = json_loads(render_efficiency_json(
+        result, cohort=cohort, scored=scored,
+    ))
+    kind = "scored_cohort" if scored else "cohort" if cohort else "single_case"
+    count = metrics["accepted_case_count"]
+    status = metrics["source_status"]
+    admitted = (
+        count > 0
+        and all(section["input_admitted"] for section in (metrics, human, efficiency))
+        and all(section["source_status"] == status for section in (metrics, human, efficiency))
+        and all(section["report_type"] == kind for section in (metrics, human, efficiency))
+        and human["focus_filter"] == "all"
+        and human["accepted_case_count"] == count
+        and human["selected_case_count"] == count
+        and human["excluded_case_count"] == 0
+        and efficiency["accepted_case_count"] == count
+        and len(metrics["cases"]) == count
+        and len(human["human_review_questions"]) == count
+        and len(efficiency["cases"]) == count
+    )
+    packet = {
+        "schema_version": 1,
+        "report_type": kind,
+        "source_status": status if admitted else "HOLD",
+        "input_admitted": admitted,
+        "notice": "requires_human_review" if admitted else "input_hold",
+        "accepted_case_count": count if admitted else 0,
+        "metric_review": metrics if admitted else None,
+        "human_actions": human if admitted else None,
+        "resource_observations": efficiency if admitted else None,
+        "authorized": False,
+        "consent_verified": False,
+        "dispatch_allowed": False,
+        "release_allowed": False,
+        "source_provenance_authenticated": False,
+    }
+    return json_dumps(
+        packet, sort_keys=True, separators=(",", ":"), allow_nan=False,
+    ) + "\n"
 
 
 def render_human_actions_html(result, *, cohort: bool = False,
