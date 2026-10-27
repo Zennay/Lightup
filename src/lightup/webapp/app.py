@@ -85,6 +85,9 @@ nav a.active { color:var(--ink); border-bottom:2px solid var(--accent); }
 nav form { display:inline; }
 nav button { background:none; border:0; color:var(--muted); cursor:pointer;
              font:inherit; padding:0; }
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,
+textarea:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+button,input:not([type="hidden"]),select { min-height:44px; }
 main { padding:28px 0 64px; }
 h1 { font-size:1.35rem; margin:0 0 4px; }
 h2 { font-size:1.05rem; margin:28px 0 10px; }
@@ -257,6 +260,8 @@ class LightUpWebApp:
              self.portal_authorization_plan, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/authorization-plan.json$"),
              self.portal_authorization_plan_json, "portal"),
+            ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/preview$"),
+             self.portal_preview_request, "portal"),
             ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
              self.portal_submit_request, "portal"),
         ]
@@ -1148,22 +1153,35 @@ class LightUpWebApp:
             )
         else:
             request_section = (
-                "<h2>Request an assessment</h2>"
+                "<h2>Ask for a security assessment</h2>"
                 "<div class=\"card\">"
-                f"<form method=\"post\" action=\"/portal/{_e(client_id)}/requests\">"
+                "<p class=\"meta\">Step 1 of 2: describe what you want reviewed. "
+                "Nothing will be tested or activated by this request.</p>"
+                f"<form method=\"post\" action=\"/portal/{_e(client_id)}/requests/preview\">"
                 f"{self._csrf_field(auth)}"
-                "<label>Assets (comma-separated hostnames/systems you own)</label>"
-                "<input name=\"assets\" required>"
-                "<label>Requested risk level</label><select name=\"risk\">"
-                "<option value=\"1\">1 — Passive</option>"
-                "<option value=\"2\">2 — Low impact</option>"
-                "<option value=\"3\" selected>3 — Standard</option>"
-                "<option value=\"4\">4 — Elevated</option></select>"
-                "<label>Notes</label><textarea name=\"notes\" rows=\"3\"></textarea>"
-                "<button>Submit request</button>"
-                "<p class=\"meta\">Submitting a request starts HUMAN review only. Active testing "
-                "is disabled in this version. A future release needs separate verified consent, "
-                "scope review, action-time revocation and HUMAN GO.</p></form></div>"
+                '<label for="request-assets">Systems you manage (separate with commas)</label>'
+                '<input id="request-assets" name="assets" autocomplete="off" required '
+                'aria-describedby="request-assets-help">'
+                '<p id="request-assets-help" class="meta">Only name systems you own or '
+                'are explicitly allowed to request a review for. This entry does not '
+                'verify ownership.</p>'
+                '<label for="request-risk">Requested testing risk</label>'
+                '<select id="request-risk" name="risk" required '
+                'aria-describedby="request-risk-help">'
+                '<option value="" selected>Choose a level…</option>'
+                '<option value="1">1 — Passive: observation only</option>'
+                '<option value="2">2 — Low impact: needs separate authorization</option>'
+                '<option value="3">3 — Standard: needs separate authorization</option>'
+                '<option value="4">4 — Elevated: needs additional risk review</option>'
+                '</select>'
+                '<p id="request-risk-help" class="meta">Choosing a level never gives '
+                'LightUp permission to run it.</p>'
+                '<label for="request-notes">Context for the reviewer (optional)</label>'
+                '<textarea id="request-notes" name="notes" rows="3"></textarea>'
+                '<button>Review before sending</button>'
+                '<p class="meta">An operator must separately review the request. '
+                'Testing stays locked until independent consent, scope validation, '
+                'action-time revocation checks and HUMAN GO.</p></form></div>'
             )
         body = (
             f"<h1>{_e(client.name)}</h1>"
@@ -1189,6 +1207,59 @@ class LightUpWebApp:
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
 
+    @staticmethod
+    def _parse_portal_request_fields(
+        form: dict[str, str],
+    ) -> tuple[tuple[str, ...], RiskLevel, str]:
+        assets = tuple(
+            part.strip() for part in form.get("assets", "").split(",")
+            if part.strip()
+        )
+        if not assets:
+            raise ValueError("at least one owned/reviewable system is required")
+        raw_risk = form.get("risk")
+        if raw_risk is None or raw_risk not in {"1", "2", "3", "4"}:
+            raise ValueError("a deliberate risk choice from 1 to 4 is required")
+        return assets, RiskLevel(int(raw_risk)), form.get("notes", "")
+
+    def portal_preview_request(
+        self, auth: AuthState, form: dict[str, str],
+        client_id: str,
+    ) -> Response:
+        # Preview is private and does not persist consent, request or grant.
+        if auth.is_operator or auth.context is None or auth.context.client_id != client_id:
+            return Response(_page("Forbidden", "",
+                                  "<h1>Client session required</h1>", auth),
+                            status="403 Forbidden")
+        assets, risk, notes = self._parse_portal_request_fields(form)
+        body = (
+            "<h1>Review your assessment request</h1>"
+            '<p class="sub">Step 2 of 2: check the details before sending '
+            'them for HUMAN review. No active test starts here.</p>'
+            '<section class="card">'
+            '<strong>Systems as entered (ownership not verified)</strong>'
+            f'<p>{_e(", ".join(assets))}</p>'
+            '<strong>Requested risk</strong>'
+            f'<p>{_risk(risk)}</p>'
+            '<strong>Notes for the operator</strong>'
+            f'<p>{_e(notes) if notes else "None"}</p>'
+            '<p class="meta">A submitted request is not permission to scan, '
+            'not a recorded scope grant and not verified consent. Additional '
+            'human review and safety gates are required.</p>'
+            f'<form method="post" action="/portal/{_e(client_id)}/requests">'
+            f'{self._csrf_field(auth)}'
+            f'<input type="hidden" name="assets" value="{_e(", ".join(assets))}">'
+            f'<input type="hidden" name="risk" value="{int(risk)}">'
+            f'<textarea name="notes" hidden>{_e(notes)}</textarea>'
+            '<button>Send request for human review</button></form>'
+            f'<p><a href="/portal/{_e(client_id)}">Go back and edit</a></p>'
+            '</section>'
+        )
+        return Response(_page(
+            "LightUp — Review assessment request", "portal", body, auth,
+            portal_client=client_id,
+        ))
+
     def portal_submit_request(self, auth: AuthState, form: dict[str, str],
                               client_id: str) -> Response:
         # Client request provenance must come from the client's real session.
@@ -1198,21 +1269,13 @@ class LightUpWebApp:
                                   "<h1>Client session required</h1>", auth),
                             status="403 Forbidden")
         ctx = auth.context
-        assets = tuple(part.strip() for part in form.get("assets", "").split(",") if part.strip())
-        raw_risk = form.get("risk")
-        if raw_risk is None or not raw_risk.strip():
-            raise ValueError("requested risk is required")
-        if raw_risk == str(int(RiskLevel.DESTRUCTIVE_LAB_ONLY)):
-            raise ValueError("destructive simulation cannot be requested from the portal")
-        if raw_risk not in {"1", "2", "3", "4"}:
-            raise ValueError("requested risk must be one of 1, 2, 3, or 4")
-        risk = RiskLevel(int(raw_risk))
+        assets, risk, notes = self._parse_portal_request_fields(form)
         self.store.submit_assessment_request(
             ctx,
             requested_assets=assets,
             requested_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
             requested_risk=risk,
-            notes=form.get("notes", ""),
+            notes=notes,
         )
         return _redirect(f"/portal/{client_id}")
 
