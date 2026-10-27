@@ -969,6 +969,44 @@ and `bundle-md`: 2 only when byte equality and source-reported
 use a byte-preserving shell/transfer and keep the original JSON alongside
 the archive for any later re-verification.
 
+### Checking a received ZIP without the original JSON
+
+A reviewer may initially receive **only** the one-file ZIP. The separate,
+read-only `assessment_runtime_review_zip_inspect_cli_1513.py` now checks its
+entire canonical archive structure and internal manifest **without opening the
+original JSON or extracting any file to disk**:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_review_zip_inspect_cli_1513.py \
+  received-human-handoff.zip
+
+PYTHONPATH=src python scripts/assessment_runtime_review_zip_inspect_cli_1513.py \
+  --expected-zip-sha256 "$INDEPENDENT_ARCHIVE_SHA256" \
+  received-human-handoff.zip
+```
+
+This is a bounded symlink-free, inode-pinned **read only** operation. It rejects
+ZIP encryption/compression, extra/duplicate/renamed members, changed metadata,
+noncanonical archive bytes, corrupt CRC, altered individual file digests,
+invalid or duplicate JSON manifest fields, and missing/true authority flags.
+It produces only a fixed-shape JSON receipt: `internal_zip_consistent`,
+the source-reported `HOLD`/`REVIEW_ONLY` label, the included original JSON
+hash and received ZIP hash **only after full admission**, a fixed verified
+artifact count, and all five authority flags remaining `false`.
+Invalid, oversized, forged-format, changed or mismatched input yields the same
+source-free generic HOLD and no hashes. Exit 2 means internally consistent
+source-reported `REVIEW_ONLY`; exit 3 means any HOLD/rejection.
+
+**Crucial distinction:** internal ZIP hashes are attacker-rewriteable and can
+never prove who sent an archive, that the original evidence is true, or consent
+to act. An independently authenticated ZIP SHA-256 can establish byte identity
+for that transferred archive, **not** source fact validity or authorization.
+Use the stronger `--format bundle-zip` mode of
+`assessment_runtime_review_artifact_verify_cli_1513.py` with the original JSON
+when available to reconstruct and compare its *actual expected*
+HTML/CSV/Markdown content.
+Neither route authorizes scanning, scope, cost, dispatch, release or HUMAN GO.
+
 ### All-or-nothing verification of a complete HUMAN handoff set
 
 When the reviewer receives **all three** formats, use one `bundle-set`

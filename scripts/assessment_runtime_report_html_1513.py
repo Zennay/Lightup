@@ -1660,6 +1660,26 @@ def _render_review_bundle_packet_html(packet, *, source_sha256=None) -> str:
     )
 
 
+def _pack_fixed_handoff_zip_entries(entries: tuple[tuple[str, bytes], ...]) -> bytes:
+    """Canonical stored archive used by the producer and read-only inspector."""
+    if (
+        tuple(name for name, _ in entries)
+        != ("manifest.json", "human-review.html", "human-review.csv", "human-review.md")
+        or any(type(data) is not bytes for _, data in entries)
+    ):
+        raise ValueError("noncanonical offline HUMAN handoff entries")
+    archive_bytes = BytesIO()
+    with ZipFile(archive_bytes, "w", compression=ZIP_STORED,
+                 allowZip64=False) as archive:
+        for filename, data in entries:
+            metadata = ZipInfo(filename, date_time=(1980, 1, 1, 0, 0, 0))
+            metadata.compress_type = ZIP_STORED
+            metadata.create_system = 3
+            metadata.external_attr = 0o100600 << 16
+            archive.writestr(metadata, data)
+    return archive_bytes.getvalue()
+
+
 def _render_review_bundle_packet_zip(packet, *, source_sha256=None) -> bytes:
     """Deterministic, offline three-format HUMAN handoff from one admitted packet.
 
@@ -1702,16 +1722,9 @@ def _render_review_bundle_packet_zip(packet, *, source_sha256=None) -> bytes:
     manifest_data = (
         json_dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n"
     ).encode("utf-8")
-    archive_bytes = BytesIO()
-    with ZipFile(archive_bytes, "w", compression=ZIP_STORED,
-                 allowZip64=False) as archive:
-        for filename, data in (("manifest.json", manifest_data), *entries):
-            metadata = ZipInfo(filename, date_time=(1980, 1, 1, 0, 0, 0))
-            metadata.compress_type = ZIP_STORED
-            metadata.create_system = 3
-            metadata.external_attr = 0o100600 << 16
-            archive.writestr(metadata, data)
-    return archive_bytes.getvalue()
+    return _pack_fixed_handoff_zip_entries(
+        (("manifest.json", manifest_data), *entries),
+    )
 
 
 def render_human_actions_html(result, *, cohort: bool = False,
