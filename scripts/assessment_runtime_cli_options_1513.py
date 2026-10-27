@@ -10,7 +10,7 @@ _OUTPUT_FORMATS = frozenset((
     "json", "text", "html", "csv",
     "actions-csv", "actions-html", "actions-json",
     "efficiency-json", "efficiency-html", "review-json",
-    "review-bundle-json",
+    "review-bundle-json", "review-bundle-html",
 ))
 _HUMAN_FOCUS_FORMATS = frozenset((
     "actions-csv", "actions-html", "actions-json",

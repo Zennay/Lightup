@@ -824,6 +824,178 @@ def render_review_bundle_json(result, *, cohort: bool = False,
     ) + "\n"
 
 
+def render_review_bundle_html(result, *, cohort: bool = False,
+                              scored: bool = False) -> str:
+    """Printable script-free view of the complete anonymous JSON review bundle.
+
+    Render only the already-admitted pure comparator readouts; no source IDs,
+    free-form evidence, links, browser scripts, execution or new lab activity.
+    """
+    packet = json_loads(render_review_bundle_json(
+        result, cohort=cohort, scored=scored,
+    ))
+    admitted = packet["input_admitted"]
+    status = packet["source_status"]
+
+    def safe_table(headings, rows):
+        if not rows:
+            return '<p class="muted">No admitted rows.</p>'
+        head = "".join(
+            '<th scope="col">' + _safe(value) + "</th>"
+            for value in headings
+        )
+        body = "".join(
+            "<tr>" + "".join("<td>" + _safe(cell) + "</td>" for cell in row)
+            + "</tr>"
+            for row in rows
+        )
+        return (
+            '<div class="table-scroll"><table><thead><tr>' + head
+            + "</tr></thead><tbody>" + body + "</tbody></table></div>"
+        )
+
+    if admitted:
+        metrics = packet["metric_review"]
+        human = packet["human_actions"]
+        resources = packet["resource_observations"]
+        summary = (
+            '<div class="grid" aria-label="Full-source lab summary">'
+            + _stat(packet["accepted_case_count"], "Anonymous admitted cases")
+            + _stat(metrics["source_adverse_case_count"], "Cases with adverse source flags")
+            + _stat(metrics["source_unknown_coverage_case_count"], "Cases with unknown coverage")
+            + _stat(len(human["human_review_questions"]), "HUMAN questions")
+            + "</div>"
+        )
+        movement = safe_table(
+            ("Canonical metric", "Cases observed", "Candidate higher",
+             "Candidate lower", "Equal", "Source adverse cases"),
+            (
+                (
+                    _METRIC_LABELS.get(item["metric"], "Unclassified metric"),
+                    item["observed_case_count"],
+                    item["candidate_higher_case_count"],
+                    item["candidate_lower_case_count"],
+                    item["candidate_equal_case_count"],
+                    item["source_regression_case_count"],
+                )
+                for item in metrics["metric_summary"]
+            ),
+        )
+        questions = safe_table(
+            ("Review rank", "Anonymous case", "HUMAN review group",
+             "Adverse flags", "Unknown coverage", "Fixed HUMAN question"),
+            (
+                (
+                    item["review_order"], item["scenario_ordinal"],
+                    item["human_review_group"],
+                    item["source_adverse_metric_count"],
+                    item["source_unknown_coverage"],
+                    item["suggested_human_question"],
+                )
+                for item in human["human_review_questions"]
+            ),
+        )
+        resource_rows = safe_table(
+            ("Observed resource", "Baseline total", "Candidate total",
+             "Raw delta total", "Increased cases", "Decreased cases"),
+            (
+                (
+                    _METRIC_LABELS.get(name, "Unclassified metric"),
+                    values["baseline_total"], values["candidate_total"],
+                    values["delta_total"], values["increased_cases"],
+                    values["decreased_cases"],
+                )
+                for name, values in resources["aggregate"].items()
+            ),
+        )
+        detail_sections = []
+        for case in metrics["cases"]:
+            detailed = safe_table(
+                ("Canonical metric", "Baseline", "Candidate",
+                 "Raw delta", "Source adverse", "Unknown coverage"),
+                (
+                    (
+                        _METRIC_LABELS.get(item["metric"], "Unclassified metric"),
+                        item["baseline"], item["candidate"], item["delta"],
+                        "FLAGGED" if item["source_regression_flag"] else "not flagged",
+                        "unknown" if item["source_unknown_coverage"] else "not reported",
+                    )
+                    for item in case["metrics"]
+                ),
+            )
+            detail_sections.append(
+                '<section class="panel"><h3>Anonymous case '
+                + _safe(case["scenario_ordinal"]) + " · "
+                + _safe(case["source_status"]) + "</h3>"
+                + detailed + "</section>"
+            )
+        content = (
+            '<nav aria-label="Review sections">'
+            '<a href="#movements">Metric movements</a>'
+            '<a href="#questions">HUMAN questions</a>'
+            '<a href="#resources">Resource observations</a>'
+            '<a href="#cases">Full case details</a></nav>'
+            + summary
+            + '<section class="panel" id="movements">'
+            '<h2>Canonical metric movements</h2>'
+            '<p class="muted">Higher and lower mean raw numeric direction; '
+            'they are not verdicts, scores or permissions.</p>'
+            + movement + "</section>"
+            + '<section class="panel" id="questions">'
+            '<h2>Complete HUMAN question queue</h2>'
+            '<p class="muted">All admitted cases, ranked for review. '
+            'No question is an instruction to scan or remediate.</p>'
+            + questions + "</section>"
+            + '<section class="panel" id="resources">'
+            '<h2>Resource and cost observations</h2>'
+            '<p class="muted">Descriptive lab-only totals. '
+            'No budget, release or efficiency approval.</p>'
+            + resource_rows + "</section>"
+            + '<section id="cases"><h2>All admitted case metrics</h2>'
+            + "".join(detail_sections) + "</section>"
+        )
+    else:
+        # Never render even one partial case, question or resource metric.
+        content = (
+            '<section class="panel warning"><h2>Input HOLD</h2>'
+            '<p>Admission or consistency did not permit a complete comparison.'
+            ' No source metrics, questions or partial cohort data are shown.</p>'
+            '</section>'
+        )
+    style_pin = b64encode(sha256(_STYLES.encode("utf-8")).digest()).decode("ascii")
+    policy = ("default-src 'none'; base-uri 'none'; form-action 'none'; "
+              "connect-src 'none'; img-src 'none'; font-src 'none'; "
+              "object-src 'none'; frame-src 'none'; script-src 'none'; "
+              "style-src 'sha256-" + style_pin + "'")
+    return (
+        "<!doctype html>\n<html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta name='referrer' content='no-referrer'>"
+        '<meta http-equiv="Content-Security-Policy" content="'
+        + escape(policy, quote=True) + '">'
+        "<title>LightUp offline review bundle — " + _safe(status) + "</title>"
+        "<style>" + _STYLES + "</style></head><body>"
+        "<header><p class='eyebrow'>LightUp · offline, anonymous, source-reported lab</p>"
+        "<h1>Full assessment-runtime HUMAN review dossier</h1>"
+        "<p><span class='badge'>" + _safe(status) + " · HUMAN REVIEW ONLY</span></p>"
+        "<p>Original source provenance is not authenticated. "
+        "Nothing in this file permits assessment execution or release.</p>"
+        "</header>"
+        '<section class="panel warning"><h2>No execution authority</h2>'
+        "<p>Source-reported metrics, HUMAN questions and performance "
+        "observations must be independently verified. There is no verified "
+        "client/operator consent or HUMAN GO.</p>"
+        "<p><strong>authorized=false · consent_verified=false · "
+        "dispatch_allowed=false · release_allowed=false · "
+        "source_provenance_authenticated=false</strong></p></section>"
+        + content
+        + "<footer class='panel foot'>Private unsigned offline diagnostic. "
+        "No scripts, network, external assets, original IDs or execution hooks. "
+        "Keep source-owner, security/privacy and HUMAN GO gates separate.</footer>"
+        "</body></html>\n"
+    )
+
+
 def render_human_actions_html(result, *, cohort: bool = False,
                               scored: bool = False, focus: str = "all") -> str:
     """Script-free printable HUMAN subset; no source IDs or metrics by case."""

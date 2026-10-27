@@ -579,3 +579,40 @@ PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
   --format review-bundle-json old-cohort.json new-cohort.json
 # 2 REVIEW_ONLY / 3 HOLD; only local already-recorded lab packets are read
 ```
+
+## Printable offline complete HUMAN review bundle
+
+The three already-existing local-only CLI entry points now also accept
+`--format review-bundle-html`. It renders the **exact same admitted**
+`review-bundle-json` source once as a self-contained, print-friendly HTML
+document: cohortwide canonical metric movement table, the full
+source-minimal HUMAN question queue, observational runtime/cost totals,
+and **every** fixed canonical metric for **every** admitted anonymous
+case (not a selectively filtered view). The HTML displays a clear
+`REVIEW_ONLY` or `HOLD` badge, all five false authority/provenance flags
+and the absence of independent proof or HUMAN GO.
+
+Whole-input admission/consistency HOLD never emits partially admitted
+scenarios, metric tables, questions or resource rows; it shows only a
+generic HOLD explanation. Valid source-adverse HOLD retains its complete
+comparison for HUMAN scrutiny. Fixed headings and HTML escaping protect
+all rendered numeric/string cells. The document embeds the existing
+local-only stylesheet behind an exact SHA-256 CSP style hash, disallows
+scripts, connections, external assets, forms and frames, and does not
+contain source scenario/record/run IDs, targets, clients, paths or freeform
+evidence.
+
+This is a **review artifact**, not authenticated provenance, a security
+finding, dispatch approval, consent verification, cost authorization or
+release decision. It does not modify inputs, run scanning tools, write
+source files or transmit browser data. The original JSON/text/CSV/HTML
+formats and default outputs remain unchanged. The complete dossier rejects
+`--focus` to prevent accidental hiding of relevant admitted cases.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py \
+  --format review-bundle-html baseline-scored.json candidate-scored.json \
+  > private-review.html
+# Only use on already-recorded, locally supplied isolated-lab inputs.
+# Exit 2 means REVIEW_ONLY, exit 3 means HOLD. Neither permits a scan.
+```
