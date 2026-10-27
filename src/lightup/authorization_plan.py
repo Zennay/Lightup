@@ -229,3 +229,56 @@ def to_review_payload(plan: ClientAuthorizationPlan) -> dict:
         "state": "PLAN_ONLY",
         "disclaimer": "Unsigned private HUMAN review only; not a grant, consent, scan or release.",
     }
+
+
+def build_operator_portfolio_review_payload(
+    store: DomainStore, actor: AccessContext,
+    evaluation_time: datetime | None = None,
+) -> dict:
+    """Operator-only, aggregate M0 status without issuing tenant authority.
+
+    Every per-tenant scope lookup shares one exact observation time. This
+    artifact is private and unsigned, and is never an execution input.
+    """
+    actor.require_operator("build_operator_portfolio_review_payload")
+    instant = datetime.now(timezone.utc) if evaluation_time is None else evaluation_time
+    if (type(instant) is not datetime or instant.tzinfo is None
+            or instant.utcoffset() is None):
+        raise ValueError("portfolio review requires an exact aware datetime")
+    instant = instant.astimezone(timezone.utc)
+    tenants = []
+    for tenant in store.list_clients(actor):
+        plan = build_client_authorization_plan(
+            store, actor, tenant.client_id, evaluation_time=instant
+        )
+        tenants.append({
+            "client_id": plan.client_id,
+            "client_name": plan.client_name,
+            "requests_awaiting_review": plan.submitted_requests,
+            "requests_approved": plan.approved_requests,
+            "requests_rejected": plan.rejected_requests,
+            "engagements_hold": len(plan.engagements),
+            "without_current_grant": sum(
+                entry.max_risk is None for entry in plan.engagements
+            ),
+            "unrestricted_legacy_scopes": sum(
+                entry.unrestricted_capabilities_recorded
+                for entry in plan.engagements
+            ),
+            "decision": "HOLD",
+            "execution_allowed": False,
+        })
+    return {
+        "format": "lightup-m0-portfolio-review-v1",
+        "evaluated_at": instant.isoformat(),
+        "tenants": sorted(tenants, key=lambda tenant: tenant["client_id"]),
+        "authority": {
+            "execution_allowed": False,
+            "capability_dispatch_allowed": False,
+            "client_consent_verified": False,
+            "revocation_at_use_verified": False,
+            "human_go_verified": False,
+        },
+        "state": "PLAN_ONLY",
+        "disclaimer": "Private unsigned HUMAN summary; not a grant, consent or activation.",
+    }
