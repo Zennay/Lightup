@@ -271,3 +271,32 @@ with `input_admitted=false`. A filter supplied with JSON, HTML, text or
 detailed CSV output is rejected to a generic HOLD rather than being silently
 ignored. The filter never grants authority, modifies source data, executes a
 lab, contacts targets or distributes the file.
+
+
+## Scriptless, printable selected HUMAN handoff
+
+The three native offline comparison CLIs now also support `--format actions-html`.
+It renders the **same source-minimal, ranked, focus-filtered HUMAN actions** as
+`actions-csv`, but as a standalone printable browser file. Example:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
+  --format actions-html --focus unknown baseline-cohort.json candidate-cohort.json \
+  > unknown-human-actions.html
+```
+
+There are no scripts, network connections, external fonts or images. The
+Content-Security-Policy is deny-all except the SHA-256-pinned bundled
+stylesheet. The printable page exposes only fixed HUMAN question wording,
+global review rank, original anonymous case ordinal, reported adverse-flag
+count, unknown coverage, original total accepted count, selected count and
+the chosen focus. It never shows original scenario names, source paths,
+client/target identities, notes, per-metric details or input file bytes.
+CSV and HTML use the same complete-source-admission and selection function,
+including distinct **Input HOLD** and **admitted but no matching case** states.
+
+The file is unsigned and its source signals are unauthenticated. A restricted
+view does not clear excluded cases or represent actual owner assignment,
+verified findings, permission, remediation, consent or GO. Shell redirection
+can still create a file when exit 3 indicates HOLD. Existing full diagnostic
+HTML, detailed CSV, JSON and text remain unchanged.

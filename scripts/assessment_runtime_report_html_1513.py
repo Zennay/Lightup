@@ -6,6 +6,7 @@ interpolated. No browser network capability or authorization signal is emitted.
 """
 from __future__ import annotations
 
+from base64 import b64encode
 from collections import Counter
 from csv import writer as csv_writer
 from io import StringIO
@@ -197,7 +198,7 @@ def render_comparison_html(result, *, cohort: bool = False,
                 "No source-reported adverse flags; this is not release approval."
                 if accepted else
                 "Admission or consistency did not permit a complete comparison.")
-    style_pin = __import__("base64").b64encode(sha256(_STYLES.encode("utf-8")).digest()).decode("ascii")
+    style_pin = b64encode(sha256(_STYLES.encode("utf-8")).digest()).decode("ascii")
     policy = ("default-src 'none'; base-uri 'none'; form-action 'none'; "
               "connect-src 'none'; img-src 'none'; font-src 'none'; "
               "object-src 'none'; frame-src 'none'; script-src 'none'; "
@@ -337,15 +338,28 @@ _HUMAN_FOCUS_GROUPS = {
 }
 
 
-def render_human_actions_csv(result, *, cohort: bool = False,
-                             scored: bool = False, focus: str = "all") -> str:
-    """Private, ordinal-only HUMAN queue with auditable subset context.
-
-    The source is first admitted by the original comparator, before a HUMAN
-    view filter is applied. A subset never implies excluded cases were cleared.
-    """
+def _select_human_actions(result, *, cohort: bool, focus: str):
+    """Admit the complete comparison before selecting HUMAN-only review rows."""
     if type(focus) is not str or focus not in _HUMAN_FOCUS_GROUPS:
         raise ValueError("invalid HUMAN focus selection")
+    accepted = (
+        tuple(comp for _source_id, comp in result.comparisons) if cohort
+        else (result,) if result.changes else ()
+    )
+    actions = _ranked_human_actions(accepted)
+    selected = tuple(
+        item for item in actions
+        if _HUMAN_FOCUS_GROUPS[focus] in (None, item[2])
+    )
+    return actions, selected
+
+
+def render_human_actions_csv(result, *, cohort: bool = False,
+                             scored: bool = False, focus: str = "all") -> str:
+    """Private, ordinal-only HUMAN queue with auditable subset context."""
+    actions, selected = _select_human_actions(
+        result, cohort=cohort, focus=focus,
+    )
     file = StringIO(newline="")
     out = csv_writer(file, lineterminator="\r\n")
     out.writerow((
@@ -356,17 +370,8 @@ def render_human_actions_csv(result, *, cohort: bool = False,
         "suggested_human_question", "authorized", "consent_verified",
         "dispatch_allowed", "release_allowed", "source_provenance_authenticated",
     ))
-    accepted = (
-        tuple(comp for _source_id, comp in result.comparisons) if cohort
-        else (result,) if result.changes else ()
-    )
     kind = "scored_cohort" if scored else "cohort" if cohort else "single_case"
     status = "REVIEW_ONLY" if result.status == "REVIEW_ONLY" else "HOLD"
-    actions = _ranked_human_actions(accepted)
-    selected = tuple(
-        item for item in actions
-        if _HUMAN_FOCUS_GROUPS[focus] in (None, item[2])
-    )
     for rank, ordinal, group, flags, unknown, question, scope in selected:
         out.writerow((
             kind, status, "true", focus, len(actions), len(selected),
@@ -375,7 +380,6 @@ def render_human_actions_csv(result, *, cohort: bool = False,
             "false", "false", "false", "false", "false",
         ))
     if not actions:
-        # Admission HOLD is distinct from a legitimate zero-match selection.
         out.writerow((
             kind, "HOLD", "false", focus, 0, 0, 0, 0, "Input HOLD",
             "false", 0, "",
@@ -390,3 +394,81 @@ def render_human_actions_csv(result, *, cohort: bool = False,
             "false", "false", "false", "false", "false",
         ))
     return file.getvalue()
+
+
+def render_human_actions_html(result, *, cohort: bool = False,
+                              scored: bool = False, focus: str = "all") -> str:
+    """Script-free printable HUMAN subset; no source IDs or metrics by case."""
+    actions, selected = _select_human_actions(
+        result, cohort=cohort, focus=focus,
+    )
+    kind = "Scored cohort" if scored else "Cohort" if cohort else "Single-case"
+    status = "REVIEW_ONLY" if result.status == "REVIEW_ONLY" else "HOLD"
+    pin = b64encode(
+        sha256(_STYLES.encode("utf-8")).digest()
+    ).decode("ascii")
+    policy = (
+        "default-src 'none'; base-uri 'none'; form-action 'none'; "
+        "connect-src 'none'; img-src 'none'; font-src 'none'; "
+        "object-src 'none'; frame-src 'none'; script-src 'none'; "
+        "style-src 'sha256-" + pin + "'"
+    )
+    rows = []
+    for rank, ordinal, group, flags, unknown, question, _scope in selected:
+        fields = (
+            str(rank), "Scenario " + str(ordinal).zfill(2), group,
+            str(flags), str(unknown), question,
+        )
+        rows.append("<tr>" + "".join("<td>" + _safe(v) + "</td>" for v in fields) + "</tr>")
+    if not actions:
+        rows.append(
+            '<tr><td colspan="6">Input HOLD: no admitted case details. '
+            'Ask the original owner to check input admission and consistency.</td></tr>'
+        )
+    elif not selected:
+        rows.append(
+            '<tr><td colspan="6">No HUMAN cases match this selected group. '
+            'The original comparison is not cleared or approved.</td></tr>'
+        )
+    headings = (
+        "Review order", "Anonymous case", "HUMAN group",
+        "Source adverse flags", "Unknown coverage", "Suggested HUMAN question",
+    )
+    return (
+        "<!doctype html>\n<html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta name='referrer' content='no-referrer'>"
+        '<meta http-equiv="Content-Security-Policy" content="'
+        + escape(policy, quote=True) + '">'
+        "<title>LightUp offline HUMAN actions — " + _safe(status) + "</title>"
+        "<style>" + _STYLES + "</style></head><body>"
+        "<header><p class='eyebrow'>LightUp · source-minimal private handoff</p>"
+        "<h1>" + _safe(kind) + " HUMAN action selection</h1>"
+        "<p><span class='badge'>" + _safe(status) + " · HUMAN REVIEW ONLY</span></p></header>"
+        '<div class="grid" aria-label="Source and selection counts">'
+        + _stat(len(actions), "All admitted anonymous cases")
+        + _stat(len(selected), "Cases in this selection")
+        + _stat(focus, "HUMAN focus filter")
+        + "</div>"
+        '<section class="panel warning"><h2>Not an authorization or release</h2>'
+        "<p>These are unauthenticated, source-reported lab signals, not findings "
+        "verified on a real system. Filtering hides other cases only in this "
+        "view; it never clears them. No execution, consent, remediation proof "
+        "or HUMAN GO is conveyed.</p>"
+        "<p><strong>authorized=false · consent_verified=false · "
+        "dispatch_allowed=false · release_allowed=false · "
+        "source_provenance_authenticated=false</strong></p></section>"
+        '<section class="panel"><h2>Selected HUMAN questions</h2>'
+        '<p class="muted">Global review rank and original anonymous ordinal '
+        "are retained. Only fixed question text and admitted aggregate numbers "
+        "are shown; original IDs, source paths, network targets and notes "
+        "are omitted.</p>"
+        '<div class="table-scroll"><table><thead><tr>'
+        + "".join('<th scope="col">' + _safe(h) + "</th>" for h in headings)
+        + "</tr></thead><tbody>" + "".join(rows)
+        + "</tbody></table></div></section>"
+        "<footer class='panel foot'>Private offline file · unsigned and "
+        "unverified. Review the original full comparison separately before "
+        "taking any human action. No browser scripts or network.</footer>"
+        "</body></html>\n"
+    )

@@ -1,6 +1,6 @@
 """Offline scored lab cohort review: 2 REVIEW_ONLY / 3 HOLD, NEVER a grant.
 
-Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text|html|csv|actions-csv] [--focus all|scope|adverse|unknown|source] old.json new.json
+Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html] [--focus all|scope|adverse|unknown|source] old.json new.json
 Only two explicitly supplied local files are read, never a network endpoint.
 """
 from __future__ import annotations
@@ -9,7 +9,8 @@ import json
 import sys
 
 from assessment_runtime_report_html_1513 import (
-    render_comparison_html, render_comparison_csv, render_human_actions_csv,
+    render_comparison_html, render_comparison_csv,
+    render_human_actions_csv, render_human_actions_html,
 )
 
 from assessment_runtime_compare_cli_1513 import _parse_case_document, _read_json
@@ -112,7 +113,7 @@ def main(argv=None):
         if item == "--format":
             if (
                 format_seen or index + 1 >= len(args)
-                or args[index + 1] not in ("json", "text", "html", "csv", "actions-csv")
+                or args[index + 1] not in ("json", "text", "html", "csv", "actions-csv", "actions-html")
             ):
                 malformed = True
                 index += 2 if index + 1 < len(args) else 1
@@ -137,7 +138,7 @@ def main(argv=None):
             index += 1
 
     review = LabCohortComparison('HOLD')
-    if focus_seen and output_format != "actions-csv":
+    if focus_seen and output_format not in ("actions-csv", "actions-html"):
         malformed = True
     if len(positional) == 2 and not malformed:
         try:
@@ -153,6 +154,8 @@ def main(argv=None):
         print(_display_text(review))
     elif output_format == "html":
         print(render_comparison_html(review, cohort=True, scored=True), end="")
+    elif output_format == "actions-html":
+        print(render_human_actions_html(review, cohort=True, scored=True, focus=focus_filter), end="")
     elif output_format == "actions-csv":
         print(render_human_actions_csv(review, cohort=True, scored=True, focus=focus_filter), end="")
     elif output_format == "csv":

@@ -1,6 +1,6 @@
 """Opt-in read-only JSON lab benchmark comparison, never an execution gate.
 
-Usage: python scripts/assessment_runtime_compare_cli_1513.py [--format json|text|html|csv|actions-csv] [--focus all|scope|adverse|unknown|source] base.json next.json
+Usage: python scripts/assessment_runtime_compare_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html] [--focus all|scope|adverse|unknown|source] base.json next.json
 Returns 2 REVIEW_ONLY or 3 HOLD; never 0. Only explicit local files are read.
 """
 from __future__ import annotations
@@ -14,7 +14,8 @@ import stat
 import sys
 
 from assessment_runtime_report_html_1513 import (
-    render_comparison_html, render_comparison_csv, render_human_actions_csv,
+    render_comparison_html, render_comparison_csv,
+    render_human_actions_csv, render_human_actions_html,
 )
 
 from lightup.ai.assessment_runtime_diff_1513 import compare_lab_evaluations
@@ -282,7 +283,7 @@ def main(argv=None):
         if item == "--format":
             if (
                 format_seen or index + 1 >= len(args)
-                or args[index + 1] not in ("json", "text", "html", "csv", "actions-csv")
+                or args[index + 1] not in ("json", "text", "html", "csv", "actions-csv", "actions-html")
             ):
                 malformed = True
                 index += 2 if index + 1 < len(args) else 1
@@ -307,7 +308,7 @@ def main(argv=None):
             index += 1
 
     result = None
-    if focus_seen and output_format != "actions-csv":
+    if focus_seen and output_format not in ("actions-csv", "actions-html"):
         malformed = True
     if len(positional) == 2 and not malformed:
         try:
@@ -329,6 +330,8 @@ def main(argv=None):
         print(_display_text(result))
     elif output_format == "html":
         print(render_comparison_html(result), end="")
+    elif output_format == "actions-html":
+        print(render_human_actions_html(result, focus=focus_filter), end="")
     elif output_format == "actions-csv":
         print(render_human_actions_csv(result, focus=focus_filter), end="")
     elif output_format == "csv":
