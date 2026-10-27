@@ -380,6 +380,36 @@ class LightUpWebApp:
         engagements = self.store.list_engagements(ctx)
         findings = self.store.list_findings(ctx)
         open_retests = [f for f in findings if f.retest_status is not RetestStatus.FIXED]
+
+        from datetime import datetime, timezone
+        from ..authorization_plan import build_client_authorization_plan
+
+        # One exact observation instant for the operator's entire read-only
+        # portfolio snapshot. No grant, consent, revocation or action inferred.
+        instant = datetime.now(timezone.utc)
+        authorization_rows = []
+        for tenant in clients:
+            plan = build_client_authorization_plan(
+                self.store, ctx, tenant.client_id, evaluation_time=instant
+            )
+            without_grant = sum(
+                item.max_risk is None for item in plan.engagements
+            )
+            unrestricted = sum(
+                item.unrestricted_capabilities_recorded for item in plan.engagements
+            )
+            authorization_rows.append(
+                '<div class="card"><div class="row">'
+                f'<a href="/clients/{_e(tenant.client_id)}/authorization-plan">'
+                f'<strong>{_e(tenant.name)}</strong></a>'
+                '<span class="badge lock">HOLD · no execution</span></div>'
+                f'<p class="meta">{plan.submitted_requests} request(s) awaiting review · '
+                f'{len(plan.engagements)} engagement(s) · '
+                f'{without_grant} without a current request-bound grant · '
+                f'{unrestricted} unrestricted legacy scope(s)</p>'
+                f'<a href="/clients/{_e(tenant.client_id)}/authorization-plan">'
+                'Review scope and blockers</a></div>'
+            )
         body = (
             "<h1>Overview</h1>"
             "<p class=\"sub\">Status first; details live one click deeper.</p>"
@@ -393,7 +423,13 @@ class LightUpWebApp:
             f"<div class=\"card\"><div class=\"kpi\">{len(open_retests)}</div>"
             "<div class=\"kpi-label\">Findings awaiting fix/retest</div></div>"
             "</div>"
-            "<div class=\"card\"><div class=\"row\"><strong>Active testing</strong>"
+            "<h2>Authorization control plane</h2>"
+            "<p class=\"sub\">Plan-only portfolio review. Every tenant remains HOLD "
+            "until independent consent, revocation-at-use, source reviews and HUMAN GO. "
+            "<a href=\"/assessments\">Review pending requests</a>.</p>"
+            + ("".join(authorization_rows)
+               or "<p class=\"empty\">No clients yet.</p>")
+            + "<div class=\"card\"><div class=\"row\"><strong>Active testing</strong>"
             "<span class=\"badge lock\">Locked</span></div>"
             "<p class=\"meta\">This build has no real-target execution path. "
             "Unauthorized targets remain passive-discovery only; active capability "
