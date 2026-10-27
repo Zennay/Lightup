@@ -260,6 +260,8 @@ class LightUpWebApp:
              self.portal_authorization_plan, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/authorization-plan.json$"),
              self.portal_authorization_plan_json, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/(?P<request_id>[\w-]+)$"),
+             self.portal_request_receipt, "portal"),
             ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/preview$"),
              self.portal_preview_request, "portal"),
             ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
@@ -1141,7 +1143,9 @@ class LightUpWebApp:
             "<div class=\"card\"><div class=\"row\">"
             f"<strong>{_e(', '.join(r.requested_assets))}</strong>"
             f"<span class=\"badge\">{_e(r.status.value)}</span></div>"
-            f"<p class=\"meta\">Requested risk: {_risk(r.requested_risk)}</p></div>"
+            f'<p class="meta">Requested risk: {_risk(r.requested_risk)}</p>'
+            f'<a href="/portal/{_e(client_id)}/requests/{_e(r.request_id)}">'
+            'View request status</a></div>'
             for r in requests
         ) or "<p class=\"empty\">No assessment requests yet.</p>"
         if auth.is_operator:
@@ -1207,6 +1211,53 @@ class LightUpWebApp:
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
 
+    def portal_request_receipt(
+        self, auth: AuthState, form: dict[str, str],
+        client_id: str, request_id: str,
+    ) -> Response:
+        # The original domain read enforces tenant ownership; the explicit
+        # route/client equality is a second boundary for operator portal views.
+        viewer = self._portal_context(auth, client_id)
+        request = self.store.get_assessment_request(viewer, request_id)
+        if request.client_id != client_id:
+            raise TenantIsolationError("cross-tenant request receipt denied")
+        awaiting = request.status in {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+        }
+        next_step = (
+            "An operator still needs to review this request."
+            if awaiting else
+            "A decision has been recorded. Review your private authorization "
+            "plan for the current scope and remaining blockers."
+        )
+        body = (
+            "<h1>Assessment request status</h1>"
+            '<p class="sub">Your request was recorded for human review. '
+            'A request never starts a scan or activates tools.</p>'
+            '<section class="card"><div class="row">'
+            f'<strong>Request {_e(request.request_id)}</strong>'
+            f'<span class="badge">{_e(request.status.value)}</span></div>'
+            f'<p class="meta">Submitted: {_e(request.submitted_at)}'
+            + (f' · Reviewed: {_e(request.reviewed_at)}'
+               if request.reviewed_at else '')
+            + '</p>'
+            '<strong>Requested systems (not verified)</strong>'
+            f'<p>{_e(", ".join(request.requested_assets))}</p>'
+            f'<p>Requested risk: {_risk(request.requested_risk)}</p>'
+            f'<p class="meta">{_e(next_step)}</p>'
+            '<p class="meta">An approved request is still not a scope grant, '
+            'separately verified consent, revocation-at-use check or HUMAN GO. '
+            'Active testing remains locked.</p>'
+            f'<a href="/portal/{_e(client_id)}/authorization-plan">'
+            'View authorization plan</a> · '
+            f'<a href="/portal/{_e(client_id)}">Back to portal</a>'
+            '</section>'
+        )
+        return Response(_page(
+            "LightUp — Request status", "portal", body, auth,
+            portal_client=client_id,
+        ))
+
     @staticmethod
     def _parse_portal_request_fields(
         form: dict[str, str],
@@ -1270,14 +1321,16 @@ class LightUpWebApp:
                             status="403 Forbidden")
         ctx = auth.context
         assets, risk, notes = self._parse_portal_request_fields(form)
-        self.store.submit_assessment_request(
+        recorded = self.store.submit_assessment_request(
             ctx,
             requested_assets=assets,
             requested_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
             requested_risk=risk,
             notes=notes,
         )
-        return _redirect(f"/portal/{client_id}")
+        return _redirect(
+            f"/portal/{client_id}/requests/{recorded.request_id}"
+        )
 
     # -- shared rendering ------------------------------------------------------
 
