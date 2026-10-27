@@ -1697,6 +1697,16 @@ class LightUpWebApp:
                                   "<h1>Client session required</h1>", auth),
                             status="403 Forbidden")
         assets, risk, notes = self._parse_portal_request_fields(form)
+        editable_risks = "".join(
+            f'<option value="{value}"{" selected" if int(risk) == value else ""}>'
+            f'{_e(label)}</option>'
+            for value, label in (
+                (1, "1 — Passive: observation only"),
+                (2, "2 — Low impact: needs separate authorization"),
+                (3, "3 — Standard: needs separate authorization"),
+                (4, "4 — Elevated: needs additional risk review"),
+            )
+        )
         body = (
             "<h1>Review your assessment request</h1>"
             '<p class="sub">Step 2 of 2: check the details before sending '
@@ -1717,7 +1727,21 @@ class LightUpWebApp:
             f'<input type="hidden" name="risk" value="{int(risk)}">'
             f'<textarea name="notes" hidden>{_e(notes)}</textarea>'
             '<button>Send request for human review</button></form>'
-            f'<p><a href="/portal/{_e(client_id)}">Go back and edit</a></p>'
+            '<details><summary>Edit this request before sending</summary>'
+            '<p class="meta">Change the draft and review it again. Nothing '
+            'is submitted until you deliberately send the request.</p>'
+            f'<form method="post" action="/portal/{_e(client_id)}/requests/preview">'
+            f'{self._csrf_field(auth)}'
+            '<label for="preview-assets">Systems you manage</label>'
+            f'<input id="preview-assets" name="assets" required '
+            f'value="{_e(", ".join(assets))}" autocomplete="off">'
+            '<label for="preview-risk">Requested testing risk</label>'
+            f'<select id="preview-risk" name="risk" required>{editable_risks}</select>'
+            '<label for="preview-notes">Context for the reviewer (optional)</label>'
+            f'<textarea id="preview-notes" name="notes" rows="3">{_e(notes)}</textarea>'
+            '<button class="secondary">Update review</button>'
+            '</form></details>'
+            f'<p><a href="/portal/{_e(client_id)}">Back to portal</a></p>'
             '</section>'
         )
         return Response(_page(
