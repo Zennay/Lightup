@@ -1749,6 +1749,80 @@ class LightUpWebApp:
             '<p><a href="#coverage-details">Review coverage by engagement</a></p>'
             '</section>'
         )
+        # Surface original scope-blocker facts on the client landing page.
+        # A current recorded grant is NOT proof of consent, revocation or GO;
+        # reuse the existing read-only authorization plan, never infer a permit.
+        from ..authorization_plan import build_client_authorization_plan
+
+        scope_plan = build_client_authorization_plan(self.store, ctx, client_id)
+        if (scope_plan.client_id != client_id
+                or scope_plan.state != "PLAN_ONLY"
+                or scope_plan.execution_allowed is not False):
+            raise TenantIsolationError("client scope summary is not tenant-safe")
+        known_engagement_ids = {item.engagement_id for item in engagements}
+        plan_engagement_ids = {item.engagement_id for item in scope_plan.engagements}
+        if (plan_engagement_ids != known_engagement_ids
+                or len(plan_engagement_ids) != len(scope_plan.engagements)):
+            raise TenantIsolationError("client scope summary engagement mismatch")
+        allowed_scope_states = {
+            "CURRENT", "EXPIRED", "NOT_YET_VALID", "NOT_RECORDED",
+        }
+        if any(
+            item.scope_record_state not in allowed_scope_states
+            or item.decision != "HOLD"
+            or item.execution_allowed is not False
+            for item in scope_plan.engagements
+        ):
+            raise ValueError("client scope summary is not fail-closed")
+        current_scope_count = sum(
+            item.scope_record_state == "CURRENT"
+            for item in scope_plan.engagements
+        )
+        pending_risk_count = sum(
+            item.pending_elevations for item in scope_plan.engagements
+        )
+        # Show the unresolved scope states first, keeping the overview short.
+        scope_preview = sorted(
+            scope_plan.engagements,
+            key=lambda item: (
+                item.scope_record_state == "CURRENT",
+                item.name.casefold(),
+                item.engagement_id,
+            ),
+        )[:3]
+        scope_rows = "".join(
+            '<section class="card"><div class="row">'
+            f'<strong>{_e(item.name)}</strong>'
+            f'<span class="badge warn">{_e(item.scope_record_state.replace("_", " ").lower())}</span></div>'
+            f'<p class="meta">Risk reviews awaiting decision: {item.pending_elevations} · '
+            f'Separate blocking steps: {len(item.blockers)}</p>'
+            '<details><summary>Why this remains HOLD</summary>'
+            '<ul>' + "".join(
+                f'<li>{_e(reason)}</li>' for reason in item.blockers
+            ) + '</ul></details>'
+            f'<p><a href="/portal/{_e(client_id)}/authorization-plan'
+            f'#engagement-{_e(item.engagement_id)}">'
+            'Read original grant details and every safety gate</a></p></section>'
+            for item in scope_preview
+        )
+        scope_board = (
+            '<section aria-labelledby="scope-board-heading">'
+            '<h2 id="scope-board-heading">Authorization is still on HOLD</h2>'
+            f'<p class="sub">{current_scope_count} of {len(scope_plan.engagements)} '
+            'engagements have a currently recorded request-bound scope grant; '
+            f'{pending_risk_count} risk review(s) await a human decision. '
+            'A recorded grant is never independently verified client consent, '
+            'revocation-at-use or HUMAN GO. Execution stays OFF.</p>'
+            + (scope_rows or
+               '<p class="empty">No engagements or scope grants recorded yet.</p>')
+            + (f'<p><a href="/portal/{_e(client_id)}/authorization-plan">'
+               'See all engagement blockers and the original authorization plan</a></p>'
+               if scope_plan.engagements else
+               f'<p><a href="/portal/{_e(client_id)}/authorization-plan">'
+               'Open the read-only authorization plan</a></p>')
+            + '</section>'
+        )
+
         fixed = sum(1 for f in findings if f.retest_status is RetestStatus.FIXED)
         request_rows = "".join(
             '<section class="card"><div class="row">'
@@ -1762,10 +1836,13 @@ class LightUpWebApp:
         ) or '<p class="empty">No assessment requests yet.</p>'
         # One explicit next action at the top, derived only from persisted
         # request state. This is navigation, never permission or scan readiness.
-        pending = [
-            item for item in ordered_requests
-            if item.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
-        ]
+        pending = sorted(
+            (
+                item for item in ordered_requests
+                if item.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+            ),
+            key=lambda item: (item.created_at, item.request_id),
+        )
         if auth.is_operator:
             action_title = "Review client requests"
             action_details = (
@@ -1784,7 +1861,7 @@ class LightUpWebApp:
             action_url = (
                 f"/portal/{_e(client_id)}/requests/{_e(pending[0].request_id)}"
             )
-            action_label = "Track the latest waiting request"
+            action_label = "Track the oldest waiting request"
         elif ordered_requests and ordered_requests[0].status is RequestStatus.APPROVED:
             action_title = "Request reviewed — scope still locked"
             action_details = (
@@ -1865,6 +1942,7 @@ class LightUpWebApp:
             f"<h1>{_e(client.name)}</h1>"
             "<p class=\"sub\">Your security posture, in plain terms.</p>"
             + coverage_overview
+            + scope_board
             + "<div class=\"grid\">"
             f"<div class=\"card\"><div class=\"kpi\">{len(findings)}</div>"
             "<div class=\"kpi-label\">Findings</div></div>"
