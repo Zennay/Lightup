@@ -300,3 +300,34 @@ view does not clear excluded cases or represent actual owner assignment,
 verified findings, permission, remediation, consent or GO. Shell redirection
 can still create a file when exit 3 indicates HOLD. Existing full diagnostic
 HTML, detailed CSV, JSON and text remain unchanged.
+
+## Machine-readable offline HUMAN question queue
+
+All three native comparison CLIs also accept `--format actions-json`, with
+the same `--focus all|scope|adverse|unknown|source` selector:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
+  --format actions-json --focus unknown baseline-cohort.json candidate-cohort.json \
+  > unknown-human-questions.json
+```
+
+This **separate, non-executable JSON handoff** has a stable
+`schema_version=1`, `report_type`, full-source `input_admitted`,
+`source_status`, `focus_filter`, total admitted and selected case counts,
+the original *global* HUMAN review rank, anonymous source ordinal,
+fixed reviewer question, admitted adverse flag/unknown coverage values,
+and explicit false authorization/consent/dispatch/release/source-authentication
+fields. No original client, host, source IDs, input paths, notes, findings,
+credential material or target details are emitted.
+
+The `notice` is exactly `input_hold`, `no_matching_human_cases`
+or `human_review_only`. A malformed or inconsistent input produces an
+empty `human_review_questions` array and `input_admitted=false`;
+a successful whole-source admission with no selected cases also produces an
+empty array, but remains `input_admitted=true` with the full accepted count.
+The existing CLI exits **3 HOLD** or **2 REVIEW_ONLY**, never zero. The JSON
+file is unsigned and has no authenticated source provenance; do not interpret
+a machine-readable question as a grant, task dispatch, client consent or
+release approval. All other output formats and normal comparator JSON stay
+unchanged.

@@ -10,6 +10,7 @@ from base64 import b64encode
 from collections import Counter
 from csv import writer as csv_writer
 from io import StringIO
+from json import dumps as json_dumps
 from hashlib import sha256
 from html import escape
 
@@ -394,6 +395,49 @@ def render_human_actions_csv(result, *, cohort: bool = False,
             "false", "false", "false", "false", "false",
         ))
     return file.getvalue()
+
+
+def render_human_actions_json(result, *, cohort: bool = False,
+                              scored: bool = False, focus: str = "all") -> str:
+    """Machine-readable anonymous HUMAN questions, never an executable queue."""
+    actions, selected = _select_human_actions(
+        result, cohort=cohort, focus=focus,
+    )
+    payload = {
+        "schema_version": 1,
+        "report_type": (
+            "scored_cohort" if scored else "cohort" if cohort else "single_case"
+        ),
+        "source_status": "REVIEW_ONLY" if result.status == "REVIEW_ONLY" else "HOLD",
+        "input_admitted": bool(actions),
+        "focus_filter": focus,
+        "accepted_case_count": len(actions),
+        "selected_case_count": len(selected),
+        "notice": (
+            "input_hold" if not actions else
+            "no_matching_human_cases" if not selected else
+            "human_review_only"
+        ),
+        "human_review_questions": [
+            {
+                "review_order": rank,
+                "scenario_ordinal": ordinal,
+                "human_review_group": group,
+                "scope_policy_signal": scope,
+                "source_adverse_metric_count": flags,
+                "source_unknown_coverage": unknown,
+                "suggested_human_question": question,
+            }
+            for rank, ordinal, group, flags, unknown, question, scope in selected
+        ],
+        "authorized": False,
+        "consent_verified": False,
+        "dispatch_allowed": False,
+        "release_allowed": False,
+        "source_provenance_authenticated": False,
+    }
+    # No scenario IDs, paths, targets, identities, notes or freeform input data.
+    return json_dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
 
 
 def render_human_actions_html(result, *, cohort: bool = False,
