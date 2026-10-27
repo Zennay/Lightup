@@ -1,0 +1,88 @@
+# LightUp #1501 — strictly synthetic scope proposal change review
+
+**Phase: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** This is an isolated, source-unwired, in-memory review aid for *fictional* operator-facing scope proposals. It does not process, mint or validate an actual `Authorization`, `AuthorizationGrant`, `ExecutionPermit`, approval, consent or grant. It must NEVER be wired into production dispatch based on its output.
+
+## Usage: local Python, no input/output side effects
+
+```python
+from datetime import datetime, timezone, timedelta
+from lightup.fictional_scope_delta_review_1501 import FictionalScopeProposal, review_fictional_scope_delta
+
+now = datetime(2026, 11, 1, tzinfo=timezone.utc)
+prior = FictionalScopeProposal(
+    assets=("alpha.example.test", "beta.example.test"),
+    capabilities=("headers_view", "metadata_view"),
+    exclusions=(), risk=3,
+    valid_from=now, valid_until=now + timedelta(days=2),
+)
+later = FictionalScopeProposal(
+    assets=("alpha.example.test",),
+    capabilities=("headers_view",),
+    exclusions=(), risk=2,
+    valid_from=now, valid_until=now + timedelta(days=1),
+)
+result = review_fictional_scope_delta(prior, later)
+assert result.status == "REVIEW_ONLY"  # NOT AUTHORIZED, still requires humans
+assert not result.authorized and not result.dispatch_allowed
+```
+
+The helper validates **exact** built-in immutable proposal dataclasses, sorted/unique tuple fields, up to 16 single-label fictional `*.example.test` hosts, 4 nonactive review-only capability labels, 1–5 exact integer risk, at most 31-day second-precision UTC windows (years 2020–2100), exclusions confined to listed assets and no Unicode/case folding or string coercion. Bad or ambiguous records return generic `HOLD` without echoing identifiers. Expansion of assets/capabilities, removal of exclusions, higher risk, earlier start or later end also yields `HOLD` with only fixed dimension names. Narrowing or equality yields `REVIEW_ONLY`, never consent. Exclusions on assets removed in a later proposal intentionally cause `HOLD` for human reconciliation rather than guessing the desired change. If the producer uses real hosts, the helper must HOLD.
+
+No network requests, DNS, subprocesses, filesystem reads/writes, database calls, target dispatch, active security scans or permissions are performed. Outputs have immutable four literal `False` flags. This is *not* a DLP scanner; input source and provenance are untrusted. A successful review does not prove either proposal was ever legitimately approved.
+
+Run all independently-owned tests: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_scope_delta*_1501.py' -v`. The isolated CI workflow runs these reviewer, CLI subprocess and static isolation tests on Python 3.11 and 3.14. The original full CI and truly registered permanent VPS runner are **separate gates**, not substituted by this workflow. The #1501 hosted-only workflow runs on PR updates (or explicit manual dispatch), not duplicate push events. Its unique concurrency group cancels only outdated runs of this synthetic PR; it never cancels another worker's run or any permanent VPS gate.
+
+## Historical (A → B → A) widening guard
+
+Use `review_fictional_scope_history((proposal_v1, proposal_v2, ...))` on a **fixed-size exact tuple of 2–16 wholly synthetic snapshots**. The bounded `held_steps` witness reports **every** 1-based widening transition (at most 15), in increasing order; `first_held_step` is always its first element. The aligned `held_step_dimensions` sequence contains only canonical fixed category names for the corresponding transitions (e.g. `(("risk",), ("assets",))`), never the underlying values. Its union exactly equals the bounded `expanded_dimensions` summary. This lets reviewers identify recurring or separated widening events without ever emitting a hostname or pasted payload. Unknown or invalid snapshots return generic `HOLD` with `held_steps=()`, `first_held_step=None`, and no partial verdict. Merely comparing two endpoint records is insufficient: an intermediate scope expansion followed by rollback (A → B → A) must remain a HOLD for reviewer reconciliation. The history helper first validates every snapshot before evaluating a single transition, rejecting invalid later entries **atomically** with a generic HOLD and no partial metadata. It then checks *each adjacent step* for new assets/capabilities, removed exclusions, increased risk, earlier start or later end; any expansion leads to HOLD with only bounded fixed dimension names and the first 1-based transition index. No customer identifiers, provenance, raw values or interim approval claims appear in its result.
+
+Even a fully monotonically narrowed chain produces only `REVIEW_ONLY`, NEVER approval; all four authorization, consent, dispatch and release flags remain literal false. History is caller-supplied and untrusted, not an audit log, trusted grant provenance, authenticated version chain or actual execution safety proof. No wall clock, file/DB/network/process activity, mutations or external integrations.
+
+```python
+from lightup.fictional_scope_delta_review_1501 import review_fictional_scope_history
+widened_then_rolled_back = (prior, prior.__class__(
+    assets=prior.assets, capabilities=prior.capabilities,
+    exclusions=prior.exclusions, risk=4,
+    valid_from=prior.valid_from, valid_until=prior.valid_until,
+), prior)
+assert review_fictional_scope_history(widened_then_rolled_back).status == "HOLD"
+```
+
+## Independent stdin-only reviewer (opt-in and non-authorizing)
+
+A separate, wholly new `python -m lightup.fictional_scope_delta_cli_1501 --offline-review-only` entry point accepts **only** a bounded ASCII, key-sorted compact V1 JSON document from standard input. It intentionally does not read named files or trust any authorization or client record. Required top-level keys are `contract` (`FICTIONAL-SCOPE-HISTORY-1501-V1`) and `history` (two through sixteen exact fictional proposal snapshots with six exact keys). UTC times are second-precision `YYYY-MM-DDTHH:MM:SSZ`; the CLI parses their ASCII fields directly through an exact built-in UTC `datetime` constructor, **without locale-dependent `strptime` or timezone conversion**, and the separate negative tests pin leap-year, calendar and clock failures. Tuples on the in-memory API are encoded as JSON arrays. Maximum complete input 32,768 bytes with zero or exactly one final LF. Duplicate keys, Unicode, unknown fields, credentials, forged approval labels, oversized input, floats/NaN, unsupported JSON serialization and real/noncanonical assets all produce generic HOLD. **Do not paste real hostnames, secrets or clients into this experimental CLI:** it is not a general DLP guarantee.
+
+The only two process exit codes are **2 = REVIEW_ONLY** (syntactic fictional history review, NOT permission) or **3 = HOLD** (reconciliation needed). **Standard-input read errors now produce generic HOLD; broken output pipes return exit 3 without a traceback.** The serialized report is capped at **2,048 ASCII bytes plus a single final LF**. Even if an in-process caller illegally mutates an outcome object to contain overlong metadata, the CLI discards it and emits a generic zero-echo HOLD rather than truncating a potentially sensitive value. **Before rendering, the CLI also reconstructs every outcome using the exact allowlisted frozen schema and verifies each of the four authority/consent/dispatch/release fields is literally false.** A short injected status, forged dimension, incorrect transition index, non-record object or tampered permission flag becomes generic HOLD even when it fits below the byte limit. Separate adversarial tests check this result-level admission. These protections cannot authenticate a producer or grant actual execution authority. Exit zero is never success; strict JSON output has only fixed metadata, a bounded transition count/first hold step, a sorted bounded `held_steps` list plus aligned `held_step_dimensions` category tuples (never identifiers or source values), fixed dimension names and four literal false fields (`authorized`, `consent_verified`, `dispatch_allowed`, `release_allowed`). No input hostnames, emails, raw source, scope grants, target secrets or pasted text are echoed in either output. Documentation and tests exercise a genuine subprocess on both Python versions, malformed JSON/Unicode/credentials, scope widening and A→B→A rollback. This command has **no authenticated provenance, release authority, I/O side channel assurance or production runtime bindings**.
+
+
+### Held-step witness examples (non-authorizing)
+
+For a fictional sequence `A → risk-expanded B → A → host-expanded C → risk-expanded D`, the reviewer returns `status="HOLD"`, `first_held_step=1`, `held_steps=(1, 3, 4)`, and category lists `held_step_dimensions=(("risk",), ("assets",), ("risk",))`, plus the fixed summary `expanded_dimensions=("assets", "risk")`. A deliberately malformed last record makes **the entire result** generic HOLD with no transition indices; a safely narrowed history returns `REVIEW_ONLY` and no held steps. Indices are for human navigation through the caller's own **synthetic** material only; they are not a signed audit trail or evidence of authorized provenance. Existing project dispatch and permission code remains entirely independent.
+
+## Reproducible, checked-in offline examples
+
+Two canonical **fictional-only** sample files exercise the full reviewed subprocess contract without real hosts, accounts or credentials. Run from the repository root (a nonzero result is **intentional**, not a successful authorization):
+
+```sh
+PYTHONPATH=src python -m lightup.fictional_scope_delta_cli_1501 --offline-review-only < docs/examples/scope-fictional-narrowed-1501.json
+# REVIEW_ONLY; expected process exit 2 (never grants any rights)
+
+PYTHONPATH=src python -m lightup.fictional_scope_delta_cli_1501 --offline-review-only < docs/examples/scope-fictional-temporary-widening-1501.json
+# HOLD; expected process exit 3, step 1 (risk), even after step 2 rollback
+```
+
+These committed input files are strictly compact, sorted ASCII JSON with an optional single final newline. CI runs both actual subprocess examples on Python 3.11 and 3.14, checks all four permission flags remain `false`, validates `held_steps` and `held_step_dimensions`, and rejects wrong exit codes. Do **not** replace the sample assets with real hostnames, API keys, private URLs, customer scopes or credentials. This helper is never a production authorization gate.
+
+## Stable in-memory snapshots and explicit remaining race limits
+
+For each input record, the reviewer now takes **two separate private copies** of its six exact built-in fields, independently validates both, and requires equality **before** computing any scope difference. A visible in-flight mutation between these passes causes generic, no-witness `HOLD`. Comparisons run on the reviewer-owned captured values; a caller changing its original frozen record by deliberately bypassing `object.__setattr__` *after capture* cannot rewrite a previously captured verdict. The history reviewer independently captures every entry, validates **all** of them before producing any transition witness, and returns generic HOLD when a record is malformed. Its direct-result constructor also rejects non-built-in history dimension values **before** equality, truthiness or iteration can invoke an untrusted Python object's callbacks; synthetic tests explicitly prove this fail-closed property. Ordinary adversarial unit tests use an injected post-capture caller mutation, prove returned snapshots are separate objects, cover 45 independent risk/time monotonicity combinations and verify invalid nested history stays zero-echo HOLD.
+
+This mitigates validation-to-use drift **after** capturing an individual record, and detects many observable in-flight changes through double-read consistency. It is **not an atomic, authenticated read of six fields across multiple threads**: a hostile producer can change fields *during both reads*, deliberately perform `A→B→A` (ABA) between reads, or replace history entries between records. Detecting two matching captures is **not evidence of trusted, authoritative, contemporaneous consent**. The caller must preserve a stable, trusted source of truth separately. Never use this result for actual consent, execution, durable authority, release, revocation or cross-system provenance. The stdin JSON CLI captures from a single byte input and is preferable for reproducible, bounded *synthetic* experiments, but its contents remain unauthenticated.
+
+New independently owned static AST tests recursively inspect the **entire `src/lightup` Python package, including nested subpackages**, checking that existing production modules do not directly import either #1501 synthetic module; they also detect simple `importlib.import_module('literal')` and `__import__('literal')` references. Dedicated tests verify that the new reviewer/CLI have no direct imported OS, network, DB, process or authority-layer dependencies and no obvious dynamic-code primitives. These are limited syntactic checks, **not runtime or supply-chain non-interference proofs**. Original source-owner, privacy/security and registered VPS gates remain unchanged.
+
+## Ownership, limitations, handoff
+
+This separate additive PR neither edits nor overrides source owners: real grant amendment and live monotonicity are already tracked by #951/#1433 and #346/#1240; operator-facing notice #1495 and privacy quarantine #1497 have other owners; source AST inventory #1499 has another owner. Any integration must be independently designed and reviewed by original scope-policy, security and privacy owners and must preserve genuine client **and** operator consent, trusted provenance, durable revocation-at-use, actual asset/capability/risk/time binding and absence of TOCTOU. Known original #301 expired fixture, full current hosted CI and canonical runner issue #1144 remain blockers.
+
+**Do not merge, deploy, scan, issue real grants, execute handlers, assume consent or release** until full independent code/security/privacy approval, genuine permissions and revocation, verified complete original hosted and genuinely assigned registered VPS CI, and explicit human GO. All outcomes are DRAFT/HOLD.
