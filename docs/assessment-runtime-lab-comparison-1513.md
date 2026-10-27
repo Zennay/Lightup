@@ -684,8 +684,14 @@ unsafe authority booleans, incomplete case/question/resource
 populations, altered fixed HUMAN question text, unexpected numeric
 types, cross-section ordinal drift, incorrect metric movement
 summaries and corrupted resource/decimal totals. A 32 MiB input cap
-bounds memory; the local-file read rejects symlinks on systems with
-`O_NOFOLLOW` and does not echo local paths or original payloads.
+bounds memory. The local-file reader requires Linux-style secure
+file-descriptor primitives (`O_NOFOLLOW`, `O_DIRECTORY`, `O_PATH`, and
+`/proc/self/fd`): it pins each directory component, rejects symlinks in
+**every** ancestor, rejects `.`/`..` traversal and non-regular files,
+opens the already-pinned inode without blocking on FIFO/device swaps,
+and compares inode/size/timestamps before and after the bounded read.
+On unsupported systems or when a file changes during intake, it emits
+generic `HOLD` without echoing local paths or original payloads.
 
 Output is a fixed, source-minimal JSON record with
 `format_consistent`, original source-reported `source_status`,
@@ -698,9 +704,9 @@ original local comparison convention: `2` for consistent
 `REVIEW_ONLY`, `3` for any HOLD or invalid artifact.
 
 ```sh
-PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \\
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
   --format review-bundle-json old-lab.json new-lab.json > private-bundle.json
-PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.py \\
+PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.py \
   private-bundle.json
 # The second command reads only that existing local JSON file.
 # format_consistent=true is STRUCTURE ONLY, not cryptographic integrity,
@@ -713,3 +719,9 @@ misaligned or accidentally edited packets but cannot establish who
 created one or whether source evidence was true. The original owners'
 source, security/privacy, client/operator, revocation and HUMAN GO
 gates remain required for anything outside offline review.
+
+The hardened reader also rejects symlinked parent directories and
+replaced or modified files **during** inspection. The earlier top-level
+symlink-only check was insufficient against a raced ancestor path;
+this is a file-input protection only and still cannot authenticate a
+self-consistent but fabricated assessment result.

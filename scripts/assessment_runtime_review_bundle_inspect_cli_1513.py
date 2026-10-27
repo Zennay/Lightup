@@ -311,19 +311,101 @@ def inspect_review_bundle_bytes(raw: bytes) -> dict:
     }
 
 
+def _read_private_bundle(path: str) -> bytes:
+    """Pin an ordinary local file through symlink-free directory descriptors.
+
+    A path can change between stat and open; first pin the regular inode with
+    O_PATH, then open only that descriptor through procfs. Compare identity
+    before and after the bounded read. Unsafe/unsupported platforms fail closed.
+    """
+    if type(path) is not str or not path or "\x00" in path:
+        raise ValueError("invalid local review path")
+    required = ("O_NOFOLLOW", "O_DIRECTORY", "O_CLOEXEC", "O_NONBLOCK", "O_PATH")
+    if not all(hasattr(os, option) for option in required):
+        raise ValueError("safe local review access unavailable")
+    parts = (path if os.path.isabs(path) else os.path.join(os.getcwd(), path))
+    components = [part for part in parts.split(os.sep) if part]
+    if not components or any(part in (".", "..") for part in components):
+        raise ValueError("unsafe local review path")
+
+    directory_fd = os.open(
+        os.sep, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+    )
+    path_fd = None
+    read_fd = None
+    try:
+        for component in components[:-1]:
+            next_fd = os.open(
+                component, os.O_RDONLY | os.O_DIRECTORY |
+                os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=directory_fd,
+            )
+            os.close(directory_fd)
+            directory_fd = next_fd
+        name = components[-1]
+        original = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        if not stat.S_ISREG(original.st_mode):
+            raise ValueError("local review is not a regular file")
+        path_fd = os.open(
+            name, os.O_PATH | os.O_NOFOLLOW | os.O_CLOEXEC,
+            dir_fd=directory_fd,
+        )
+        pinned = os.fstat(path_fd)
+
+        def identity(info):
+            return (
+                info.st_dev, info.st_ino, info.st_mode, info.st_size,
+                info.st_mtime_ns, info.st_ctime_ns,
+            )
+
+        if (
+            not stat.S_ISREG(pinned.st_mode)
+            or identity(pinned) != identity(original)
+            or pinned.st_size <= 0 or pinned.st_size > _MAX_INPUT_BYTES
+        ):
+            raise ValueError("local review changed or exceeds cap")
+        read_fd = os.open(
+            f"/proc/self/fd/{path_fd}",
+            os.O_RDONLY | os.O_NONBLOCK | os.O_CLOEXEC,
+        )
+        before = os.fstat(read_fd)
+        if identity(before) != identity(pinned):
+            raise ValueError("local review changed during open")
+
+        pieces = []
+        remaining = _MAX_INPUT_BYTES + 1
+        while remaining:
+            piece = os.read(read_fd, min(65_536, remaining))
+            if not piece:
+                break
+            pieces.append(piece)
+            remaining -= len(piece)
+        data = b"".join(pieces)
+        after = os.fstat(read_fd)
+        pinned_after = os.fstat(path_fd)
+        final_entry = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        if (
+            not data or len(data) > _MAX_INPUT_BYTES
+            or not stat.S_ISREG(final_entry.st_mode)
+            or identity(before) != identity(after)
+            or identity(after) != identity(pinned_after)
+            or identity(pinned_after) != identity(final_entry)
+        ):
+            raise ValueError("local review changed during read")
+        return data
+    finally:
+        if read_fd is not None:
+            os.close(read_fd)
+        if path_fd is not None:
+            os.close(path_fd)
+        os.close(directory_fd)
+
+
 def main(argv=None) -> int:
     args = sys.argv[1:] if argv is None else argv
     outcome = inspect_review_bundle_bytes(b"")
     if len(args) == 1:
         try:
-            flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-            flags |= getattr(os, "O_NONBLOCK", 0)
-            descriptor = os.open(args[0], flags)
-            with os.fdopen(descriptor, "rb") as stream:
-                if stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
-                    outcome = inspect_review_bundle_bytes(
-                        stream.read(_MAX_INPUT_BYTES + 1)
-                    )
+            outcome = inspect_review_bundle_bytes(_read_private_bundle(args[0]))
         except (OSError, ValueError):
             pass
     print(json.dumps(outcome, sort_keys=True, separators=(",", ":")))
