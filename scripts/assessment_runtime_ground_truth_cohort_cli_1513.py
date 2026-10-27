@@ -1,6 +1,6 @@
 """Offline scored lab cohort review: 2 REVIEW_ONLY / 3 HOLD, NEVER a grant.
 
-Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text|html|csv] old.json new.json
+Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text|html|csv|actions-csv] old.json new.json
 Only two explicitly supplied local files are read, never a network endpoint.
 """
 from __future__ import annotations
@@ -8,7 +8,9 @@ from __future__ import annotations
 import json
 import sys
 
-from assessment_runtime_report_html_1513 import render_comparison_html, render_comparison_csv
+from assessment_runtime_report_html_1513 import (
+    render_comparison_html, render_comparison_csv, render_human_actions_csv,
+)
 
 from assessment_runtime_compare_cli_1513 import _parse_case_document, _read_json
 from assessment_runtime_compare_cohort_cli_1513 import _display, COHORT_BYTES
@@ -108,7 +110,7 @@ def main(argv=None):
         if item == "--format":
             if (
                 format_seen or index + 1 >= len(args)
-                or args[index + 1] not in ("json", "text", "html", "csv")
+                or args[index + 1] not in ("json", "text", "html", "csv", "actions-csv")
             ):
                 malformed = True
                 index += 2 if index + 1 < len(args) else 1
@@ -138,6 +140,8 @@ def main(argv=None):
         print(_display_text(review))
     elif output_format == "html":
         print(render_comparison_html(review, cohort=True, scored=True), end="")
+    elif output_format == "actions-csv":
+        print(render_human_actions_csv(review, cohort=True, scored=True), end="")
     elif output_format == "csv":
         print(render_comparison_csv(review, cohort=True, scored=True), end="")
     else:

@@ -208,3 +208,40 @@ PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
 
 The text view lists each result using a local anonymous ordinal (`Scenario 01`, etc.), then shows the source-reported metric baseline, candidate, delta and regression flag. It reports cohort-level status and counts without printing the original scenario IDs or input paths. Invalid or inconsistent input remains a generic `HOLD` with no partial scenario detail. The exit contract is unchanged: `2` means `REVIEW_ONLY`, `3` means `HOLD`; zero is never a success signal. This remains a local diagnostic, not authenticated provenance, remediation evidence, consent, authorization or release approval.
 
+
+
+## One-row-per-case HUMAN action queue
+
+All three already-existing offline CLI entry points now accept `--format actions-csv`
+without changing their default JSON, terminal text, printable HTML or
+detailed metric CSV formats. The action CSV contains **one ordered row per
+admitted anonymous case**, and the HTML follow-up table shares the same
+deterministic review ranking:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cli_1513.py \
+  --format actions-csv before.json after.json > actions-single.csv
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
+  --format actions-csv baseline-cohort.json candidate-cohort.json > actions-cohort.csv
+PYTHONPATH=src python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py \
+  --format actions-csv old.json new.json > actions-scored.csv
+```
+
+Priority means a HUMAN review grouping, **not security severity**: source-declared
+nonzero scope/policy signals first, then source-reported adverse metrics,
+unknown coverage, and finally source verification. Within a group, source
+adverse flag count and declared unknown coverage determine order; original
+anonymous ordinals break ties. Both ranking and suggested questions are fixed
+software wording. No source IDs, network addresses, client names, input paths,
+run IDs, free notes, per-metric values or original finding payloads are in
+this privacy-minimal export. Original source ordinals and computed review
+order are separate columns so the original report can be located manually.
+
+Bad/inconsistent inputs yield a generic single `Input HOLD` row without
+partial details. An otherwise admitted source with regressions is also
+globally HOLD but contains reviewable rows with `input_admitted=true`; a
+HOLD is never a production verdict. In every CSV row, authorization,
+authenticated consent, dispatch, release and source provenance remain false.
+Use owner-private storage; a human chooses sharing. Exit codes remain
+2 REVIEW_ONLY / 3 HOLD (never 0), even when shell redirection created a file.
+There is no network, scan, grant, dispatch or release behavior.

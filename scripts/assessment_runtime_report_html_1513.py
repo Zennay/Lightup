@@ -100,51 +100,71 @@ def _metric_rows(changes, *, prefix: str = "") -> str:
     )
 
 
-def _followup_queue(accepted) -> str:
-    """Human review navigation ordered by declared signals, not by severity."""
-    ranked = []
+def _ranked_human_actions(accepted):
+    """Stable offline HUMAN review order, not a severity or authority verdict."""
+    options = []
     for ordinal, comp in enumerate(accepted, 1):
-        scope_policy = any(
-            change.name in ("scope_violations", "policy_violations")
-            and change.candidate > 0
-            for change in comp.changes
+        scope = any(
+            c.name in ("scope_violations", "policy_violations")
+            and c.candidate > 0 for c in comp.changes
         )
-        unknown = next((
-            change.candidate for change in comp.changes
-            if change.name == _UNCERTAIN
-        ), 0)
+        unknown = next((c.candidate for c in comp.changes
+                        if c.name == _UNCERTAIN), 0)
         flags = len(comp.regressions)
-        if scope_policy:
-            rank, reason = 0, "Ask the original owner to clarify reported scope/policy signals."
+        if scope:
+            group, priority, question = (
+                "Scope/policy", 0,
+                "Ask the original owner to clarify reported scope/policy signals.")
         elif flags:
-            rank, reason = 1, "Request independent review of source-reported adverse metrics."
+            group, priority, question = (
+                "Adverse source metrics", 1,
+                "Request independent review of source-reported adverse metrics.")
         elif unknown > 0:
-            rank, reason = 2, "Clarify the source-reported unknown-coverage gap."
+            group, priority, question = (
+                "Unknown coverage", 2,
+                "Clarify the source-reported unknown-coverage gap.")
         else:
-            rank, reason = 3, "Reconcile original source identity; no flags is not an approval."
-        ranked.append((rank, -flags, ordinal, flags, unknown, reason))
-    if not ranked:
-        return ""
+            group, priority, question = (
+                "Source verification", 3,
+                "Reconcile original source identity; no flags is not approval.")
+        options.append((priority, -flags, -unknown, ordinal,
+                        group, flags, unknown, question, scope))
+    return tuple(
+        (rank, ordinal, group, flags, unknown, question, scope)
+        for rank, (
+            _priority, _negative_flags, _negative_unknown, ordinal, group,
+            flags, unknown, question, scope
+        ) in enumerate(sorted(options), 1)
+    )
+
+
+def _followup_queue(accepted) -> str:
+    """HTML uses the same reviewed ordering as the private HUMAN CSV."""
     rows = []
-    for _rank, _sort_flags, ordinal, flags, unknown, reason in sorted(ranked):
+    for rank, ordinal, group, flags, unknown, question, _scope in _ranked_human_actions(accepted):
         rows.append(
-            "<tr><td><a href='#scenario-" + str(ordinal) + "'>Scenario " +
-            str(ordinal).zfill(2) + "</a></td><td>" + str(flags) +
-            "</td><td>" + _safe(unknown) + "</td><td>" +
-            _safe(reason) + "</td></tr>"
+            "<tr><td>" + str(rank) + "</td><td><a href='#scenario-"
+            + str(ordinal) + "'>Scenario " + str(ordinal).zfill(2)
+            + "</a></td><td>" + _safe(group) + "</td><td>"
+            + str(flags) + "</td><td>" + _safe(unknown)
+            + "</td><td>" + _safe(question) + "</td></tr>"
         )
+    if not rows:
+        return ""
     return (
-        '<section class="panel"><h2>Suggested HUMAN follow-up order</h2>' +
-        '<p class="muted">Navigation only. Sorted by declared scope/policy values, ' +
-        'then source-reported adverse flags, then unknown coverage. This does ' +
-        'not infer severity, ownership, verified findings or permission.</p>' +
-        '<div class="table-scroll"><table><thead><tr>' +
-        '<th scope="col">Anonymous case</th>' +
-        '<th scope="col">Adverse metric flags</th>' +
-        '<th scope="col">Unknown coverage</th>' +
-        '<th scope="col">Suggested HUMAN question</th>' +
+        '<section class="panel"><h2>Suggested HUMAN follow-up order</h2>'
+        '<p class="muted">Original source-declared scope/policy signals, '
+        'then adverse metrics, unknown coverage and source verification. '
+        'Within each group, higher flag count and unknown coverage come first; '
+        'original anonymous ordinal breaks ties. No severity, proof or GO.</p>'
+        '<div class="table-scroll"><table><thead><tr>'
+        '<th scope="col">Review order</th><th scope="col">Anonymous case</th>'
+        '<th scope="col">Review group</th><th scope="col">Adverse flags</th>'
+        '<th scope="col">Unknown coverage</th>'
+        '<th scope="col">Suggested HUMAN question</th>'
         '</tr></thead><tbody>' + "".join(rows) + '</tbody></table></div></section>'
     )
+
 
 
 def render_comparison_html(result, *, cohort: bool = False,
@@ -305,4 +325,38 @@ def render_comparison_csv(result, *, cohort: bool = False,
         out.writerow((kind, "HOLD", "false", 0, "not_available",
                       "", "", "", "false", "false",
                       "false", "false", "false", "false", "true", "false"))
+    return file.getvalue()
+
+
+def render_human_actions_csv(result, *, cohort: bool = False,
+                             scored: bool = False) -> str:
+    """One source-minimal, ranked HUMAN handoff row per admitted case."""
+    file = StringIO(newline="")
+    out = csv_writer(file, lineterminator="\r\n")
+    out.writerow((
+        "report_type", "source_status", "input_admitted", "review_order",
+        "scenario_ordinal", "human_review_group", "scope_policy_signal",
+        "source_adverse_metric_count", "source_unknown_coverage",
+        "suggested_human_question", "authorized", "consent_verified",
+        "dispatch_allowed", "release_allowed", "source_provenance_authenticated",
+    ))
+    accepted = (
+        tuple(comp for _source_id, comp in result.comparisons) if cohort
+        else (result,) if result.changes else ()
+    )
+    kind = "scored_cohort" if scored else "cohort" if cohort else "single_case"
+    status = "REVIEW_ONLY" if result.status == "REVIEW_ONLY" else "HOLD"
+    actions = _ranked_human_actions(accepted)
+    for rank, ordinal, group, flags, unknown, question, scope in actions:
+        out.writerow((
+            kind, status, "true", rank, ordinal, group,
+            "true" if scope else "false", flags, unknown, question,
+            "false", "false", "false", "false", "false",
+        ))
+    if not actions:
+        out.writerow((
+            kind, "HOLD", "false", 0, 0, "Input HOLD", "false", 0, "",
+            "Ask the original owner to check input admission and consistency.",
+            "false", "false", "false", "false", "false",
+        ))
     return file.getvalue()
