@@ -97,6 +97,22 @@ textarea:focus-visible,summary:focus-visible {
 button,input:not([type="hidden"]):not([type="checkbox"]),select { min-height:44px; }
 input[type="checkbox"] { width:auto; min-height:auto; margin:0; }
 label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0; }
+.decision-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+                 gap:14px; align-items:stretch; }
+.decision-choice { min-width:0; display:flex; flex-direction:column; }
+.decision-choice h3 { margin:0 0 8px; font-size:1rem; }
+.decision-choice .review-ack { color:var(--ink); line-height:1.5; font-size:.9rem; }
+.decision-choice .review-ack input { flex:0 0 20px; width:20px;
+                                     min-height:20px; margin:3px 0 0; accent-color:var(--accent); }
+.decision-choice button { width:100%; margin-top:auto; min-height:48px; }
+.decision-boundaries { border-left:4px solid var(--lock); background:#fffaf7; }
+.decision-boundaries h2,.decision-facts h2 { margin:0 0 10px; }
+.decision-boundaries ul { margin:10px 0 18px; padding-left:22px; }
+.decision-facts p { overflow-wrap:anywhere; }
+@media (max-width:680px) {
+  .decision-grid { grid-template-columns:minmax(0,1fr); }
+}
+
 main { padding:28px 0 64px; }
 h1 { font-size:1.35rem; margin:0 0 4px; }
 h2 { font-size:1.05rem; margin:28px 0 10px; }
@@ -1839,29 +1855,69 @@ class LightUpWebApp:
         ctx = auth.context
         request = self.store.get_assessment_request(ctx, request_id)
         client = self.store.get_client(ctx, request.client_id)
+        if request.status not in {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            RequestStatus.APPROVED, RequestStatus.REJECTED,
+        }:
+            raise ValueError("unknown original request decision state")
         pending = request.status in {
             RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
         }
         controls = ""
         if pending:
             choices = []
-            for decision, label in (
-                ("approve", "Approve this request for scope review"),
-                ("reject", "Reject this request"),
+            for decision, heading, explanation, label in (
+                (
+                    "approve",
+                    "Continue to independent scope review",
+                    "This accepts the request for further HUMAN scope consideration "
+                    "only. It does not validate target ownership, issue a grant, "
+                    "verify consent or unlock assessment capabilities.",
+                    "Approve request for scope review only",
+                ),
+                (
+                    "reject",
+                    "Stop this request",
+                    "This records a rejection of the original request. "
+                    "No further testing or grant follows from this decision.",
+                    "Reject original request",
+                ),
             ):
+                approval_only = (
+                    '<label class="review-ack">'
+                    '<input type="checkbox" name="approve_scope_boundary" '
+                    'value="understood" required>'
+                    '<span>I understand approval permits only another '
+                    'independent scope review. No target contact, capability '
+                    'or testing follows from this button.</span></label>'
+                    if decision == "approve" else ""
+                )
                 choices.append(
-                    '<form method="post" class="card" '
-                    f'action="/assessments/requests/{_e(request_id)}/decision">'
+                    '<form method="post" class="card decision-choice" '
+                    f'action="/assessments/requests/{_e(request_id)}/decision" '
+                    f'aria-labelledby="request-{decision}-heading">'
                     f'{self._csrf_field(auth)}'
                     f'<input type="hidden" name="decision" value="{decision}">'
+                    f'<h3 id="request-{decision}-heading">{_e(heading)}</h3>'
+                    f'<p>{_e(explanation)}</p>'
                     '<label class="review-ack">'
                     '<input type="checkbox" name="reviewed" value="yes" required>'
-                    '<span>I read the client-origin request, assets and risk. '
-                    'This decision is not independent client consent and cannot '
-                    'activate testing.</span></label>'
-                    f'<button>{_e(label)}</button></form>'
+                    '<span>I have reviewed the original client request, systems, '
+                    'testing mode, risk and notes shown above.</span></label>'
+                    f'{approval_only}'
+                    f'<button class="{"secondary" if decision == "reject" else ""}">'
+                    f'{_e(label)}</button></form>'
                 )
-            controls = "".join(choices)
+            controls = (
+                '<section aria-labelledby="request-choice-heading">'
+                '<h2 id="request-choice-heading">3 · Record a HUMAN decision</h2>'
+                '<p class="sub">Choose one outcome deliberately. '
+                'The acknowledgements belong to this page only; the original '
+                'server-side role and scope authorization checks remain separate.</p>'
+                '<div class="decision-grid">'
+                + "".join(choices)
+                + '</div></section>'
+            )
         decision_receipt = (
             '<section class="card" aria-labelledby="request-decision-heading">'
             '<h2 id="request-decision-heading">Recorded human decision</h2>'
@@ -1874,23 +1930,34 @@ class LightUpWebApp:
         )
         body = (
             "<h1>Review client assessment request</h1>"
-            '<p class="sub">A human decision on the request only. '
-            'No scope grant, consent receipt or execution permission is created here.</p>'
-            '<section class="card">'
+            '<p class="sub">Read the original request, inspect the separate '
+            'authorization context, then record one HUMAN outcome. '
+            'Active testing remains locked.</p>'
+            '<section class="card decision-facts" aria-labelledby="request-facts-heading">'
+            '<h2 id="request-facts-heading">1 · Original client request</h2>'
             f'<p><strong>Client:</strong> {_e(client.name)} · '
             f'<strong>Status:</strong> {_e(request.status.value)}</p>'
             f'<p><strong>Requested systems:</strong> '
-            f'{_e(", ".join(request.requested_assets))}</p>'
-            f'<p><strong>Risk:</strong> {_risk(request.requested_risk)} · '
-            f'<strong>Mode:</strong> {_e(request.requested_mode.value)}</p>'
+            f'{_e(", ".join(request.requested_assets) or "None listed")}</p>'
+            f'<p><strong>Testing mode:</strong> {_e(request.requested_mode.value)} · '
+            f'<strong>Risk:</strong> {_risk(request.requested_risk)}</p>'
             f'<p><strong>Client request origin:</strong> {_e(request.requested_by)} · '
             f'<strong>Submitted:</strong> {_e(request.created_at)}</p>'
             f'<p><strong>Notes:</strong> {_e(request.notes) or "None"}</p>'
+            '</section>'
+            '<section class="card decision-boundaries" '
+            'aria-labelledby="request-boundaries-heading">'
+            '<h2 id="request-boundaries-heading">2 · Independent safety evidence</h2>'
+            '<p>Neither this request nor its approval proves the following:</p>'
+            '<ul><li>System ownership and an exact, current scope grant</li>'
+            '<li>Separate, verified client consent and a permitted risk level</li>'
+            '<li>Revocation checks at the time of any proposed action</li>'
+            '<li>Independent review and explicit HUMAN GO for execution</li></ul>'
             f'<p><a href="/clients/{_e(request.client_id)}/authorization-plan">'
-            'Read this client’s original requests, grant and scope context '
-            'before deciding (plan-only)</a></p>'
-            '<p class="meta">Reviewing this request never verifies system '
-            'ownership, action-time revocation or HUMAN GO.</p></section>'
+            'Inspect original request, scope and grant context (plan-only)</a></p>'
+            '<p class="meta">These are open proof requirements, not completed '
+            'checks. No action against a system can start from this page.</p>'
+            '</section>'
             + decision_receipt
             + (controls or '<p class="empty">Decision already recorded; '
                'no further decision is available here.</p>')
@@ -1923,26 +1990,64 @@ class LightUpWebApp:
         ctx = auth.context
         decision, engagement = self._risk_review_record(ctx, approval_id)
         client = self.store.get_client(ctx, decision.client_id)
+        if decision.status.value not in {"pending", "approved", "denied"}:
+            raise ValueError("unknown original risk decision state")
+        pending = decision.status.value == "pending"
         controls = ""
-        if decision.status.value == "pending":
+        if pending:
             choices = []
-            for choice, label in (
-                ("approve", "Record risk-elevation approval"),
-                ("deny", "Deny risk elevation"),
+            for choice, heading, explanation, label in (
+                (
+                    "approve",
+                    "Record risk-level acceptance only",
+                    "Accept the requested risk level for this independent HUMAN "
+                    "review. It cannot expand the recorded asset scope, renew "
+                    "a grant, verify client consent or authorize any test.",
+                    "Record risk-elevation approval only",
+                ),
+                (
+                    "deny",
+                    "Deny the requested elevation",
+                    "Leave the proposed higher risk unapproved. A denial "
+                    "does not change the original engagement scope or grant.",
+                    "Deny this risk elevation",
+                ),
             ):
+                approval_only = (
+                    '<label class="review-ack">'
+                    '<input type="checkbox" name="approve_risk_boundary" '
+                    'value="understood" required>'
+                    '<span>I understand this risk decision does not widen '
+                    'the separately recorded scope grant or authorize '
+                    'assessment execution.</span></label>'
+                    if choice == "approve" else ""
+                )
                 choices.append(
-                    '<form method="post" class="card" '
-                    f'action="/assessments/elevations/{_e(approval_id)}/decision">'
+                    '<form method="post" class="card decision-choice" '
+                    f'action="/assessments/elevations/{_e(approval_id)}/decision" '
+                    f'aria-labelledby="risk-{choice}-heading">'
                     f'{self._csrf_field(auth)}'
                     f'<input type="hidden" name="decision" value="{choice}">'
+                    f'<h3 id="risk-{choice}-heading">{_e(heading)}</h3>'
+                    f'<p>{_e(explanation)}</p>'
                     '<label class="review-ack">'
                     '<input type="checkbox" name="reviewed" value="yes" required>'
-                    '<span>I read the requested elevated risk and justification. '
-                    'A decision here never widens the separate recorded scope '
-                    'grant or authorizes execution.</span></label>'
-                    f'<button>{_e(label)}</button></form>'
+                    '<span>I reviewed the original engagement, requested '
+                    'elevated risk, requester and written justification.</span></label>'
+                    f'{approval_only}'
+                    f'<button class="{"secondary" if choice == "deny" else ""}">'
+                    f'{_e(label)}</button></form>'
                 )
-            controls = "".join(choices)
+            controls = (
+                '<section aria-labelledby="risk-choice-heading">'
+                '<h2 id="risk-choice-heading">3 · Record a HUMAN risk decision</h2>'
+                '<p class="sub">This records only a risk-review outcome. '
+                'UI acknowledgements never replace original server-side '
+                'role, tenant, consent or grant enforcement.</p>'
+                '<div class="decision-grid">'
+                + "".join(choices)
+                + '</div></section>'
+            )
         elevation_receipt = (
             '<section class="card" aria-labelledby="elevation-decision-heading">'
             '<h2 id="elevation-decision-heading">Recorded risk decision</h2>'
@@ -1951,27 +2056,38 @@ class LightUpWebApp:
             f'At: {_e(decision.decided_at or "Not recorded")}</p>'
             '<p class="meta">A risk decision never widens a scope grant, '
             'verifies consent or permits execution.</p></section>'
-            if decision.status.value != "pending" else ""
+            if not pending else ""
         )
         body = (
             "<h1>Review proposed risk elevation</h1>"
-            '<p class="sub">Read the justification before choosing. '
-            'Even an approved elevation does not activate capabilities.</p>'
-            '<section class="card">'
+            '<p class="sub">Read the original justification, inspect separate '
+            'scope facts, then record one HUMAN risk outcome. '
+            'Capabilities remain locked.</p>'
+            '<section class="card decision-facts" aria-labelledby="risk-facts-heading">'
+            '<h2 id="risk-facts-heading">1 · Original risk request</h2>'
             f'<p><strong>Client:</strong> {_e(client.name)} · '
             f'<strong>Engagement:</strong> {_e(engagement.name)}</p>'
             f'<p><strong>Status:</strong> {_e(decision.status.value)} · '
             f'<strong>Requested risk:</strong> {_risk(decision.requested_risk)}</p>'
             f'<p><strong>Requested by:</strong> {_e(decision.requested_by)}</p>'
             f'<p><strong>Justification:</strong> {_e(decision.justification)}</p>'
-            '<p class="meta"><a href="/clients/'
+            '</section>'
+            '<section class="card decision-boundaries" '
+            'aria-labelledby="risk-boundaries-heading">'
+            '<h2 id="risk-boundaries-heading">2 · Scope remains independent</h2>'
+            '<p>Risk acceptance alone does not establish:</p>'
+            '<ul><li>An exact active asset scope or request-bound grant</li>'
+            '<li>Client consent for the proposed test and risk</li>'
+            '<li>Revocation status at any future action time</li>'
+            '<li>Independent source-owner review and explicit HUMAN GO</li></ul>'
+            '<p><a href="/clients/'
             f'{_e(decision.client_id)}/authorization-plan">'
-            'Read this client’s request, scope and grant evidence (plan-only)</a></p>'
-            '<p class="meta">The original reviewed client request, scope grant, '
-            'consent and revocation-at-use remain independent prerequisites.</p>'
+            'Inspect this client’s request, scope and grant evidence (plan-only)</a></p>'
+            '<p class="meta">A recorded risk approval never permits target '
+            'contact or extends a scope window.</p>'
             '</section>'
             + elevation_receipt
-            + (controls or '<p class="empty">No pending decision remains.</p>')
+            + (controls or '<p class="empty">No pending risk decision remains.</p>')
             + '<p><a href="/assessments">Back to operator reviews</a></p>'
         )
         return Response(_page(
