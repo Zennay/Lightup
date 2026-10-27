@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LightUp fictional-only scope notice view envelope — NOT AUTHORIZED",
+  "description": "Untrusted offline operator-preview output only. Validation NEVER proves real consent, grants, dispatch or release authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "notice",
+    "reviewed",
+    "elevated_risk",
+    "authorized",
+    "consent_verified",
+    "dispatch_allowed",
+    "release_allowed"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "HOLD",
+        "REVIEW_ONLY"
+      ]
+    },
+    "notice": {
+      "type": "string",
+      "minLength": 15,
+      "maxLength": 8192,
+      "pattern": "NOT AUTHORIZED"
+    },
+    "reviewed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 32
+    },
+    "elevated_risk": {
+      "type": "boolean"
+    },
+    "authorized": {
+      "const": false
+    },
+    "consent_verified": {
+      "const": false
+    },
+    "dispatch_allowed": {
+      "const": false
+    },
+    "release_allowed": {
+      "const": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "HOLD"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reviewed": {
+            "const": 0
+          },
+          "elevated_risk": {
+            "const": false
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "reviewed": {
+            "minimum": 1
+          }
+        }
+      }
+    }
+  ],
+  "x-security-note": "This is only a fictional preview. Never use schema validation as execution, consent, authorization or release evidence."
+}
