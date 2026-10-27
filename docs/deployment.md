@@ -43,6 +43,10 @@ hostname, never an arbitrary incoming Host.
 
 - Gunicorn binds only to 127.0.0.1. The app requires the exact configured proxy
   socket peer and `X-Forwarded-Proto: https`; direct plaintext traffic fails.
+- Development mode also rejects any present non-loopback socket peer before
+  trusting a loopback-looking Host header. Missing peer metadata is accepted
+  only for direct in-process WSGI use; forwarding headers cannot make a remote
+  peer local.
 - Host must match the configured origin, including the effective port.
   X-Forwarded-Host and X-Forwarded-For cannot override this check.
 - Every production POST, including login, requires the same Origin, or a
