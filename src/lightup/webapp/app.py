@@ -234,6 +234,8 @@ class LightUpWebApp:
             ("POST", re.compile(r"^/assessments/elevations/(?P<approval_id>[\w-]+)/decision$"),
              self.decide_elevation, "operator"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)$"), self.portal, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/authorization-plan$"),
+             self.portal_authorization_plan, "portal"),
             ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
              self.portal_submit_request, "portal"),
         ]
@@ -561,10 +563,20 @@ class LightUpWebApp:
 
     def authorization_plan(self, auth: AuthState, form: dict[str, str],
                            client_id: str) -> Response:
+        return self._authorization_plan_page(auth, client_id, portal=False)
+
+    def portal_authorization_plan(self, auth: AuthState, form: dict[str, str],
+                                  client_id: str) -> Response:
+        return self._authorization_plan_page(auth, client_id, portal=True)
+
+    def _authorization_plan_page(self, auth: AuthState, client_id: str,
+                                 *, portal: bool) -> Response:
         from ..authorization_plan import build_client_authorization_plan
 
-        # Operator-only read: no grant, consent, permit or target side effects.
-        plan = build_client_authorization_plan(self.store, auth.context, client_id)
+        # No grant, consent, permit or target side effects; tenant scope is
+        # still checked by every original domain read.
+        viewer = self._portal_context(auth, client_id) if portal else auth.context
+        plan = build_client_authorization_plan(self.store, viewer, client_id)
         cards = []
         for entry in plan.engagements:
             scope = (
@@ -599,9 +611,12 @@ class LightUpWebApp:
             "revocation, source/security reviews and explicit HUMAN GO.</p></div>"
             "<h2>Engagement decisions</h2>"
             + ("".join(cards) or "<p class=\"empty\">No engagements yet.</p>")
-            + f"<p><a href=\"/clients/{_e(plan.client_id)}\">Back to client</a></p>"
+            + (f"<p><a href=\"/portal/{_e(plan.client_id)}\">Back to portal</a></p>"
+               if portal else f"<p><a href=\"/clients/{_e(plan.client_id)}\">Back to client</a></p>")
         )
-        return Response(_page("LightUp — Authorization plan", "clients", body, auth))
+        return Response(_page("LightUp — Authorization plan",
+                              "portal" if portal else "clients", body, auth,
+                              portal_client=client_id if portal else None))
 
     def create_engagement(self, auth: AuthState, form: dict[str, str],
                           client_id: str) -> Response:
@@ -803,6 +818,8 @@ class LightUpWebApp:
                        for e in self.store.list_engagements(ctx))
                or "<p class=\"empty\">No engagements yet.</p>")
             + f"<h2>Your assessment requests</h2>{request_rows}"
+            + f"<p><a href=\"/portal/{_e(client_id)}/authorization-plan\">"
+              "Review authorization plan (read-only)</a></p>"
             + request_section
         )
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
