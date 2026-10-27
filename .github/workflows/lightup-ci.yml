@@ -16,17 +16,25 @@ concurrency:
 jobs:
   test:
     name: LightUp plan-only safety tests (Python ${{ matrix.python-version }})
-    runs-on: [self-hosted, zcloud, vps]
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'Zennay' && github.actor == 'Zennay')
+    runs-on: [self-hosted, lightup, vps]
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.14"]
     steps:
-      - name: Guard permanent VPS runner
+      - name: Guard migrated permanent LightUp VPS runner
+        shell: bash
         run: |
-          test "$(hostname)" = "vps-bb300bba"
-          echo "runner_host=$(hostname)"
+          set -euo pipefail
+          observed="$(hostname -s)"
+          expected="VM-7eb5ee16-2c71-440d-b7fd-8095d204e930"
+          if [[ "$observed" != "$expected" || "${RUNNER_NAME:-}" != "vm-7eb5ee16-lightup" ]]; then
+            echo "::error::Wrong permanent LightUp runner identity; refusing checkout"
+            exit 1
+          fi
+          echo "Verified permanent LightUp VPS runner"
 
       - name: Checkout
         uses: actions/checkout@v4
