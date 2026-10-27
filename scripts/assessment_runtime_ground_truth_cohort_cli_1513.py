@@ -1,6 +1,7 @@
 """Offline scored lab cohort review: 2 REVIEW_ONLY / 3 HOLD, NEVER a grant.
 
 Usage: python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html] [--focus all|scope|adverse|unknown|source] old.json new.json
+Focus selectors overlap when a case has multiple source-reported signals.
 Only two explicitly supplied local files are read, never a network endpoint.
 """
 from __future__ import annotations

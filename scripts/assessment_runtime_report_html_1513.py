@@ -340,6 +340,21 @@ _HUMAN_FOCUS_GROUPS = {
 }
 
 
+def _human_signals(item) -> tuple[str, ...]:
+    """Nonexclusive evidence groups; a priority label must not hide signals."""
+    _rank, _ordinal, group, flags, unknown, _question, scope = item
+    found = []
+    if scope:
+        found.append("scope")
+    if flags > 0:
+        found.append("adverse")
+    if unknown > 0:
+        found.append("unknown")
+    if group == "Source verification":
+        found.append("source")
+    return tuple(found)
+
+
 def _select_human_actions(result, *, cohort: bool, focus: str):
     """Admit the complete comparison before selecting HUMAN-only review rows."""
     if type(focus) is not str or focus not in _HUMAN_FOCUS_GROUPS:
@@ -351,7 +366,7 @@ def _select_human_actions(result, *, cohort: bool, focus: str):
     actions = _ranked_human_actions(accepted)
     selected = tuple(
         item for item in actions
-        if _HUMAN_FOCUS_GROUPS[focus] in (None, item[2])
+        if focus == "all" or focus in _human_signals(item)
     )
     return actions, selected
 
@@ -369,7 +384,7 @@ def render_human_actions_csv(result, *, cohort: bool = False,
         "accepted_case_count", "selected_case_count", "review_order",
         "scenario_ordinal", "human_review_group", "scope_policy_signal",
         "source_adverse_metric_count", "source_unknown_coverage",
-        "suggested_human_question", "authorized", "consent_verified",
+        "matching_focus_signals", "suggested_human_question", "authorized", "consent_verified",
         "dispatch_allowed", "release_allowed", "source_provenance_authenticated",
     ))
     kind = "scored_cohort" if scored else "cohort" if cohort else "single_case"
@@ -378,20 +393,21 @@ def render_human_actions_csv(result, *, cohort: bool = False,
         out.writerow((
             kind, status, "true", focus, len(actions), len(selected),
             rank, ordinal, group, "true" if scope else "false",
-            flags, unknown, question,
-            "false", "false", "false", "false", "false",
+            flags, unknown,
+            "|".join(_human_signals((rank, ordinal, group, flags, unknown, question, scope))),
+            question, "false", "false", "false", "false", "false",
         ))
     if not actions:
         out.writerow((
             kind, "HOLD", "false", focus, 0, 0, 0, 0, "Input HOLD",
-            "false", 0, "",
+            "false", 0, "", "",
             "Ask the original owner to check input admission and consistency.",
             "false", "false", "false", "false", "false",
         ))
     elif not selected:
         out.writerow((
             kind, status, "true", focus, len(actions), 0, 0, 0,
-            "No matching HUMAN cases", "false", 0, "",
+            "No matching HUMAN cases", "false", 0, "", "",
             "No case in this selected group; review the full source separately.",
             "false", "false", "false", "false", "false",
         ))
@@ -614,6 +630,7 @@ def render_human_actions_json(result, *, cohort: bool = False,
                 "scope_policy_signal": scope,
                 "source_adverse_metric_count": flags,
                 "source_unknown_coverage": unknown,
+                "matching_focus_signals": list(_human_signals((rank, ordinal, group, flags, unknown, question, scope))),
                 "suggested_human_question": question,
             }
             for rank, ordinal, group, flags, unknown, question, scope in selected
@@ -646,25 +663,26 @@ def render_human_actions_html(result, *, cohort: bool = False,
         "style-src 'sha256-" + pin + "'"
     )
     rows = []
-    for rank, ordinal, group, flags, unknown, question, _scope in selected:
+    for rank, ordinal, group, flags, unknown, question, scope in selected:
         fields = (
             str(rank), "Scenario " + str(ordinal).zfill(2), group,
-            str(flags), str(unknown), question,
+            str(flags), str(unknown), " / ".join(_human_signals((rank, ordinal, group, flags, unknown, question, scope))), question,
         )
         rows.append("<tr>" + "".join("<td>" + _safe(v) + "</td>" for v in fields) + "</tr>")
     if not actions:
         rows.append(
-            '<tr><td colspan="6">Input HOLD: no admitted case details. '
+            '<tr><td colspan="7">Input HOLD: no admitted case details. '
             'Ask the original owner to check input admission and consistency.</td></tr>'
         )
     elif not selected:
         rows.append(
-            '<tr><td colspan="6">No HUMAN cases match this selected group. '
+            '<tr><td colspan="7">No HUMAN cases match this focus signal. '
             'The original comparison is not cleared or approved.</td></tr>'
         )
     headings = (
         "Review order", "Anonymous case", "HUMAN group",
-        "Source adverse flags", "Unknown coverage", "Suggested HUMAN question",
+        "Source adverse flags", "Unknown coverage", "Matching focus signals",
+        "Suggested HUMAN question",
     )
     return (
         "<!doctype html>\n<html lang='en'><head><meta charset='utf-8'>"

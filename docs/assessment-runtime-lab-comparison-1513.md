@@ -366,3 +366,30 @@ presents the same prohibition in human language. Existing commands continue
 to return exit 2 REVIEW_ONLY / exit 3 HOLD and default JSON stays unchanged.
 `--focus` is reserved for HUMAN actions formats, never silently applied
 to efficiency exports.
+
+## Nonexclusive HUMAN focus — no hidden overlapping cases
+
+A case can have several original source-reported signals at once. Earlier,
+`--focus scope|adverse|unknown|source` matched **only its single highest
+HUMAN priority label**. A scope-priority case with an adverse finding or
+unknown coverage could be missing from the adverse/unknown export. This
+was a visibility defect, not an authorization failure.
+
+All three original comparison CLIs now filter using **every matching signal**:
+`scope` matches a reported scope/policy violation present in the candidate;
+`adverse` matches any source-reported regression; `unknown` matches
+candidate unknown coverage greater than zero; `source` matches the
+residual source-verification review group; `all` retains every admitted
+case. For example, a single anonymous case with scope, adverse and unknown
+signals appears in all three corresponding filtered handoffs, but still
+has just one original global HUMAN rank and **Scope/policy** as its highest
+priority label. Filter counts can overlap and must never be summed into
+a total case count.
+
+The actions CSV, JSON and printable HTML now show the fixed
+`matching_focus_signals` for each selected case; the CSV uses a safe
+pipe-separated fixed-value field. Full-source admission, the original
+metric comparator, rank/ordinal stability, invalid-input HOLD and no-match
+distinction are unchanged. No raw IDs, target/client names or notes are
+introduced, and no real consent, source authentication, dispatch, scan,
+release or HUMAN GO is inferred.
