@@ -417,6 +417,8 @@ class LightUpWebApp:
                 f'<p class="meta">{tenant["requests_awaiting_review"]} request(s) awaiting review · '
                 f'{tenant["engagements_hold"]} engagement(s) · '
                 f'{tenant["without_current_grant"]} without a current request-bound grant · '
+                f'{tenant["expired_grant_engagements"]} expired scope window(s) · '
+                f'{tenant["future_dated_grant_engagements"]} not-yet-valid scope window(s) · '
                 f'{tenant["pending_risk_decisions"]} pending risk decision(s) · '
                 f'{tenant["unrestricted_legacy_scopes"]} unrestricted legacy scope(s)</p>'
                 f'<a href="/clients/{_e(client_id)}/authorization-plan">'
@@ -735,6 +737,14 @@ class LightUpWebApp:
                 if entry.unrestricted_capabilities_recorded
                 else ", ".join(entry.recorded_capabilities) or "None recorded"
             )
+            historical_window = (
+                (f'<br>Last eligible recorded grant expired: '
+                 f'{_e(entry.last_eligible_grant_expired_at)}'
+                 if entry.last_eligible_grant_expired_at else '')
+                + (f'<br>Next eligible recorded grant begins: '
+                   f'{_e(entry.next_eligible_grant_valid_from)}'
+                   if entry.next_eligible_grant_valid_from else '')
+            )
             scope = (
                 "<details><summary>Recorded scope (not execution permission)</summary>"
                 f"<p class=\"meta\">Assets: {_e(', '.join(entry.recorded_scope))}<br>"
@@ -744,7 +754,11 @@ class LightUpWebApp:
                 f"Valid from: {_e(entry.grant_valid_from or '—')}<br>"
                 f"Valid until: {_e(entry.grant_valid_until or '—')}"
                 "</p></details>"
-                if entry.recorded_scope else "<p class=\"meta\">No current grant scope recorded.</p>"
+                if entry.recorded_scope else (
+                    '<p class="meta">No current request-bound scope grant.<br>'
+                    f'Recorded window state: {_e(entry.scope_record_state.replace("_", " ").lower())}'
+                    f'{historical_window}</p>'
+                )
             )
             risk_reviews = []
             for review in entry.risk_elevation_reviews:
@@ -773,7 +787,8 @@ class LightUpWebApp:
                 f"<strong>{_e(entry.name)}</strong>"
                 "<span class=\"badge lock\">HOLD · no execution</span></div>"
                 f"<p class=\"meta\">Engagement: {_e(entry.status)} · "
-                f"Pending risk decisions: {entry.pending_elevations}</p>"
+                f"Pending risk decisions: {entry.pending_elevations} · "
+                f"Current scope: {_e(entry.scope_record_state.replace('_', ' ').lower())}</p>"
                 f"{scope}{risk_history}<details open><summary>What is still required</summary>"
                 f"<ul>{blockers}</ul></details></section>"
             )
