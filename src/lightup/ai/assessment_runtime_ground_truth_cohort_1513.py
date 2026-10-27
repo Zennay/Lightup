@@ -1,7 +1,9 @@
 """Atomic offline review of scored lab scenario cohorts; never authorization."""
 from __future__ import annotations
 
-from .assessment_runtime_cohort_1513 import LabCohortComparison
+from .assessment_runtime_cohort_1513 import (
+    LabCohortComparison, _independent_cohort_sources,
+)
 from .assessment_runtime_diff_1513 import _valid_record
 from .assessment_runtime_scenario_1513 import (
     _valid_scenario, compare_ground_truthed_lab_evaluations,
@@ -14,14 +16,17 @@ def _index_cases(entries: object) -> dict[str, tuple[LabScenario, EvaluationReco
     if type(entries) is not tuple or not 1 <= len(entries) <= 64:
         return None
     indexed = {}
+    seen_record_ids: set[str] = set()
     for entry in entries:
         if type(entry) is not tuple or len(entry) != 3:
             return None
         scenario, record, context = entry
         if (not _valid_scenario(scenario) or not _valid_record(record, context)
                 or scenario.scenario_id != record.scenario_id
-                or scenario.scenario_id in indexed):
+                or scenario.scenario_id in indexed
+                or record.record_id in seen_record_ids):
             return None
+        seen_record_ids.add(record.record_id)
         indexed[scenario.scenario_id] = entry
     return indexed
 
@@ -36,7 +41,10 @@ def compare_ground_truthed_lab_cohorts(
     REVIEW_ONLY receipt cannot grant consent, handler execution or release.
     """
     before, after = _index_cases(baselines), _index_cases(candidates)
-    if before is None or after is None or before.keys() != after.keys():
+    if (
+        before is None or after is None or before.keys() != after.keys()
+        or not _independent_cohort_sources(before, after, record_slot=1)
+    ):
         return LabCohortComparison('HOLD')
     comparisons = []
     regressions = []

@@ -455,3 +455,23 @@ empty source; a valid no-match view reports its complete accepted and
 excluded counts. All authorization, consent, dispatch, release and source
 authentication fields remain false. This is still Incubate M3/M7
 PLAN/LAB ONLY until independent owner/security/privacy/HUMAN GO gates.
+
+## Cohort-wide replay rejection (original #1513 comparison)
+
+In both the unscored and ground-truth-scored offline cohort comparators,
+each admitted source record must have a **unique `record_id` within its
+cohort**. The two sides also must have **disjoint record IDs and run IDs
+across every scenario**, not merely different identifiers for each matching
+scenario pair. Reusing baseline case A's run or record as candidate case B
+is a replay of existing evidence, not an independent benchmark comparison:
+the complete cohort now returns generic `HOLD` with **no partial case
+details**, and never runs a scanner or contacts a target.
+
+Distinct scenario records are still allowed to share one `run_id`
+**within the same side**, as is normal for a batch. All comparisons
+continue to require identical canonical scenario sets, validated lab-only
+inputs and independent paired source records; informative runtime/cost
+observations are not new authority. Rejected source IDs, original client,
+target, record details and input paths remain private. This check does
+**not** authenticate any record or replace original source-owner evidence,
+independent review or explicit HUMAN GO.

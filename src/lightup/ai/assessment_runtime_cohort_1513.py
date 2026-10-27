@@ -25,14 +25,38 @@ def _index(entries: object) -> dict[str, tuple[EvaluationRecord, RunContext]] | 
     if type(entries) is not tuple or not 1 <= len(entries) <= 64:
         return None
     result: dict[str, tuple[EvaluationRecord, RunContext]] = {}
+    seen_record_ids: set[str] = set()
     for pair in entries:
         if type(pair) is not tuple or len(pair) != 2:
             return None
         record, context = pair
-        if not _valid_record(record, context) or record.scenario_id in result:
+        if (
+            not _valid_record(record, context)
+            or record.scenario_id in result
+            or record.record_id in seen_record_ids
+        ):
             return None
+        seen_record_ids.add(record.record_id)
         result[record.scenario_id] = (record, context)
     return result
+
+
+def _independent_cohort_sources(before, after, *, record_slot: int) -> bool:
+    """A source run/record cannot be recycled anywhere across cohort sides.
+
+    Multiple distinct scenario records may belong to one run on the SAME
+    side. No source identifiers are returned in the public comparison.
+    """
+    original = tuple(row[record_slot] for row in before.values())
+    candidate = tuple(row[record_slot] for row in after.values())
+    return (
+        {r.record_id for r in original}.isdisjoint(
+            r.record_id for r in candidate
+        )
+        and {r.run_id for r in original}.isdisjoint(
+            r.run_id for r in candidate
+        )
+    )
 
 
 def compare_lab_cohorts(
@@ -45,7 +69,10 @@ def compare_lab_cohorts(
     one scenario returns HOLD, regardless of improvements in other scenarios.
     """
     before, after = _index(baselines), _index(candidates)
-    if before is None or after is None or before.keys() != after.keys():
+    if (
+        before is None or after is None or before.keys() != after.keys()
+        or not _independent_cohort_sources(before, after, record_slot=0)
+    ):
         return LabCohortComparison("HOLD")
 
     compared: list[tuple[str, LabComparison]] = []
