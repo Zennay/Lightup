@@ -23,6 +23,10 @@ class EngagementPlan:
     max_risk: RiskLevel | None
     pending_elevations: int
     blockers: tuple[str, ...]
+    recorded_capabilities: tuple[str, ...] = ()
+    unrestricted_capabilities_recorded: bool = False
+    grant_valid_from: str | None = None
+    grant_valid_until: str | None = None
     decision: str = "HOLD"
     execution_allowed: bool = False
 
@@ -97,6 +101,11 @@ def build_client_authorization_plan(
             blockers.append("No current request-bound recorded scope grant.")
         if pending_count:
             blockers.append("Pending risk-elevation decision.")
+        if grant is not None and not grant.scope.allowed_capabilities:
+            blockers.append(
+                "Recorded grant has unrestricted capabilities; replace with "
+                "an explicit least-privilege capability list."
+            )
         blockers.extend((
             "Independent client consent and at-use revocation not verified.",
             "Security/source-owner review and explicit HUMAN GO not recorded here.",
@@ -111,6 +120,12 @@ def build_client_authorization_plan(
             max_risk=grant.scope.max_risk if grant else None,
             pending_elevations=pending_count,
             blockers=tuple(blockers),
+            recorded_capabilities=tuple(grant.scope.allowed_capabilities) if grant else (),
+            unrestricted_capabilities_recorded=(
+                grant is not None and not grant.scope.allowed_capabilities
+            ),
+            grant_valid_from=grant.valid_from.isoformat() if grant else None,
+            grant_valid_until=grant.valid_until.isoformat() if grant else None,
         ))
 
     return ClientAuthorizationPlan(
@@ -153,7 +168,9 @@ def to_review_payload(plan: ClientAuthorizationPlan) -> dict:
     for entry in plan.engagements:
         if (type(entry) is not EngagementPlan or entry.decision != "HOLD"
                 or entry.execution_allowed is not False
-                or (entry.max_risk is not None and type(entry.max_risk) is not RiskLevel)):
+                or (entry.max_risk is not None and type(entry.max_risk) is not RiskLevel)
+                or type(entry.unrestricted_capabilities_recorded) is not bool):
+
             raise ValueError("engagement is not fail-closed")
         rows.append({
             "engagement_id": entry.engagement_id,
@@ -162,6 +179,10 @@ def to_review_payload(plan: ClientAuthorizationPlan) -> dict:
             "recorded_scope": sorted(entry.recorded_scope),
             "excluded_scope": sorted(entry.excluded_scope),
             "recorded_risk_ceiling": int(entry.max_risk) if entry.max_risk is not None else None,
+            "recorded_capabilities": sorted(entry.recorded_capabilities),
+            "unrestricted_capabilities_recorded": entry.unrestricted_capabilities_recorded,
+            "grant_valid_from": entry.grant_valid_from,
+            "grant_valid_until": entry.grant_valid_until,
             "pending_elevations": entry.pending_elevations,
             "blockers": list(entry.blockers),
             "decision": "HOLD",
