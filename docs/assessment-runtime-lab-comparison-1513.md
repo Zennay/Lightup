@@ -85,10 +85,13 @@ consent, registered permanent VPS CI and human GO remain entirely unproven.
 
 ## Exact source-head named-VPS regression gate
 
-The dedicated assessment-runtime Python matrix runs on the same named LightUp
-self-hosted VPS label set as the canonical offline preflight:
-`[self-hosted, lightup, vps]`. It first verifies that `hostname` equals
-`vps-bb300bba` and checks out the immutable PR-head commit instead of
+The dedicated assessment-runtime Python matrix requests the canonical
+LightUp CI permanent-VPS runner labels `[self-hosted, zcloud, vps]`.
+A prior attempt using the preflight label set `[self-hosted, lightup, vps]`
+landed on disposable runner `vm-7eb5ee16-lightup`, not the permanent VPS;
+the hostname guard correctly failed on both Python jobs before checkout.
+The guard therefore still requires `hostname` exactly `vps-bb300bba`,
+and the job checks out the immutable PR-head commit instead of
 GitHub's temporary pull-request merge ref. The checkout assertion compares
 `git rev-parse HEAD` with the immutable event head SHA **before** its offline
 checks. This is only an isolated comparator diagnostic; it does **not** replace
