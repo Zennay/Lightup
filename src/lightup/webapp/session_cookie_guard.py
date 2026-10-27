@@ -96,6 +96,15 @@ class CookieEnvelopeGuard:
         self.app = app
         self.production = production
 
+    @property
+    def store(self):
+        """Preserve the original local management interface through WSGI wrapping.
+
+        This property has no HTTP route, no authentication shortcut and no
+        durable mutation; the original app retains all tenant/role checks.
+        """
+        return self.app.store
+
     def __call__(self, environ, start_response):
         try:
             validate_cookie_envelope(environ)
