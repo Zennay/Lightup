@@ -14,6 +14,8 @@ import os
 import stat
 import sys
 
+from assessment_runtime_cli_options_1513 import parse_offline_cli_args
+
 from assessment_runtime_report_html_1513 import (
     render_comparison_html, render_comparison_csv,
     render_human_actions_csv, render_human_actions_html,
@@ -272,46 +274,10 @@ def _display_text(result) -> str:
 
 
 def main(argv=None):
-    args = list(sys.argv[1:] if argv is None else argv)
-    output_format = "json"
-    format_seen = False
-    focus_filter = "all"
-    focus_seen = False
-    malformed = False
-    positional = []
-    index = 0
-    while index < len(args):
-        item = args[index]
-        if item == "--format":
-            if (
-                format_seen or index + 1 >= len(args)
-                or args[index + 1] not in ("json", "text", "html", "csv", "actions-csv", "actions-html", "actions-json", "efficiency-json", "efficiency-html")
-            ):
-                malformed = True
-                index += 2 if index + 1 < len(args) else 1
-            else:
-                output_format = args[index + 1]
-                format_seen = True
-                index += 2
-        elif item == "--focus":
-            if (focus_seen or index + 1 >= len(args)
-                    or args[index + 1] not in ("all", "scope", "adverse", "unknown", "source")):
-                malformed = True
-                index += 2 if index + 1 < len(args) else 1
-            else:
-                focus_filter = args[index + 1]
-                focus_seen = True
-                index += 2
-        elif item.startswith("--"):
-            malformed = True
-            index += 1
-        else:
-            positional.append(item)
-            index += 1
-
+    output_format, focus_filter, positional, malformed = parse_offline_cli_args(
+        sys.argv[1:] if argv is None else argv
+    )
     result = None
-    if focus_seen and output_format not in ("actions-csv", "actions-html", "actions-json", "efficiency-json", "efficiency-html"):
-        malformed = True
     if len(positional) == 2 and not malformed:
         try:
             baseline, baseline_context = _parse_case(positional[0])

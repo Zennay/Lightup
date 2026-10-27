@@ -393,3 +393,36 @@ metric comparator, rank/ordinal stability, invalid-input HOLD and no-match
 distinction are unchanged. No raw IDs, target/client names or notes are
 introduced, and no real consent, source authentication, dispatch, scan,
 release or HUMAN GO is inferred.
+
+## Shared fail-closed CLI options (all three entry points)
+
+All three original single-case, cohort and scored-cohort tools use one
+stdlib-only `assessment_runtime_cli_options_1513.py` parser. The accepted
+`--format` values are JSON (default), text, HTML, detailed CSV,
+`actions-csv`, `actions-html`, `actions-json`,
+`efficiency-json`, and `efficiency-html`. The optional
+`--focus all|scope|adverse|unknown|source` is **only accepted** for
+the three HUMAN `actions-*` formats.
+
+Previously the individual parsers silently **accepted and ignored**
+`--focus` alongside `efficiency-json` and `efficiency-html`, making an
+operator believe the resource report was filtered when it was not.
+Now invalid combinations, duplicate flags, non-string API arguments, unknown
+formats or missing values produce a generic full-input **HOLD** (exit 3),
+never a successful but misleading filtered report. A syntactically valid
+`--format efficiency-json` with no focus still works unchanged.
+For example:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \
+  --format efficiency-json --focus unknown before.json after.json
+# generic HOLD; resource reports cannot consume focus
+```
+
+This parser never reads local source bytes itself, prints a target or
+authorization, invokes a scanner, dispatches a worker, writes a report
+file, changes a grant or weakens existing scope/CI checks. Admitted
+comparisons retain their original full-source parser, status
+(`2 REVIEW_ONLY` / `3 HOLD`), source-minimal outputs and permanently
+false authority fields. Source validation, owner approval and HUMAN GO
+are still separate release gates.
