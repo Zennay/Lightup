@@ -14,20 +14,23 @@ concurrency:
 jobs:
   preflight:
     name: Offline preflight Python ${{ matrix.python }} (not VPS proof)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, zcloud, vps]
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'Zennay' && github.actor == 'Zennay')
+    runs-on: [self-hosted, lightup, vps]
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         python: ["3.11", "3.14"]
     steps:
-      # Match canonical LightUp CI's VPS runner pool; guard the physical host before checkout.
-      - name: Require permanent vps-bb300bba runner
+      # Permit only the registered project runner on the migrated permanent VPS.
+      - name: Require migrated permanent LightUp VPS runner
+        shell: bash
         run: |
+          set -euo pipefail
           observed="$(hostname -s)"
-          if [ "$observed" != "vps-bb300bba" ]; then
-            echo "::error::Wrong runner: expected vps-bb300bba, got $observed"
+          expected="VM-7eb5ee16-2c71-440d-b7fd-8095d204e930"
+          if [[ "$observed" != "$expected" || "${RUNNER_NAME:-}" != "vm-7eb5ee16-lightup" ]]; then
+            echo "::error::Wrong permanent LightUp runner identity; refusing checkout"
             exit 1
           fi
       - uses: actions/checkout@v4
@@ -53,20 +56,23 @@ jobs:
     # Offline diagnostics on the permanent VPS; canonical exact-head CI is still required.
     name: Real producer integration Python ${{ matrix.python }} (not VPS proof)
     needs: preflight
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, zcloud, vps]
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'Zennay' && github.actor == 'Zennay')
+    runs-on: [self-hosted, lightup, vps]
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         python: ["3.11", "3.14"]
     steps:
-      # Match canonical LightUp CI's VPS runner pool; guard the physical host before checkout.
-      - name: Require permanent vps-bb300bba runner
+      # Permit only the registered project runner on the migrated permanent VPS.
+      - name: Require migrated permanent LightUp VPS runner
+        shell: bash
         run: |
+          set -euo pipefail
           observed="$(hostname -s)"
-          if [ "$observed" != "vps-bb300bba" ]; then
-            echo "::error::Wrong runner: expected vps-bb300bba, got $observed"
+          expected="VM-7eb5ee16-2c71-440d-b7fd-8095d204e930"
+          if [[ "$observed" != "$expected" || "${RUNNER_NAME:-}" != "vm-7eb5ee16-lightup" ]]; then
+            echo "::error::Wrong permanent LightUp runner identity; refusing checkout"
             exit 1
           fi
       - uses: actions/checkout@v4
