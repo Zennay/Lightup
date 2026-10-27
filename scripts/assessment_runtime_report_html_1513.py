@@ -72,6 +72,17 @@ def _safe(value: object) -> str:
     return escape(str(value), quote=True)
 
 
+def _status_badge(status: str, *, descriptor: str = "") -> str:
+    """Always show HUMAN-review states with the same warning semantics."""
+    review = status == "REVIEW_ONLY"
+    tone = "review" if review else "hold"
+    label = ("Human review required · Source: REVIEW_ONLY" if review
+             else "Source status: HOLD")
+    if descriptor:
+        label += " · " + descriptor
+    return '<span class="badge ' + tone + '" role="status">' + _safe(label) + "</span>"
+
+
 def _label(name: str) -> str:
     # Only known, fixed metric names may be visible to the offline viewer.
     return _safe(_METRIC_LABELS.get(name, "Unclassified metric"))
@@ -258,8 +269,7 @@ def render_comparison_html(result, *, cohort: bool = False,
         "<style>" + _STYLES + "</style></head><body>" +
         "<header><p class='eyebrow'>LightUp · private local diagnostic</p>" +
         "<h1>" + report_kind + " assessment-runtime review</h1>" +
-        "<p><span class='badge " + ("review" if state == "REVIEW_ONLY" else "hold") +
-        "'>" + ("Human review required · Source: " if state == "REVIEW_ONLY" else "Source status: ") + state + "</span></p>" +
+        "<p>" + _status_badge(state) + "</p>" +
         "<p>" + headline + "</p></header>" +
         '<section class="panel warning"><h2>Authority boundary</h2>' +
         "<p>PLAN/LAB ONLY. This is an unauthenticated, source-reported, "
@@ -700,8 +710,9 @@ def render_efficiency_html(result, *, cohort: bool = False,
         "<title>LightUp offline lab efficiency observations</title>"
         "<style>" + _STYLES + "</style></head><body>"
         "<header><p class='eyebrow'>LightUp · offline lab observations</p>"
-        "<h1>Resource change summary</h1><p><span class='badge'>"
-        + _safe(data["source_status"]) + " · INFORMATIONAL ONLY</span></p></header>"
+        "<h1>Resource change summary</h1><p>"
+        + _status_badge(data["source_status"], descriptor="INFORMATIONAL ONLY")
+        + "</p></header>"
         '<div class="grid">'
         + _stat(data["accepted_case_count"], "Admitted anonymous cases")
         + _stat("No verdict", "Performance interpretation")
@@ -1150,7 +1161,7 @@ def render_review_bundle_html(result, *, cohort: bool = False,
         "<style>" + _STYLES + "</style></head><body>"
         "<header><p class='eyebrow'>LightUp · offline, anonymous, source-reported lab</p>"
         "<h1>Full assessment-runtime HUMAN review dossier</h1>"
-        "<p><span class='badge'>" + _safe(status) + " · HUMAN REVIEW ONLY</span></p>"
+        "<p>" + _status_badge(status, descriptor="HUMAN REVIEW ONLY") + "</p>"
         "<p>Original source provenance is not authenticated. "
         "Nothing in this file permits assessment execution or release.</p>"
         "</header>"
@@ -1219,7 +1230,7 @@ def render_human_actions_html(result, *, cohort: bool = False,
         "<style>" + _STYLES + "</style></head><body>"
         "<header><p class='eyebrow'>LightUp · source-minimal private handoff</p>"
         "<h1>" + _safe(kind) + " HUMAN action selection</h1>"
-        "<p><span class='badge'>" + _safe(status) + " · HUMAN REVIEW ONLY</span></p></header>"
+        "<p>" + _status_badge(status, descriptor="HUMAN REVIEW ONLY") + "</p></header>"
         '<div class="grid" aria-label="Source and selection counts">'
         + _stat(len(actions), "All admitted anonymous cases")
         + _stat(len(selected), "Cases in this selection")
