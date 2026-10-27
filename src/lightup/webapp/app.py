@@ -2032,16 +2032,30 @@ class LightUpWebApp:
                 + (' selected' if raw_risk not in {"1", "2", "3", "4"} else '')
                 + '>Choose a risk level…</option>'
             )
-            correction = (
-                "Add at least one system you manage." if not any(
-                    part.strip() for part in raw_assets.split(",")
-                )
-                else "Select one of the four supported risk levels."
+            missing_assets = not any(
+                part.strip() for part in raw_assets.split(",")
+            )
+            invalid_risk = raw_risk not in {"1", "2", "3", "4"}
+            errors = []
+            if missing_assets:
+                errors.append('<li><a href="#fix-assets">Name at least one '
+                              'system you manage.</a></li>')
+            if invalid_risk:
+                errors.append('<li><a href="#fix-risk">Choose one of the four '
+                              'supported risk levels.</a></li>')
+            assets_attrs = (
+                ' aria-invalid="true" aria-describedby="fix-assets-error"'
+                if missing_assets else ""
+            )
+            risk_attrs = (
+                ' aria-invalid="true" aria-describedby="fix-risk-error"'
+                if invalid_risk else ""
             )
             body = (
                 '<h1>Check your assessment request</h1>'
-                '<p role="alert" class="error">Some details need attention: '
-                f'{_e(correction)}</p>'
+                '<div role="alert" class="error"><p>Some details need '
+                'attention. Follow the links to correct them:</p>'
+                f'<ul>{"".join(errors)}</ul></div>'
                 '<section class="card">'
                 '<p class="meta">Your draft is preserved below. No request '
                 'has been submitted and no testing has been activated.</p>'
@@ -2049,12 +2063,16 @@ class LightUpWebApp:
                 f'{self._csrf_field(auth)}'
                 '<label for="fix-assets">Systems you manage (comma-separated)</label>'
                 f'<input id="fix-assets" name="assets" required '
-                f'value="{_e(raw_assets)}" autocomplete="off">'
-                '<label for="fix-risk">Requested testing risk</label>'
-                f'<select id="fix-risk" name="risk" required>'
+                f'value="{_e(raw_assets)}" autocomplete="off"{assets_attrs}>'
+                + ('<p id="fix-assets-error" class="error">A system is required.</p>'
+                   if missing_assets else '')
+                + '<label for="fix-risk">Requested testing risk</label>'
+                f'<select id="fix-risk" name="risk" required{risk_attrs}>'
                 f'{placeholder}{options}</select>'
-                f'{_risk_choice_guide()}'
-                '<label for="fix-notes">Context for the reviewer (optional)</label>'
+                + ('<p id="fix-risk-error" class="error">Choose a risk level.</p>'
+                   if invalid_risk else '')
+                + _risk_choice_guide()
+                + '<label for="fix-notes">Context for the reviewer (optional)</label>'
                 f'<textarea id="fix-notes" name="notes" rows="3">'
                 f'{_e(raw_notes)}</textarea>'
                 '<button>Review corrected request</button>'
@@ -2127,7 +2145,13 @@ class LightUpWebApp:
                                   "<h1>Client session required</h1>", auth),
                             status="403 Forbidden")
         ctx = auth.context
-        assets, risk, notes = self._parse_portal_request_fields(form)
+        try:
+            assets, risk, notes = self._parse_portal_request_fields(form)
+        except ValueError:
+            # A malformed final POST must not silently discard a client's
+            # draft. Return to the existing authenticated correction flow;
+            # never catch domain authorization/provenance failures here.
+            return self.portal_preview_request(auth, form, client_id)
         recorded = self.store.submit_assessment_request(
             ctx,
             requested_assets=assets,
