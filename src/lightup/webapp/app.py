@@ -459,14 +459,17 @@ class LightUpWebApp:
             self.store, auth.context
         )
         category_totals = {key: 0 for key in _AUTH_REVIEW_ACTIONS}
-        items = []
         for tenant in portfolio["review_queue"]:
             for action in tenant["actions"]:
                 category_totals[action["kind"]] += action["count"]
-                if kind is None or kind == action["kind"]:
-                    items.append((tenant, action))
-        items.sort(key=lambda row: (
-            -row[1]["count"], row[0]["client_id"], row[1]["kind"]
+        items = [
+            item for item in portfolio["review_details"]
+            if kind is None or item["kind"] == kind
+        ]
+        order = {code: index for index, code in enumerate(_AUTH_REVIEW_ACTIONS)}
+        items.sort(key=lambda item: (
+            order[item["kind"]], item["created_at"] or "",
+            item["client_id"], item["record_id"],
         ))
         links = [
             (None, "All categories", sum(category_totals.values())),
@@ -483,24 +486,27 @@ class LightUpWebApp:
             for key, label, count in links
         )
         cards = []
-        for tenant, action in items:
-            target = (
-                "/assessments"
-                if action["kind"] in {
-                    "review_client_requests", "review_risk_decisions"
-                } else
-                f'/clients/{_e(tenant["client_id"])}/authorization-plan'
+        for item in items:
+            private_plan = (
+                f'/clients/{_e(item["client_id"])}/authorization-plan'
             )
+            if item["record_type"] == "request":
+                target = f'/assessments/requests/{_e(item["record_id"])}/review'
+            elif item["record_type"] == "risk_elevation":
+                target = f'/assessments/elevations/{_e(item["record_id"])}/review'
+            elif item["record_type"] == "engagement":
+                target = f'{private_plan}#engagement-{_e(item["record_id"])}'
+            else:
+                raise ValueError("unknown read-only review pointer")
             cards.append(
                 '<section class="card"><div class="row">'
-                f'<strong>{_e(tenant["client_name"])}</strong>'
+                f'<strong>{_e(item["client_name"])}</strong>'
                 '<span class="badge lock">HOLD · human review</span></div>'
-                f'<p class="meta">{action["count"]} outstanding · '
-                f'{_e(_AUTH_REVIEW_ACTIONS[action["kind"]])}</p>'
-                f'<a href="{target}">Open review surface</a>'
+                f'<p class="meta">{_e(_AUTH_REVIEW_ACTIONS[item["kind"]])} · '
+                f'record {_e(item["record_id"])}</p>'
+                f'<a href="{target}">Open exact review record</a>'
                 ' · '
-                f'<a href="/clients/{_e(tenant["client_id"])}/authorization-plan">'
-                'Private scope context</a></section>'
+                f'<a href="{private_plan}">Private scope context</a></section>'
             )
         csv_path = (
             f"/authorization-reviews/{kind}.csv"
@@ -511,8 +517,8 @@ class LightUpWebApp:
             "<p class=\"sub\">Private operator triage. Counts reflect recorded "
             "review items only; they are not verified consent, a scan permit, "
             "or a reason to bypass revocation-at-use and HUMAN GO.</p>"
-            f'<div class="card"><strong>{len(items)} matching review rows · '
-            f'{sum(action["count"] for _, action in items)} attention items</strong>'
+            f'<div class="card"><strong>{len(items)} matching original records · '
+            'all remain HUMAN review only</strong>'
             f'<p class="meta">{filters}</p>'
             f'<a href="{csv_path}">Download matching redacted CSV</a>'
             ' · <a href="/authorization-overview.json">Full private JSON</a>'
@@ -942,7 +948,8 @@ class LightUpWebApp:
             )
             blockers = "".join(f"<li>{_e(reason)}</li>" for reason in entry.blockers)
             cards.append(
-                "<section class=\"card\"><div class=\"row\">"
+                f'<section class="card" id="engagement-{_e(entry.engagement_id)}">'
+                '<div class="row">'
                 f"<strong>{_e(entry.name)}</strong>"
                 "<span class=\"badge lock\">HOLD · no execution</span></div>"
                 f"<p class=\"meta\">Engagement: {_e(entry.status)} · "
