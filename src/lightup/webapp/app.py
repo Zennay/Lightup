@@ -58,6 +58,15 @@ _RISK_LABELS = {
     RiskLevel.DESTRUCTIVE_LAB_ONLY: "5 — Destructive (lab only)",
 }
 
+_AUTH_REVIEW_ACTIONS = {
+    "review_client_requests": "Client requests awaiting review",
+    "review_risk_decisions": "Risk elevations awaiting review",
+    "review_unrestricted_grants": "Unrestricted legacy scope records",
+    "review_expired_grants": "Expired request-bound grant windows",
+    "review_future_grants": "Future-dated grant windows",
+    "review_missing_grants": "Engagements without request-bound grants",
+}
+
 _CSS = """
 :root { --bg:#f6f7f8; --card:#ffffff; --ink:#1c2430; --muted:#5d6b7a;
         --line:#e3e7ea; --accent:#2f6f5f; --warn:#8a5a19; --lock:#7a2e2e; }
@@ -216,6 +225,10 @@ class LightUpWebApp:
             ("GET", re.compile(r"^/$"), self.overview, "operator"),
             ("GET", re.compile(r"^/authorization-overview\.json$"),
              self.authorization_overview_json, "operator"),
+            ("GET", re.compile(r"^/authorization-reviews(?:/(?P<kind>[\w-]+))?$"),
+             self.authorization_review_worklist, "operator"),
+            ("GET", re.compile(r"^/authorization-reviews\.csv$"),
+             self.authorization_review_worklist_csv, "operator"),
             ("GET", re.compile(r"^/discovery$"), self.discovery, "operator"),
             ("POST", re.compile(r"^/discovery/prospects$"), self.add_prospect, "operator"),
             ("POST", re.compile(r"^/discovery/prospects/(?P<prospect_id>[\w-]+)/status$"),
@@ -391,6 +404,101 @@ class LightUpWebApp:
                             'attachment; filename="lightup-m0-portfolio-review.json"')],
         )
 
+    def authorization_review_worklist_csv(
+        self, auth: AuthState, form: dict[str, str],
+    ) -> Response:
+        from ..authorization_plan import (
+            build_operator_portfolio_review_payload,
+            to_operator_review_worklist_csv,
+        )
+
+        # A private review export, not a scope grant or assessment manifest.
+        portfolio = build_operator_portfolio_review_payload(
+            self.store, auth.context
+        )
+        body = to_operator_review_worklist_csv(portfolio)
+        return Response(
+            body, content_type="text/csv; charset=utf-8",
+            extra_headers=[(
+                "Content-Disposition",
+                'attachment; filename="lightup-m0-human-review-worklist.csv"',
+            )],
+        )
+
+    def authorization_review_worklist(
+        self, auth: AuthState, form: dict[str, str],
+        kind: str | None = None,
+    ) -> Response:
+        from ..authorization_plan import build_operator_portfolio_review_payload
+
+        if kind is not None and kind not in _AUTH_REVIEW_ACTIONS:
+            raise ValueError("unknown HUMAN review worklist filter")
+        portfolio = build_operator_portfolio_review_payload(
+            self.store, auth.context
+        )
+        category_totals = {key: 0 for key in _AUTH_REVIEW_ACTIONS}
+        items = []
+        for tenant in portfolio["review_queue"]:
+            for action in tenant["actions"]:
+                category_totals[action["kind"]] += action["count"]
+                if kind is None or kind == action["kind"]:
+                    items.append((tenant, action))
+        items.sort(key=lambda row: (
+            -row[1]["count"], row[0]["client_id"], row[1]["kind"]
+        ))
+        links = [
+            (None, "All categories", sum(category_totals.values())),
+            *((key, label, category_totals[key])
+              for key, label in _AUTH_REVIEW_ACTIONS.items()),
+        ]
+        filters = " · ".join(
+            (
+                f'<strong>{_e(label)} ({count})</strong>'
+                if key == kind else
+                f'<a href="/authorization-reviews'
+                f'{"/" + key if key else ""}">{_e(label)} ({count})</a>'
+            )
+            for key, label, count in links
+        )
+        cards = []
+        for tenant, action in items:
+            target = (
+                "/assessments"
+                if action["kind"] in {
+                    "review_client_requests", "review_risk_decisions"
+                } else
+                f'/clients/{_e(tenant["client_id"])}/authorization-plan'
+            )
+            cards.append(
+                '<section class="card"><div class="row">'
+                f'<strong>{_e(tenant["client_name"])}</strong>'
+                '<span class="badge lock">HOLD · human review</span></div>'
+                f'<p class="meta">{action["count"]} outstanding · '
+                f'{_e(_AUTH_REVIEW_ACTIONS[action["kind"]])}</p>'
+                f'<a href="{target}">Open review surface</a>'
+                ' · '
+                f'<a href="/clients/{_e(tenant["client_id"])}/authorization-plan">'
+                'Private scope context</a></section>'
+            )
+        body = (
+            "<h1>Human authorization review worklist</h1>"
+            "<p class=\\"sub\\">Private operator triage. Counts reflect recorded "
+            "review items only; they are not verified consent, a scan permit, "
+            "or a reason to bypass revocation-at-use and HUMAN GO.</p>"
+            f'<div class="card"><strong>{len(items)} matching review rows · '
+            f'{sum(action["count"] for _, action in items)} attention items</strong>'
+            f'<p class="meta">{filters}</p>'
+            '<a href="/authorization-reviews.csv">Download redacted CSV</a>'
+            ' · <a href="/authorization-overview.json">Full private JSON</a>'
+            ' · <a href="/">Back to overview</a></div>'
+            + ("".join(cards)
+               or '<p class="empty">No recorded items in this category. '
+                  'All activation gates remain locked.</p>')
+        )
+        return Response(_page(
+            "LightUp — HUMAN Review", "overview", body, auth
+        ))
+
     def overview(self, auth: AuthState, form: dict[str, str]) -> Response:
         ctx = auth.context
         clients = self.store.list_clients(ctx)
@@ -406,14 +514,7 @@ class LightUpWebApp:
         # The operator HTML and private JSON use one shared fail-closed
         # aggregate representation; no plan is interpreted as execution.
         portfolio = build_operator_portfolio_review_payload(self.store, ctx)
-        action_labels = {
-            "review_client_requests": "client requests awaiting review",
-            "review_risk_decisions": "risk elevations awaiting review",
-            "review_unrestricted_grants": "unrestricted legacy scopes needing review",
-            "review_expired_grants": "expired request-bound grant windows",
-            "review_future_grants": "not-yet-valid grant windows",
-            "review_missing_grants": "engagements without a request-bound grant",
-        }
+        action_labels = _AUTH_REVIEW_ACTIONS
         review_cards = []
         for item in portfolio["review_queue"]:
             reasons = "".join(
@@ -468,6 +569,9 @@ class LightUpWebApp:
             "<a href=\"/assessments\">Review pending requests</a> · "
             "<a href=\"/authorization-overview.json\">Download private portfolio JSON</a>.</p>"
             "<h3>Human review queue · no automatic activation</h3>"
+            '<p class="meta"><a href="/authorization-reviews">'
+            'Open filtered worklist</a> · '
+            '<a href="/authorization-reviews.csv">Export redacted CSV</a></p>'
             + ("".join(review_cards)
                or "<p class=\"empty\">No immediate recorded review items.</p>")
             + "<h3>All client authorization states</h3>"
