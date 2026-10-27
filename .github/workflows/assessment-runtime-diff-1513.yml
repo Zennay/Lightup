@@ -14,8 +14,11 @@ on:
       - tests/test_assessment_runtime_cohort_1513.py
       - tests/test_assessment_runtime_integration_1513.py
       - tests/test_assessment_runtime_cli_1513.py
+      - scripts/assessment_runtime_cli_options_1513.py
       - scripts/assessment_runtime_compare_cli_1513.py
       - scripts/assessment_runtime_compare_cohort_cli_1513.py
+      - scripts/assessment_runtime_report_html_1513.py
+      - scripts/assessment_runtime_review_bundle_inspect_cli_1513.py
       - tests/test_assessment_runtime_cohort_cli_1513.py
       - tests/test_assessment_runtime_scenario_1513.py
       - tests/test_assessment_runtime_ground_truth_cohort_1513.py
