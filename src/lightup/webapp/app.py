@@ -1491,7 +1491,20 @@ class LightUpWebApp:
     def portal(self, auth: AuthState, form: dict[str, str], client_id: str) -> Response:
         ctx = self._portal_context(auth, client_id)
         client = self.store.get_client(ctx, client_id)
-        findings = self.store.list_findings(ctx)
+        # Explicitly scope each read to the portal's client even though
+        # _portal_context currently narrows operator views to that tenant.
+        # Never trust mismatched persisted finding/engagement provenance as
+        # evidence for this client's security posture.
+        engagements = self.store.list_engagements(ctx, client_id)
+        findings = self.store.list_findings(ctx, client_id=client_id)
+        engagement_ids = {item.engagement_id for item in engagements}
+        if any(item.client_id != client_id for item in engagements):
+            raise TenantIsolationError("cross-tenant portal engagement denied")
+        if any(
+            item.client_id != client_id or item.engagement_id not in engagement_ids
+            for item in findings
+        ):
+            raise TenantIsolationError("cross-tenant portal finding linkage denied")
         # Keep the overview minimal: raw scope assets belong only to the
         # authenticated per-request receipt, not a default landing screen.
         requests = self.store.list_assessment_requests(ctx, client_id)
@@ -1507,7 +1520,7 @@ class LightUpWebApp:
         from ..coverage import CoverageReport, CoverageStatus
 
         coverage_reports = []
-        for engagement in self.store.list_engagements(ctx):
+        for engagement in engagements:
             stored = self.store.get_coverage(ctx, engagement.engagement_id)
             report = CoverageReport.build({
                 capability: CoverageStatus(status)
