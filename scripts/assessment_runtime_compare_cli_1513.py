@@ -1,6 +1,6 @@
 """Opt-in read-only JSON lab benchmark comparison, never an execution gate.
 
-Usage: python scripts/assessment_runtime_compare_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html|review-json|review-bundle-json|review-bundle-html] [--focus all|scope|adverse|unknown|source] base.json next.json
+Usage: python scripts/assessment_runtime_compare_cli_1513.py [--format json|text|html|csv|actions-csv|actions-html|actions-json|efficiency-json|efficiency-html|review-json|review-bundle-json|review-bundle-html] [--focus all|scope|adverse|unknown|source] [--expected-baseline-sha256 HEX --expected-candidate-sha256 HEX] base.json next.json
 Focus selectors match every source signal, even under a higher-priority label.
 Source focus covers every admitted unauthenticated case; focus questions match the selected signal.
 Returns 2 REVIEW_ONLY or 3 HOLD; never 0. Only explicit local files are read.
@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import fields
 from datetime import datetime, timedelta
+from hashlib import sha256
+from hmac import compare_digest
 import json
 import math
 import os
@@ -37,6 +39,9 @@ CONTEXT_FIELDS = frozenset((
     "run_id", "client_id", "engagement_id", "mode", "approved_risk",
     "authorization", "is_lab", "created_at",
 ))
+_PAIR_HASH_FLAGS = frozenset((
+    "--expected-baseline-sha256", "--expected-candidate-sha256",
+))
 
 
 def _dict_no_duplicates(pairs):
@@ -52,7 +57,46 @@ def _reject_nonfinite(_value):
     raise ValueError("nonfinite JSON literal")
 
 
-def _read_json(path, maximum_bytes=MAX_BYTES):
+def _canonical_sha256(value):
+    return (
+        type(value) is str and len(value) == 64
+        and all(ch in "0123456789abcdefABCDEF" for ch in value)
+    )
+
+
+def _split_expected_pair_hashes(argv):
+    """Extract an all-or-nothing pair of externally supplied local byte hashes.
+
+    Preserve the existing shared --format/--focus parser for every other
+    assessment CLI. Duplicate, malformed or single-sided digests fail closed.
+    """
+    if type(argv) not in (list, tuple) or len(argv) > 36:
+        return (), {}, True
+    remaining = []
+    digests = {}
+    malformed = False
+    index = 0
+    while index < len(argv):
+        token = argv[index]
+        if type(token) is str and token in _PAIR_HASH_FLAGS:
+            if (
+                token in digests or index + 1 >= len(argv)
+                or not _canonical_sha256(argv[index + 1])
+            ):
+                malformed = True
+                index += 2 if index + 1 < len(argv) else 1
+                continue
+            digests[token] = argv[index + 1]
+            index += 2
+        else:
+            remaining.append(token)
+            index += 1
+    if digests and set(digests) != _PAIR_HASH_FLAGS:
+        malformed = True
+    return tuple(remaining), digests, malformed
+
+
+def _read_json(path, maximum_bytes=MAX_BYTES, *, expected_sha256=None):
     """Read one bounded ordinary file without following user path symlinks.
 
     Directory components are opened relative to pinned directory descriptors.
@@ -62,6 +106,8 @@ def _read_json(path, maximum_bytes=MAX_BYTES):
     """
     if type(maximum_bytes) is not int or not 1 <= maximum_bytes <= 1_048_576:
         raise ValueError("invalid input size limit")
+    if expected_sha256 is not None and not _canonical_sha256(expected_sha256):
+        raise ValueError("invalid expected input digest")
     try:
         raw_path = os.fspath(path)
     except TypeError as exc:
@@ -159,6 +205,13 @@ def _read_json(path, maximum_bytes=MAX_BYTES):
             os.close(path_fd)
         os.close(directory_fd)
 
+    # Bind the comparison to the exact bytes of the pinned, bounded read.
+    # A digest supplied independently is not a signature, proven source
+    # provenance, consent, or permission to run tools against any target.
+    if expected_sha256 is not None and not compare_digest(
+        sha256(payload).hexdigest(), expected_sha256.lower(),
+    ):
+        raise ValueError("input digest mismatch")
     return json.loads(
         payload.decode("utf-8"), object_pairs_hook=_dict_no_duplicates,
         parse_constant=_reject_nonfinite,
@@ -228,8 +281,8 @@ def _parse_case_document(document):
     return record, context
 
 
-def _parse_case(path):
-    return _parse_case_document(_read_json(path))
+def _parse_case(path, *, expected_sha256=None):
+    return _parse_case_document(_read_json(path, expected_sha256=expected_sha256))
 
 
 def _output(result):
@@ -281,14 +334,23 @@ def _display_text(result) -> str:
 
 
 def main(argv=None):
-    output_format, focus_filter, positional, malformed = parse_offline_cli_args(
+    clean_args, expected, bad_hash_flags = _split_expected_pair_hashes(
         sys.argv[1:] if argv is None else argv
     )
+    output_format, focus_filter, positional, malformed = parse_offline_cli_args(
+        clean_args
+    )
     result = None
-    if len(positional) == 2 and not malformed:
+    if len(positional) == 2 and not malformed and not bad_hash_flags:
         try:
-            baseline, baseline_context = _parse_case(positional[0])
-            candidate, candidate_context = _parse_case(positional[1])
+            baseline, baseline_context = _parse_case(
+                positional[0],
+                expected_sha256=expected.get("--expected-baseline-sha256"),
+            )
+            candidate, candidate_context = _parse_case(
+                positional[1],
+                expected_sha256=expected.get("--expected-candidate-sha256"),
+            )
             result = compare_lab_evaluations(
                 baseline, candidate, baseline_context, candidate_context,
             )

@@ -49,6 +49,36 @@ This isolated test job is diagnostic only. Even on the named permanent VPS, its 
 
 Use `python scripts/assessment_runtime_compare_cli_1513.py before.json after.json` with `PYTHONPATH=src`. Each file must be a JSON object with exactly `record` (a complete `EvaluationRecord.to_dict()` payload) and `context` (the eight fields of a lab `RunContext`, where `mode` is its enum string, `approved_risk` its integer, and `created_at` UTC ISO-8601). Both files must be at most 65,536 bytes. **No target is opened or contacted**; only those two local files are read. Duplicate JSON keys, NaN/Infinity, inconsistent derived FPR, malformed/mismatched lab provenance and oversized files return generic non-echo HOLD. The optional serialized `false_positive_rate` must be an **exact JSON float equal to the producer's recomputed value**: `EvaluationRecord.to_dict()` writes the computed Python float without rounding. A subtly altered rate inside the former `1e-12` tolerance, a negative-zero alias, or a JSON integer used in its place, is rejected rather than treated as unchanged source data. Exit `2` means REVIEW_ONLY, `3` HOLD; **never exit 0** and neither status is consent, authenticated provenance, or production GO. Never place confidential target data in benchmark JSON; CLI does not echo invalid input.
 
+### Optional byte-pinned baseline/candidate comparison
+
+A human reviewer with **independently authenticated SHA-256 values for both
+specific JSON files** can ask the single-case comparator to reject substituted
+or modified input bytes *before* parsing their metrics. Both strict 64-hex
+options must be supplied together; a single expected digest is deliberately
+insufficient. Option order is flexible and remains compatible with the
+existing `--format` and `--focus` selectors.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cli_1513.py \
+  --expected-baseline-sha256 "$INDEPENDENT_BASELINE_SHA256" \
+  --expected-candidate-sha256 "$INDEPENDENT_CANDIDATE_SHA256" \
+  before.json after.json
+```
+
+The existing symlink-free, race-hardened reader first opens each explicit
+local regular file, pins its inode, and checks its bounded **exact read bytes**.
+Only then are the supplied source hashes compared with `hmac.compare_digest`.
+A wrong/partial/duplicated/malformed digest pair or changed file yields the
+same generic `HOLD` with no expected or observed hash in the output.
+Unpinned comparison is still supported for prior local lab workflows.
+No new hash is emitted into the default reports.
+
+SHA-256 is **byte identity, not a signature**. Hashes calculated from the same
+untrusted received files add no authentication; even independently obtained
+digests cannot prove that the source facts, measurements, authorization or
+client consent are genuine. No target, worker, network or release gate is
+activated, and `REVIEW_ONLY` retains exactly zero execution authority.
+
 ### Optional privacy-minimal terminal output
 
 JSON remains the default for existing structured handoffs. Add `--format text` for a readable terminal summary:
