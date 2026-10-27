@@ -6,7 +6,7 @@ Opt-in, read-only comparison of two *already-recorded* `EvaluationRecord` object
 
 ## Why this exists
 
-Different planner/model revisions can improve overall findings while silently worsening specific benchmark categories. `compare_lab_evaluations` returns stable per-metric old/new/delta entries in declared order, plus the exact adverse metric names. It blocks comparison of different scenario IDs, non-lab context, mismatched run/engagement provenance, malformed numeric data (including known pending `EvaluationMetrics.validate` issue #834), subclass/type confusion and non-finite numbers.
+Different planner/model revisions can improve overall findings while silently worsening specific benchmark categories. `compare_lab_evaluations` returns stable per-metric old/new/delta entries in declared order, plus the exact adverse metric names. It blocks comparison of different scenario IDs, non-lab context, mismatched run/engagement provenance, malformed numeric data (including known pending `EvaluationMetrics.validate` issue #834), subclass/type confusion and non-finite numbers. The offline comparator admits `runtime_seconds` and `compute_cost_usd` only as finite nonnegative built-in int/float values at most **1,000,000,000,000**, with the same limit regardless of numeric representation. The separate received-bundle inspector enforces the identical per-case admission limit; larger float values cannot be relabeled as reasonable lab costs. This bound neither verifies original measurements nor grants assessment authority.
 
 The in-memory context timestamp admission now also rejects arbitrary
 application-defined `tzinfo` objects **before** invoking `utcoffset()`.

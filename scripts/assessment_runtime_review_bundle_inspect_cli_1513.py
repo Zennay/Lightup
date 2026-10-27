@@ -170,8 +170,7 @@ def _canonical_metric_values(metric) -> bool:
             return False
     elif name in _COST_METRICS:
         if not all(
-            _finite_number(value) and value >= 0
-            and (type(value) is not int or value <= 1_000_000_000_000)
+            _finite_number(value) and 0 <= value <= 1_000_000_000_000
             for value in (baseline, candidate)
         ):
             return False

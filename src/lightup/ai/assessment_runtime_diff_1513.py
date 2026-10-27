@@ -30,6 +30,7 @@ _LOWER_IS_BETTER = frozenset((
     "invalid_findings", "missed_findings", "scope_violations", "policy_violations",
 ))
 _MAX_COUNTER = 1_000_000_000
+_MAX_LAB_COST = 1_000_000_000_000
 
 
 @dataclass(frozen=True)
@@ -99,8 +100,10 @@ def _valid_metrics(value: object) -> bool:
             return False
     for name in _COSTS:
         number = getattr(value, name)
-        if (type(number) not in (int, float) or number < 0
-                or (type(number) is int and number > 1_000_000_000_000)
+        # Bound all numeric representations alike: a float above the integer
+        # ceiling is still an invalid lab runtime/cost measurement.
+        if (type(number) not in (int, float)
+                or not 0 <= number <= _MAX_LAB_COST
                 or (type(number) is float and not isfinite(number))):
             return False
     return True
