@@ -222,6 +222,8 @@ class LightUpWebApp:
             ("POST", re.compile(r"^/clients$"), self.create_client, "operator"),
             ("GET", re.compile(r"^/clients/(?P<client_id>[\w-]+)$"), self.client_detail,
              "operator"),
+            ("GET", re.compile(r"^/clients/(?P<client_id>[\w-]+)/authorization-plan$"),
+             self.authorization_plan, "operator"),
             ("POST", re.compile(r"^/clients/(?P<client_id>[\w-]+)/engagements$"),
              self.create_engagement, "operator"),
             ("POST", re.compile(r"^/engagements/(?P<engagement_id>[\w-]+)/grants$"),
@@ -543,7 +545,9 @@ class LightUpWebApp:
         body = (
             f"<h1>{_e(client.name)}</h1>"
             f"<p class=\"sub\">Portal: <a href=\"/portal/{_e(client.client_id)}\">"
-            "open client portal</a></p>"
+            "open client portal</a> · "
+            f"<a href=\"/clients/{_e(client.client_id)}/authorization-plan\">"
+            "Plan-only authorization review</a></p>"
             "<h2>Engagements</h2>"
             + ("".join(engagement_cards) or "<p class=\"empty\">No engagements yet.</p>")
             + f"<h2>New engagement</h2>{new_engagement}"
@@ -554,6 +558,50 @@ class LightUpWebApp:
             + f"<h2>Findings</h2>{self._finding_cards(findings)}"
         )
         return Response(_page(f"LightUp — {client.name}", "clients", body, auth))
+
+    def authorization_plan(self, auth: AuthState, form: dict[str, str],
+                           client_id: str) -> Response:
+        from ..authorization_plan import build_client_authorization_plan
+
+        # Operator-only read: no grant, consent, permit or target side effects.
+        plan = build_client_authorization_plan(self.store, auth.context, client_id)
+        cards = []
+        for entry in plan.engagements:
+            scope = (
+                "<details><summary>Recorded scope (not execution permission)</summary>"
+                f"<p class=\"meta\">Assets: {_e(', '.join(entry.recorded_scope))}<br>"
+                f"Excluded: {_e(', '.join(entry.excluded_scope) or 'None recorded')}<br>"
+                f"Recorded risk ceiling: {_risk(entry.max_risk) if entry.max_risk is not None else '—'}"
+                "</p></details>"
+                if entry.recorded_scope else "<p class=\"meta\">No current grant scope recorded.</p>"
+            )
+            blockers = "".join(f"<li>{_e(reason)}</li>" for reason in entry.blockers)
+            cards.append(
+                "<section class=\"card\"><div class=\"row\">"
+                f"<strong>{_e(entry.name)}</strong>"
+                "<span class=\"badge lock\">HOLD · no execution</span></div>"
+                f"<p class=\"meta\">Engagement: {_e(entry.status)} · "
+                f"Pending risk decisions: {entry.pending_elevations}</p>"
+                f"{scope}<details open><summary>What is still required</summary>"
+                f"<ul>{blockers}</ul></details></section>"
+            )
+        body = (
+            f"<h1>{_e(plan.client_name)} — authorization plan</h1>"
+            "<p class=\"sub\">Read-only M0 workspace. Existing records are shown "
+            "for HUMAN review. There is no scan, apply or activation button; "
+            "even a current recorded grant never enables execution here.</p>"
+            "<div class=\"card\"><span class=\"badge lock\">PLAN ONLY · ACTIVATION OFF</span>"
+            f"<p class=\"meta\">Requests: {plan.submitted_requests} awaiting review · "
+            f"{plan.approved_requests} approved · {plan.rejected_requests} rejected. "
+            "A client-level request is not automatically linked to an engagement.</p>"
+            "<p class=\"meta\">Before any future release, independently verify real "
+            "client and operator consent, request/scope provenance, action-time "
+            "revocation, source/security reviews and explicit HUMAN GO.</p></div>"
+            "<h2>Engagement decisions</h2>"
+            + ("".join(cards) or "<p class=\"empty\">No engagements yet.</p>")
+            + f"<p><a href=\"/clients/{_e(plan.client_id)}\">Back to client</a></p>"
+        )
+        return Response(_page("LightUp — Authorization plan", "clients", body, auth))
 
     def create_engagement(self, auth: AuthState, form: dict[str, str],
                           client_id: str) -> Response:
