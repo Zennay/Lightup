@@ -629,6 +629,27 @@ class LightUpWebApp:
         # still checked by every original domain read.
         viewer = self._portal_context(auth, client_id) if portal else auth.context
         plan = build_client_authorization_plan(self.store, viewer, client_id)
+        request_cards = []
+        for request in plan.request_reviews:
+            if request.status == RequestStatus.APPROVED.value:
+                next_step = ("Reviewed request only. Compare its exact assets and "
+                             "risk with any separately recorded scope grant.")
+            elif request.status == RequestStatus.REJECTED.value:
+                next_step = "Rejected. This request cannot be used as a grant."
+            else:
+                next_step = ("Waiting for independent operator review. No grant "
+                             "or execution permission is implied.")
+            request_cards.append(
+                '<section class="card"><div class="row">'
+                f'<strong>Request {_e(request.request_id)}</strong>'
+                f'<span class="badge">{_e(request.status)}</span></div>'
+                f'<p class="meta">Requested assets: {_e(", ".join(request.requested_assets))}<br>'
+                f'Mode: {_e(request.requested_mode.replace("_", " "))} · '
+                f'Risk: {_risk(request.requested_risk)}<br>'
+                f'Submitted: {_e(request.submitted_at)}'
+                + (f' · Reviewed: {_e(request.reviewed_at)}' if request.reviewed_at else "")
+                + f'</p><p class="meta">{_e(next_step)}</p></section>'
+            )
         cards = []
         for entry in plan.engagements:
             scope = (
@@ -661,7 +682,12 @@ class LightUpWebApp:
             "<p class=\"meta\">Before any future release, independently verify real "
             "client and operator consent, request/scope provenance, action-time "
             "revocation, source/security reviews and explicit HUMAN GO.</p></div>"
-            "<h2>Engagement decisions</h2>"
+            "<h2>Client requests · review history</h2>"
+            + ("".join(request_cards)
+               or "<p class=\"empty\">No requests yet. A client must submit one first.</p>")
+            + "<p class=\"meta\">Requests are client-level records, never consent "
+              "or engagement execution authority.</p>"
+            + "<h2>Engagement decisions</h2>"
             + ("".join(cards) or "<p class=\"empty\">No engagements yet.</p>")
             + (f"<p><a href=\"/portal/{_e(plan.client_id)}/authorization-plan.json\">"
                "Download private plan-only review (JSON)</a></p>"
