@@ -927,6 +927,16 @@ PYTHONPATH=src python scripts/assessment_runtime_review_artifact_verify_cli_1513
   private-bundle.json received-human-review.html
 ```
 
+The three detailed receiver exports use UTF-8 **bytes** on normal binary
+stdout, including the CSV's original CRLF line endings. This avoids Python's
+Windows text-mode newline expansion and locale-dependent recoding; in-process
+`StringIO` captures retain a text-only fallback. For byte-for-byte
+verification, preserve the **actual binary file contents** in transfer. Some
+shells (notably legacy Windows PowerShell redirection) may separately recode
+external command output; use a byte-preserving redirection/channel and do not
+re-save the export through an editor that changes encoding or line endings.
+Any transformation rightly produces HOLD when reopened by the verifier.
+
 Use `--format bundle-csv` for the CSV artifact. On an exact match the verifier
 returns minimal JSON with `render_matches=true`, a byte-identity SHA-256, and
 the source-reported `REVIEW_ONLY` or `HOLD`; exit code 2 is reserved for an

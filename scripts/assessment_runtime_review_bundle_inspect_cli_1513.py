@@ -619,6 +619,21 @@ def _canonical_sha256(value) -> bool:
     )
 
 
+def _write_exact_utf8_output(value: str) -> None:
+    """Preserve exported bytes across platforms for later artifact verification.
+
+    Windows text stdout may recode existing CSV CRLF into CRCRLF, and non-UTF8
+    locale encodings can change the offline HTML/Markdown bytes. Use the native
+    binary buffer when available; StringIO-based in-process callers keep their
+    existing text capture behavior.
+    """
+    buffer = getattr(sys.stdout, "buffer", None)
+    if buffer is not None:
+        buffer.write(value.encode("utf-8"))
+    else:
+        sys.stdout.write(value)
+
+
 def main(argv=None) -> int:
     args = sys.argv[1:] if argv is None else argv
     output_format = "json"
@@ -676,23 +691,23 @@ def main(argv=None) -> int:
         except (OSError, ValueError):
             pass
     if output_format == "bundle-html":
-        print(reports._render_review_bundle_packet_html(
+        _write_exact_utf8_output(reports._render_review_bundle_packet_html(
             review_packet if review_packet is not None else {
                 "input_admitted": False, "source_status": "HOLD",
             }, source_sha256=received_sha256,
-        ), end="")
+        ))
     elif output_format == "bundle-csv":
-        print(reports._render_review_bundle_packet_csv(
+        _write_exact_utf8_output(reports._render_review_bundle_packet_csv(
             review_packet if review_packet is not None else {
                 "input_admitted": False, "source_status": "HOLD",
             }, source_sha256=received_sha256,
-        ), end="")
+        ))
     elif output_format == "bundle-md":
-        print(reports._render_review_bundle_packet_markdown(
+        _write_exact_utf8_output(reports._render_review_bundle_packet_markdown(
             review_packet if review_packet is not None else {
                 "input_admitted": False, "source_status": "HOLD",
             }, source_sha256=received_sha256,
-        ), end="")
+        ))
     elif output_format == "html":
         print(render_inspection_html(outcome), end="")
     elif output_format == "text":
