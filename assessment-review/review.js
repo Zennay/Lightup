@@ -365,6 +365,10 @@
     $("bulk-route-apply").disabled = !assignable.length || !ROUTES.has(chosenRoute) || chosenRoute === "unassigned";
     $("bulk-route-preview").textContent = assignable.length + " of " + sorted.length +
       " visible case(s) eligible (open and unassigned). This changes HUMAN workstream labels only.";
+    const undated = sorted.filter(({c}) => c.stage !== "reviewed" && !c.due);
+    $("bulk-date-apply").disabled = !undated.length || !validLocalDay($("bulk-date").value);
+    $("bulk-date-preview").textContent = undated.length + " of " + sorted.length +
+      " visible case(s) eligible (open and without a proposed date). The chosen date is HUMAN planning only.";
     $("queue-export-csv").disabled = !sorted.length;
     $("queue-export-json").disabled = !sorted.length;
     $("queue-export-html").disabled = !sorted.length;
@@ -871,6 +875,12 @@
     if (invalidate) invalidateReads();
     report = null; selected = -1; digest = null; sourceKind = null;
     $("asof-day").value = "";
+    $("bulk-route").value = "";
+    $("bulk-route-apply").disabled = true;
+    $("bulk-route-preview").textContent = "Load a report to preview eligible HUMAN workstream assignments.";
+    $("bulk-date").value = "";
+    $("bulk-date-apply").disabled = true;
+    $("bulk-date-preview").textContent = "Load a report to preview undated open HUMAN cases.";
     humanUndoHistory = []; humanRedoHistory = [];
     updateHumanHistoryControls();
     clearHistorical(); clearPlanComparison(); metricFocus = null;
@@ -1445,6 +1455,34 @@
     if(key==="z"){event.preventDefault();if(event.shiftKey)redoHumanEdit();else undoHumanEdit();}
     else if(key==="y"){event.preventDefault();redoHumanEdit();}
   });
+  $("bulk-date-apply").addEventListener("click", () => {
+    if (!report || !digest) return;
+    const chosenDay = $("bulk-date").value;
+    if (!validLocalDay(chosenDay)) {
+      alert("Select a real local calendar date manually. Nothing was changed.");
+      renderQueue();
+      return;
+    }
+    // Freeze the exact filtered set before editing it; already dated and
+    // human-reviewed cases must never have their planning labels overwritten.
+    const undated = filteredQueueRows().filter(({c}) =>
+      c.stage !== "reviewed" && !c.due);
+    if (!undated.length) {
+      alert("No visible open cases without a HUMAN-proposed follow-up day.");
+      renderQueue();
+      return;
+    }
+    if (!window.confirm("Propose " + chosenDay + " as the HUMAN follow-up day for " +
+      undated.length + " currently visible open, undated case(s)? Existing dates and reviewed cases remain unchanged. " +
+      "One Undo reverses this local edit. No appointments, notices, due obligations or authorization are created.")) return;
+    invalidateReads();
+    rememberHumanEdit();
+    undated.forEach(({c}) => { c.due = chosenDay; });
+    render();
+    alert("Proposed " + chosenDay + " for " + undated.length +
+      " offline HUMAN case(s). No calendar import, source verdict, permission or release gate changed.", "good");
+  });
+  $("bulk-date").addEventListener("change", () => { if (report) renderQueue(); });
   $("bulk-route-apply").addEventListener("click", () => {
     if (!report || !digest) return;
     const route = $("bulk-route").value;

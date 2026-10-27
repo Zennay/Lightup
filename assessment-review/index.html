@@ -41,6 +41,11 @@
 <button id="bulk-route-apply" class="muted" type="button" disabled>Assign visible eligible cases</button>
 <span id="bulk-route-preview" class="muted-copy" role="status" aria-live="polite">Load a report to preview eligible HUMAN workstream assignments.</span></div>
 <p class="notice">Bulk routing changes only locally proposed HUMAN workstream labels under the current filters. Reviewed cases and previously selected workstreams are never overwritten; confirmation and Undo apply to the entire batch. It does not assign people or authorize assessment activity.</p>
+<div class="actions queue-bulk-date"><label for="bulk-date">Proposed follow-up day for visible open, undated cases
+<input id="bulk-date" type="date"></label>
+<button id="bulk-date-apply" class="muted" type="button" disabled>Propose day for eligible cases</button>
+<span id="bulk-date-preview" class="muted-copy" role="status" aria-live="polite">Load a report to preview undated open HUMAN cases.</span></div>
+<p class="notice">The date is entered manually and remains a HUMAN proposal, never a verified deadline. Existing dates and reviewed cases are excluded; confirmation and one Undo cover the entire batch. Calendar download/import remains a separate deliberate action.</p>
 <div class="actions queue-export-actions">
 <button id="queue-export-csv" class="muted" type="button" disabled>Export filtered queue CSV</button>
 <button id="queue-export-json" class="muted" type="button" disabled>Export filtered queue JSON</button>

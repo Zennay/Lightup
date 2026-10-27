@@ -1,3 +1,12 @@
+## 27 October 2026 · explicit-date bulk HUMAN planning
+
+The offline Review Desk can now set a **manually chosen proposed day** across the exact currently filtered open cases that have no date. A live eligible-count preview precedes the download-free, confirmation-gated action. The batch is one source-byte-bound Undo/Redo transaction.
+
+- Only not-reviewed, undated cases qualify. Existing proposed dates and reviewed cases are never overwritten; no automatic day based on the device clock is inferred.
+- The local date board and calendar preview update immediately. The existing separately confirmed calendar download remains the only way to create a local calendar file; nothing is imported, scheduled or notified automatically.
+- The selector and pending proposed date clear when another source report is loaded or the workspace is cleared. The earlier bulk workstream selector also resets with the report.
+- Browser source, strict no-network standalone and product documentation are updated together. All status, scope, consent, HUMAN GO and independent-review gates remain HOLD.
+
 ## 27 October 2026 · filter-aware bulk HUMAN workstream routing
 
 The existing offline Review Desk can now assign one proposed workstream to **every currently visible, open and unassigned** HUMAN case in a single deliberate operation. The live preview shows the eligible count after all queue filters and metric focus are applied. A reviewer explicitly chooses the workstream and confirms the exact case count.
