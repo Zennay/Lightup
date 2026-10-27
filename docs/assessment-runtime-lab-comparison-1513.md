@@ -644,6 +644,12 @@ case; HUMAN questions must cover the same ordinals, exactly once, with a
 complete unique review rank. Each HUMAN adverse count, unknown-coverage
 value, scope/policy indicator, fixed primary review group and full signal
 selection must match the corresponding case's canonical metric records.
+The ranked HUMAN question rows must also be in exactly the canonical order
+reconstructed from those metric records: scope/policy signals first,
+source-adverse metrics next, unknown coverage next, and source verification
+last; higher adverse counts, then unknown-coverage counts, then original
+anonymous ordinal break ties. Merely supplying unique rank numbers cannot
+demote a scope/policy case or silently reorder the offline review desk.
 The per-case runtime/cost baseline, candidate and raw delta must match
 that exact metric case as decimal values. This prevents an otherwise
 plausible but misaligned handoff from assigning one case's HUMAN action or

@@ -797,6 +797,27 @@ def _bundle_case_alignment(metric_cases, human_questions, resource_cases) -> boo
     ):
         return False
 
+    # Reconstruct HUMAN priority from metric cases, not from the handoff's
+    # mutable rank fields. Swapped ranks or reordered question rows must not
+    # make a scope/policy case disappear toward the bottom of the review desk.
+    expected_ranking = []
+    for metric_case in metric_cases:
+        entries = {item["metric"]: item for item in metric_case["metrics"]}
+        adverse = sum(bool(item["source_regression_flag"]) for item in entries.values())
+        unknown = entries[_UNCERTAIN]["candidate"]
+        scope = any(entries[name]["candidate"] > 0
+                    for name in ("scope_violations", "policy_violations"))
+        priority = 0 if scope else 1 if adverse else 2 if unknown > 0 else 3
+        expected_ranking.append((
+            priority, -adverse, -unknown, metric_case["scenario_ordinal"],
+        ))
+    expected_order = tuple(item[-1] for item in sorted(expected_ranking))
+    if (
+        tuple(item["scenario_ordinal"] for item in human_questions) != expected_order
+        or tuple(item["review_order"] for item in human_questions) != expected
+    ):
+        return False
+
     for question in human_questions:
         ordinal = question["scenario_ordinal"]
         metric_case = metric_cases[ordinal - 1]
