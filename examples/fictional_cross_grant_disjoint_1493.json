@@ -1,0 +1,72 @@
+{
+  "schema": "FICTIONAL-CROSS-GRANT-V1",
+  "evaluated_at": "2020-01-01T12:00:00Z",
+  "candidates": [
+    {
+      "legacy": {
+        "owner": "reviewer@example.test",
+        "reference": "SYNTH-REF-1",
+        "valid_from": "2020-01-01T11:00:00Z",
+        "valid_until": "2020-01-01T13:00:00Z"
+      },
+      "durable": {
+        "grant_id": "G-DISJOINT-1",
+        "client_id": "CLIENT-1",
+        "engagement_id": "ENG-1",
+        "approved_by": "reviewer@example.test",
+        "reference": "SYNTH-REF-1",
+        "scope": {
+          "assets": [
+            "alpha.example.test"
+          ],
+          "max_risk": "STANDARD",
+          "allowed_capabilities": [
+            "web-baseline"
+          ],
+          "excluded_assets": []
+        },
+        "valid_from": "2020-01-01T10:00:00Z",
+        "valid_until": "2020-01-01T14:00:00Z",
+        "recurring_retest_allowed": false
+      },
+      "asset": "alpha.example.test",
+      "capability_id": "web-baseline",
+      "client_id": "CLIENT-1",
+      "engagement_id": "ENG-1",
+      "requested_risk": "LOW_IMPACT"
+    },
+    {
+      "legacy": {
+        "owner": "reviewer@example.test",
+        "reference": "SYNTH-REF-1",
+        "valid_from": "2020-01-01T11:00:00Z",
+        "valid_until": "2020-01-01T13:00:00Z"
+      },
+      "durable": {
+        "grant_id": "G-DISJOINT-2",
+        "client_id": "CLIENT-1",
+        "engagement_id": "ENG-1",
+        "approved_by": "reviewer@example.test",
+        "reference": "SYNTH-REF-1",
+        "scope": {
+          "assets": [
+            "beta.example.test"
+          ],
+          "max_risk": "STANDARD",
+          "allowed_capabilities": [
+            "web-baseline"
+          ],
+          "excluded_assets": []
+        },
+        "valid_from": "2020-01-01T10:00:00Z",
+        "valid_until": "2020-01-01T14:00:00Z",
+        "recurring_retest_allowed": false
+      },
+      "asset": "beta.example.test",
+      "capability_id": "web-baseline",
+      "client_id": "CLIENT-1",
+      "engagement_id": "ENG-1",
+      "requested_risk": "LOW_IMPACT"
+    }
+  ]
+}
