@@ -235,7 +235,11 @@ def _page(title: str, nav: str, body: str, auth: AuthState,
         brand = "LightUp — Operator"
     else:
         base = f"/portal/{portal_client}"
-        links = [("portal", base, "Overview")]
+        links = [
+            ("portal", base, "Overview"),
+            ("requests", base + "/requests", "Requests"),
+            ("scope", base + "/authorization-plan", "Scope & safety"),
+        ]
         brand = "LightUp — Client portal"
     nav_html = "".join(
         f'<a href="{href}" class="{"active" if key == nav else ""}">{label}</a>'
@@ -1069,7 +1073,7 @@ class LightUpWebApp:
                if portal else f"<p><a href=\"/clients/{_e(plan.client_id)}\">Back to client</a></p>")
         )
         return Response(_page("LightUp — Authorization plan",
-                              "portal" if portal else "clients", body, auth,
+                              "scope" if portal else "clients", body, auth,
                               portal_client=client_id if portal else None))
 
     def create_engagement(self, auth: AuthState, form: dict[str, str],
@@ -1472,7 +1476,7 @@ class LightUpWebApp:
                or '<p class="empty">No operator decisions recorded yet.</p>')
         )
         return Response(_page(
-            "LightUp — Request inbox", "portal", body, auth,
+            "LightUp — Request inbox", "requests", body, auth,
             portal_client=client_id,
         ))
 
@@ -1586,7 +1590,7 @@ class LightUpWebApp:
             '</section>'
         )
         return Response(_page(
-            "LightUp — Request status", "portal", body, auth,
+            "LightUp — Request status", "requests", body, auth,
             portal_client=client_id,
         ))
 
