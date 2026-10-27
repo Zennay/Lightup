@@ -214,6 +214,8 @@ class LightUpWebApp:
             ("POST", re.compile(r"^/login$"), self.login_submit, "public"),
             ("POST", re.compile(r"^/logout$"), self.logout, "portal"),
             ("GET", re.compile(r"^/$"), self.overview, "operator"),
+            ("GET", re.compile(r"^/authorization-overview\\.json$"),
+             self.authorization_overview_json, "operator"),
             ("GET", re.compile(r"^/discovery$"), self.discovery, "operator"),
             ("POST", re.compile(r"^/discovery/prospects$"), self.add_prospect, "operator"),
             ("POST", re.compile(r"^/discovery/prospects/(?P<prospect_id>[\w-]+)/status$"),
@@ -371,6 +373,24 @@ class LightUpWebApp:
 
     # -- operator pages -------------------------------------------------------
 
+    def authorization_overview_json(
+        self, auth: AuthState, form: dict[str, str]
+    ) -> Response:
+        import json
+        from ..authorization_plan import build_operator_portfolio_review_payload
+
+        # Dispatch requires a real operator session. Domain repeats the
+        # operator authorization boundary; no client asset bodies are exported.
+        payload = build_operator_portfolio_review_payload(self.store, auth.context)
+        body = json.dumps(payload, ensure_ascii=False, sort_keys=True,
+                          separators=(",", ":"), allow_nan=False) + "\\n"
+        return Response(
+            body,
+            content_type="application/json; charset=utf-8",
+            extra_headers=[("Content-Disposition",
+                            'attachment; filename="lightup-m0-portfolio-review.json"')],
+        )
+
     def overview(self, auth: AuthState, form: dict[str, str]) -> Response:
         ctx = auth.context
         clients = self.store.list_clients(ctx)
@@ -381,33 +401,24 @@ class LightUpWebApp:
         findings = self.store.list_findings(ctx)
         open_retests = [f for f in findings if f.retest_status is not RetestStatus.FIXED]
 
-        from datetime import datetime, timezone
-        from ..authorization_plan import build_client_authorization_plan
+        from ..authorization_plan import build_operator_portfolio_review_payload
 
-        # One exact observation instant for the operator's entire read-only
-        # portfolio snapshot. No grant, consent, revocation or action inferred.
-        instant = datetime.now(timezone.utc)
+        # The operator HTML and private JSON use one shared fail-closed
+        # aggregate representation; no plan is interpreted as execution.
+        portfolio = build_operator_portfolio_review_payload(self.store, ctx)
         authorization_rows = []
-        for tenant in clients:
-            plan = build_client_authorization_plan(
-                self.store, ctx, tenant.client_id, evaluation_time=instant
-            )
-            without_grant = sum(
-                item.max_risk is None for item in plan.engagements
-            )
-            unrestricted = sum(
-                item.unrestricted_capabilities_recorded for item in plan.engagements
-            )
+        for tenant in portfolio["tenants"]:
+            client_id = tenant["client_id"]
             authorization_rows.append(
                 '<div class="card"><div class="row">'
-                f'<a href="/clients/{_e(tenant.client_id)}/authorization-plan">'
-                f'<strong>{_e(tenant.name)}</strong></a>'
+                f'<a href="/clients/{_e(client_id)}/authorization-plan">'
+                f'<strong>{_e(tenant["client_name"])}</strong></a>'
                 '<span class="badge lock">HOLD · no execution</span></div>'
-                f'<p class="meta">{plan.submitted_requests} request(s) awaiting review · '
-                f'{len(plan.engagements)} engagement(s) · '
-                f'{without_grant} without a current request-bound grant · '
-                f'{unrestricted} unrestricted legacy scope(s)</p>'
-                f'<a href="/clients/{_e(tenant.client_id)}/authorization-plan">'
+                f'<p class="meta">{tenant["requests_awaiting_review"]} request(s) awaiting review · '
+                f'{tenant["engagements_hold"]} engagement(s) · '
+                f'{tenant["without_current_grant"]} without a current request-bound grant · '
+                f'{tenant["unrestricted_legacy_scopes"]} unrestricted legacy scope(s)</p>'
+                f'<a href="/clients/{_e(client_id)}/authorization-plan">'
                 'Review scope and blockers</a></div>'
             )
         body = (
@@ -426,7 +437,8 @@ class LightUpWebApp:
             "<h2>Authorization control plane</h2>"
             "<p class=\"sub\">Plan-only portfolio review. Every tenant remains HOLD "
             "until independent consent, revocation-at-use, source reviews and HUMAN GO. "
-            "<a href=\"/assessments\">Review pending requests</a>.</p>"
+            "<a href=\"/assessments\">Review pending requests</a> · "
+            "<a href=\"/authorization-overview.json\">Download private portfolio JSON</a>.</p>"
             + ("".join(authorization_rows)
                or "<p class=\"empty\">No clients yet.</p>")
             + "<div class=\"card\"><div class=\"row\"><strong>Active testing</strong>"
