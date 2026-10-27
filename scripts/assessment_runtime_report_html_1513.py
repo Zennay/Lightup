@@ -1032,6 +1032,94 @@ def render_review_bundle_json(result, *, cohort: bool = False,
     ) + "\n"
 
 
+def _render_review_bundle_packet_csv(packet) -> str:
+    """Spreadsheet-ready, source-anonymous rows from a fully admitted bundle.
+
+    The received-packet caller must inspect the complete private JSON first.
+    All failure envelopes produce only one fixed input_hold row; human questions
+    are canonical fixed text, not source notes or uncontrolled spreadsheet cells.
+    """
+    columns = (
+        "row_type", "report_type", "source_status", "scenario_ordinal",
+        "review_order", "human_review_group", "scope_policy_signal",
+        "source_adverse_metric_count", "source_unknown_coverage_value",
+        "matching_focus_signals", "suggested_human_question",
+        "metric", "baseline", "candidate", "delta",
+        "source_regression_flag", "source_unknown_coverage_flag",
+        "percent_change", "direction",
+        "authorized", "consent_verified", "dispatch_allowed",
+        "release_allowed", "source_provenance_authenticated",
+    )
+    out = StringIO()
+    writer = csv_writer(out, lineterminator="\r\n")
+    writer.writerow(columns)
+    admitted = packet["input_admitted"]
+    report_type = packet["report_type"] if admitted else ""
+
+    def emit(row_type, source_status, **fields):
+        # Set authority columns *after* source values, unconditionally false.
+        row = {
+            "row_type": row_type,
+            "report_type": report_type,
+            "source_status": source_status,
+            **fields,
+            "authorized": "false",
+            "consent_verified": "false",
+            "dispatch_allowed": "false",
+            "release_allowed": "false",
+            "source_provenance_authenticated": "false",
+        }
+        writer.writerow(tuple(row.get(name, "") for name in columns))
+
+    if not admitted:
+        emit("input_hold", "HOLD")
+        return out.getvalue()
+
+    metrics = packet["metric_review"]
+    resources = packet["resource_observations"]
+    cases = metrics["cases"]
+    # Preserve the independently reconciled HUMAN rank order in the first
+    # rows, so an operator can triage without losing any metric/detail rows.
+    for question in packet["human_actions"]["human_review_questions"]:
+        ordinal = question["scenario_ordinal"]
+        emit(
+            "human_question", cases[ordinal - 1]["source_status"],
+            scenario_ordinal=ordinal,
+            review_order=question["review_order"],
+            human_review_group=question["human_review_group"],
+            scope_policy_signal=str(question["scope_policy_signal"]).lower(),
+            source_adverse_metric_count=question["source_adverse_metric_count"],
+            source_unknown_coverage_value=question["source_unknown_coverage"],
+            matching_focus_signals="|".join(question["matching_focus_signals"]),
+            suggested_human_question=question["suggested_human_question"],
+        )
+    for case, resource_case in zip(cases, resources["cases"]):
+        ordinal = case["scenario_ordinal"]
+        for metric in case["metrics"]:
+            emit(
+                "metric", case["source_status"],
+                scenario_ordinal=ordinal, metric=metric["metric"],
+                baseline=metric["baseline"], candidate=metric["candidate"],
+                delta=metric["delta"],
+                source_regression_flag=str(metric["source_regression_flag"]).lower(),
+                source_unknown_coverage_flag=str(metric["source_unknown_coverage"]).lower(),
+            )
+        for name in _EFFICIENCY_FIELDS:
+            metric = resource_case["metrics"][name]
+            emit(
+                "resource", case["source_status"],
+                scenario_ordinal=ordinal, metric=name,
+                baseline=metric["baseline"], candidate=metric["candidate"],
+                delta=metric["delta"],
+                percent_change=(
+                    metric["percent_change"] if metric["percent_change"] is not None
+                    else "n/a (zero baseline)"
+                ),
+                direction=metric["direction"],
+            )
+    return out.getvalue()
+
+
 def render_review_bundle_html(result, *, cohort: bool = False,
                               scored: bool = False) -> str:
     """Printable script-free view of the complete anonymous JSON review bundle.

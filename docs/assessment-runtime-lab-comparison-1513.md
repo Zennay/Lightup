@@ -813,6 +813,33 @@ A complete, consistent source-reported HOLD still exposes its anonymous
 review questions to a human, but neither report can establish authentic
 source provenance, consent, source approval or HUMAN GO.
 
+### Received HUMAN bundle as offline analysis CSV
+
+The same fully inspected private JSON can also be exported to
+`--format bundle-csv` for local spreadsheet or data-analysis workflows.
+It emits a fixed-column CSV with **all** canonical anonymous cases:
+the HUMAN question rows first in verified priority order, followed by each
+case's exact source metric and two resource observations. Every row carries
+only a case ordinal and source-reported status; the fixed columns keep all
+five authority/provenance flags explicitly `false`. No source IDs, paths,
+free-form evidence, target names, URLs, credentials or real findings are
+exported. It is still an unauthenticated observation, never a scan or
+budget/release approval.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.py \
+  --format bundle-csv private-bundle.json > received-human-review.csv
+# Exit 2 = source REVIEW_ONLY; 3 = HOLD. Neither grants permission.
+```
+
+Every JSON object, metric value, case ordinal, question rank and source flag
+passes the **same** private-file, optional out-of-band SHA-256, schema and
+cross-section reconciliation as `--format bundle-html` before any rows are
+emitted. On rejection it returns only a fixed `input_hold` row with no case
+data; no partial cohort is disclosed. CSV quoting handles delimiters;
+all question text and labels are pre-defined, not source-controlled formulas.
+For portability the export uses CRLF row endings and no external packages.
+
 For a transfer where the human reviewer already possesses a **separately
 verified expected SHA-256** of the exact source JSON bytes, all four
 receiving formats also accept opt-in `--expected-sha256` (exactly 64
