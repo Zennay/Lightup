@@ -229,6 +229,8 @@ class LightUpWebApp:
              self.authorization_review_worklist, "operator"),
             ("GET", re.compile(r"^/authorization-reviews\.csv$"),
              self.authorization_review_worklist_csv, "operator"),
+            ("GET", re.compile(r"^/authorization-reviews/(?P<kind>[\w-]+)\.csv$"),
+             self.authorization_review_worklist_csv, "operator"),
             ("GET", re.compile(r"^/discovery$"), self.discovery, "operator"),
             ("POST", re.compile(r"^/discovery/prospects$"), self.add_prospect, "operator"),
             ("POST", re.compile(r"^/discovery/prospects/(?P<prospect_id>[\w-]+)/status$"),
@@ -406,6 +408,7 @@ class LightUpWebApp:
 
     def authorization_review_worklist_csv(
         self, auth: AuthState, form: dict[str, str],
+        kind: str | None = None,
     ) -> Response:
         from ..authorization_plan import (
             build_operator_portfolio_review_payload,
@@ -413,15 +416,21 @@ class LightUpWebApp:
         )
 
         # A private review export, not a scope grant or assessment manifest.
+        if kind is not None and kind not in _AUTH_REVIEW_ACTIONS:
+            raise ValueError("unknown HUMAN worklist export category")
         portfolio = build_operator_portfolio_review_payload(
             self.store, auth.context
         )
-        body = to_operator_review_worklist_csv(portfolio)
+        body = to_operator_review_worklist_csv(portfolio, kind=kind)
+        filename = (
+            f"lightup-m0-human-review-{kind}.csv"
+            if kind else "lightup-m0-human-review-worklist.csv"
+        )
         return Response(
             body, content_type="text/csv; charset=utf-8",
             extra_headers=[(
                 "Content-Disposition",
-                'attachment; filename="lightup-m0-human-review-worklist.csv"',
+                f'attachment; filename="{filename}"',
             )],
         )
 
@@ -480,6 +489,10 @@ class LightUpWebApp:
                 f'<a href="/clients/{_e(tenant["client_id"])}/authorization-plan">'
                 'Private scope context</a></section>'
             )
+        csv_path = (
+            f"/authorization-reviews/{kind}.csv"
+            if kind else "/authorization-reviews.csv"
+        )
         body = (
             "<h1>Human authorization review worklist</h1>"
             "<p class=\"sub\">Private operator triage. Counts reflect recorded "
@@ -488,7 +501,7 @@ class LightUpWebApp:
             f'<div class="card"><strong>{len(items)} matching review rows · '
             f'{sum(action["count"] for _, action in items)} attention items</strong>'
             f'<p class="meta">{filters}</p>'
-            '<a href="/authorization-reviews.csv">Download redacted CSV</a>'
+            f'<a href="{csv_path}">Download matching redacted CSV</a>'
             ' · <a href="/authorization-overview.json">Full private JSON</a>'
             ' · <a href="/">Back to overview</a></div>'
             + ("".join(cards)
