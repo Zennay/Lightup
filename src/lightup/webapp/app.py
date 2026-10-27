@@ -1303,6 +1303,16 @@ class LightUpWebApp:
                     f'<button>{_e(label)}</button></form>'
                 )
             controls = "".join(choices)
+        decision_receipt = (
+            '<section class="card" aria-labelledby="request-decision-heading">'
+            '<h2 id="request-decision-heading">Recorded human decision</h2>'
+            f'<p>Outcome: <strong>{_e(request.status.value)}</strong></p>'
+            f'<p class="meta">Recorded by: {_e(request.decided_by or "Not recorded")} · '
+            f'At: {_e(request.decided_at or "Not recorded")}</p>'
+            '<p class="meta">This decision is not a scope grant, verified consent, '
+            'revocation-at-use proof or permission to test.</p></section>'
+            if not pending else ""
+        )
         body = (
             "<h1>Review client assessment request</h1>"
             '<p class="sub">A human decision on the request only. '
@@ -1319,6 +1329,7 @@ class LightUpWebApp:
             f'<p><strong>Notes:</strong> {_e(request.notes) or "None"}</p>'
             '<p class="meta">Reviewing this request never verifies system '
             'ownership, action-time revocation or HUMAN GO.</p></section>'
+            + decision_receipt
             + (controls or '<p class="empty">Decision already recorded; '
                'no further decision is available here.</p>')
             + '<p><a href="/assessments">Back to operator reviews</a></p>'
@@ -1359,6 +1370,16 @@ class LightUpWebApp:
                     f'<button>{_e(label)}</button></form>'
                 )
             controls = "".join(choices)
+        elevation_receipt = (
+            '<section class="card" aria-labelledby="elevation-decision-heading">'
+            '<h2 id="elevation-decision-heading">Recorded risk decision</h2>'
+            f'<p>Outcome: <strong>{_e(decision.status.value)}</strong></p>'
+            f'<p class="meta">Recorded by: {_e(decision.decided_by or "Not recorded")} · '
+            f'At: {_e(decision.decided_at or "Not recorded")}</p>'
+            '<p class="meta">A risk decision never widens a scope grant, '
+            'verifies consent or permits execution.</p></section>'
+            if decision.status.value != "pending" else ""
+        )
         body = (
             "<h1>Review proposed risk elevation</h1>"
             '<p class="sub">Read the justification before choosing. '
@@ -1373,6 +1394,7 @@ class LightUpWebApp:
             '<p class="meta">The original reviewed client request, scope grant, '
             'consent and revocation-at-use remain independent prerequisites.</p>'
             '</section>'
+            + elevation_receipt
             + (controls or '<p class="empty">No pending decision remains.</p>')
             + '<p><a href="/assessments">Back to operator reviews</a></p>'
         )
