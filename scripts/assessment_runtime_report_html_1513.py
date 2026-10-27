@@ -1042,6 +1042,16 @@ def render_review_bundle_html(result, *, cohort: bool = False,
     packet = json_loads(render_review_bundle_json(
         result, cohort=cohort, scored=scored,
     ))
+    return _render_review_bundle_packet_html(packet)
+
+
+def _render_review_bundle_packet_html(packet) -> str:
+    """Print only the exporter packet or a fully validated offline import.
+
+    A receiving caller must structurally admit the *entire* packet first.
+    Invalid input must supply only a fixed two-field generic HOLD envelope.
+    The renderer never opens assets, grants authority, or uses browser scripts.
+    """
     admitted = packet["input_admitted"]
     status = packet["source_status"]
 

@@ -777,13 +777,38 @@ self-contained and enforces a restrictive CSP with a hash-pinned local
 stylesheet. It separates packet consistency, source-reported
 `HOLD`/`REVIEW_ONLY`, admitted-case count and mandatory HUMAN review.
 No browser upload, external fonts/assets, forms, network access or
-authorizing button. Invalid or unsafe local files create the same
-generic zero-case HOLD receipt in all three formats. Exit codes remain
+authorizing button. Invalid or unsafe local files create a
+generic zero-case HOLD receipt in the original three formats, and a
+generic zero-case HOLD full page in the new fourth format. Exit codes remain
 `2` for a structurally consistent source `REVIEW_ONLY`, otherwise
 `3`; the receipt is never a completion certificate.
 
+### Full offline HUMAN dossier from a received, validated JSON packet
+
+For a reviewer who received **only** the complete private JSON bundle,
+`--format bundle-html` now reconstructs the full, printable script-free
+HUMAN dossier after **all** existing intake checks pass. It shows admitted
+anonymous cases, canonical source-metric values and movement, fixed HUMAN
+questions with case-detail links, and resource observations. The original
+`--format html` remains a short, source-minimal structural receipt; it
+does not silently reveal case details.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.py \
+  --format bundle-html private-bundle.json > received-full-human-review.html
+```
+
+Invalid, changed, digest-mismatched or internally inconsistent input
+renders **only** a fixed generic HOLD page with zero metric/question rows.
+The full view reuses the exported HTML's CSP-pinned local stylesheet,
+fixed headings and HTML-escaped canonical values; no original IDs,
+paths, targets, private notes, uploads, scripts or external assets.
+A complete, consistent source-reported HOLD still exposes its anonymous
+review questions to a human, but neither report can establish authentic
+source provenance, consent, source approval or HUMAN GO.
+
 For a transfer where the human reviewer already possesses a **separately
-verified expected SHA-256** of the exact source JSON bytes, all three
+verified expected SHA-256** of the exact source JSON bytes, all four
 receiving formats also accept opt-in `--expected-sha256` (exactly 64
 hexadecimal characters). The hash check occurs **after** the symlink-
 and race-hardened bounded read and **before** parsing/review. Incorrect,

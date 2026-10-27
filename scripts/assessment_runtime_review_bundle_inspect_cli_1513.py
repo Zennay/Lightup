@@ -620,7 +620,7 @@ def main(argv=None) -> int:
             break
         seen.add(option)
         if option == "--format":
-            if value not in ("json", "text", "html"):
+            if value not in ("json", "text", "html", "bundle-html"):
                 options_valid = False
                 break
             output_format = value
@@ -635,6 +635,7 @@ def main(argv=None) -> int:
         else None
     )
     outcome = inspect_review_bundle_bytes(b"")
+    review_packet = None
     if path is not None:
         try:
             raw = _read_private_bundle(path)
@@ -643,9 +644,20 @@ def main(argv=None) -> int:
             ):
                 raise ValueError("offline bundle digest mismatch")
             outcome = inspect_review_bundle_bytes(raw)
+            if output_format == "bundle-html" and outcome["format_consistent"]:
+                # A second bounded decode is permissible only after *full*
+                # shape/numeric/source/rank checks passed. Never render input
+                # bytes or partially parsed case data on a rejected packet.
+                review_packet = _inspect(raw)
         except (OSError, ValueError):
             pass
-    if output_format == "html":
+    if output_format == "bundle-html":
+        print(reports._render_review_bundle_packet_html(
+            review_packet if review_packet is not None else {
+                "input_admitted": False, "source_status": "HOLD",
+            }
+        ), end="")
+    elif output_format == "html":
         print(render_inspection_html(outcome), end="")
     elif output_format == "text":
         print(render_inspection_text(outcome), end="")
