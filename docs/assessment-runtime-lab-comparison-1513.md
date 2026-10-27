@@ -716,8 +716,14 @@ metric flags. An internally aligned but impossible standalone multi-case
 packet or contradicted status is rejected atomically as anonymous HOLD.
 These checks cannot establish source provenance or detect a deliberately
 fabricated, self-consistent packet. A 4 MiB hard input cap bounds memory before JSON decoding; the admitted
-schema permits only 1–64 cases with fixed canonical metric fields. Oversized
-bundles are rejected as generic no-data HOLD, without paths or payload echo. The local-file reader requires Linux-style secure
+schema permits only 1–64 cases with fixed canonical metric fields. Every
+transferred resource decimal field is also restricted to 1–1024 characters
+and a finite adjusted base-10 exponent between -700 and +700 before
+arithmetic; these bounds cover the producer's finite Python-float values,
+its exact 64-case Decimal totals and percentage readouts. This prevents
+unbounded mantissa/exponent work in imported numeric strings without
+adding any approval semantics. Oversized or extreme-value bundles are
+rejected as generic no-data HOLD, without paths or payload echo. The local-file reader requires Linux-style secure
 file-descriptor primitives (`O_NOFOLLOW`, `O_DIRECTORY`, `O_PATH`, and
 `/proc/self/fd`): it pins each directory component, rejects symlinks in
 **every** ancestor, rejects `.`/`..` traversal and non-regular files,

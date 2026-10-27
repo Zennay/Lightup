@@ -124,8 +124,25 @@ def _finite_number(value) -> bool:
     return type(value) in (int, float) and math.isfinite(value)
 
 
+# Exported lab metrics are finite Python floats (minimum subnormal to
+# maximum ~1e308); 64-case exact Decimal sums remain under 800 digits, and
+# the largest legitimate percentage magnitude is below 1e700. Bound every
+# transferred decimal *before* constructing arithmetic intermediates.
+_MAX_DECIMAL_TEXT_CHARS = 1024
+_MAX_DECIMAL_ADJUSTED_EXPONENT = 700
+
+
 def _finite_decimal_text(value) -> bool:
-    return type(value) is str and Decimal(value).is_finite()
+    if type(value) is not str or not 1 <= len(value) <= _MAX_DECIMAL_TEXT_CHARS:
+        return False
+    try:
+        number = Decimal(value)
+    except (InvalidOperation, ValueError):
+        return False
+    return (
+        number.is_finite()
+        and abs(number.adjusted()) <= _MAX_DECIMAL_ADJUSTED_EXPONENT
+    )
 
 
 def _canonical_metric_values(metric) -> bool:
