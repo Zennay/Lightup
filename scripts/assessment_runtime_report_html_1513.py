@@ -842,6 +842,9 @@ def _bundle_case_alignment(metric_cases, human_questions, resource_cases) -> boo
         )
         if (
             metric_case["source_adverse_metric_count"] != adverse
+            or metric_case["source_status"] != (
+                "HOLD" if adverse else "REVIEW_ONLY"
+            )
             or question["source_adverse_metric_count"] != adverse
             or question["source_unknown_coverage"] != unknown
             or question["scope_policy_signal"] is not scope
@@ -898,7 +901,9 @@ def _bundle_summary_alignment(metrics, resources) -> bool:
     if (
         metrics["source_adverse_case_count"] != adverse_cases
         or metrics["source_unknown_coverage_case_count"] != unknown_cases
-        or (metrics["source_status"] == "REVIEW_ONLY" and adverse_cases > 0)
+        or metrics["source_status"] != (
+            "HOLD" if adverse_cases else "REVIEW_ONLY"
+        )
     ):
         return False
 

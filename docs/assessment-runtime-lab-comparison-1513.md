@@ -650,7 +650,11 @@ source-adverse metrics next, unknown coverage next, and source verification
 last; higher adverse counts, then unknown-coverage counts, then original
 anonymous ordinal break ties. Merely supplying unique rank numbers cannot
 demote a scope/policy case or silently reorder the offline review desk.
-The per-case runtime/cost baseline, candidate and raw delta must match
+Each case's source-reported status must also agree **exactly** with its
+adverse flag count: `HOLD` only with adverse metrics, `REVIEW_ONLY`
+only without them. No internally contradictory source case may be
+exported as admitted, including when a transferred JSON inspector would
+reject it later. The per-case runtime/cost baseline, candidate and raw delta must match
 that exact metric case as decimal values. This prevents an otherwise
 plausible but misaligned handoff from assigning one case's HUMAN action or
 cost observation to another case. A failed check returns generic
@@ -672,8 +676,11 @@ aggregate number to **all** admitted anonymous case records before it is
 shown or exported. For each fixed canonical metric it checks the unique
 summary entry, complete case count, source-adverse flag count, raw
 candidate-higher/lower/equal movement and unknown-coverage flags; it also
-checks the cohortwide adverse/unknown case totals. A source status of
-`REVIEW_ONLY` cannot coexist with admitted source adverse flags.
+checks the cohortwide adverse/unknown case totals. The **aggregate** source status must match the entire admitted
+population in both directions: at least one adverse case requires
+`HOLD`; zero adverse cases requires `REVIEW_ONLY`. Previously only
+the first contradiction was rejected. The original comparator is
+unchanged, and neither status supplies human authorization.
 
 The resource section must contain precisely the expected runtime and cost
 metrics. Each case's decimal delta, direction and percentage observation
