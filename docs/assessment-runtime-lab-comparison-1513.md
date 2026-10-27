@@ -927,6 +927,40 @@ PYTHONPATH=src python scripts/assessment_runtime_review_artifact_verify_cli_1513
   private-bundle.json received-human-review.html
 ```
 
+### All-or-nothing verification of a complete HUMAN handoff set
+
+When the reviewer receives **all three** formats, use one `bundle-set`
+verification instead of three separate checks. The required positional order is
+**source JSON, HTML, CSV, Markdown**. The verifier opens/admissibly parses the
+bounded source JSON only **once** and independently reconstructs all three
+complete outputs from that same in-memory packet. It compares every resulting
+UTF-8 byte sequence with its corresponding locally received regular file.
+A source/re-render/digest failure or **even one altered, missing, swapped or
+re-encoded output** returns exactly the same source-free generic HOLD receipt;
+there is no partial-success result and no per-format failure disclosure.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_review_artifact_verify_cli_1513.py \
+  --format bundle-set private-bundle.json \
+  received-full-human-review.html received-human-review.csv \
+  received-human-review.md
+
+PYTHONPATH=src python scripts/assessment_runtime_review_artifact_verify_cli_1513.py \
+  --format bundle-set --expected-sha256 "$INDEPENDENT_SOURCE_SHA256" \
+  private-bundle.json received-full-human-review.html \
+  received-human-review.csv received-human-review.md
+```
+
+Only **all three exact byte matches** can produce `render_matches=true` and
+the one admitted JSON digest. The output shape and exit codes are deliberately
+identical to the single-artifact verifier: 2 for an exact source-reported
+`REVIEW_ONLY`, 3 for source-reported `HOLD` or any rejection. That status
+describes offline content identity alone. Even a fully matching set is
+unauthenticated and conveys no owner approval, provenance, consent, dispatch,
+security/privacy GO, budget approval or release authority. The independent
+source SHA-256 must come from an authenticated external channel before it can
+support a genuine source-byte comparison.
+
 The three detailed receiver exports use UTF-8 **bytes** on normal binary
 stdout, including the CSV's original CRLF line endings. This avoids Python's
 Windows text-mode newline expansion and locale-dependent recoding; in-process

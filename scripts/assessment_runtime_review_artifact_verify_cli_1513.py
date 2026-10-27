@@ -40,24 +40,26 @@ def _hold_receipt() -> dict:
     }
 
 
-def verify_rendered_human_artifact(
+def _verify_complete_artifact_set(
     source_path: str,
-    artifact_path: str,
+    artifacts: tuple[tuple[str, str], ...],
     *,
-    output_format: str,
     expected_sha256: str | None = None,
 ) -> dict:
-    """Re-render one complete admitted bundle; compare all bytes, fail closed.
+    """Admit the source once; re-render and verify every required artifact.
 
-    Both paths use the original symlink-free, race-hardened inode-pinned read.
-    The source hash is emitted only on a complete structural/byte match.
-    A matching pair can still be forged; use an independently obtained source
-    SHA256 to establish source byte equality before any human review.
+    A successful set receipt requires *every* complete output to match bytes
+    from the same inode-pinned JSON read. Never expose partial success,
+    per-format failure clues, identifiers or source content.
     """
     failure = _hold_receipt()
-    if output_format not in _RENDERERS:
-        return failure
-    if expected_sha256 is not None and not _canonical_sha256(expected_sha256):
+    if (
+        not artifacts
+        or any(fmt not in _RENDERERS for fmt, _ in artifacts)
+        or len({fmt for fmt, _ in artifacts}) != len(artifacts)
+        or (expected_sha256 is not None
+            and not _canonical_sha256(expected_sha256))
+    ):
         return failure
     try:
         source = _read_private_bundle(source_path)
@@ -69,14 +71,13 @@ def verify_rendered_human_artifact(
         packet = _validated_review_bundle_packet(source)
         if packet is None or packet["input_admitted"] is not True:
             return failure
-        rendered = _RENDERERS[output_format](
-            packet, source_sha256=source_digest,
-        ).encode("utf-8")
-        # Both artifacts are bounded regular local files. Exact render bytes,
-        # not just the embedded source digest, must match after any transfer.
-        received = _read_private_bundle(artifact_path)
-        if not compare_digest(rendered, received):
-            return failure
+        for output_format, artifact_path in artifacts:
+            rendered = _RENDERERS[output_format](
+                packet, source_sha256=source_digest,
+            ).encode("utf-8")
+            received = _read_private_bundle(artifact_path)
+            if not compare_digest(rendered, received):
+                return failure
         return {
             **failure,
             "render_matches": True,
@@ -86,6 +87,40 @@ def verify_rendered_human_artifact(
         }
     except (OSError, ValueError, TypeError, KeyError, OverflowError):
         return failure
+
+
+def verify_rendered_human_artifact(
+    source_path: str,
+    artifact_path: str,
+    *,
+    output_format: str,
+    expected_sha256: str | None = None,
+) -> dict:
+    """Verify one complete HUMAN artifact, never source attestation."""
+    return _verify_complete_artifact_set(
+        source_path, ((output_format, artifact_path),),
+        expected_sha256=expected_sha256,
+    )
+
+
+def verify_rendered_human_artifact_set(
+    source_path: str,
+    html_path: str,
+    csv_path: str,
+    markdown_path: str,
+    *,
+    expected_sha256: str | None = None,
+) -> dict:
+    """All-or-nothing HUMAN handoff: HTML, CSV and Markdown from one source."""
+    return _verify_complete_artifact_set(
+        source_path,
+        (
+            ("bundle-html", html_path),
+            ("bundle-csv", csv_path),
+            ("bundle-md", markdown_path),
+        ),
+        expected_sha256=expected_sha256,
+    )
 
 
 def main(argv=None) -> int:
@@ -105,7 +140,7 @@ def main(argv=None) -> int:
         seen.add(option)
         value = args[cursor + 1]
         if option == "--format":
-            if value not in _RENDERERS:
+            if value not in (*_RENDERERS, "bundle-set"):
                 valid = False
                 break
             output_format = value
@@ -117,7 +152,12 @@ def main(argv=None) -> int:
         cursor += 2
 
     receipt = _hold_receipt()
-    if valid and output_format is not None and len(args) - cursor == 2:
+    if valid and output_format == "bundle-set" and len(args) - cursor == 4:
+        receipt = verify_rendered_human_artifact_set(
+            args[cursor], args[cursor + 1], args[cursor + 2],
+            args[cursor + 3], expected_sha256=expected_sha256,
+        )
+    elif valid and output_format in _RENDERERS and len(args) - cursor == 2:
         receipt = verify_rendered_human_artifact(
             args[cursor], args[cursor + 1],
             output_format=output_format, expected_sha256=expected_sha256,
