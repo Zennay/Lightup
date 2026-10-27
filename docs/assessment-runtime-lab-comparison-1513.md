@@ -596,7 +596,12 @@ The three already-existing local-only CLI entry points now also accept
 document: cohortwide canonical metric movement table, the full
 source-minimal HUMAN question queue, observational runtime/cost totals,
 and **every** fixed canonical metric for **every** admitted anonymous
-case (not a selectively filtered view). The HTML displays a clear
+case (not a selectively filtered view). The ranked HUMAN queue links each
+admitted anonymous case ordinal directly to its full metric detail, with a
+return link back to the questions. This also works for the bounded
+64-scenario cohort without script or external navigation; links are fixed
+local fragments derived only from admitted numeric ordinals, never source
+identifiers. The HTML displays a clear
 `REVIEW_ONLY` or `HOLD` badge, all five false authority/provenance flags
 and the absence of independent proof or HUMAN GO.
 

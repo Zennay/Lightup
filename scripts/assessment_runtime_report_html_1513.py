@@ -1019,7 +1019,7 @@ def render_review_bundle_html(result, *, cohort: bool = False,
     admitted = packet["input_admitted"]
     status = packet["source_status"]
 
-    def safe_table(headings, rows):
+    def safe_table(headings, rows, *, case_link_column=None):
         # Caller supplies a generator; materialize before testing emptiness.
         rows = tuple(rows)
         if not rows:
@@ -1028,9 +1028,26 @@ def render_review_bundle_html(result, *, cohort: bool = False,
             '<th scope="col">' + _safe(value) + "</th>"
             for value in headings
         )
+
+        def cell_html(cell, column):
+            if column != case_link_column:
+                return _safe(cell)
+            # Only previously admitted numeric ordinals become local anchors.
+            # No source identifier, user-provided URL or network link is used.
+            if type(cell) is not int or not 1 <= cell <= packet["accepted_case_count"]:
+                return "Unavailable"
+            case_number = str(cell)
+            return (
+                '<a href="#case-' + case_number
+                + '" aria-label="Open anonymous case ' + case_number
+                + ' metrics">Case ' + case_number.zfill(2) + "</a>"
+            )
+
         body = "".join(
-            "<tr>" + "".join("<td>" + _safe(cell) + "</td>" for cell in row)
-            + "</tr>"
+            "<tr>" + "".join(
+                "<td>" + cell_html(cell, column) + "</td>"
+                for column, cell in enumerate(row)
+            ) + "</tr>"
             for row in rows
         )
         return (
@@ -1078,6 +1095,7 @@ def render_review_bundle_html(result, *, cohort: bool = False,
                 )
                 for item in human["human_review_questions"]
             ),
+            case_link_column=1,
         )
         resource_rows = safe_table(
             ("Observed resource", "Baseline total", "Candidate total",
@@ -1108,10 +1126,13 @@ def render_review_bundle_html(result, *, cohort: bool = False,
                 ),
             )
             detail_sections.append(
-                '<section class="panel"><h3>Anonymous case '
+                '<section class="panel" id="case-'
+                + str(case["scenario_ordinal"]) + '"><h3>Anonymous case '
                 + _safe(case["scenario_ordinal"]) + " · "
                 + _safe(case["source_status"]) + "</h3>"
-                + detailed + "</section>"
+                + detailed
+                + '<p class="foot"><a href="#questions">Back to HUMAN questions</a></p>'
+                + "</section>"
             )
         content = (
             '<nav aria-label="Review sections">'
@@ -1128,7 +1149,9 @@ def render_review_bundle_html(result, *, cohort: bool = False,
             + '<section class="panel" id="questions">'
             '<h2>Complete HUMAN question queue</h2>'
             '<p class="muted">All admitted cases, ranked for review. '
-            'No question is an instruction to scan or remediate.</p>'
+            'Select an anonymous case to inspect its complete source metrics; '
+            'each detail has a return link. No question is an instruction '
+            'to scan or remediate.</p>'
             + questions + "</section>"
             + '<section class="panel" id="resources">'
             '<h2>Resource and cost observations</h2>'
