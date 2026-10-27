@@ -815,6 +815,14 @@ def _bundle_case_alignment(metric_cases, human_questions, resource_cases) -> boo
             or question["scope_policy_signal"] is not scope
             or question["human_review_group"] != group
             or question["matching_focus_signals"] != signals
+            or question["suggested_human_question"] != _HUMAN_FOCUS_QUESTIONS[
+                {
+                    "Scope/policy": "scope",
+                    "Adverse source metrics": "adverse",
+                    "Unknown coverage": "unknown",
+                    "Source verification": "source",
+                }[group]
+            ]
         ):
             return False
 

@@ -666,3 +666,50 @@ new scans, network access, source identities, release decisions, worker
 scheduling or authorization. The default comparison formats and original
 owner workflows stay unchanged; unsigned source reports still need
 source-owner, independent security/privacy, consent and HUMAN GO review.
+
+## Safe local intake of a previously exported complete HUMAN review bundle
+
+A new opt-in, stdlib-only tool
+`scripts/assessment_runtime_review_bundle_inspect_cli_1513.py`
+accepts **one already-existing local `review-bundle-json` file**. It
+re-checks the nested packet after transfer to a HUMAN reviewer, rather
+than assuming a JSON file is trustworthy merely because it parses.
+It is a separate read-only inspector; it does not re-run the original
+comparison, contact an asset, open a network connection, trigger a
+handler, validate consent or release anything.
+
+The inspector rejects malformed JSON, duplicate JSON keys, non-finite
+numbers, unknown top-level fields, incompatible schema/status/flags,
+unsafe authority booleans, incomplete case/question/resource
+populations, altered fixed HUMAN question text, unexpected numeric
+types, cross-section ordinal drift, incorrect metric movement
+summaries and corrupted resource/decimal totals. A 32 MiB input cap
+bounds memory; the local-file read rejects symlinks on systems with
+`O_NOFOLLOW` and does not echo local paths or original payloads.
+
+Output is a fixed, source-minimal JSON record with
+`format_consistent`, original source-reported `source_status`,
+`input_admitted`, anonymous case count and **five permanently false
+authority/provenance fields**. Malformed input produces an atomic
+`HOLD` with zero cases; an originally rejected generic HOLD remains
+a HOLD. An admitted source-adverse HOLD can be structurally consistent
+but **must not** be mistaken for clearance. Exit codes preserve the
+original local comparison convention: `2` for consistent
+`REVIEW_ONLY`, `3` for any HOLD or invalid artifact.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_compare_cohort_cli_1513.py \\
+  --format review-bundle-json old-lab.json new-lab.json > private-bundle.json
+PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.py \\
+  private-bundle.json
+# The second command reads only that existing local JSON file.
+# format_consistent=true is STRUCTURE ONLY, not cryptographic integrity,
+# authenticated source provenance, consent, authorization or HUMAN GO.
+```
+
+There is **no signature or trusted key** in this lab format: a fabricated
+packet can be internally consistent. The inspection detects malformed,
+misaligned or accidentally edited packets but cannot establish who
+created one or whether source evidence was true. The original owners'
+source, security/privacy, client/operator, revocation and HUMAN GO
+gates remain required for anything outside offline review.
