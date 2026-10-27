@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; img-src 'none'">
+<title>LightUp · PRIVATE offline backup recovery · DRAFT/HOLD</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#0a1420;color:#edf5fc}
+*{box-sizing:border-box}body{max-width:1200px;margin:0 auto;padding:1.25rem}h1{font-size:clamp(1.4rem,4vw,2.25rem);margin:.4rem 0}
+h2{font-size:1.08rem;margin:.4rem 0 1rem}p,small{color:#bad0df;line-height:1.55}
+header{padding:1.3rem 1.5rem;border:1px solid #42526b;border-radius:14px;background:#10263b;margin-bottom:1rem}
+main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,355px),1fr));gap:1rem}
+section{border:1px solid #384b65;background:#101e30;border-radius:12px;padding:1rem;min-width:0}
+section.wide{grid-column:1/-1}.warning{font-weight:700;color:#ffe3a5}
+label{display:block;margin:.7rem 0 .25rem}input[type=file],input[type=password],select{background:#071322;color:#fff;border:1px solid #61778d;border-radius:8px;width:100%;padding:.6rem;min-width:0}
+button{border-radius:7px;background:#1d638a;border:1px solid #6db8d7;color:#fff;padding:.55rem .8rem;cursor:pointer;margin:.45rem .35rem .25rem 0}
+textarea{background:#071322;color:#fff;border:1px solid #61778d;border-radius:8px;width:100%;padding:.7rem;resize:vertical;line-height:1.5}
+button:disabled{opacity:.44;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #a6e6ff;outline-offset:2px}
+output{display:block;white-space:pre-wrap;word-break:break-word;font-size:.84rem;line-height:1.5;padding:.6rem;border:1px solid #334d61;border-radius:7px;min-height:3rem;margin-top:.7rem}
+table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{border-bottom:1px solid #40566b;text-align:left;padding:.6rem .4rem;vertical-align:top;overflow-wrap:anywhere}
+tbody tr:hover{background:#1b334b}button.subtle{background:#234258}code{overflow-wrap:anywhere;color:#a7e9fe}
+.status{font-weight:600}.hide{display:none}#file-meta{font-size:.9rem}pre{white-space:pre-wrap;word-break:break-word;max-height:20rem;overflow:auto;padding:.75rem;background:#071322;border-radius:7px}
+.review-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:1rem}
+.review-columns > div{min-width:0}.review-columns pre{min-height:5rem}
+footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
+</style></head>
+<body><header><small>LIGHTUP / EVIDENCE-REMEDIATION / HUMAN-ONLY</small><h1>PRIVATE encrypted recovery desk</h1>
+<p class="warning">DRAFT/HOLD · INCUBATE M3/M7 · PLAN/LAB ONLY. This tool does NOT verify original evidence, remediation, permissions, source identity, or client/operator consent.</p>
+<p>Create a fresh local encrypted archive or open two existing <code>.lupb</code> archives in memory. Review exact file inventory and byte digests, compare locally, then explicitly download only needed original files or re-encrypt a minimum-necessary selected subset. No uploads, endpoints, browser storage or background transfers.</p>
+</header>
+<main>
+<section class="wide" aria-labelledby="capture-h"><h2 id="capture-h">Create a new encrypted PRIVATE workroom archive</h2>
+<p>Select 1–32 individual ordinary files yourself (not folders). Your browser reads only the selected files, locally. Original bytes never leave this browser automatically. The final encrypted archive downloads to your browser's download directory, which may not have private permissions. Move it to trusted owner-private storage.</p>
+<label for="capture-files">Choose original PRIVATE files (up to 2 MiB each, 16 MiB combined)</label>
+<input id="capture-files" type="file" multiple>
+<label for="capture-pass">New encryption password (12+ characters)</label>
+<input id="capture-pass" type="password" autocomplete="new-password">
+<label for="capture-confirm">Confirm encryption password</label>
+<input id="capture-confirm" type="password" autocomplete="new-password">
+<button type="button" id="capture-create">Create encrypted PRIVATE .lupb</button>
+<button type="button" id="capture-clear" class="subtle">Clear selected originals</button>
+<output id="capture-status" role="status" aria-live="polite">Choose files explicitly. No automatic directory scanning, network or browser storage.</output>
+</section>
+<section aria-labelledby="a-h"><h2 id="a-h">Archive A</h2><label for="a-file">Private encrypted archive</label><input id="a-file" type="file" accept=".lupb,application/json">
+<label for="a-pass">Local password (12+ characters)</label><input id="a-pass" type="password" autocomplete="off">
+<button type="button" id="a-open">Decrypt A locally</button><button type="button" id="a-clear" class="subtle">Clear A</button>
+<output id="a-status" role="status" aria-live="polite">No source loaded.</output></section>
+<section aria-labelledby="b-h"><h2 id="b-h">Archive B (optional)</h2><label for="b-file">Private encrypted archive</label><input id="b-file" type="file" accept=".lupb,application/json">
+<label for="b-pass">Local password (12+ characters)</label><input id="b-pass" type="password" autocomplete="off">
+<button type="button" id="b-open">Decrypt B locally</button><button type="button" id="b-clear" class="subtle">Clear B</button>
+<output id="b-status" role="status" aria-live="polite">No source loaded.</output></section>
+<section class="wide"><h2>Source-bound file inventory</h2>
+<label for="source-select">Active decrypted archive</label><select id="source-select"><option value="0">Archive A</option><option value="1">Archive B</option></select>
+<p>Original file names and SHA-256 are sensitive. Never share a complete original owner workroom when a separately approved selective HUMAN recipient handoff is required.</p>
+<output id="inventory-status" role="status" aria-live="polite">Unlock archive A or B to inspect.</output>
+<div style="overflow-x:auto"><table><thead><tr><th>Source basename</th><th>Bytes</th><th>SHA-256</th><th>Private recovery</th><th>Include in encrypted subset</th></tr></thead><tbody id="file-rows"></tbody></table></div>
+<div id="file-meta" aria-live="polite"></div><pre id="preview" class="hide" aria-label="Selected private text preview"></pre>
+<h2>New encrypted minimum-necessary subset</h2>
+<p>Explicitly select files above to produce a NEW password-encrypted <code>.lupb</code> archive. No plaintext files, upload, consent or permission is generated. Browser download destinations may NOT be owner-private; move the result into a secure private folder immediately.</p>
+<label for="subset-pass">New independent archive password</label><input id="subset-pass" type="password" autocomplete="new-password">
+<label for="subset-confirm">Confirm new archive password</label><input id="subset-confirm" type="password" autocomplete="new-password">
+<button id="subset-export" type="button">Encrypt selected files locally</button>
+<output id="subset-status" role="status" aria-live="polite">Choose source filenames, then encrypt.</output></section>
+<section class="wide"><h2>PRIVATE file changes · A versus B</h2>
+<p>A and B are independently password-authenticated. Local byte differences do not prove real chronology, verified remediation, or a resolved security finding. The operator must deliberately choose which archive is B; it is not necessarily newer, safer or approved.</p>
+<button type="button" id="compare-select-b">Prepare encrypted recovery of B's added/changed files</button>
+<output id="compare-status" role="status" aria-live="polite">Unlock both archives to compare.</output>
+<div style="overflow-x:auto"><table><thead><tr><th>Change</th><th>Source basename</th><th>Archive A bytes</th><th>Archive B bytes</th><th>PRIVATE human review</th></tr></thead><tbody id="compare-rows"></tbody></table></div>
+<div id="difference-review" class="hide" aria-live="polite">
+<h2>Selected original PRIVATE text · A/B (operator-selected order)</h2>
+<p>Only explicitly opened local text is shown, truncated to 8 KiB per source. A/B is <strong>not</strong> an authenticated timeline or evidence of a verified fix. Browser previews cannot sanitize secrets.</p>
+<button type="button" id="difference-hide" class="subtle">Hide PRIVATE text review</button>
+<div class="review-columns"><div><strong>Archive A original</strong><pre id="difference-a"></pre></div><div><strong>Archive B original</strong><pre id="difference-b"></pre></div></div>
+</div>
+<h2>Owner-only HUMAN comparison notes</h2>
+<p>Write an explicit local, unverified reviewer note for the currently unlocked A/B snapshots. The note is linked only to their literal file-name, size and SHA-256 inventories—not to trusted source ownership, chronology, remediation or customer consent. Export creates ONE new separately password-encrypted PRIVATE note archive; original evidence bytes are never automatically included.</p>
+<label for="human-note">PRIVATE HUMAN review text (maximum 10,000 characters)</label>
+<textarea id="human-note" maxlength="10000" rows="6" placeholder="My own unverified observation. Required HUMAN follow-up and remaining unknowns..." aria-label="Local PRIVATE reviewer notes"></textarea>
+<label for="human-note-pass">New independent note archive password</label><input id="human-note-pass" type="password" autocomplete="new-password">
+<label for="human-note-confirm">Confirm new note archive password</label><input id="human-note-confirm" type="password" autocomplete="new-password">
+<button type="button" id="human-note-save">Encrypt HUMAN review note locally</button>
+<button type="button" id="human-note-clear" class="subtle">Clear PRIVATE review note</button>
+<output id="human-note-status" role="status" aria-live="polite">Unlock both sources, enter human-only observations, and explicitly save under a new password.</output>
+<button type="button" id="clear-all" class="subtle">Clear all selected PRIVATE sources and passwords</button></section>
+</main>
+<footer><p>Only a local operation of unreviewed PRIVATE bytes. Plaintext downloads must be stored in an appropriately protected folder, and are never automatically uploaded. This browser application is a separate user-interface companion to <code>vault.py</code>; cryptographic authenticity is limited to knowledge of the password used for the file. Existing LightUp security and HUMAN GO gates are unchanged.</p></footer>
+<script src="./browser.js" defer></script></body></html>
