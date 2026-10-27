@@ -1376,6 +1376,9 @@ class LightUpWebApp:
 
         pending_requests = []
         decided_requests = []
+        # One chronological HUMAN queue across client requests and engagement
+        # risk elevations. Separate counters/history remain informational only.
+        pending_decisions = []
         for request in requests:
             client = self.store.get_client(ctx, request.client_id)
             pending = request.status in {
@@ -1392,39 +1395,55 @@ class LightUpWebApp:
             )
             card = (
                 '<section class="card"><div class="row">'
-                f'<strong>{_e(client.name)}</strong>'
+                f'<strong>Client assessment · {_e(client.name)}</strong>'
                 f'<span class="badge">{_e(request.status.value)}</span></div>'
                 f'<p class="meta">Submitted {_e(request.created_at)}'
                 + (f' · Decided {_e(request.decided_at)}'
                    if request.decided_at else '')
                 + f' · Requested risk: {_risk(request.requested_risk)}'
-                f' · Mode {_e(request.requested_mode.value)}</p>'
+                f' · Mode {_e(request.requested_mode.value)}'
+                f' · By {_e(request.requested_by)}</p>'
                 '<details><summary>Requested systems and notes</summary>'
                 f'<p class="meta">Systems: {_e(", ".join(request.requested_assets))}</p>'
                 f'<p class="meta">Notes: {_e(request.notes) or "—"}</p></details>'
                 f'<a href="/assessments/requests/{_e(request.request_id)}/review">'
-                f'{action}</a></section>'
+                f'{action}</a> · '
+                f'<a href="/clients/{_e(request.client_id)}/authorization-plan">'
+                'Review client source and scope context</a></section>'
             )
             if pending:
                 pending_requests.append(card)
+                pending_decisions.append((
+                    request.created_at, request.request_id, "assessment", card,
+                ))
             else:
                 # The pending worklist runs oldest-first; history remains newest-first.
                 decided_requests.insert(0, card)
 
         elevation_cards = []
         for approval in approvals:
-            elevation_cards.append(
+            card = (
                 '<section class="card"><div class="row">'
                 f'<strong>Risk elevation to {_risk(approval.requested_risk)}</strong>'
                 '<span class="badge warn">Human decision required</span></div>'
                 f'<p class="meta">{risk_context(approval)} · '
                 f'Engagement ID {_e(approval.engagement_id)} · '
-                f'Requested by {_e(approval.requested_by)}</p>'
+                f'Requested {_e(approval.created_at)} · '
+                f'By {_e(approval.requested_by)}</p>'
                 '<details><summary>Justification</summary>'
                 f'<p class="meta">{_e(approval.justification)}</p></details>'
                 f'<a href="/assessments/elevations/{_e(approval.approval_id)}/review">'
-                'Open deliberate risk review</a></section>'
+                'Open deliberate risk review</a> · '
+                f'<a href="/clients/{_e(approval.client_id)}/authorization-plan">'
+                'Review client source and scope context</a></section>'
             )
+            elevation_cards.append(card)
+            pending_decisions.append((
+                approval.created_at, approval.approval_id, "risk", card,
+            ))
+        # Preserve deterministic FIFO fairness even when two requests arrive
+        # at the same instant, without inventing urgency or scan authority.
+        pending_decisions.sort(key=lambda entry: (entry[0], entry[1], entry[2]))
         risk_history_cards = []
         for decision in decided_risk_reviews:
             risk_history_cards.append(
@@ -1455,12 +1474,13 @@ class LightUpWebApp:
             f'<section class="card"><div class="kpi">{len(risk_history_cards)}</div>'
             '<div class="kpi-label">Recorded risk decisions</div></section>'
             '</div>'
-            f'<h2>Review client requests ({len(pending_requests)}) · oldest first</h2>'
-            + ("".join(pending_requests) or
-               '<p class="empty">No client requests awaiting a decision.</p>')
-            + f'<h2>Review elevated-risk requests ({len(elevation_cards)}) · oldest first</h2>'
-            + ("".join(elevation_cards) or
-               '<p class="empty">No elevated-risk decisions awaiting review.</p>')
+            f'<h2>One human-review queue ({len(pending_decisions)}) · oldest first</h2>'
+            '<p class="sub">Both original client assessment requests and '
+            'engagement risk elevations are ordered by submission time. '
+            'A HUMAN review here never creates a scope grant or permission to test.</p>'
+            + ("".join(entry[3] for entry in pending_decisions) or
+               '<p class="empty">No original requests or elevated-risk decisions '
+               'awaiting review.</p>')
             + f'<details><summary>Decided request history ({len(decided_requests)})</summary>'
             + ("".join(decided_requests) or
                '<p class="empty">No previous human request decisions.</p>')
@@ -1528,6 +1548,9 @@ class LightUpWebApp:
             f'<p><strong>Client request origin:</strong> {_e(request.requested_by)} · '
             f'<strong>Submitted:</strong> {_e(request.created_at)}</p>'
             f'<p><strong>Notes:</strong> {_e(request.notes) or "None"}</p>'
+            f'<p><a href="/clients/{_e(request.client_id)}/authorization-plan">'
+            'Read this client’s original requests, grant and scope context '
+            'before deciding (plan-only)</a></p>'
             '<p class="meta">Reviewing this request never verifies system '
             'ownership, action-time revocation or HUMAN GO.</p></section>'
             + decision_receipt
