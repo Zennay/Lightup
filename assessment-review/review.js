@@ -357,6 +357,14 @@
       ? "Filtered export includes " + sorted.length + " of " + report.cases.length +
         " cases. Current status, workstream, priority and metric filters plus " + queueSortLabel($("queue-sort").value) + " ordering are applied; raw scenario IDs stay excluded."
       : "No cases match the current filters; filtered exports are disabled.";
+    // Preview only the exact, currently filtered HUMAN cases eligible for a
+    // one-step, reversible workstream assignment. Reviewed cases and existing
+    // workstream choices are never silently overwritten.
+    const assignable = sorted.filter(({c}) => c.stage !== "reviewed" && c.route === "unassigned");
+    const chosenRoute = $("bulk-route").value;
+    $("bulk-route-apply").disabled = !assignable.length || !ROUTES.has(chosenRoute) || chosenRoute === "unassigned";
+    $("bulk-route-preview").textContent = assignable.length + " of " + sorted.length +
+      " visible case(s) eligible (open and unassigned). This changes HUMAN workstream labels only.";
     $("queue-export-csv").disabled = !sorted.length;
     $("queue-export-json").disabled = !sorted.length;
     $("queue-export-html").disabled = !sorted.length;
@@ -1437,6 +1445,29 @@
     if(key==="z"){event.preventDefault();if(event.shiftKey)redoHumanEdit();else undoHumanEdit();}
     else if(key==="y"){event.preventDefault();redoHumanEdit();}
   });
+  $("bulk-route-apply").addEventListener("click", () => {
+    if (!report || !digest) return;
+    const route = $("bulk-route").value;
+    if (!ROUTES.has(route) || route === "unassigned") return;
+    // Snapshot the current filter once: assigning a workstream may itself
+    // remove rows from a workstream-filtered queue.
+    const assignable = filteredQueueRows().filter(({c}) =>
+      c.stage !== "reviewed" && c.route === "unassigned");
+    if (!assignable.length) {
+      alert("No currently visible open, unassigned HUMAN cases match the filters.");
+      renderQueue();
+      return;
+    }
+    if (!window.confirm("Assign " + assignable.length + " currently visible open, unassigned HUMAN case(s) to " +
+      route + "? Existing assignments and reviewed cases are excluded. One Undo reverses this local change. No authorization is granted.")) return;
+    invalidateReads();
+    rememberHumanEdit();
+    assignable.forEach(({c}) => { c.route = route; });
+    render();
+    alert("Assigned " + assignable.length + " visible open HUMAN case(s) to " + route +
+      ". No source findings, review stage, due dates, permissions or release gates changed.", "good");
+  });
+  $("bulk-route").addEventListener("change", () => { if (report) renderQueue(); });
   $("batch-triage").addEventListener("click", () => {
     if (!report) return;
     const pending = report.cases.filter(c => c.regressions.length && c.stage === "todo");

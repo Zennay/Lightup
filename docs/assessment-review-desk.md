@@ -1,3 +1,12 @@
+## 27 October 2026 · filter-aware bulk HUMAN workstream routing
+
+The existing offline Review Desk can now assign one proposed workstream to **every currently visible, open and unassigned** HUMAN case in a single deliberate operation. The live preview shows the eligible count after all queue filters and metric focus are applied. A reviewer explicitly chooses the workstream and confirms the exact case count.
+
+- Existing workstream choices and `reviewed` cases are never overwritten. Assigning a route may remove cases from a route-filtered view, so the eligible set is captured before the edit.
+- The whole batch is one source-bound, memory-only Undo/Redo operation; every affected case is preserved in exported local HUMAN plans as before.
+- The action changes **only** a proposed routing label. Original metrics, status, review stage, suggested date, source identity, authority and permissions are untouched. No people are assigned, no notifications are sent, and no target is contacted.
+- Both the source page and restrictive no-network standalone artifact contain the feature. Review-only gates, independent review, current authenticated consent and explicit HUMAN GO remain unchanged.
+
 ## 23 October 2026 · complete PRIVATE calendar handoff and stable task identities
 
 The offline Review Desk now previews the *exact cases included in the next local iCalendar VTODO download*. Reviewers can choose all source-bound dated open HUMAN proposals or **only the currently filtered and sorted case queue**. The table shows anonymous ordinals, proposed dates, HUMAN stage/workstream and source priority, with click-through to the existing case editor. Reviewed, undated and mismatching filtered cases are excluded. The download is disabled when nothing is eligible and requires an explicit local HUMAN confirmation.
