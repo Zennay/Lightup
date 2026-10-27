@@ -1430,6 +1430,60 @@ class LightUpWebApp:
             requests, key=lambda item: (item.created_at, item.request_id),
             reverse=True,
         )
+        # Coverage is evidence about specific registered capabilities, not a
+        # confidence score. Surface its gaps before displaying any zero-finding
+        # or fixed-count KPI, using the same original tenant-bound store.
+        from ..coverage import CoverageReport, CoverageStatus
+
+        coverage_reports = []
+        for engagement in self.store.list_engagements(ctx):
+            stored = self.store.get_coverage(ctx, engagement.engagement_id)
+            report = CoverageReport.build({
+                capability: CoverageStatus(status)
+                for capability, status in stored.items()
+            })
+            coverage_reports.append((engagement, report))
+        coverage_counts = [report.counts() for _, report in coverage_reports]
+        assessed_domains = sum(counts["assessed"] for counts in coverage_counts)
+        partial_domains = sum(
+            counts["partially_assessed"] for counts in coverage_counts
+        )
+        unknown_domains = sum(counts["unknown"] for counts in coverage_counts)
+        unapproved_domains = sum(
+            counts["not_authorized"] for counts in coverage_counts
+        )
+        if not coverage_reports:
+            coverage_message = (
+                "No engagements or assessed capability coverage are recorded. "
+                "Zero findings cannot be interpreted as a clean bill of health."
+            )
+        elif unknown_domains:
+            coverage_message = (
+                "Some security domains have unknown coverage. Neither a low "
+                "finding count nor a recorded fix establishes their safety."
+            )
+        else:
+            coverage_message = (
+                "Coverage states are recorded, but they do not prove that "
+                "every system is safe or authorize additional testing."
+            )
+        coverage_overview = (
+            '<section class="card" aria-labelledby="coverage-summary-heading">'
+            '<span class="badge warn">Evidence, not a security score</span>'
+            '<h2 id="coverage-summary-heading">What has actually been assessed?</h2>'
+            f'<p>{_e(coverage_message)}</p>'
+            '<div class="grid">'
+            f'<div><strong>{assessed_domains}</strong><p class="meta">Assessed capability entries</p></div>'
+            f'<div><strong>{partial_domains}</strong><p class="meta">Partially assessed</p></div>'
+            f'<div><strong>{unknown_domains}</strong><p class="meta">Unknown coverage</p></div>'
+            f'<div><strong>{unapproved_domains}</strong><p class="meta">Not authorized</p></div>'
+            '</div>'
+            f'<p class="meta">Across {len(coverage_reports)} recorded engagement(s). '
+            'Counts represent registered capabilities per engagement, not tested '
+            'systems or verified ownership. Testing remains locked.</p>'
+            '<p><a href="#coverage-details">Review coverage by engagement</a></p>'
+            '</section>'
+        )
         fixed = sum(1 for f in findings if f.retest_status is RetestStatus.FIXED)
         request_rows = "".join(
             '<section class="card"><div class="row">'
@@ -1545,7 +1599,8 @@ class LightUpWebApp:
         body = (
             f"<h1>{_e(client.name)}</h1>"
             "<p class=\"sub\">Your security posture, in plain terms.</p>"
-            "<div class=\"grid\">"
+            + coverage_overview
+            + "<div class=\"grid\">"
             f"<div class=\"card\"><div class=\"kpi\">{len(findings)}</div>"
             "<div class=\"kpi-label\">Findings</div></div>"
             f"<div class=\"card\"><div class=\"kpi\">{fixed}</div>"
@@ -1561,10 +1616,10 @@ class LightUpWebApp:
             + f"<p><a href=\"/portal/{_e(client_id)}/authorization-plan\">"
               "Review authorization plan (read-only)</a></p>"
             + f"<h2>Findings</h2>{self._finding_cards(findings, portal=True)}"
-            + "<h2>What has been assessed</h2>"
-            + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
-                       for e in self.store.list_engagements(ctx))
-               or "<p class=\"empty\">No engagements yet.</p>")
+            + '<h2 id="coverage-details">Coverage by engagement</h2>'
+            + ("".join(self._coverage_card(ctx, e.engagement_id, e.name, report)
+                       for e, report in coverage_reports)
+               or '<p class="empty">No engagements yet.</p>')
         )
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
@@ -2087,12 +2142,15 @@ class LightUpWebApp:
     # -- shared rendering ------------------------------------------------------
 
     def _coverage_card(self, ctx: AccessContext, engagement_id: str,
-                       engagement_name: str) -> str:
+                       engagement_name: str, report=None) -> str:
         from ..coverage import CoverageReport, CoverageStatus
 
-        stored = self.store.get_coverage(ctx, engagement_id)
-        report = CoverageReport.build(
-            {capability: CoverageStatus(status) for capability, status in stored.items()})
+        if report is None:
+            stored = self.store.get_coverage(ctx, engagement_id)
+            report = CoverageReport.build({
+                capability: CoverageStatus(status)
+                for capability, status in stored.items()
+            })
         counts = report.counts()
         known_rows = "".join(
             f"<br>{_e(capability)}: {_e(status.value)}"
