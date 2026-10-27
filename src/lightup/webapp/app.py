@@ -839,12 +839,30 @@ class LightUpWebApp:
         self.store.create_client(auth.context, form.get("name", ""))
         return _redirect("/clients")
 
+    def _client_scoped_evidence(self, ctx: AccessContext, client_id: str):
+        """Use one fail-closed provenance boundary for both client views.
+
+        Explicit tenant filters protect operator screens as well as portal
+        screens. The original domain joins still need their separate
+        source-owner review before any release.
+        """
+        engagements = self.store.list_engagements(ctx, client_id)
+        findings = self.store.list_findings(ctx, client_id=client_id)
+        engagement_ids = {item.engagement_id for item in engagements}
+        if any(item.client_id != client_id for item in engagements):
+            raise TenantIsolationError("cross-tenant client engagement denied")
+        if any(
+            item.client_id != client_id or item.engagement_id not in engagement_ids
+            for item in findings
+        ):
+            raise TenantIsolationError("cross-tenant client finding linkage denied")
+        return engagements, findings
+
     def client_detail(self, auth: AuthState, form: dict[str, str],
                       client_id: str) -> Response:
         ctx = auth.context
         client = self.store.get_client(ctx, client_id)
-        engagements = self.store.list_engagements(ctx, client_id)
-        findings = self.store.list_findings(ctx, client_id=client_id)
+        engagements, findings = self._client_scoped_evidence(ctx, client_id)
         approved_requests = tuple(
             request for request in self.store.list_assessment_requests(ctx, client_id)
             if request.status is RequestStatus.APPROVED
@@ -1508,20 +1526,9 @@ class LightUpWebApp:
     def portal(self, auth: AuthState, form: dict[str, str], client_id: str) -> Response:
         ctx = self._portal_context(auth, client_id)
         client = self.store.get_client(ctx, client_id)
-        # Explicitly scope each read to the portal's client even though
-        # _portal_context currently narrows operator views to that tenant.
-        # Never trust mismatched persisted finding/engagement provenance as
-        # evidence for this client's security posture.
-        engagements = self.store.list_engagements(ctx, client_id)
-        findings = self.store.list_findings(ctx, client_id=client_id)
-        engagement_ids = {item.engagement_id for item in engagements}
-        if any(item.client_id != client_id for item in engagements):
-            raise TenantIsolationError("cross-tenant portal engagement denied")
-        if any(
-            item.client_id != client_id or item.engagement_id not in engagement_ids
-            for item in findings
-        ):
-            raise TenantIsolationError("cross-tenant portal finding linkage denied")
+        # Both the operator's client dossier and tenant portal use the
+        # same explicit client-scoped evidence and relationship validation.
+        engagements, findings = self._client_scoped_evidence(ctx, client_id)
         # Keep the overview minimal: raw scope assets belong only to the
         # authenticated per-request receipt, not a default landing screen.
         requests = self.store.list_assessment_requests(ctx, client_id)
