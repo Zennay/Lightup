@@ -512,3 +512,30 @@ PYTHONPATH=src python scripts/assessment_runtime_compare_cli_1513.py \
   --format review-json baseline.json candidate.json
 # exit 2: REVIEW_ONLY; exit 3: HOLD (including valid adverse metrics)
 ```
+
+## Complete cohort-level metric movement in the anonymous JSON handoff
+
+The `review-json` envelope now also provides a deterministic `metric_summary`
+for the same **full admitted** source population. Every canonical metric has
+one entry with `observed_case_count`,
+`source_regression_case_count`, and the number of cases where the raw
+candidate value is `higher`, `lower` or `equal` to the baseline.
+Unknown-coverage-positive counts are reported separately; top-level
+`source_adverse_case_count` and
+`source_unknown_coverage_case_count` show **how many distinct cases**
+need attention even when several metric flags overlap in one case.
+
+These are **not** weighted scores, averages, cost approvals or regression
+verdicts. Higher/lower is purely numeric direction; interpretation depends
+on the original metric (e.g. higher scope violations is adverse, higher
+assessed coverage may be positive, higher runtime is informational).
+The source-reported flags are carried through unchanged.
+
+For a rejected or inconsistent whole-input HOLD, the envelope emits
+`cases=[]`, `metric_summary=[]`, and all case counts zero, without
+partial cohort disclosure. Structural anomalies such as missing, duplicate
+or unknown metric names fail closed in this optional exporter. The format
+is an additive extension to the new opt-in `review-json` surface;
+the three CLIs' default JSON output remains unchanged. All authority,
+consent, dispatch, release and source-authentication fields remain false;
+source-owner and independent HUMAN GO gates remain required.

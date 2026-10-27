@@ -321,13 +321,67 @@ def render_metric_review_json(result, *, cohort: bool = False,
         }
         for ordinal, comp in enumerate(accepted, 1)
     ]
+    # A case is admitted only when every canonical metric appears exactly once.
+    # Never export a partial or anomalous batch summary on malformed results.
+    canonical_metrics = frozenset(_METRIC_LABELS)
+    admitted = (
+        bool(accepted)
+        and result.status in ("HOLD", "REVIEW_ONLY")
+        and all(
+            case["source_status"] in ("HOLD", "REVIEW_ONLY")
+            and len(case["metrics"]) == len(canonical_metrics)
+            and frozenset(item["metric"] for item in case["metrics"]) == canonical_metrics
+            for case in cases
+        )
+    )
+    if not admitted:
+        cases = []
+
+    metric_summary = []
+    if admitted:
+        # Direction is raw candidate-vs-baseline movement, NOT a verdict:
+        # a larger count can be adverse, benign or purely informational.
+        for metric in _METRIC_LABELS:
+            observed = [
+                item for case in cases for item in case["metrics"]
+                if item["metric"] == metric
+            ]
+            metric_summary.append({
+                "metric": metric,
+                "observed_case_count": len(observed),
+                "source_regression_case_count": sum(
+                    item["source_regression_flag"] for item in observed
+                ),
+                "candidate_higher_case_count": sum(
+                    item["candidate"] > item["baseline"] for item in observed
+                ),
+                "candidate_lower_case_count": sum(
+                    item["candidate"] < item["baseline"] for item in observed
+                ),
+                "candidate_equal_case_count": sum(
+                    item["candidate"] == item["baseline"] for item in observed
+                ),
+                "candidate_unknown_coverage_case_count": sum(
+                    item["source_unknown_coverage"] for item in observed
+                ),
+            })
     payload = {
         "schema_version": 1,
         "report_type": kind,
-        "source_status": "REVIEW_ONLY" if result.status == "REVIEW_ONLY" else "HOLD",
-        "input_admitted": bool(accepted),
-        "notice": "requires_human_review" if accepted else "input_hold",
+        "source_status": (
+            result.status if admitted else "HOLD"
+        ),
+        "input_admitted": admitted,
+        "notice": "requires_human_review" if admitted else "input_hold",
         "accepted_case_count": len(cases),
+        "source_adverse_case_count": sum(
+            case["source_adverse_metric_count"] > 0 for case in cases
+        ),
+        "source_unknown_coverage_case_count": sum(
+            any(item["source_unknown_coverage"] for item in case["metrics"])
+            for case in cases
+        ),
+        "metric_summary": metric_summary,
         "cases": cases,
         "authorized": False,
         "consent_verified": False,
