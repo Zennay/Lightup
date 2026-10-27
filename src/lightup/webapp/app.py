@@ -417,6 +417,7 @@ class LightUpWebApp:
                 f'<p class="meta">{tenant["requests_awaiting_review"]} request(s) awaiting review · '
                 f'{tenant["engagements_hold"]} engagement(s) · '
                 f'{tenant["without_current_grant"]} without a current request-bound grant · '
+                f'{tenant["pending_risk_decisions"]} pending risk decision(s) · '
                 f'{tenant["unrestricted_legacy_scopes"]} unrestricted legacy scope(s)</p>'
                 f'<a href="/clients/{_e(client_id)}/authorization-plan">'
                 'Review scope and blockers</a></div>'
@@ -745,6 +746,27 @@ class LightUpWebApp:
                 "</p></details>"
                 if entry.recorded_scope else "<p class=\"meta\">No current grant scope recorded.</p>"
             )
+            risk_reviews = []
+            for review in entry.risk_elevation_reviews:
+                reviewed = (
+                    f' · Decision recorded: {_e(review.reviewed_at)}'
+                    if review.reviewed_at else ''
+                )
+                risk_reviews.append(
+                    '<li>'
+                    f'<code>{_e(review.approval_id)}</code> · '
+                    f'{_e(review.status)} · requested ceiling {_risk(review.requested_risk)}'
+                    f' · Requested: {_e(review.requested_at)}{reviewed}'
+                    '</li>'
+                )
+            risk_history = (
+                f'<details><summary>Risk-elevation review history '
+                f'({len(risk_reviews)} recorded; no execution authority)</summary>'
+                f'<ul>{"".join(risk_reviews)}</ul>'
+                '<p class="meta">Risk decisions never extend a recorded request-bound '
+                'scope grant or verify client consent.</p></details>'
+                if risk_reviews else ''
+            )
             blockers = "".join(f"<li>{_e(reason)}</li>" for reason in entry.blockers)
             cards.append(
                 "<section class=\"card\"><div class=\"row\">"
@@ -752,7 +774,7 @@ class LightUpWebApp:
                 "<span class=\"badge lock\">HOLD · no execution</span></div>"
                 f"<p class=\"meta\">Engagement: {_e(entry.status)} · "
                 f"Pending risk decisions: {entry.pending_elevations}</p>"
-                f"{scope}<details open><summary>What is still required</summary>"
+                f"{scope}{risk_history}<details open><summary>What is still required</summary>"
                 f"<ul>{blockers}</ul></details></section>"
             )
         body = (
