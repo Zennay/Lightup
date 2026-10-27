@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import Any
+
+from .timewindow import canonical_instant, evaluation_instant
 
 
 class Severity(str, Enum):
@@ -29,13 +31,17 @@ class Authorization:
     valid_until: datetime | None = None
 
     def is_current(self, now: datetime | None = None) -> bool:
-        now = now or datetime.now(timezone.utc)
-        if now.tzinfo is None:
-            raise ValueError("authorization time must be timezone-aware")
-        if self.valid_from and now < self.valid_from:
-            return False
-        if self.valid_until and now > self.valid_until:
-            return False
+        now = evaluation_instant(now)
+        # ``None`` is the only "unbounded" marker; any other non-canonical
+        # bound (0, False, "", subclasses, naive datetimes) fails closed.
+        if self.valid_from is not None:
+            start = canonical_instant(self.valid_from)
+            if start is None or now < start:
+                return False
+        if self.valid_until is not None:
+            until = canonical_instant(self.valid_until)
+            if until is None or now > until:
+                return False
         return True
 
 

@@ -67,28 +67,24 @@ class FalsyLegacyActivationGateRedTests(unittest.TestCase):
                 "web-baseline",
             )
 
-    @unittest.expectedFailure
     def test_red_invalid_falsey_expiry_false_must_deny_authorized_permit(self):
         with self.assertRaises(PermissionError):
             _gate(ActivationMode.AUTHORIZED).issue(
                 _target(end=False), "web-baseline"
             )
 
-    @unittest.expectedFailure
     def test_red_invalid_falsey_expiry_zero_must_deny_authorized_permit(self):
         with self.assertRaises(PermissionError):
             _gate(ActivationMode.AUTHORIZED).issue(
                 _target(end=0), "web-baseline"
             )
 
-    @unittest.expectedFailure
     def test_red_invalid_falsey_start_false_must_deny_authorized_permit(self):
         with self.assertRaises(PermissionError):
             _gate(ActivationMode.AUTHORIZED).issue(
                 _target(start=False), "web-baseline"
             )
 
-    @unittest.expectedFailure
     def test_red_invalid_falsey_start_zero_must_deny_authorized_permit(self):
         with self.assertRaises(PermissionError):
             _gate(ActivationMode.AUTHORIZED).issue(
@@ -103,7 +99,7 @@ class FalsyLegacyActivationGateRedTests(unittest.TestCase):
                 _gate(ActivationMode.PLAN_ONLY).issue(_target(end=False),
                                                        "web-baseline")
 
-    def test_assertion_witnesses_do_not_hide_runtime_exceptions(self):
+    def test_formerly_red_witnesses_now_pass_cleanly(self):
         methods = (
             "test_red_invalid_falsey_expiry_false_must_deny_authorized_permit",
             "test_red_invalid_falsey_expiry_zero_must_deny_authorized_permit",
@@ -111,20 +107,15 @@ class FalsyLegacyActivationGateRedTests(unittest.TestCase):
             "test_red_invalid_falsey_start_zero_must_deny_authorized_permit",
         )
         for name in methods:
-            self.assertTrue(getattr(
+            self.assertFalse(getattr(
                 self.__class__.__dict__[name],
                 "__unittest_expecting_failure__", False
             ))
         result = unittest.TestResult()
         unittest.TestSuite([self.__class__(name) for name in methods]).run(result)
         self.assertEqual(result.testsRun, 4)
-        self.assertFalse(result.errors)
-        self.assertFalse(result.failures)
-        self.assertFalse(result.unexpectedSuccesses)
-        self.assertEqual(len(result.expectedFailures), 4)
-        for _, traceback in result.expectedFailures:
-            self.assertIn("AssertionError:", traceback)
-            self.assertNotIn("TypeError:", traceback)
+        self.assertTrue(result.wasSuccessful())
+        self.assertFalse(result.expectedFailures)
 
 
 if __name__ == "__main__":

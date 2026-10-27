@@ -1,0 +1,4 @@
+{
+  "ignore_paths": ["tests/*", "lab/*", "docs/*"],
+  "min_confidence": 0.5
+}

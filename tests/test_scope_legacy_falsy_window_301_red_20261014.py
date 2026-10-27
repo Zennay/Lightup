@@ -1,4 +1,4 @@
-"""Legacy authorization falsey-boundary expected-RED acceptance (#301).
+"""Legacy authorization falsey-boundary acceptance (#301, formerly expected-RED).
 
 No production changes, active targets, network, database, or dispatch. The
 source owners of legacy Authorization in PR #100/#104 keep all production edits.
@@ -82,50 +82,42 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
 
-    @unittest.expectedFailure
     def test_red_zero_expiry_is_not_unbounded(self):
         self.assertFalse(_authorization(end=0).is_current(NOW))
 
-    @unittest.expectedFailure
     def test_red_false_expiry_is_not_unbounded(self):
         self.assertFalse(_authorization(end=False).is_current(NOW))
 
-    @unittest.expectedFailure
     def test_red_empty_text_expiry_is_not_unbounded(self):
         self.assertFalse(_authorization(end="").is_current(NOW))
 
-    @unittest.expectedFailure
     def test_red_empty_tuple_expiry_is_not_unbounded(self):
         self.assertFalse(_authorization(end=()).is_current(NOW))
 
-    @unittest.expectedFailure
     def test_red_zero_start_is_not_unbounded(self):
         self.assertFalse(_authorization(start=0).is_current(NOW))
 
-    @unittest.expectedFailure
     def test_red_false_start_is_not_unbounded(self):
         self.assertFalse(_authorization(start=False).is_current(NOW))
 
-    @unittest.expectedFailure
     def test_red_empty_text_start_is_not_unbounded(self):
         self.assertFalse(_authorization(start="").is_current(NOW))
 
-    @unittest.expectedFailure
     def test_red_empty_tuple_start_is_not_unbounded(self):
         self.assertFalse(_authorization(start=()).is_current(NOW))
 
-    @unittest.expectedFailure
     def test_red_false_expiry_must_not_authorize_scope(self):
         decision = _pure_scope_decision(_authorization(end=False))
         self.assertFalse(decision.allowed)
 
-    @unittest.expectedFailure
     def test_red_zero_expiry_must_not_authorize_scope(self):
         decision = _pure_scope_decision(_authorization(end=0))
         self.assertFalse(decision.allowed)
 
     def test_all_inputs_remain_unchanged_after_pure_scope_decision(self):
-        a = _authorization(start=NOW - timedelta(days=1), end=NOW + timedelta(days=1))
+        # Scope decisions use the live clock, so the window brackets real now.
+        now = datetime.now(timezone.utc)
+        a = _authorization(start=now - timedelta(days=1), end=now + timedelta(days=1))
         before = repr(a)
         self.assertTrue(_pure_scope_decision_at(a, NOW).allowed)
         self.assertEqual(repr(a), before)
