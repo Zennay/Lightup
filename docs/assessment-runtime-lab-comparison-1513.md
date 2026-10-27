@@ -857,7 +857,13 @@ emitted. Decimal resource values, changes, percentage strings and source-wide
 totals must additionally match the original exporter's exact
 `str(Decimal)` spelling: equivalent but altered spellings such as leading
 `+`, padded zeros, lowercase exponent notation, whitespace or Unicode
-digits produce generic HOLD instead of silently entering HTML/CSV. This is
+digits produce generic HOLD instead of silently entering HTML/CSV. This includes **cross-section exact-scale reconciliation**: the resource
+baseline/candidate/delta cells must reproduce their paired canonical source
+metric string conversions, and aggregate totals must reproduce the exact
+Decimal summation/delta serialization. For example, changing an exported
+`1.0` total or case delta to `1` is rejected even when both spellings
+represent the same number. Resource percentages and directions remain checked
+against the recomputed values as before. This is
 structural-text consistency, **not** source authentication or cost approval. Detailed HTML and CSV now reuse the **same single bounded,
 fully validated in-memory packet** used for the compact structural receipt:
 no second JSON decode or duplicated source/rank arithmetic, and no change

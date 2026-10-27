@@ -869,12 +869,17 @@ def _bundle_case_alignment(metric_cases, human_questions, resource_cases) -> boo
         if set(observed) != set(_EFFICIENCY_FIELDS):
             return False
         for name in _EFFICIENCY_FIELDS:
+            # Preserve the exporter's exact Decimal spelling, including
+            # significant trailing zeros and exponent/scale. Numerically
+            # equal altered cells are not an unchanged review artifact.
+            expected_baseline = str(Decimal(str(entries[name]["baseline"])))
+            expected_candidate = str(Decimal(str(entries[name]["candidate"])))
             if (
-                Decimal(observed[name]["baseline"]) != Decimal(str(entries[name]["baseline"]))
-                or Decimal(observed[name]["candidate"]) != Decimal(str(entries[name]["candidate"]))
-                or Decimal(observed[name]["delta"]) != _resource_decimal_delta(
-                    Decimal(observed[name]["baseline"]), Decimal(observed[name]["candidate"]),
-                )
+                observed[name]["baseline"] != expected_baseline
+                or observed[name]["candidate"] != expected_candidate
+                or observed[name]["delta"] != str(_resource_decimal_delta(
+                    Decimal(expected_baseline), Decimal(expected_candidate),
+                ))
             ):
                 return False
     return True
@@ -964,11 +969,11 @@ def _bundle_summary_alignment(metrics, resources) -> bool:
 
         total = aggregates[name]
         if (
-            Decimal(total["baseline_total"]) != baseline_total
-            or Decimal(total["candidate_total"]) != candidate_total
-            or Decimal(total["delta_total"]) != _resource_decimal_delta(
+            total["baseline_total"] != str(baseline_total)
+            or total["candidate_total"] != str(candidate_total)
+            or total["delta_total"] != str(_resource_decimal_delta(
                 baseline_total, candidate_total,
-            )
+            ))
             or total["increased_cases"] != increased_cases
             or total["decreased_cases"] != decreased_cases
         ):
