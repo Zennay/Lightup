@@ -853,7 +853,12 @@ PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.
 Every JSON object, metric value, case ordinal, question rank and source flag
 passes the **same** private-file, optional out-of-band SHA-256, schema and
 cross-section reconciliation as `--format bundle-html` before any rows are
-emitted. Detailed HTML and CSV now reuse the **same single bounded,
+emitted. Decimal resource values, changes, percentage strings and source-wide
+totals must additionally match the original exporter's exact
+`str(Decimal)` spelling: equivalent but altered spellings such as leading
+`+`, padded zeros, lowercase exponent notation, whitespace or Unicode
+digits produce generic HOLD instead of silently entering HTML/CSV. This is
+structural-text consistency, **not** source authentication or cost approval. Detailed HTML and CSV now reuse the **same single bounded,
 fully validated in-memory packet** used for the compact structural receipt:
 no second JSON decode or duplicated source/rank arithmetic, and no change
 to the atomic generic HOLD behavior, accepted source values, exit codes

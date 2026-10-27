@@ -133,6 +133,14 @@ _MAX_DECIMAL_ADJUSTED_EXPONENT = 700
 
 
 def _finite_decimal_text(value) -> bool:
+    """Accept only the original exporter's canonical finite Decimal spelling.
+
+    Decimal() also accepts aliases such as +1, 01, lowercase e, whitespace
+    and Unicode digits. They can alter a transferred source's text identity or
+    be reinterpreted by spreadsheets even when the arithmetic is unchanged.
+    Every resource number, delta, percentage and aggregate from this exporter
+    is produced by str(Decimal), so aliases must fail closed.
+    """
     if type(value) is not str or not 1 <= len(value) <= _MAX_DECIMAL_TEXT_CHARS:
         return False
     try:
@@ -142,6 +150,7 @@ def _finite_decimal_text(value) -> bool:
     return (
         number.is_finite()
         and abs(number.adjusted()) <= _MAX_DECIMAL_ADJUSTED_EXPONENT
+        and str(number) == value
     )
 
 
