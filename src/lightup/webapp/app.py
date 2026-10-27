@@ -943,6 +943,69 @@ class LightUpWebApp:
             + '</details>'
         )
 
+        # Keep every original risk decision on the same operator client dossier.
+        # The domain list is operator-wide: select by BOTH authoritative
+        # engagement ownership and duplicated risk-row client ownership.
+        engagement_by_id = {item.engagement_id: item for item in engagements}
+        client_risk_reviews = []
+        valid_risk_states = {"pending", "approved", "denied"}
+        for item in self.store.list_risk_approvals(ctx):
+            linked_engagement = engagement_by_id.get(item.engagement_id)
+            if item.client_id != client_id and linked_engagement is None:
+                continue
+            if linked_engagement is None or item.client_id != client_id:
+                raise TenantIsolationError(
+                    "cross-tenant client risk approval linkage denied"
+                )
+            if item.status.value not in valid_risk_states:
+                raise ValueError("unknown persisted risk review state")
+            client_risk_reviews.append(item)
+        pending_risk_reviews = sorted(
+            (item for item in client_risk_reviews if item.status.value == "pending"),
+            key=lambda item: (item.created_at, item.approval_id),
+        )
+        decided_risk_reviews = sorted(
+            (item for item in client_risk_reviews if item.status.value != "pending"),
+            key=lambda item: (item.created_at, item.approval_id),
+            reverse=True,
+        )
+
+        def risk_card(item) -> str:
+            engagement = engagement_by_id[item.engagement_id]
+            pending = item.status.value == "pending"
+            action = (
+                "Open independent HUMAN risk review" if pending
+                else "Read recorded HUMAN risk decision"
+            )
+            decision_note = (
+                f' · Decided {_e(item.decided_at or "Not recorded")}'
+                if not pending else ""
+            )
+            return (
+                '<section class="card"><div class="row">'
+                f'<strong>{_e(engagement.name)} · Risk {_risk(item.requested_risk)}</strong>'
+                f'<span class="badge">{_e(item.status.value)}</span></div>'
+                f'<p class="meta">Requested {_e(item.created_at)} · '
+                f'By {_e(item.requested_by)}{decision_note}</p>'
+                '<details><summary>Original risk justification</summary>'
+                f'<p class="meta">{_e(item.justification)}</p></details>'
+                f'<a href="/assessments/elevations/{_e(item.approval_id)}/review">'
+                f'{action}</a></section>'
+            )
+
+        risk_section = (
+            f'<h2>Engagement risk decisions · {len(client_risk_reviews)} total</h2>'
+            '<p class="sub">A risk-elevation decision never widens a grant, '
+            'verifies client consent or enables execution.</p>'
+            f'<h3>Awaiting risk decision ({len(pending_risk_reviews)}) · oldest first</h3>'
+            + ("".join(risk_card(item) for item in pending_risk_reviews)
+               or '<p class="empty">No elevated-risk decisions awaiting review.</p>')
+            + f'<details><summary>Recorded risk decisions ({len(decided_risk_reviews)})</summary>'
+            + ("".join(risk_card(item) for item in decided_risk_reviews)
+               or '<p class="empty">No recorded risk decisions yet.</p>')
+            + '</details>'
+        )
+
         engagement_cards = []
         for eng in engagements:
             grant = self.store.get_current_grant(ctx, eng.engagement_id)
@@ -1039,6 +1102,7 @@ class LightUpWebApp:
             f"<a href=\"/clients/{_e(client.client_id)}/authorization-plan\">"
             "Plan-only authorization review</a></p>"
             + request_section
+            + risk_section
             + "<h2>Engagements</h2>"
             + ("".join(engagement_cards) or "<p class=\"empty\">No engagements yet.</p>")
             + f"<h2>New engagement</h2>{new_engagement}"
@@ -1275,18 +1339,20 @@ class LightUpWebApp:
         requests = sorted(
             self.store.list_assessment_requests(ctx),
             key=lambda item: (item.created_at, item.request_id),
-            reverse=True,
         )
         risk_reviews = self.store.list_risk_approvals(ctx)
         allowed_risk_states = {"pending", "approved", "denied"}
         if any(item.status.value not in allowed_risk_states for item in risk_reviews):
             raise ValueError("unknown persisted risk decision state")
-        approvals = [
-            item for item in risk_reviews if item.status.value == "pending"
-        ]
-        decided_risk_reviews = [
-            item for item in risk_reviews if item.status.value in {"approved", "denied"}
-        ]
+        approvals = sorted(
+            (item for item in risk_reviews if item.status.value == "pending"),
+            key=lambda item: (item.created_at, item.approval_id),
+        )
+        decided_risk_reviews = sorted(
+            (item for item in risk_reviews if item.status.value in {"approved", "denied"}),
+            key=lambda item: (item.created_at, item.approval_id),
+            reverse=True,
+        )
         # Resolve names once from original operator-visible tenant records.
         # A mismatched engagement/client link must never be presented as trusted.
         risk_clients = {
@@ -1339,7 +1405,11 @@ class LightUpWebApp:
                 f'<a href="/assessments/requests/{_e(request.request_id)}/review">'
                 f'{action}</a></section>'
             )
-            (pending_requests if pending else decided_requests).append(card)
+            if pending:
+                pending_requests.append(card)
+            else:
+                # The pending worklist runs oldest-first; history remains newest-first.
+                decided_requests.insert(0, card)
 
         elevation_cards = []
         for approval in approvals:
@@ -1385,10 +1455,10 @@ class LightUpWebApp:
             f'<section class="card"><div class="kpi">{len(risk_history_cards)}</div>'
             '<div class="kpi-label">Recorded risk decisions</div></section>'
             '</div>'
-            f'<h2>Review client requests ({len(pending_requests)})</h2>'
+            f'<h2>Review client requests ({len(pending_requests)}) · oldest first</h2>'
             + ("".join(pending_requests) or
                '<p class="empty">No client requests awaiting a decision.</p>')
-            + f'<h2>Review elevated-risk requests ({len(elevation_cards)})</h2>'
+            + f'<h2>Review elevated-risk requests ({len(elevation_cards)}) · oldest first</h2>'
             + ("".join(elevation_cards) or
                '<p class="empty">No elevated-risk decisions awaiting review.</p>')
             + f'<details><summary>Decided request history ({len(decided_requests)})</summary>'
