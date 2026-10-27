@@ -15,14 +15,14 @@ jobs:
   preflight:
     name: Offline preflight Python ${{ matrix.python }} (not VPS proof)
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, lightup, vps]
+    runs-on: [self-hosted, zcloud, vps]
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         python: ["3.11", "3.14"]
     steps:
-      # An ephemeral self-hosted VM is not proof of permanent-VPS execution.
+      # Match canonical LightUp CI's VPS runner pool; guard the physical host before checkout.
       - name: Require permanent vps-bb300bba runner
         run: |
           observed="$(hostname -s)"
@@ -54,14 +54,14 @@ jobs:
     name: Real producer integration Python ${{ matrix.python }} (not VPS proof)
     needs: preflight
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, lightup, vps]
+    runs-on: [self-hosted, zcloud, vps]
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         python: ["3.11", "3.14"]
     steps:
-      # An ephemeral self-hosted VM is not proof of permanent-VPS execution.
+      # Match canonical LightUp CI's VPS runner pool; guard the physical host before checkout.
       - name: Require permanent vps-bb300bba runner
         run: |
           observed="$(hostname -s)"
