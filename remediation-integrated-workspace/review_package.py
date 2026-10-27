@@ -14,7 +14,6 @@ import json
 import os
 import stat
 from pathlib import Path
-import secrets
 import sys
 import zipfile
 
@@ -202,9 +201,7 @@ def receive(archive: Path, output: Path) -> None:
     ciphertext = incoming(archive)
     phrase = crypto.password(False)
     original_zip, journal = unpack_inner(open_sealed(ciphertext, phrase))
-    stage = output.parent / (".lightup-private-handoff-" + secrets.token_hex(12))
-    os.mkdir(stage, 0o700)
-    import shutil
+    stage, stage_identity = install.create_private_stage(output.parent, ".lightup-receiver-")
     try:
         native = stage / "source-free-original"
         human = stage / "human-review"
@@ -236,10 +233,10 @@ def receive(archive: Path, output: Path) -> None:
         }
         install.write_file(stage / "private-summary.json", install.canonical(receipt))
         require(incoming(archive) == ciphertext, "Original encrypted handoff changed")
-        install.exclusive_publish(stage, output)
+        install.exclusive_publish(stage, output, expected_identity=stage_identity)
     finally:
-        if stage.exists():
-            shutil.rmtree(stage)
+        # Never delete another private directory substituted for our stage.
+        install.cleanup_private_stage(stage, stage_identity)
     print("REVIEW_ONLY: original source-free Cockpit with HUMAN notes received:", output)
     print("Open local PRIVATE browser:", output / "index.html")
     print("Decrypted HUMAN journal notes now reside in private plaintext output files.")
