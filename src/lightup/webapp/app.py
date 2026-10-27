@@ -214,7 +214,7 @@ class LightUpWebApp:
             ("POST", re.compile(r"^/login$"), self.login_submit, "public"),
             ("POST", re.compile(r"^/logout$"), self.logout, "portal"),
             ("GET", re.compile(r"^/$"), self.overview, "operator"),
-            ("GET", re.compile(r"^/authorization-overview\\.json$"),
+            ("GET", re.compile(r"^/authorization-overview\.json$"),
              self.authorization_overview_json, "operator"),
             ("GET", re.compile(r"^/discovery$"), self.discovery, "operator"),
             ("POST", re.compile(r"^/discovery/prospects$"), self.add_prospect, "operator"),
@@ -383,7 +383,7 @@ class LightUpWebApp:
         # operator authorization boundary; no client asset bodies are exported.
         payload = build_operator_portfolio_review_payload(self.store, auth.context)
         body = json.dumps(payload, ensure_ascii=False, sort_keys=True,
-                          separators=(",", ":"), allow_nan=False) + "\\n"
+                          separators=(",", ":"), allow_nan=False) + "\n"
         return Response(
             body,
             content_type="application/json; charset=utf-8",
