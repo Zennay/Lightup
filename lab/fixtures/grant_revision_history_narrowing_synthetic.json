@@ -1,0 +1,71 @@
+{
+  "history": [
+    {
+      "grant_id": "offline-history-grant",
+      "client_id": "synthetic-history-tenant",
+      "engagement_id": "offline-history-engagement",
+      "approved_by": "synthetic-operator",
+      "reference": "offline-history-only",
+      "scope": {
+        "assets": [
+          "alpha.example.test",
+          "beta.example.test",
+          "gamma.example.test"
+        ],
+        "excluded_assets": [],
+        "allowed_capabilities": [
+          "headers",
+          "tls",
+          "inventory"
+        ],
+        "max_risk": 3
+      },
+      "valid_from": "2026-11-01T00:00:00Z",
+      "valid_until": "2026-11-30T00:00:00Z",
+      "recurring_retest_allowed": false
+    },
+    {
+      "grant_id": "offline-history-grant",
+      "client_id": "synthetic-history-tenant",
+      "engagement_id": "offline-history-engagement",
+      "approved_by": "synthetic-operator",
+      "reference": "offline-history-only",
+      "scope": {
+        "assets": [
+          "alpha.example.test",
+          "beta.example.test"
+        ],
+        "excluded_assets": [],
+        "allowed_capabilities": [
+          "headers",
+          "tls",
+          "inventory"
+        ],
+        "max_risk": 3
+      },
+      "valid_from": "2026-11-01T00:00:00Z",
+      "valid_until": "2026-11-30T00:00:00Z",
+      "recurring_retest_allowed": false
+    },
+    {
+      "grant_id": "offline-history-grant",
+      "client_id": "synthetic-history-tenant",
+      "engagement_id": "offline-history-engagement",
+      "approved_by": "synthetic-operator",
+      "reference": "offline-history-only",
+      "scope": {
+        "assets": [
+          "alpha.example.test"
+        ],
+        "excluded_assets": [],
+        "allowed_capabilities": [
+          "headers"
+        ],
+        "max_risk": 1
+      },
+      "valid_from": "2026-11-02T00:00:00Z",
+      "valid_until": "2026-11-29T00:00:00Z",
+      "recurring_retest_allowed": false
+    }
+  ]
+}
