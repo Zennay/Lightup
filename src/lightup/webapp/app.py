@@ -136,6 +136,16 @@ label { font-size:.85rem; color:var(--muted); }
 .risk-guide dt { color:var(--ink); font-weight:650; }
 .risk-guide dd { margin:0; color:var(--muted); }
 .risk-guide .meta { margin-bottom:0; }
+.next-action { border-left:4px solid var(--lock); background:#fffaf7; }
+.next-action h2 { margin:10px 0 4px; font-size:1.2rem; }
+.task-links { display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+              gap:12px; margin:0 0 28px; }
+.task-links a { display:block; min-height:96px; padding:14px 16px;
+                border-radius:10px; border:1px solid var(--line);
+                background:var(--card); color:var(--ink); }
+.task-links strong, .task-links span { display:block; }
+.task-links span { color:var(--muted); font-size:.85rem; margin-top:4px; }
+.task-links a:hover { border-color:var(--accent); }
 @media (max-width:560px) {
   .wrap { padding-left:16px; padding-right:16px; }
   header .wrap { display:block; padding-top:12px; padding-bottom:12px; }
@@ -143,6 +153,8 @@ label { font-size:.85rem; color:var(--muted); }
   nav a { padding:10px 4px; }
   nav button { min-height:44px; padding:8px 4px; }
   .grid { grid-template-columns:minmax(0,1fr); }
+  .task-links { grid-template-columns:minmax(0,1fr); }
+  .task-links a { min-height:74px; }
   .card { padding:14px; }
   .row { align-items:flex-start; }
   .risk-guide dl { grid-template-columns:1fr; gap:4px; }
@@ -1925,12 +1937,26 @@ class LightUpWebApp:
             action_url = f"/portal/{_e(client_id)}#new-request"
             action_label = "Prepare a security assessment request"
         next_action = (
-            '<section class="card" aria-labelledby="next-step-heading">'
+            '<section class="card next-action" aria-labelledby="next-step-heading">'
             '<span class="badge lock">PLAN ONLY · testing locked</span>'
             f'<h2 id="next-step-heading">{_e(action_title)}</h2>'
             f'<p>{_e(action_details)}</p>'
             f'<p><a href="{action_url}">{_e(action_label)}</a></p>'
             '</section>'
+        )
+        # Three existing client tasks stay visible without scrolling through
+        # coverage, grants, and KPI cards. These are navigation only: every
+        # engagement remains HOLD and findings are recorded observations.
+        task_links = (
+            '<nav class="task-links" aria-label="Client task shortcuts">'
+            '<a href="#requests-history-heading"><strong>Requests</strong>'
+            f'<span>{len(pending)} awaiting human review · {len(requests)} total</span></a>'
+            '<a href="#scope-board-heading"><strong>Scope &amp; safety</strong>'
+            f'<span>{len(scope_plan.engagements)} engagement(s) · all HOLD</span></a>'
+            '<a href="#findings-heading"><strong>Recorded findings</strong>'
+            f'<span>{len(outstanding_findings)} need follow-up · '
+            f'{urgent_outstanding} critical/high</span></a>'
+            '</nav>'
         )
         if auth.is_operator:
             request_section = (
@@ -1974,7 +2000,10 @@ class LightUpWebApp:
             )
         body = (
             f"<h1>{_e(client.name)}</h1>"
-            "<p class=\"sub\">Your security posture, in plain terms.</p>"
+            "<p class=\"sub\">Check the next review step, scope limits and recorded evidence. "
+            "Active testing is locked.</p>"
+            + next_action
+            + task_links
             + coverage_overview
             + scope_board
             + "<div class=\"grid\">"
@@ -1989,14 +2018,13 @@ class LightUpWebApp:
             f"<div class=\"card\"><div class=\"kpi\">{len(requests)}</div>"
             "<div class=\"kpi-label\">Assessment requests</div></div>"
             "</div>"
-            + next_action
             + request_section
-            + f'<h2>Recent assessment requests</h2><p><a href="/portal/{_e(client_id)}/requests">'
+            + f'<h2 id="requests-history-heading">Recent assessment requests</h2><p><a href="/portal/{_e(client_id)}/requests">'
               f'Open all {len(requests)} requests in the private inbox</a></p>'
             + request_rows
             + f"<p><a href=\"/portal/{_e(client_id)}/authorization-plan\">"
               "Review authorization plan (read-only)</a></p>"
-            + f"<h2>Findings</h2>{self._finding_cards(findings, portal=True)}"
+            + f'<h2 id="findings-heading">Recorded findings</h2>{self._finding_cards(findings, portal=True)}'
             + '<h2 id="coverage-details">Coverage by engagement</h2>'
             + ("".join(self._coverage_card(ctx, e.engagement_id, e.name, report)
                        for e, report in coverage_reports)
