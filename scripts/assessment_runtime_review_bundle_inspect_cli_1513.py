@@ -11,6 +11,9 @@ import math
 import os
 import stat
 import sys
+from base64 import b64encode
+from hashlib import sha256
+from html import escape
 from decimal import Decimal, InvalidOperation
 
 import assessment_runtime_report_html_1513 as reports
@@ -452,15 +455,132 @@ def _read_private_bundle(path: str) -> bytes:
         os.close(directory_fd)
 
 
+_RECEIPT_CSS = """
+:root{color-scheme:dark;font-family:ui-sans-serif,system-ui,-apple-system,
+BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b1020;color:#e9efff}
+*{box-sizing:border-box}body{margin:0;line-height:1.6}
+main{width:min(960px,calc(100% - 32px));margin:clamp(24px,6vw,72px) auto}
+header{padding-bottom:24px;border-bottom:1px solid #34435f}
+.eyebrow{text-transform:uppercase;letter-spacing:.15em;font-size:.77rem;
+font-weight:800;color:#a6b8dc}h1{font-size:clamp(1.9rem,5vw,3.25rem);
+letter-spacing:-.04em;line-height:1.15;margin:.5rem 0 1rem}
+h2{font-size:1.2rem;margin:0 0 .65rem}
+p{max-width:72ch}strong{font-weight:750}
+.muted{color:#b7c6e1}.pill{display:inline-flex;align-items:center;
+padding:.35rem .9rem;border:1px solid #5471a1;border-radius:999px;
+font-size:.83rem;letter-spacing:.025em;font-weight:800;background:#1a2a48}
+.pill.hold{border-color:#bf8428;color:#ffe3a2;background:#392a15}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;
+margin:24px 0}.metric,.panel{background:#141f35;border:1px solid #34435f;
+border-radius:14px;padding:22px}.metric span{display:block;color:#bbcbe5;
+font-size:.82rem}.metric strong{display:block;font-size:1.35rem;
+overflow-wrap:anywhere;margin-top:6px}
+.panel{margin:14px 0}.notice{border-color:#ad7c32;background:#2d2319}
+.notice h2{color:#ffe3a2}ul{margin:.3rem 0 0;padding-left:1.3rem}
+li+li{margin-top:.65rem}footer{font-size:.85rem;color:#b7c6e1;
+margin-top:26px;border-top:1px solid #34435f;padding-top:14px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}
+.metric,.panel{padding:17px}}
+@media print{:root{color-scheme:light;background:#fff;color:#121c30}
+.metric,.panel{background:#fff;border-color:#8591a3}.muted,footer,
+.metric span,.eyebrow{color:#273449}.notice h2{color:#65410c}
+.pill{background:#fff;color:#121c30}.pill.hold{background:#fff;color:#65410c}}
+"""
+
+
+def render_inspection_text(outcome: dict) -> str:
+    """Fixed, anonymous operator receipt; a structure check is not approval."""
+    consistency = "consistent" if outcome["format_consistent"] else "rejected"
+    return (
+        "LightUp | OFFLINE, UNAUTHENTICATED HUMAN RECEIPT\n"
+        f"Packet structure: {consistency}\n"
+        f"Source-reported state: {outcome['source_status']}\n"
+        f"Input admitted: {'yes' if outcome['input_admitted'] else 'no'}\n"
+        f"Anonymous cases: {outcome['accepted_case_count']}\n"
+        "Authority, consent, provenance, dispatch, release: NEVER VERIFIED\n"
+        "HUMAN REVIEW REQUIRED. No scan, approval or deployment permitted.\n"
+    )
+
+
+def render_inspection_html(outcome: dict) -> str:
+    """Static offline receipt from fixed structural fields, never source data."""
+    consistency = (
+        "Structurally consistent" if outcome["format_consistent"]
+        else "Input rejected or unreadable"
+    )
+    admitted = "Yes" if outcome["input_admitted"] else "No"
+    source = escape(str(outcome["source_status"]), quote=True)
+    count = escape(str(outcome["accepted_case_count"]), quote=True)
+    state_class = "hold" if outcome["source_status"] == "HOLD" or not outcome["format_consistent"] else ""
+    style_pin = b64encode(sha256(_RECEIPT_CSS.encode("utf-8")).digest()).decode("ascii")
+    policy = (
+        "default-src 'none'; base-uri 'none'; form-action 'none'; "
+        "connect-src 'none'; img-src 'none'; font-src 'none'; "
+        "object-src 'none'; frame-src 'none'; script-src 'none'; "
+        "style-src 'sha256-" + style_pin + "'"
+    )
+    return (
+        "<!doctype html>\n<html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta name='referrer' content='no-referrer'>"
+        '<meta http-equiv="Content-Security-Policy" content="'
+        + escape(policy, quote=True) + '">'
+        "<title>LightUp | Offline HUMAN receipt</title>"
+        "<style>" + _RECEIPT_CSS + "</style></head><body><main>"
+        "<header><p class='eyebrow'>LightUp / Assessment runtime / Private lab</p>"
+        "<h1>Offline review receipt</h1>"
+        "<p class='muted'>One locally received review bundle. This is a "
+        "format-consistency observation, not verification of the evidence "
+        "inside it.</p><span class='pill " + state_class + "'>"
+        + escape(consistency, quote=True) + " / HUMAN only</span></header>"
+        "<section class='grid' aria-label='Packet observation'>"
+        "<div class='metric'><span>Source-reported status</span><strong>"
+        + source + "</strong></div>"
+        "<div class='metric'><span>Input admitted</span><strong>"
+        + admitted + "</strong></div>"
+        "<div class='metric'><span>Anonymous cases</span><strong>"
+        + count + "</strong></div></section>"
+        "<section class='panel notice' aria-labelledby='limits'><h2 id='limits'>"
+        "Never an authorization</h2><p>Structural consistency does not "
+        "authenticate who created this file, the validity of its underlying "
+        "measurements, asset ownership, client or operator consent, revocation "
+        "at use, security review, or approval to run or release anything.</p>"
+        "<p><strong>All five authorization and provenance flags remain false."
+        "</strong> This receipt cannot grant, dispatch, scan or deploy.</p>"
+        "</section><section class='panel' aria-labelledby='next'>"
+        "<h2 id='next'>Human review, outside this file</h2><ul>"
+        "<li>Confirm original signed/source-bound evidence separately.</li>"
+        "<li>Review any source-reported HOLD and all unknown coverage.</li>"
+        "<li>Obtain the independent source-owner and privacy/security gates, "
+        "fresh client/operator consent, revocation check and explicit HUMAN GO "
+        "before any separate active action.</li></ul></section>"
+        "<footer>No original case IDs, targets, URLs, paths or source notes. "
+        "No scripts, external assets, network or forms. Print locally if "
+        "needed; never present this receipt as a completion certificate."
+        "</footer></main></body></html>\n"
+    )
+
+
 def main(argv=None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    outcome = inspect_review_bundle_bytes(b"")
+    output_format = "json"
+    path = None
     if len(args) == 1:
+        path = args[0]
+    elif len(args) == 3 and args[0] == "--format" and args[1] in ("json", "text", "html"):
+        output_format, path = args[1], args[2]
+    outcome = inspect_review_bundle_bytes(b"")
+    if path is not None:
         try:
-            outcome = inspect_review_bundle_bytes(_read_private_bundle(args[0]))
+            outcome = inspect_review_bundle_bytes(_read_private_bundle(path))
         except (OSError, ValueError):
             pass
-    print(json.dumps(outcome, sort_keys=True, separators=(",", ":")))
+    if output_format == "html":
+        print(render_inspection_html(outcome), end="")
+    elif output_format == "text":
+        print(render_inspection_text(outcome), end="")
+    else:
+        print(json.dumps(outcome, sort_keys=True, separators=(",", ":")))
     return 2 if outcome["format_consistent"] and outcome["source_status"] == "REVIEW_ONLY" else 3
 
 

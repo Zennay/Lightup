@@ -718,6 +718,29 @@ PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.
 # authenticated source provenance, consent, authorization or HUMAN GO.
 ```
 
+The original compact JSON stdout stays the default for tooling. For
+a person reviewing the **already-received** packet, the same inspector
+also has two opt-in, source-minimal receipts:
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.py \
+  --format text private-bundle.json
+PYTHONPATH=src python scripts/assessment_runtime_review_bundle_inspect_cli_1513.py \
+  --format html private-bundle.json > offline-review-receipt.html
+```
+
+The terminal text and responsive printable HTML use **only the fixed
+structural result**, never original evidence, anonymous question text,
+input paths, targets or saved records. The HTML is script-free,
+self-contained and enforces a restrictive CSP with a hash-pinned local
+stylesheet. It separates packet consistency, source-reported
+`HOLD`/`REVIEW_ONLY`, admitted-case count and mandatory HUMAN review.
+No browser upload, external fonts/assets, forms, network access or
+authorizing button. Invalid or unsafe local files create the same
+generic zero-case HOLD receipt in all three formats. Exit codes remain
+`2` for a structurally consistent source `REVIEW_ONLY`, otherwise
+`3`; the receipt is never a completion certificate.
+
 There is **no signature or trusted key** in this lab format: a fabricated
 packet can be internally consistent. The inspection detects malformed,
 misaligned or accidentally edited packets but cannot establish who
