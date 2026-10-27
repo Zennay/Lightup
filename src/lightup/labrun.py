@@ -196,9 +196,21 @@ def scripted_demo_gateway(endpoints: tuple[str, ...]) -> ModelGateway:
     if not calls:
         raise ValueError("no plannable lab http(s) endpoints given")
 
+    verifier_slots = max(1, len(calls) * max(1, len(CHECK_CATALOG)))
+    verifier_script = [
+        "UNCERTAIN scripted demo review does not independently re-observe evidence"
+    ] * verifier_slots
+
     gateway = ModelGateway()
     gateway.register_provider(
-        ScriptedProvider("scripted", {ModelRole.PLANNER: [json.dumps(calls)]}))
+        ScriptedProvider(
+            "scripted",
+            {
+                ModelRole.PLANNER: [json.dumps(calls)],
+                ModelRole.VERIFIER: verifier_script,
+            },
+        )
+    )
     for role in (ModelRole.PLANNER, ModelRole.VERIFIER,
                  ModelRole.REMEDIATION_ADVISOR, ModelRole.REPORT_SYNTHESIZER):
         gateway.bind_role(role, "scripted", "scripted-demo")
@@ -350,7 +362,7 @@ def main_assess(argv: list[str] | None = None) -> int:
     if not args.no_review:
         try:
             result["review"] = AssessmentReviewPipeline(gateway).review(result).to_dict()
-        except (GatewayConfigurationError, ModelProviderError) as exc:
+        except (GatewayConfigurationError, ModelProviderError, ValueError) as exc:
             # A failed review never hides the gated assessment result.
             result["review_skipped"] = str(exc)
             exit_code = 2

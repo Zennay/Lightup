@@ -122,10 +122,10 @@ class ScriptedDemoGatewayTest(unittest.TestCase):
             self.assertEqual(metrics["valid_findings"], 5)
             self.assertEqual(metrics["missed_findings"], 0)
             self.assertEqual(metrics["policy_violations"], 0)
-            # The demo gateway also binds the review roles (echo fallback).
+            # The demo gateway binds an explicit conservative verifier decision.
             review = AssessmentReviewPipeline(gateway).review(result).to_dict()
             self.assertEqual(len(review["findings"]), 5)
-            self.assertTrue(review["findings"][0]["verdict"].startswith("[verifier]"))
+            self.assertTrue(review["findings"][0]["verdict"].startswith("UNCERTAIN "))
             self.assertEqual(review["model_bindings"]["verifier"], "scripted/scripted-demo")
 
     def test_demo_gateway_rejects_non_http_endpoints(self):
