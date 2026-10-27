@@ -698,8 +698,9 @@ HOLD/REVIEW_ONLY consistency** with the full admitted population's adverse
 metric flags. An internally aligned but impossible standalone multi-case
 packet or contradicted status is rejected atomically as anonymous HOLD.
 These checks cannot establish source provenance or detect a deliberately
-fabricated, self-consistent packet. A 32 MiB input cap
-bounds memory. The local-file reader requires Linux-style secure
+fabricated, self-consistent packet. A 4 MiB hard input cap bounds memory before JSON decoding; the admitted
+schema permits only 1–64 cases with fixed canonical metric fields. Oversized
+bundles are rejected as generic no-data HOLD, without paths or payload echo. The local-file reader requires Linux-style secure
 file-descriptor primitives (`O_NOFOLLOW`, `O_DIRECTORY`, `O_PATH`, and
 `/proc/self/fd`): it pins each directory component, rejects symlinks in
 **every** ancestor, rejects `.`/`..` traversal and non-regular files,

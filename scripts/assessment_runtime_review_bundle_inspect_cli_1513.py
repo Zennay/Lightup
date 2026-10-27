@@ -20,7 +20,9 @@ from decimal import Decimal, InvalidOperation
 import assessment_runtime_report_html_1513 as reports
 
 
-_MAX_INPUT_BYTES = 32 * 1024 * 1024
+# The admitted schema has at most 64 anonymous cases and fixed metric fields.
+# Reject oversized transferred bundles before allocating a JSON object graph.
+_MAX_INPUT_BYTES = 4 * 1024 * 1024
 _FALSE_AUTHORITY = (
     "authorized", "consent_verified", "dispatch_allowed",
     "release_allowed", "source_provenance_authenticated",
