@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<title>LightUp · Private Scope Packet Vault (Offline)</title><link rel="stylesheet" href="style.css"><script defer src="vault.js"></script></head>
+<body><main>
+<header><p class="eyebrow">LIGHTUP / PRIVATE SCOPE WORKSPACE</p><h1>Private packet vault</h1><p class="lead">Encrypt draft scope packets into one password-protected offline file. Nothing is uploaded, sent, approved or authorized.</p><div class="hold">PLAN / LAB ONLY · REVIEW MATERIAL · NOT CLIENT CONSENT, NOT A GRANT, NOT A PERMIT</div></header>
+<section aria-labelledby="add-title">
+<h2 id="add-title">1. Collect local review files</h2>
+<p>Self-label each file as a client proposal, operator note, scope revision or schedule handoff for offline sorting; labels are never verified authority. Collect up to 12 draft files (.json, .md, .txt, .ics, .csv; each max 512 KiB, combined max 2 MiB). Names and file content are <strong>inside</strong> the encrypted packet, not in its public metadata. Avoid importing passwords, API keys or live customer secrets.</p>
+<label class="picker" for="files">Choose local draft files<input id="files" type="file" accept=".json,.md,.txt,.ics,.csv" multiple></label>
+<p id="file-summary" class="status" aria-live="polite">No files selected. Decrypt a saved vault below or collect new files.</p>
+<p class="subtle">Private dossier notes and preparation statuses stay inside encrypted internal archives. Client-review exports automatically remove them. These are <strong>not approvals</strong> or verified reviewer identities.</p>
+<label>Show documents by local preparation stage
+<select id="stage-filter">
+<option value="all">All documents</option>
+<option value="unsorted">Unsorted</option>
+<option value="clarify">Needs human clarification</option>
+<option value="drafting">Preparation in progress</option>
+<option value="ready">Prepared for human review (not approved)</option>
+<option value="historical">Historical draft (superseded)</option>
+</select></label>
+<div id="file-list" class="items" aria-live="polite"></div>
+</section>
+<section aria-labelledby="seal-title"><h2 id="seal-title">2. Seal an encrypted packet</h2>
+<p>Each export uses a new random 256-bit AES-GCM key derived from your passphrase with PBKDF2-SHA256 (600,000 iterations). LightUp never stores, recovers, or transmits your passphrase.</p>
+<div class="grid"><label>Passphrase (14+ characters)<input id="seal-password" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
+<label>Confirm passphrase<input id="seal-confirm" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label></div>
+<label>Intended offline handoff route (self-reported; recipient identity is NOT verified)
+<select id="handoff-route">
+<option value="private-archive">Private archive / internal preparation</option>
+<option value="client-review">Client review — only client proposals, revisions, schedules</option>
+<option value="operator-review">Operator review — selected assessment paperwork</option>
+</select></label>
+<p class="subtle">Client-review exports require each selected file to be marked Prepared for human review (NOT approved); unclassified, unfinished and historical drafts are refused. They always strip internal notes and preparation stages, even from client-labelled files. Historical drafts are refused. A bounded local check also refuses some common credential patterns, but CANNOT certify that a document contains no secrets. They also refuse operator-labelled or unclassified files; every encrypted export shows the exact selected filenames for a final local confirmation. This routing choice never authenticates the recipient or grants rights.</p>
+<p class="subtle">To prepare a smaller recipient handoff, select only the intended files in the inventory. All files remain selected by default. Never treat an encrypted handoff as recipient identity or consent.</p>
+<p class="subtle">To rotate a forgotten, exposed or old passphrase after unlocking your existing packet, enter a new password above and choose <strong>Re-encrypt entire private archive</strong>. Downloading a new copy cannot revoke any previously shared encrypted file.</p>
+<label class="checkline"><input id="lock-after-export" type="checkbox" checked> Lock and clear plaintext after successful encrypted export (recommended for full private backups; confirm data loss for client/partial exports)</label>
+<div class="actions"><button id="seal" type="button">Download selected encrypted packet</button><button id="select-all" type="button" class="secondary">Select all</button><button id="select-none" type="button" class="secondary">Select none</button><button id="select-route" type="button" class="secondary">Suggest recipient-safe selection</button><button id="rekey" type="button" class="secondary">Re-encrypt entire private archive</button><button id="clear" type="button" class="secondary">Forget all plaintext</button></div>
+</section>
+<section aria-labelledby="unlock-title"><h2 id="unlock-title">3. Restore a saved packet</h2>
+<p>Load one locally saved encrypted vault. Its encrypted inner payload also preserves the self-reported intended handoff route when present. Its authenticity depends on knowing the passphrase and trusting where you got the file. Encryption alone does <strong>not</strong> prove client identity, consent, scope approval or authorization.</p>
+<div class="grid"><label>Encrypted vault file<input id="open-file" type="file" accept=".json"></label><label>Passphrase<input id="open-password" type="password" autocomplete="off" maxlength="256"></label></div>
+<label class="checkline"><input id="merge-mode" type="checkbox"> Merge files into the current offline workspace instead of replacing it. Matching names + bytes + roles are kept once. Existing private notes survive a client packet that intentionally omits them; explicit contradictory private metadata still aborts the entire import.</label>
+<div class="actions"><button id="unlock" type="button">Unlock / merge locally</button><button id="lock" type="button" class="secondary">Lock immediately</button></div></section>
+<section aria-labelledby="compare-title"><h2 id="compare-title">4. Inspect &amp; compare private drafts</h2>
+<p>View a local text-only excerpt, or compare two draft revisions side by side as line-level additions/removals. All content remains on this device and is never executed or sent anywhere. This is a <strong>text comparison</strong>, not a scope-policy verdict or an authorization review.</p>
+<div class="grid"><label>Original draft<select id="compare-before" aria-label="Original draft"><option value="">Choose a file</option></select></label><label>Changed draft<select id="compare-after" aria-label="Changed draft"><option value="">Choose another file</option></select></label></div>
+<div class="actions"><button id="preview-file" type="button" class="secondary">View original text</button><button id="compare-files" type="button">Compare local text</button><button id="hide-preview" type="button" class="secondary">Hide sensitive contents</button></div>
+<p id="comparison-summary" class="status" aria-live="polite">Nothing is displayed until you request a preview or comparison. Maximum 400 lines per file, 2,048 characters per line, for bounded inspection.</p>
+<pre id="comparison-output" class="comparison" hidden aria-label="Private text comparison output"></pre>
+</section>
+<section aria-labelledby="studio-inspect-title">
+<h2 id="studio-inspect-title">5. Scope Planning Studio v1 · local review desk</h2>
+<p>Read an <strong>exact original</strong> Scope Planning Studio v1 JSON draft already loaded in the vault. Imported resolved UTC times must be consistent with their original local wall times and signed UTC offsets; conflicting claims are refused. See proposed scope, exclusions, risk, activities and UTC scheduling flags without querying DNS, scanning or issuing authority. Recognized input is still untrusted and self-reported.</p>
+<label>Select original Studio v1 proposal<select id="studio-source"><option value="">Select a local JSON draft</option></select></label>
+<div class="actions"><button id="studio-inspect" type="button">Inspect draft locally</button><button id="studio-bulk" type="button" class="secondary">Review all local Studio v1 proposals</button>
+<button id="studio-bulk-export" type="button" class="secondary">Export anonymous portfolio handoff</button><button id="studio-bulk-flag" type="button" class="secondary">File private follow-up notes for all inspected drafts</button><button id="studio-flag" type="button" class="secondary">Add missing decisions to private review note</button><button id="studio-report" type="button" class="secondary">Export anonymous review checklist</button><button id="studio-clear" type="button" class="secondary">Hide proposal inspection</button></div>
+<p id="studio-status" aria-live="polite" class="status">Nothing inspected. This review is not authenticated or authorizing.</p>
+<div id="studio-summary" class="items" aria-label="Offline scope preparation findings"></div>
+<details><summary>Show proposed asset labels in this private tab only</summary><p>Labels are unverified user input. Do not copy them into an anonymous handoff report.</p><pre id="studio-assets" class="comparison"></pre></details>
+</section>
+<section aria-labelledby="redact-title">
+<h2 id="redact-title">6. Create a privacy-edited review copy</h2>
+<p>Prepare a distinct, <strong>unverified</strong> text derivative from one local draft. Replace common credentials and, optionally, one exact private term without altering the original. Each derivative receives a new SHA-256 fingerprint and stays unselected for sharing until you inspect it. This is <strong>not</strong> an assurance that no secrets remain.</p>
+<div class="grid">
+<label>Local source file<select id="redact-source" aria-label="Original file for privacy editing"><option value="">Choose a local draft</option></select></label>
+<label>Optional exact additional private term (6–128 characters)<input id="redact-term" type="password" autocomplete="off" maxlength="128" placeholder="Never saved or transmitted"></label></div>
+<label class="checkline"><input id="redact-credentials" type="checkbox" checked> Replace recognized credential patterns (best effort; unknown variants will remain)</label>
+<div class="actions"><button id="redact-create" type="button">Create local edited copy</button><button id="redact-clear" type="button" class="secondary">Clear private term</button></div>
+<p class="subtle" id="redact-summary" aria-live="polite">No copy prepared. Sensitive values are never shown in redaction summaries. Compare the new derivative with the original and inspect all contents before any human-approved handoff.</p>
+</section>
+<section aria-labelledby="review-title"><h2 id="review-title">7. Handle review material</h2><p>Files stay in tab memory only. Download a recovered original only after an explicit click. The workspace forgets plaintext when hidden or idle for five minutes.</p><div id="recovered" class="items"></div>
+<h3>Required real-world next steps</h3><ol><li>Have the actual client identify and approve their exact targets through the separately authenticated system.</li><li>Obtain independent operator approval, exact scope/risks and the active grant window.</li><li>Re-check revocation at action time and pass original security/privacy and CI release gates.</li></ol><p>Opening or sealing this packet performs none of those steps.</p></section>
+<footer><p id="message" class="message" role="status" aria-live="polite">Offline draft handling only. Never use this vault as execution permission.</p><small>No trackers · No network calls · No persistent browser storage · No target contact</small></footer></main></body></html>
