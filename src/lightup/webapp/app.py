@@ -496,8 +496,20 @@ class LightUpWebApp:
         approved_requests = tuple(
             request for request in self.store.list_assessment_requests(ctx, client_id)
             if request.status is RequestStatus.APPROVED
+            and request.requested_mode is AssessmentMode.AUTHORIZED_ASSESSMENT
+            and RiskLevel.PASSIVE <= request.requested_risk <= RiskLevel.ELEVATED
         )
         csrf = self._csrf_field(auth)
+        from ..capabilities import CapabilityState, get_capabilities
+
+        planning_capabilities = tuple(
+            cap for cap in get_capabilities()
+            if cap.state is CapabilityState.PLANNING
+        )
+        capability_guide = "".join(
+            f"<li><code>{_e(cap.capability_id)}</code> — {_e(cap.name)}</li>"
+            for cap in planning_capabilities
+        )
         engagement_cards = []
         for eng in engagements:
             grant = self.store.get_current_grant(ctx, eng.engagement_id)
@@ -543,15 +555,18 @@ class LightUpWebApp:
                     "<input name=\"assets\" required>"
                     "<label>Excluded assets (comma-separated, optional)</label>"
                     "<input name=\"excluded_assets\">"
-                    "<label>Allowed capabilities (comma-separated ids; empty = all)</label>"
-                    "<input name=\"capabilities\">"
-                    "<label>Maximum risk level</label><select name=\"max_risk\">"
+                    "<label>Allowed planning capability IDs (comma-separated; required)</label>"
+                    "<input name=\"capabilities\" required placeholder=\"web-baseline\">"
+                    "<details><summary>Show available planning capability IDs</summary>"
+                    f"<ul>{capability_guide}</ul></details>"
+                    "<label>Maximum risk level</label><select name=\"max_risk\" required>"
+                    "<option value=\"\" selected disabled>Choose no higher than the client request</option>"
                     "<option value=\"1\">1 — Passive</option>"
                     "<option value=\"2\">2 — Low impact</option>"
-                    "<option value=\"3\" selected>3 — Standard</option>"
+                    "<option value=\"3\">3 — Standard</option>"
                     "<option value=\"4\">4 — Elevated</option></select>"
                     "<label>Valid for (days)</label>"
-                    "<input name=\"valid_days\" type=\"number\" min=\"1\" max=\"365\" value=\"30\">"
+                    "<input name=\"valid_days\" type=\"number\" min=\"1\" max=\"365\" required>"
                     "<button>Record grant</button>"
                     "<p class=\"meta\">A recorded grant describes scope; it does not unlock execution. "
                     "Destructive simulation (level 5) is lab-only and cannot be "
@@ -711,6 +726,7 @@ class LightUpWebApp:
         from datetime import datetime, timedelta, timezone
 
         from ..engagements import ScopeDefinition
+        from ..capabilities import CapabilityState, get_capabilities
 
         def _csv(name: str) -> tuple[str, ...]:
             return tuple(part.strip() for part in form.get(name, "").split(",")
@@ -733,6 +749,14 @@ class LightUpWebApp:
         valid_days = int(raw_valid_days)
         if not 1 <= valid_days <= 365:
             raise ValueError("grant validity must be between 1 and 365 days")
+        capabilities = _csv("capabilities")
+        permitted = {
+            cap.capability_id for cap in get_capabilities()
+            if cap.state is CapabilityState.PLANNING
+        }
+        if (not capabilities or len(set(capabilities)) != len(capabilities)
+                or any(cap not in permitted for cap in capabilities)):
+            raise ValueError("grant must explicitly name unique known planning capabilities")
         approved_request_id = form.get("approved_request_id")
         if type(approved_request_id) is not str or not approved_request_id.strip():
             raise ValueError("one explicitly approved client request is required")
@@ -740,7 +764,7 @@ class LightUpWebApp:
         scope = ScopeDefinition(
             assets=_csv("assets"),
             max_risk=max_risk,
-            allowed_capabilities=_csv("capabilities"),
+            allowed_capabilities=capabilities,
             excluded_assets=_csv("excluded_assets"),
         )
         engagement = self.store.get_engagement(auth.context, engagement_id)
