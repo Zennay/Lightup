@@ -863,8 +863,11 @@ class LightUpWebApp:
         ctx = auth.context
         client = self.store.get_client(ctx, client_id)
         engagements, findings = self._client_scoped_evidence(ctx, client_id)
+        client_requests = self.store.list_assessment_requests(ctx, client_id)
+        if any(item.client_id != client_id for item in client_requests):
+            raise TenantIsolationError("cross-tenant operator request list denied")
         approved_requests = tuple(
-            request for request in self.store.list_assessment_requests(ctx, client_id)
+            request for request in client_requests
             if request.status is RequestStatus.APPROVED
             and request.requested_mode is AssessmentMode.AUTHORIZED_ASSESSMENT
             and RiskLevel.PASSIVE <= request.requested_risk <= RiskLevel.ELEVATED
@@ -880,6 +883,66 @@ class LightUpWebApp:
             f"<li><code>{_e(cap.capability_id)}</code> — {_e(cap.name)}</li>"
             for cap in planning_capabilities
         )
+        # One original client-specific human-decision worklist, rather than
+        # forcing operators to search the global review inbox by opaque IDs.
+        valid_request_states = {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            RequestStatus.APPROVED, RequestStatus.REJECTED,
+        }
+        if any(item.status not in valid_request_states for item in client_requests):
+            raise ValueError("unknown persisted assessment request state")
+        waiting_requests = sorted(
+            (
+                item for item in client_requests
+                if item.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+            ),
+            key=lambda item: (item.created_at, item.request_id),
+        )
+        decided_requests = sorted(
+            (
+                item for item in client_requests
+                if item.status in {RequestStatus.APPROVED, RequestStatus.REJECTED}
+            ),
+            key=lambda item: (item.created_at, item.request_id),
+            reverse=True,
+        )
+
+        def request_card(item) -> str:
+            pending = item.status in {
+                RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            }
+            action = (
+                "Open independent HUMAN review" if pending
+                else "Read recorded human decision"
+            )
+            return (
+                '<section class="card"><div class="row">'
+                f'<strong>Request {_e(item.request_id[:8])}</strong>'
+                f'<span class="badge">{_e(item.status.value)}</span></div>'
+                f'<p class="meta">Submitted {_e(item.created_at)} · '
+                f'Risk {_risk(item.requested_risk)} · '
+                f'Mode {_e(item.requested_mode.value)}</p>'
+                '<details><summary>Requested systems and client notes</summary>'
+                f'<p class="meta">Systems: {_e(", ".join(item.requested_assets))}</p>'
+                f'<p class="meta">Notes: {_e(item.notes) or "None"}</p>'
+                '</details>'
+                f'<a href="/assessments/requests/{_e(item.request_id)}/review">'
+                f'{action}</a></section>'
+            )
+
+        request_section = (
+            f'<h2>Client-origin requests · {len(client_requests)} total</h2>'
+            '<p class="sub">A client request can receive an independent human '
+            'decision; it never grants scope, verifies consent or starts testing.</p>'
+            f'<h3>Awaiting independent review ({len(waiting_requests)})</h3>'
+            + ("".join(request_card(item) for item in waiting_requests)
+               or '<p class="empty">No client requests are awaiting review.</p>')
+            + f'<details><summary>Recorded request decisions ({len(decided_requests)})</summary>'
+            + ("".join(request_card(item) for item in decided_requests)
+               or '<p class="empty">No human decisions recorded yet.</p>')
+            + '</details>'
+        )
+
         engagement_cards = []
         for eng in engagements:
             grant = self.store.get_current_grant(ctx, eng.engagement_id)
@@ -975,7 +1038,8 @@ class LightUpWebApp:
             "open client portal</a> · "
             f"<a href=\"/clients/{_e(client.client_id)}/authorization-plan\">"
             "Plan-only authorization review</a></p>"
-            "<h2>Engagements</h2>"
+            + request_section
+            + "<h2>Engagements</h2>"
             + ("".join(engagement_cards) or "<p class=\"empty\">No engagements yet.</p>")
             + f"<h2>New engagement</h2>{new_engagement}"
             + "<h2>Coverage</h2>"
