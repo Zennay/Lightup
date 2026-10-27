@@ -28,6 +28,21 @@ class EngagementPlan:
 
 
 @dataclass(frozen=True)
+class AssessmentRequestPlan:
+    """A tenant-scoped review record, never an engagement grant or permit."""
+
+    request_id: str
+    status: str
+    requested_assets: tuple[str, ...]
+    requested_mode: str
+    requested_risk: RiskLevel
+    submitted_at: str
+    reviewed_at: str | None
+    engagement_authority_inferred: bool = False
+    execution_allowed: bool = False
+
+
+@dataclass(frozen=True)
 class ClientAuthorizationPlan:
     client_id: str
     client_name: str
@@ -36,6 +51,7 @@ class ClientAuthorizationPlan:
     rejected_requests: int
     engagements: tuple[EngagementPlan, ...]
     evaluated_at: str
+    request_reviews: tuple[AssessmentRequestPlan, ...] = ()
     state: str = "PLAN_ONLY"
     execution_allowed: bool = False
 
@@ -108,6 +124,18 @@ def build_client_authorization_plan(
         rejected_requests=sum(request.status is RequestStatus.REJECTED for request in requests),
         engagements=tuple(rows),
         evaluated_at=instant.isoformat(),
+        request_reviews=tuple(
+            AssessmentRequestPlan(
+                request_id=request.request_id,
+                status=request.status.value,
+                requested_assets=tuple(request.requested_assets),
+                requested_mode=request.requested_mode.value,
+                requested_risk=request.requested_risk,
+                submitted_at=request.created_at,
+                reviewed_at=request.decided_at,
+            )
+            for request in requests
+        ),
     )
 
 
@@ -139,6 +167,25 @@ def to_review_payload(plan: ClientAuthorizationPlan) -> dict:
             "decision": "HOLD",
             "execution_allowed": False,
         })
+    request_rows = []
+    for request in plan.request_reviews:
+        if (type(request) is not AssessmentRequestPlan
+                or request.engagement_authority_inferred is not False
+                or request.execution_allowed is not False
+                or type(request.requested_risk) is not RiskLevel
+                or request.status not in {status.value for status in RequestStatus}):
+            raise ValueError("assessment request is not fail-closed")
+        request_rows.append({
+            "request_id": request.request_id,
+            "status": request.status,
+            "requested_assets": sorted(request.requested_assets),
+            "requested_mode": request.requested_mode,
+            "requested_risk": int(request.requested_risk),
+            "submitted_at": request.submitted_at,
+            "reviewed_at": request.reviewed_at,
+            "engagement_authority_inferred": False,
+            "execution_allowed": False,
+        })
     return {
         "format": "lightup-plan-only-review-v1",
         "evaluated_at": plan.evaluated_at,
@@ -150,6 +197,7 @@ def to_review_payload(plan: ClientAuthorizationPlan) -> dict:
             "engagement_binding_inferred": False,
         },
         "engagements": sorted(rows, key=lambda row: row["engagement_id"]),
+        "request_review": sorted(request_rows, key=lambda row: row["request_id"]),
         "authority": {
             "execution_allowed": False,
             "capability_dispatch_allowed": False,
