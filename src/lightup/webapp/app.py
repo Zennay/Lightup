@@ -1387,10 +1387,12 @@ class LightUpWebApp:
             "LightUp — Review request", "assessments", body, auth,
         ))
 
-    def review_elevation_page(
-        self, auth: AuthState, form: dict[str, str], approval_id: str,
-    ) -> Response:
-        ctx = auth.context
+    def _risk_review_record(self, ctx: AccessContext, approval_id: str):
+        """Resolve the source engagement before presenting or posting a review.
+
+        This is a WSGI defense-in-depth guard, not the atomic domain decision
+        invariant tracked separately in scope issue #1275.
+        """
         decision = next(
             (item for item in self.store.list_risk_approvals(ctx)
              if item.approval_id == approval_id), None,
@@ -1398,7 +1400,16 @@ class LightUpWebApp:
         if decision is None:
             raise KeyError("risk review not found")
         engagement = self.store.get_engagement(ctx, decision.engagement_id)
-        client = self.store.get_client(ctx, engagement.client_id)
+        if decision.client_id != engagement.client_id:
+            raise TenantIsolationError("risk approval tenant linkage invalid")
+        return decision, engagement
+
+    def review_elevation_page(
+        self, auth: AuthState, form: dict[str, str], approval_id: str,
+    ) -> Response:
+        ctx = auth.context
+        decision, engagement = self._risk_review_record(ctx, approval_id)
+        client = self.store.get_client(ctx, decision.client_id)
         controls = ""
         if decision.status.value == "pending":
             choices = []
@@ -1440,6 +1451,9 @@ class LightUpWebApp:
             f'<strong>Requested risk:</strong> {_risk(decision.requested_risk)}</p>'
             f'<p><strong>Requested by:</strong> {_e(decision.requested_by)}</p>'
             f'<p><strong>Justification:</strong> {_e(decision.justification)}</p>'
+            '<p class="meta"><a href="/clients/'
+            f'{_e(decision.client_id)}/authorization-plan">'
+            'Read this client’s request, scope and grant evidence (plan-only)</a></p>'
             '<p class="meta">The original reviewed client request, scope grant, '
             'consent and revocation-at-use remain independent prerequisites.</p>'
             '</section>'
@@ -1470,6 +1484,9 @@ class LightUpWebApp:
             raise ValueError("operator must explicitly confirm risk review")
         if decision not in {"approve", "deny"}:
             raise ValueError("risk-elevation decision must be exactly approve or deny")
+        # Fail closed for direct POSTs that bypass the review HTML. The original
+        # DomainStore still needs its separate same-transaction #1275 repair.
+        self._risk_review_record(auth.context, approval_id)
         self.store.decide_risk_elevation(
             auth.context, approval_id, decision == "approve"
         )
