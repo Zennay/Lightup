@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "purpose": "Offline authorization review cases; not executable grants or target invitations",
+  "defaults": {
+    "mode": "ANALYSIS_ONLY",
+    "network_access": false,
+    "active_execution": false,
+    "external_targets": false
+  },
+  "cases": [
+    {"id":"absent-grant","asset":"lab.example.invalid","membership":"explicit","grant":"missing","expected":"DENY","reason":"No authorization for active work"},
+    {"id":"expired-grant","asset":"lab.example.invalid","membership":"explicit","grant":"expired","expected":"DENY","reason":"Expired evidence cannot approve execution"},
+    {"id":"not-yet-valid","asset":"lab.example.invalid","membership":"explicit","grant":"future","expected":"DENY","reason":"Future approval is not active"},
+    {"id":"undeclared-asset","asset":"unlisted.example.invalid","membership":"absent","grant":"otherwise-valid","expected":"DENY","reason":"Authorization cannot create allowlist membership"},
+    {"id":"excluded-asset","asset":"excluded.example.invalid","membership":"excluded","grant":"otherwise-valid","expected":"DENY","reason":"Exclusion takes precedence"},
+    {"id":"revoked-grant","asset":"lab.example.invalid","membership":"explicit","grant":"revoked","expected":"DENY","reason":"Revocation wins over previous approval"},
+    {"id":"different-tenant","asset":"lab.example.invalid","membership":"explicit","grant":"foreign-tenant","expected":"DENY","reason":"Tenant mismatch"},
+    {"id":"changed-asset-snapshot","asset":"lab.example.invalid","membership":"explicit","grant":"widened-after-issuance","expected":"DENY","reason":"Mutated grant must not widen authority"},
+    {"id":"missing-admin-approval","asset":"lab.example.invalid","membership":"explicit","grant":"valid-no-operator-approval","expected":"DENY","reason":"Approval gate independent of grant"},
+    {"id":"analysis-only","asset":"lab.example.invalid","membership":"explicit","grant":"none","expected":"ALLOW_ANALYSIS_ONLY","reason":"No target interaction permitted"}
+  ]
+}
