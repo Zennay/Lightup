@@ -224,6 +224,8 @@ class LightUpWebApp:
              "operator"),
             ("GET", re.compile(r"^/clients/(?P<client_id>[\w-]+)/authorization-plan$"),
              self.authorization_plan, "operator"),
+            ("GET", re.compile(r"^/clients/(?P<client_id>[\w-]+)/authorization-plan.json$"),
+             self.authorization_plan_json, "operator"),
             ("POST", re.compile(r"^/clients/(?P<client_id>[\w-]+)/engagements$"),
              self.create_engagement, "operator"),
             ("POST", re.compile(r"^/engagements/(?P<engagement_id>[\w-]+)/grants$"),
@@ -236,6 +238,8 @@ class LightUpWebApp:
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)$"), self.portal, "portal"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/authorization-plan$"),
              self.portal_authorization_plan, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/authorization-plan.json$"),
+             self.portal_authorization_plan_json, "portal"),
             ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
              self.portal_submit_request, "portal"),
         ]
@@ -569,6 +573,32 @@ class LightUpWebApp:
                                   client_id: str) -> Response:
         return self._authorization_plan_page(auth, client_id, portal=True)
 
+    def authorization_plan_json(self, auth: AuthState, form: dict[str, str],
+                                client_id: str) -> Response:
+        return self._authorization_plan_json(auth, client_id, portal=False)
+
+    def portal_authorization_plan_json(self, auth: AuthState, form: dict[str, str],
+                                       client_id: str) -> Response:
+        return self._authorization_plan_json(auth, client_id, portal=True)
+
+    def _authorization_plan_json(self, auth: AuthState, client_id: str,
+                                 *, portal: bool) -> Response:
+        import json
+        from ..authorization_plan import build_client_authorization_plan, to_review_payload
+
+        # Same verified session and domain tenant isolation as the HTML view.
+        # No grant writes, capability dispatch, consent or active actions.
+        viewer = self._portal_context(auth, client_id) if portal else auth.context
+        plan = build_client_authorization_plan(self.store, viewer, client_id)
+        payload = json.dumps(to_review_payload(plan), ensure_ascii=False,
+                             sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
+        return Response(
+            payload,
+            content_type="application/json; charset=utf-8",
+            extra_headers=[("Content-Disposition",
+                            'attachment; filename="lightup-plan-only-review.json"')],
+        )
+
     def _authorization_plan_page(self, auth: AuthState, client_id: str,
                                  *, portal: bool) -> Response:
         from ..authorization_plan import build_client_authorization_plan
@@ -611,6 +641,11 @@ class LightUpWebApp:
             "revocation, source/security reviews and explicit HUMAN GO.</p></div>"
             "<h2>Engagement decisions</h2>"
             + ("".join(cards) or "<p class=\"empty\">No engagements yet.</p>")
+            + (f"<p><a href=\"/portal/{_e(plan.client_id)}/authorization-plan.json\">"
+               "Download private plan-only review (JSON)</a></p>"
+               if portal else
+               f"<p><a href=\"/clients/{_e(plan.client_id)}/authorization-plan.json\">"
+               "Download private plan-only review (JSON)</a></p>")
             + (f"<p><a href=\"/portal/{_e(plan.client_id)}\">Back to portal</a></p>"
                if portal else f"<p><a href=\"/clients/{_e(plan.client_id)}\">Back to client</a></p>")
         )
