@@ -8,10 +8,7 @@ and before publishing an unpacked receiver folder.
 from __future__ import annotations
 import argparse
 import io
-import os
 from pathlib import Path
-import secrets
-import shutil
 import sys
 import zipfile
 
@@ -105,8 +102,7 @@ def unpack_bytes(raw: bytes, output: Path, unchanged=None) -> None:
         contents = {name: zip_reader.read(name) for name in names}
     require(set(contents) == set(inventory(contents["manifest.json"])),
             "Recipient source-free member inventory differs from original schema")
-    stage = output.parent / (".lightup-sourcefree-unpack-" + secrets.token_hex(12))
-    os.mkdir(stage, 0o700)
+    stage, stage_identity = install.create_private_stage(output.parent, ".lightup-receiver-")
     try:
         for name, data in sorted(contents.items()):
             install.write_file(stage / name, data)
@@ -116,10 +112,10 @@ def unpack_bytes(raw: bytes, output: Path, unchanged=None) -> None:
         if unchanged is not None:
             require(unchanged(), "Original received handoff changed during acceptance")
         require(not output.exists(), "Another recipient directory appeared")
-        workspace.exclusive_dir_publish(stage, output)
+        install.exclusive_publish(stage, output, expected_identity=stage_identity)
     finally:
-        if stage.exists():
-            shutil.rmtree(stage)
+        # Preserve foreign/replaced entries; only our original stage may be removed.
+        install.cleanup_private_stage(stage, stage_identity)
     print("REVIEW_ONLY: complete original source-free Cockpit received:", output)
     print("No signed source/client, real consent, verified fix or authority.")
 
