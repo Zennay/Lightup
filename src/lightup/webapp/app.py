@@ -493,6 +493,10 @@ class LightUpWebApp:
         client = self.store.get_client(ctx, client_id)
         engagements = self.store.list_engagements(ctx, client_id)
         findings = self.store.list_findings(ctx, client_id=client_id)
+        approved_requests = tuple(
+            request for request in self.store.list_assessment_requests(ctx, client_id)
+            if request.status is RequestStatus.APPROVED
+        )
         csrf = self._csrf_field(auth)
         engagement_cards = []
         for eng in engagements:
@@ -509,11 +513,28 @@ class LightUpWebApp:
                     f"<br>Valid {_e(grant.valid_from.date())} – {_e(grant.valid_until.date())}"
                     "</p></details>"
                 )
+            elif not approved_requests:
+                grant_detail = (
+                    "<p class=\"meta\">An approved client request is required "
+                    "before any scope grant can be recorded. Have the client "
+                    "submit a request, then review it in Assessments. "
+                    "Execution stays OFF.</p>"
+                )
             else:
+                request_options = "".join(
+                    f'<option value="{_e(request.request_id)}">'
+                    f'{_e(", ".join(request.requested_assets)[:96])} · '
+                    f'{_risk(request.requested_risk)}</option>'
+                    for request in approved_requests
+                )
                 grant_detail = (
                     "<details><summary>Record authorization grant</summary>"
                     f"<form method=\"post\" action=\"/engagements/{_e(eng.engagement_id)}/grants\">"
                     f"{csrf}"
+                    "<label>Approved client request</label>"
+                    "<select name=\"approved_request_id\" required>"
+                    "<option value=\"\" selected disabled>Select a reviewed request</option>"
+                    f"{request_options}</select>"
                     "<label>Approved by (client signatory)</label>"
                     "<input name=\"approved_by\" required>"
                     "<label>Authorization reference</label>"
@@ -534,7 +555,8 @@ class LightUpWebApp:
                     "<button>Record grant</button>"
                     "<p class=\"meta\">A recorded grant describes scope; it does not unlock execution. "
                     "Destructive simulation (level 5) is lab-only and cannot be "
-                    "granted for client assets.</p></form></details>"
+                    "granted for client assets. Selecting a request records its binding; "
+                    "it does not prove independent consent.</p></form></details>"
                 )
             engagement_cards.append(
                 "<div class=\"card\"><div class=\"row\">"
@@ -685,6 +707,9 @@ class LightUpWebApp:
         valid_days = int(raw_valid_days)
         if not 1 <= valid_days <= 365:
             raise ValueError("grant validity must be between 1 and 365 days")
+        approved_request_id = form.get("approved_request_id")
+        if type(approved_request_id) is not str or not approved_request_id.strip():
+            raise ValueError("one explicitly approved client request is required")
         now = datetime.now(timezone.utc)
         scope = ScopeDefinition(
             assets=_csv("assets"),
@@ -699,6 +724,7 @@ class LightUpWebApp:
             reference=form.get("reference", ""),
             scope=scope, valid_from=now,
             valid_until=now + timedelta(days=valid_days),
+            approved_request_id=approved_request_id,
         )
         return _redirect(f"/clients/{engagement.client_id}")
 
