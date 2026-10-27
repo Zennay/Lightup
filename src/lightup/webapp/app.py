@@ -167,6 +167,19 @@ label { font-size:.85rem; color:var(--muted); }
                                background:#fffaf7; }
 .scope-review .scope-blockers ul { margin:8px 0 0; padding-left:22px; }
 .scope-review .scope-blockers li { margin:0 0 6px; }
+.finding-card h4 { margin:0; font-size:1rem; }
+.finding-card .remediation-flow { display:grid; list-style:none;
+                                   grid-template-columns:repeat(2,minmax(0,1fr));
+                                   gap:10px; margin:14px 0 4px; padding:0; }
+.finding-card .remediation-flow li { border:1px solid var(--line);
+                                     border-radius:8px; padding:12px; min-width:0; }
+.finding-card .remediation-flow strong { color:var(--ink); }
+.finding-card .remediation-flow p { margin:8px 0 0; overflow-wrap:anywhere; }
+.finding-card .finding-details summary { min-height:44px; display:flex;
+                                         align-items:center; font-weight:650; }
+@media (max-width:560px) {
+  .finding-card .remediation-flow { grid-template-columns:minmax(0,1fr); }
+}
 .risk-options { min-width:0; border:0; padding:0; margin:12px 0 18px; }
 .risk-options legend { color:var(--ink); font-weight:650; padding:0; }
 .risk-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:10px 0; }
@@ -2983,52 +2996,50 @@ class LightUpWebApp:
         )
 
     def _finding_cards(self, findings, portal: bool = False) -> str:
+        """Read-only HUMAN fix queue from original, tenant-checked findings."""
         if not findings:
-            note = (" Zero findings with unknown coverage is not a clean bill of health;"
-                    " coverage reporting arrives with the assessment engine.")
-            return f"<p class=\"empty\">No findings recorded.{note if portal else ''}</p>"
-
-        def render_finding(f) -> str:
-            retest_badge = {
-                RetestStatus.FIXED: "<span class=\"badge ok\">Recorded fixed</span>",
-                RetestStatus.REGRESSION: "<span class=\"badge lock\">Regression</span>",
-                RetestStatus.FIX_PENDING: "<span class=\"badge warn\">Fix pending</span>",
-                RetestStatus.NOT_TESTED: "<span class=\"badge\">Retest not run</span>",
-            }[f.retest_status]
-            evidence = ""
-            if not portal and f.evidence_ids:
-                evidence = (
-                    "<details><summary>Evidence references</summary><p class=\"meta\">"
-                    + "<br>".join(_e(e) for e in f.evidence_ids) + "</p></details>"
-                )
-            # The portal is authenticated, but its landing view should not
-            # shoulder-surf raw system identifiers. The detail disclosure is
-            # presentation only; it is NOT a secrecy or authorization boundary.
-            asset_detail = (
-                "<details><summary>Show affected system</summary>"
-                f'<p class="meta">{_e(f.asset)}</p></details>'
-                if portal else ""
+            note = (
+                " Zero findings with unknown coverage is not a clean bill of "
+                "health. Recorded capability coverage and actual independent "
+                "verification must be checked separately."
             )
-            asset_meta = "" if portal else f" · asset {_e(f.asset)}"
-            return (
-                '<section class="card"><div class="row">'
-                f"<strong>{_e(f.title)}</strong>{retest_badge}</div>"
-                f'<p class="meta">Severity {_e(f.severity.value)}{asset_meta}</p>'
-                f"{asset_detail}"
-                "<details><summary>Impact</summary>"
-                f"<p>{_e(f.impact) or '—'}</p></details>"
-                "<details><summary>Fix</summary>"
-                f"<p>{_e(f.remediation)}</p></details>"
-                f"{evidence}</section>"
-            )
+            return f'<p class="empty">No findings recorded.{note if portal else ""}</p>'
 
-        # One read-only HUMAN remediation ordering for both operator and
-        # private client views; operators additionally see source references.
-        # Neither "fixed" nor a clean visible queue proves assessment coverage
-        # or allows another retest.
+        # These are recorded remediation and retest labels, not instructions
+        # to launch a retest, proof of coverage, or authority to act on targets.
+        review_copy = {
+            RetestStatus.REGRESSION: (
+                "Regression recorded",
+                "A finding has returned after a prior fix record. Review its "
+                "original impact and remediation before any separately "
+                "authorized future verification.",
+            ),
+            RetestStatus.FIX_PENDING: (
+                "Fix still pending",
+                "Review the proposed remediation and document the work "
+                "separately. No verified fix is implied by this status.",
+            ),
+            RetestStatus.NOT_TESTED: (
+                "Retest not recorded",
+                "There is no recorded retest result for this finding. Do not "
+                "treat a proposed remediation as verified.",
+            ),
+            RetestStatus.FIXED: (
+                "Recorded fixed",
+                "A recorded fix applies to this finding only. It is not proof "
+                "of complete coverage or permission to retest other systems.",
+            ),
+        }
+        status_badges = {
+            RetestStatus.REGRESSION: "lock",
+            RetestStatus.FIX_PENDING: "warn",
+            RetestStatus.NOT_TESTED: "",
+            RetestStatus.FIXED: "ok",
+        }
         severity_priority = {
             "critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4,
         }
+
         def attention_order(f):
             return (
                 0 if f.retest_status is RetestStatus.REGRESSION else 1,
@@ -3044,23 +3055,120 @@ class LightUpWebApp:
             (f for f in findings if f.retest_status is RetestStatus.FIXED),
             key=attention_order,
         )
-        visibility_note = (
-            "System names remain collapsed on the client landing view."
-            if portal else
-            "Operators can inspect source evidence references and affected systems."
+
+        def render_finding(f, index: int, *, fixed: bool) -> str:
+            if f.retest_status not in review_copy:
+                raise ValueError("unrecognized original finding retest state")
+            status_title, status_detail = review_copy[f.retest_status]
+            badge = status_badges[f.retest_status]
+            card_id = f"recorded-{'fixed' if fixed else 'open'}-{index}"
+            # Client landing pages keep affected systems and full impact/fix
+            # copy behind one user-opened disclosure. Operators can read the
+            # same structured flow immediately without changing access rights.
+            asset = (
+                '<details><summary>Reveal affected system</summary>'
+                f'<p class="meta">{_e(f.asset)}</p></details>'
+                if portal else
+                f'<p class="meta">Affected system: {_e(f.asset)}</p>'
+            )
+            evidence = (
+                '<details><summary>Original evidence references '
+                f'({len(f.evidence_ids)})</summary><ul>'
+                + "".join(f'<li><code>{_e(e)}</code></li>' for e in f.evidence_ids)
+                + '</ul></details>'
+                if not portal and f.evidence_ids else ""
+            )
+            steps = (
+                '<ol class="remediation-flow">'
+                '<li><strong>1 · Finding</strong>'
+                f'<p>{_e(f.title)} · {_e(f.severity.value)} severity</p></li>'
+                '<li><strong>2 · Impact</strong>'
+                f'<p>{_e(f.impact or "Impact not recorded")}</p></li>'
+                '<li><strong>3 · Fix to review</strong>'
+                f'<p>{_e(f.remediation or "Remediation not recorded")}</p></li>'
+                '<li><strong>4 · Retest evidence</strong>'
+                f'<p>{_e(status_title)}. {_e(status_detail)}</p></li></ol>'
+            )
+            flow = (
+                '<details class="finding-details">'
+                '<summary>Read finding → impact → fix → retest</summary>'
+                f'{steps}{evidence}</details>'
+                if portal else
+                f'{steps}{evidence}'
+            )
+            return (
+                f'<article class="card finding-card" id="{_e(card_id)}">'
+                '<div class="row">'
+                f'<h4>{_e(f.title)}</h4>'
+                f'<span class="badge {badge}">{_e(status_title)}</span></div>'
+                f'<p class="meta">Severity: {_e(f.severity.value)} · '
+                'Recorded observation only</p>'
+                f'<p><strong>Human next step:</strong> {_e(status_detail)}</p>'
+                f'{asset}{flow}</article>'
+            )
+
+        urgent_count = sum(
+            f.severity.value in {"critical", "high"} for f in needs_follow_up
         )
+        regression_count = sum(
+            f.retest_status is RetestStatus.REGRESSION for f in needs_follow_up
+        )
+        if needs_follow_up:
+            first = needs_follow_up[0]
+            first_status, _ = review_copy[first.retest_status]
+            next_title = (
+                "Review recorded regression first"
+                if first.retest_status is RetestStatus.REGRESSION else
+                "Start with the highest-priority unresolved finding"
+            )
+            next_body = (
+                f"{first.title} · {first.severity.value} severity · "
+                f"{first_status}. The remediation and verification record "
+                "are available below; no automated retest is offered."
+            )
+            next_link = '<a href="#recorded-open-1">Open first recorded finding</a>'
+        else:
+            next_title = "No recorded finding currently needs follow-up"
+            next_body = (
+                "A clear finding queue does not mean all systems were "
+                "assessed or verified safe. Check recorded assessment coverage."
+            )
+            next_link = (
+                '<a href="#coverage-details">Review assessment coverage</a>'
+                if portal else
+                '<a href="/authorization-reviews">Review independent safety gates</a>'
+            )
+
         return (
-            '<p class="meta">Only original recorded findings are shown. '
-            'Regressions come first, then unresolved critical-to-low severity. '
-            'A recorded fixed status does not establish full assessment coverage '
-            f'or authorize testing. {_e(visibility_note)}</p>'
+            '<section class="card" aria-labelledby="finding-next-heading">'
+            '<span class="badge lock">Recorded findings · no automatic retest</span>'
+            f'<h3 id="finding-next-heading">{_e(next_title)}</h3>'
+            f'<p>{_e(next_body)}</p><p>{next_link}</p>'
+            '</section>'
+            '<div class="grid" aria-label="Recorded finding follow-up counts">'
+            f'<div class="card"><strong>{len(needs_follow_up)}</strong>'
+            '<p class="meta">Open findings needing HUMAN follow-up</p></div>'
+            f'<div class="card"><strong>{regression_count}</strong>'
+            '<p class="meta">Recorded regressions</p></div>'
+            f'<div class="card"><strong>{urgent_count}</strong>'
+            '<p class="meta">Open critical/high-severity findings</p></div>'
+            f'<div class="card"><strong>{len(marked_fixed)}</strong>'
+            '<p class="meta">Recorded fixed · coverage not inferred</p></div>'
+            '</div>'
+            '<p class="meta">Ordered by recorded regression first, then '
+            'severity. Fix instructions and retest labels are historical '
+            'records only; no target is contacted and no permission is granted.</p>'
             f'<h3>Needs HUMAN follow-up ({len(needs_follow_up)})</h3>'
-            + ("".join(render_finding(f) for f in needs_follow_up)
-               or '<p class="empty">No recorded findings currently need follow-up. '
-                  'Check assessment coverage before drawing conclusions.</p>')
+            + ("".join(
+                render_finding(f, index, fixed=False)
+                for index, f in enumerate(needs_follow_up, 1)
+            ) or '<p class="empty">No recorded findings currently need follow-up. '
+                 'Check assessment coverage before drawing conclusions.</p>')
             + f'<details><summary>Recorded fixed findings ({len(marked_fixed)})</summary>'
-            + ("".join(render_finding(f) for f in marked_fixed)
-               or '<p class="empty">No findings are marked fixed yet.</p>')
+            + ("".join(
+                render_finding(f, index, fixed=True)
+                for index, f in enumerate(marked_fixed, 1)
+            ) or '<p class="empty">No findings are marked fixed yet.</p>')
             + '</details>'
         )
 
