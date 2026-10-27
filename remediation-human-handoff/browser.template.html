@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__SCRIPT_SHA256__'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · PRIVATE HUMAN Return Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1423;--panel:#1a2a40;--border:#3a526a;--ink:#f0f8fe;--muted:#bbcede;--mint:#a7f4d4;--warn:#f5c57a}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 85% 0%,#1d3850,var(--bg) 63%);font:16px/1.55 system-ui,sans-serif;color:var(--ink)}
+main{max-width:1200px;margin:auto;padding:clamp(16px,4vw,46px)}
+h1{font-size:clamp(2.15rem,4vw,3.8rem);line-height:1.1;margin:8px 0 20px}
+h2{font-size:1.32rem;margin:0 0 13px}h3{font-size:1.02rem}
+p,li{color:var(--muted)}small{color:var(--mint);text-transform:uppercase;letter-spacing:.13em;font-weight:800}
+header{margin-bottom:30px}section{margin:16px 0 24px;padding:clamp(18px,3vw,28px);background:var(--panel);border:1px solid var(--border);border-radius:18px}
+.notice{border-left:5px solid var(--warn);border-radius:10px;padding:16px 19px;background:#342c36;margin:22px 0}
+.notice strong{color:#fff0ca}.notice p{margin:4px 0}
+.actions{display:flex;flex-wrap:wrap;gap:11px;align-items:end;margin:15px 0}
+label{color:var(--muted);font-size:.92rem}
+input[type=file]{display:block;margin:7px 0;color:var(--ink);font:inherit;max-width:100%;font-size:.87rem}
+select,button{padding:10px 13px;font:inherit;border-radius:10px;border:1px solid #688a9d;color:var(--ink);background:#1e344a}
+select{max-width:300px;width:100%;min-width:175px}
+button{cursor:pointer;font-weight:700}button:hover{background:#345a63}button:disabled{opacity:.38;cursor:not-allowed}
+button.primary{background:#145447;border-color:var(--mint)}
+#status{margin-top:12px;min-height:43px;padding:10px 15px;border-left:4px solid var(--mint);background:#1a3b37;border-radius:6px}
+#status[data-status=hold]{border-color:#f0a186;background:#452d36}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:16px}
+.scroll{overflow:auto;border-radius:11px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;min-width:1050px}
+th,td{text-align:left;border-bottom:1px solid var(--border);padding:12px 11px;font-variant-numeric:tabular-nums}
+th{font-size:.83rem;color:#d1e7f7}tr:last-child td,tr:last-child th{border-bottom:0}
+tbody tr:hover{background:#233c50}
+footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
+@media print{body{background:#fff;color:#111}section{background:#fff;border-color:#ccc}.notice{background:#fff;color:#111}p,li{color:#222}button{display:none}}
+</style></head><body><main>
+<header>
+<small>LightUp / PRIVATE / 100% offline / DRAFT HOLD</small>
+<h1>HUMAN return<br> &amp; handoff studio</h1>
+<p>Work locally with one saved source-free numeric session and its exact paired HUMAN routing board. Review anonymous packet appearances, prepare human-only follow-up, and return local choices to the original Studio. Nothing connects to a server.</p>
+<div class="notice"><strong>NOT a security assessment or source approval.</strong>
+<p>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. All counts and routing choices are self-declared. These are not verified findings, unique cases, client consent, fixes, grants, authentic reviews or permissions. Even anonymous small-cell counts may be privacy-sensitive; downloads are not encrypted at rest.</p></div>
+</header>
+<section aria-labelledby="step1"><h2 id="step1">1 · Pair the original PRIVATE files</h2>
+<p>Download a numeric session and its matching HUMAN action board from the existing offline <code>remediation-portfolio/studio.html</code>. Import BOTH here. Exact v1 schema, nested duplicate JSON keys, false authority flags and every numeric packet ordinal must match; otherwise the entire pair is refused. File bytes never leave this browser tab.</p>
+<div class="grid">
+<label>Source-free PRIVATE numeric session JSON<input id="sessionFile" type="file" accept=".json,application/json" aria-label="Load saved numeric HUMAN Studio session"></label>
+<label>Matching PRIVATE HUMAN action board JSON<input id="boardFile" type="file" accept=".json,application/json" aria-label="Load matching saved HUMAN routing board"></label>
+</div>
+<div class="actions"><button id="load" class="primary" type="button">Load both PRIVATE files</button></div>
+<div id="status" role="status" aria-live="polite">Initializing local desk…</div>
+<p id="sourceStatus">Not imported</p></section>
+
+<section aria-labelledby="step2"><h2 id="step2">2 · Review HUMAN-only routing</h2>
+<p id="counts">No private session loaded</p>
+<div class="scroll"><table><thead><tr><th>Local ordinal (not case)</th><th>Count source</th><th>Slot appearances</th><th>Unverified questions</th><th>Proposed HUMAN next action</th><th>Local planning state</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="actions">
+<button id="reset" type="button" disabled>Reset local choices</button>
+<button id="saveBoard" class="primary" type="button" disabled>Download Studio-compatible native board</button>
+<button id="deltaCsv" type="button" disabled>Download local action/state change CSV</button>
+<button id="summary" type="button" disabled>Download anonymous planning counts JSON</button>
+</div>
+<p>The downloaded board uses the *same exact numeric session* and the original v1 board format. The existing Studio independently rechecks all packet ordinals before you can restore it. A local state of "discussed" does not verify any real fix.</p></section>
+
+<section aria-labelledby="step3"><h2 id="step3">3 · Prepare least-disclosure HUMAN handoff</h2>
+<p>Choose one local action category or all non-empty categories. To minimize disclosure further, choose exactly one local ordinal (never a case ID). Export scriptless HTML, private-human TXT or CSV. Every packet remains only an anonymous appearance; this is a locally prepared message, never sent to an actual recipient.</p>
+<div class="actions"><label>HUMAN action to include
+<select id="actionFilter" disabled><option value="all">All actionable HUMAN appearances</option>
+<option value="request_fresh_source_export">Ask original owner for source export</option>
+<option value="discuss_open_questions">Discuss open HUMAN questions</option>
+<option value="clarify_human_assignment">Clarify HUMAN assignment</option>
+<option value="reconcile_anonymous_coverage">Clarify possible coverage overlap</option>
+<option value="request_original_human_review">Request original HUMAN review</option>
+</select></label>
+<label>Optional exact LOCAL packet ordinal
+<select id="ordinalFilter" disabled><option value="all">All anonymous local ordinals</option></select></label>
+<p><strong id="selectionCount">0</strong> local packet appearances in selection</p></div>
+<div class="actions">
+<button id="handoffHtml" class="primary" type="button" disabled>Download offline HTML handoff</button>
+<button id="handoffCsv" type="button" disabled>Download CSV handoff</button>
+<button id="handoffTxt" type="button" disabled>Download HUMAN text brief</button>
+</div>
+<p>The export has no original client names, targeting, findings, timestamps or original evidence. Deliberate HUMAN disclosure is required for all files, including counts-only files. Do not confuse a prepared handoff with a delivered or independently reviewed request.</p>
+</section>
+<section aria-labelledby="step4"><h2 id="step4">4 · Compare a second LOCAL HUMAN board (manual only)</h2>
+<p>Two offline HUMAN operators can independently propose different local routing choices for the *same saved anonymous numeric session*. Select a second board made from the exact same packet descriptions. Only validated source-free ordinal differences are shown. Click **Use peer choice locally** on one row at a time after explicitly confirming that self-declared suggestion. There is no automatic merge or actual source-owner identity check.</p>
+<div class="actions">
+<label>Second source-free HUMAN board JSON<input id="peerFile" type="file" accept=".json,application/json" aria-label="Choose an alternate local HUMAN action board"></label>
+<button id="loadPeer" type="button">Load second board</button>
+<button id="clearPeer" type="button">Clear second board</button>
+</div>
+<p id="peerSummary" role="status" aria-live="polite">No second HUMAN board admitted.</p>
+<div class="scroll"><table><thead><tr><th>Local ordinal (not case)</th><th>Original local choices</th><th>Second local suggestions</th><th>Current local proposal</th><th>Explicit HUMAN selection</th></tr></thead><tbody id="peerRows"></tbody></table></div>
+<div class="actions"><button id="peerCsv" type="button" disabled>Download source-free peer change CSV</button></div>
+<p>Missing rows mean no local difference in the compared numeric slot; they do not demonstrate that a finding was fixed or that any review happened. Matching packet ordinals cannot prove the same original case. The current board remains a separate user-controlled draft and can be exported using section 2.</p></section>
+<section aria-labelledby="step5"><h2 id="step5">5 · Encrypted PRIVATE work-session continuity</h2>
+<p>Save your complete current anonymous HUMAN working state (original paired numeric session, original action board, local proposed routing changes, and optional peer board) as <strong>one password-encrypted offline file</strong>. Restore that file later in this browser. The encrypted file has no readable counts, case references or original evidence metadata. This is a local backup, not an authenticated source document, real client evidence or proof that any action was performed.</p>
+<div class="notice"><strong>Only the new work-session backup is encrypted.</strong><p>Existing plaintext exports from the original Studio, native board downloads, handoff HTML/CSV/TXT and separately exported JSON remain unencrypted. Use a long unique passphrase, store it separately, avoid shared Downloads folders, and disclose no files without authorization. Forgotten passphrases cannot be recovered. Offline WebCrypto must be available; unsupported browsers fail closed rather than exporting plaintext.</p></div>
+<div class="grid">
+<label>New passphrase (14–256 characters; private, unique)
+<input id="saveSecret" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Passphrase to protect private workspace backup"></label>
+<label>Confirm new passphrase
+<input id="confirmSecret" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Confirm encrypted workspace passphrase"></label>
+</div>
+<div class="actions"><button id="saveEncrypted" class="primary" type="button" disabled>Download AES-GCM encrypted work-session</button></div>
+<h3>Restore an encrypted PRIVATE work-session</h3>
+<div class="grid">
+<label>Encrypted .lhew workspace file
+<input id="encryptedFile" type="file" accept=".lhew,application/json" aria-label="Choose local encrypted HUMAN session backup"></label>
+<label>Unlock passphrase
+<input id="unlockSecret" type="password" autocomplete="off" spellcheck="false" aria-label="Passphrase for encrypted workspace restoration"></label>
+</div>
+<div class="actions"><button id="restoreEncrypted" type="button">Unlock &amp; restore only after full validation</button></div>
+<p>PBKDF2-HMAC-SHA-256 with 600,000 iterations derives an AES-256-GCM key from a human passphrase. Each backup has an independent random 16-byte salt and 12-byte nonce, an authenticated fixed application domain and a strict versioned encrypted envelope. Restoring verifies the authenticated ciphertext and then validates every original session and board before replacing any current local browser choices. Existing browser data stays unchanged if a file, passphrase, schema or confirmation fails. This is not a claim of independent cryptographic review.</p>
+</section>
+<section aria-labelledby="step6"><h2 id="step6">6 · Encrypted HUMAN handoff: only selected local rows</h2>
+<p>Share only the locally selected HUMAN follow-up from section 3 as a password-encrypted `.lheh` capsule. Unlike the encrypted full-session backup above, this capsule contains <strong>no complete numeric session, peer board or original board</strong>; only the exact selected anonymous rows with predefined HUMAN action and routing state codes. An independent recipient may open it here without loading a saved work-session. The recipient is not thereby authenticated.</p>
+<div class="grid">
+<label>New private handoff passphrase (14–256 characters)
+<input id="handoffSecret" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Passphrase to encrypt only selected HUMAN follow-up rows"></label>
+<label>Confirm handoff passphrase
+<input id="handoffConfirm" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Confirm selected HUMAN handoff encryption passphrase"></label>
+</div>
+<div class="actions"><button id="saveEncryptedHandoff" class="primary" type="button" disabled>Encrypt selected HUMAN action only (.lheh)</button></div>
+<h3>Read an encrypted LOCAL HUMAN handoff</h3>
+<div class="grid">
+<label>Encrypted selected handoff file<input id="handoffEncryptedFile" type="file" accept=".lheh,application/json" aria-label="Open received encrypted source-free HUMAN handoff"></label>
+<label>Unlock passphrase<input id="handoffUnlock" type="password" autocomplete="off" spellcheck="false" aria-label="Unlock password for selected HUMAN handoff"></label>
+</div>
+<div class="actions"><button id="openEncryptedHandoff" type="button">Unlock selected HUMAN handoff locally</button></div>
+<p id="unlockedHandoffStatus" role="status" aria-live="polite">No encrypted handoff opened.</p>
+<div class="scroll"><table><thead><tr><th>Local ordinal, NOT case</th><th>Count type</th><th>Slot appearances</th><th>HUMAN question appearances</th><th>Proposed HUMAN next action</th><th>Unverified local state</th></tr></thead><tbody id="unlockedHandoffRows"></tbody></table></div>
+<p>Saving and opening use independently versioned AES-256-GCM envelopes with separate cryptographic domain separation for HANDOFF vs WORKSESSION. A full-session backup cannot be opened as a handoff or vice versa. The encrypted capsule is not an authenticated identity, evidence signature, delivery receipt, approval or actual client case. Deliberate HUMAN consent and proper privacy controls remain necessary before any disclosure.</p>
+</section>
+<section aria-labelledby="privacyClear"><h2 id="privacyClear">7 · Clear this PRIVATE browser tab</h2>
+<p>After completing local HUMAN work, deliberately discard the active numeric session, original/edited/peer board references, revealed encrypted handoff table, selected files and entered passphrases from this page. This does not securely overwrite browser process memory, clipboard contents or files already downloaded to disk.</p>
+<div class="actions"><button id="wipe" type="button">Clear all loaded local HUMAN data</button></div>
+</section>
+<footer><small>LightUp / strictly local HUMAN planning / no grants / no target access</small>
+<p>This self-contained single-file browser desk uses a pinned inline-script content-security policy, not an independent security audit. It requires no cloud access, scripts from third parties, persistent browser storage, accounts, credentials, scans or installation. Original owner and review gates still apply.</p></footer>
+</main><script>__INLINE_SCRIPT__</script></body></html>
