@@ -23,6 +23,7 @@
   const CHANGE_KEYS = ["name", "baseline", "candidate", "delta", "regression"];
   const $ = id => document.getElementById(id);
   let report = null, selected = -1, digest = null, sourceKind = null, trend = null, metricFocus = null, planDelta = null;
+  let compareSourceDigest = null;
   // User choice is authoritative: stale local file completions cannot clear
   // or silently replace a newer HUMAN planning workspace.
   const HUMAN_HISTORY_LIMIT = 20;
@@ -821,6 +822,97 @@
     metricFocus=null;
     if(report) render();
   });
+  // Compare existing original lab metrics using only anonymous case ordinals.
+  // This is an offline reading aid, never a finding, release or consent decision.
+  function caseCompareRows() {
+    if (!report || report.cases.length < 2) return null;
+    const left = Number($("compare-left").value);
+    const right = Number($("compare-right").value);
+    if (!Number.isSafeInteger(left) || !Number.isSafeInteger(right) ||
+        left === right || left < 0 || right < 0 ||
+        left >= report.cases.length || right >= report.cases.length) return null;
+    const a = report.cases[left], b = report.cases[right];
+    if (a.changes.length !== METRICS.length || b.changes.length !== METRICS.length) return null;
+    const metrics = METRICS.map(name => ({
+      name,
+      a: a.changes.find(change => change.name === name),
+      b: b.changes.find(change => change.name === name)
+    }));
+    if (metrics.some(row => !row.a || !row.b)) return null;
+    return {left,right,a,b,metrics};
+  }
+  function renderCaseComparison() {
+    const left = $("compare-left"),right = $("compare-right");
+    const summary = $("case-compare-summary"),body = $("case-compare-rows");
+    body.replaceChildren();
+    // Repopulate only on original source change; preserve keyboard selection
+    // during routine HUMAN edits and filter changes.
+    if (compareSourceDigest !== digest) {
+      left.replaceChildren();right.replaceChildren();
+      compareSourceDigest = digest;
+      if (report) {
+        report.cases.forEach((_,i) => {
+          for (const select of [left,right]) {
+            const option = document.createElement("option");
+            option.value = String(i);
+            option.textContent = label(i);
+            select.append(option);
+          }
+        });
+      }
+      left.value = "0";right.value = "1";
+    }
+    const canCompare = !!report && report.cases.length >= 2;
+    left.disabled = !canCompare;right.disabled = !canCompare;
+    const comparison = caseCompareRows();
+    $("case-compare-csv").disabled = !comparison;
+    if (!comparison) {
+      summary.textContent = canCompare ?
+        "Select two different anonymous cases to compare the original reported metrics." :
+        "Import a cohort with at least two complete cases to compare source-reported metrics.";
+      return;
+    }
+    const {left:ai,right:bi,a,b,metrics} = comparison;
+    const aFlags = new Set(a.regressions),bFlags = new Set(b.regressions);
+    const shared = metrics.filter(m => aFlags.has(m.name) && bFlags.has(m.name)).length;
+    const onlyA = metrics.filter(m => aFlags.has(m.name) && !bFlags.has(m.name)).length;
+    const onlyB = metrics.filter(m => !aFlags.has(m.name) && bFlags.has(m.name)).length;
+    summary.textContent = label(ai) + " [" + a.status + ", " + aFlags.size +
+      " source regression(s)] versus " + label(bi) + " [" + b.status + ", " +
+      bFlags.size + " source regression(s)]; shared flags " + shared +
+      ", left only " + onlyA + ", right only " + onlyB +
+      ". Neither difference is proof of remediation, source identity, or authorization.";
+    for (const {name,a:am,b:bm} of metrics) {
+      const tr = child(body,"tr",undefined,am.regression !== bm.regression ? "bad" : "");
+      child(tr,"td",nice(name));
+      [am,bm].forEach(m => {
+        child(tr,"td",fmt(m.baseline));
+        child(tr,"td",fmt(m.candidate));
+        child(tr,"td",fmt(m.delta));
+        child(tr,"td",m.regression ? "Source regression" : "Not flagged");
+      });
+    }
+  }
+  $("compare-left").addEventListener("change",renderCaseComparison);
+  $("compare-right").addEventListener("change",renderCaseComparison);
+  $("case-compare-csv").addEventListener("click",() => {
+    const comparison = caseCompareRows();
+    if (!comparison) return;
+    const cols = ["metric","left_case","left_baseline","left_candidate","left_delta",
+      "left_source_regression","right_case","right_baseline","right_candidate",
+      "right_delta","right_source_regression","authorized","consent_verified",
+      "dispatch_allowed","release_allowed","review_only"];
+    const rows = [cols.map(csvCell).join(",")];
+    comparison.metrics.forEach(({name,a,b}) => rows.push([
+      name,label(comparison.left),a.baseline,a.candidate,a.delta,a.regression,
+      label(comparison.right),b.baseline,b.candidate,b.delta,b.regression,
+      false,false,false,false,true
+    ].map(csvCell).join(",")));
+    download("lightup-anonymous-case-comparison.csv",
+      rows.join("\r\n")+"\r\n","text/csv;charset=utf-8");
+    alert("Anonymous case comparison CSV offered locally; no original scenario IDs, targets, authorizations or external requests.", "good");
+  });
+
   // Bounded, source-byte-bound HUMAN-only history. Snapshots contain no source metrics.
   function humanPlanningSnapshot() {
     return {source:digest,rows:report.cases.map(c=>({
@@ -874,12 +966,17 @@
   function undoHumanEdit(){restoreHumanHistory(humanUndoHistory,humanRedoHistory,"Undo");}
   function redoHumanEdit(){restoreHumanHistory(humanRedoHistory,humanUndoHistory,"Redo");}
   function render() {
-    renderOverview();renderLandscape();renderQueue();renderDetails();
+    renderOverview();renderLandscape();renderCaseComparison();renderQueue();renderDetails();
     renderPlanningCalendar();renderCalendarPreview();renderPrintBrief();renderFilteredPrintBrief();
     updateHumanHistoryControls();
   }
   function reset(invalidate = true) {
     if (invalidate) invalidateReads();
+    compareSourceDigest = null;
+    $("compare-left").replaceChildren();$("compare-right").replaceChildren();
+    $("case-compare-rows").replaceChildren();
+    $("case-compare-csv").disabled = true;
+    $("case-compare-summary").textContent = "Import a cohort with at least two complete cases.";
     report = null; selected = -1; digest = null; sourceKind = null;
     $("asof-day").value = "";
     $("bulk-route").value = "";

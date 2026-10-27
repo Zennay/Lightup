@@ -1,3 +1,11 @@
+## 27 October 2026 · anonymous two-case metric comparison
+
+Added a self-contained, offline side-by-side inspection panel for two different cases from the **same original imported cohort** (minimum two cases). Both choices use only generated anonymous local ordinals; for each of the 15 canonical metrics the panel displays baseline, candidate, delta and source regression flag. A compact summary separates shared and case-specific flags.
+
+The local **comparison CSV** carries exactly those 15 metric rows plus literal false authority flags; it excludes original scenario IDs, source filename/hash, target/system details, HUMAN notes and recipient data. The selectors are reset when loading another original report or clearing the tab, while other local planning edits preserve the current comparison.
+
+The comparison is not a cross-run experiment, proof of a fix, safety ranking, consent, grant or release decision. Both source HTML and portable hashed-CSP standalone remain offline with no target or network activity. Original independent reviewer and HUMAN-GO gates remain HOLD.
+
 ## 27 October 2026 · explicit report-wide vs filtered HUMAN regression triage
 
 The offline Review Desk now distinguishes **queue ALL untriaged source regressions** (including cases hidden by filters) from **queue only currently visible untriaged regressions**. A live eligible count reflects queue status, workstream, source priority and metric focus; the reviewer must confirm the relevant scope.
