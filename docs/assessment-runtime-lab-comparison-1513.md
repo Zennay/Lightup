@@ -996,6 +996,32 @@ PYTHONPATH=src python scripts/assessment_runtime_review_zip_inspect_cli_1513.py 
   received-human-handoff.zip
 ```
 
+To check an independently received **source JSON hash claim** even when the
+source JSON itself was not transferred, add `--expected-source-sha256`.
+One or both strict 64-hex digests may be supplied in either order before the
+single ZIP path. Unknown or repeated flags, missing values and any mismatch
+all return a source-free generic `HOLD` with no admitted hashes.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_review_zip_inspect_cli_1513.py \
+  --expected-source-sha256 "$INDEPENDENT_JSON_SHA256" \
+  received-human-handoff.zip
+
+PYTHONPATH=src python scripts/assessment_runtime_review_zip_inspect_cli_1513.py \
+  --expected-zip-sha256 "$INDEPENDENT_ARCHIVE_SHA256" \
+  --expected-source-sha256 "$INDEPENDENT_JSON_SHA256" \
+  received-human-handoff.zip
+```
+
+The **source-hash option only checks equality to the unauthenticated ZIP
+manifest's `received_json_sha256` claim**; it cannot verify that the HTML,
+CSV or Markdown were actually generated from those JSON bytes. Even when
+both external hashes match, the reviewer must use the separate original-JSON
+byte-for-byte bundle verifier to establish content derivation. External digests
+must come from an independently authenticated channel before being relied on.
+This feature does not satisfy source provenance, consent or HUMAN GO.
+
+
 This is a bounded symlink-free, inode-pinned **read only** operation. It rejects
 ZIP encryption/compression, extra/duplicate/renamed members, changed metadata,
 noncanonical archive bytes, corrupt CRC, altered individual file digests,

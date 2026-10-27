@@ -1,8 +1,9 @@
 """Inspect the integrity of a received private LightUp HUMAN ZIP without source JSON.
 
 This is a bounded offline *internal consistency* read. ZIP bytes and embedded
-hashes may both be forged, so only an independently authenticated ZIP SHA-256
-can establish external byte identity. Neither case grants any authority.
+hashes may both be forged. Independently received SHA-256 values can check
+ZIP byte identity or the manifest's claimed source digest, respectively;
+neither check authenticates underlying lab facts or grants authority.
 No archive entry is ever extracted, executed, opened in a browser or written.
 """
 from __future__ import annotations
@@ -51,16 +52,23 @@ def _canonical_lower_digest(value) -> bool:
 
 def inspect_offline_human_zip(
     zip_path: str, *, expected_zip_sha256: str | None = None,
+    expected_source_sha256: str | None = None,
 ) -> dict:
     """Check four canonical stored members and all internal hashes, fail closed.
 
     Internal hashes are attacker-rewriteable. An independently obtained ZIP
-    digest is mandatory for any authenticated byte-identity claim; it never
-    authenticates the source facts, consent or scope.
+    digest is mandatory for any authenticated ZIP byte-identity claim.
+    A separately supplied source digest checks the embedded JSON hash claim
+    without proving that the archived views were rendered from those bytes.
+    Neither digest authenticates the source facts, consent or scope.
     """
     hold = _hold_receipt()
-    if expected_zip_sha256 is not None and not _canonical_sha256(
-        expected_zip_sha256,
+    if (
+        expected_zip_sha256 is not None
+        and not _canonical_sha256(expected_zip_sha256)
+    ) or (
+        expected_source_sha256 is not None
+        and not _canonical_sha256(expected_source_sha256)
     ):
         return hold
     try:
@@ -125,6 +133,13 @@ def inspect_offline_human_zip(
             ).encode("utf-8")
         ):
             return hold
+        # The independently supplied digest can reject a wrong source claim.
+        # This is manifest-claim equality, not verification that the handoff
+        # was genuinely rendered from the corresponding source JSON.
+        if expected_source_sha256 is not None and not compare_digest(
+            manifest["received_json_sha256"], expected_source_sha256.lower(),
+        ):
+            return hold
         for entry, (name, payload) in zip(manifest["artifacts"], entries[1:]):
             if (
                 type(entry) is not dict
@@ -155,16 +170,31 @@ def inspect_offline_human_zip(
 def main(argv=None) -> int:
     args = sys.argv[1:] if argv is None else argv
     receipt = _hold_receipt()
-    if len(args) == 1 and type(args[0]) is str:
-        receipt = inspect_offline_human_zip(args[0])
-    elif (
-        len(args) == 3
-        and args[0] == "--expected-zip-sha256"
-        and _canonical_sha256(args[1])
-    ):
-        receipt = inspect_offline_human_zip(
-            args[2], expected_zip_sha256=args[1],
-        )
+    # Zero, one or two independently provided digests, in either order, must
+    # precede exactly one path. Duplicates/unknown flags fail closed.
+    if type(args) in (list, tuple) and 1 <= len(args) <= 5:
+        digests: dict[str, str] = {}
+        position = 0
+        valid = True
+        while position < len(args) - 1:
+            flag = args[position]
+            if (
+                type(flag) is not str
+                or flag not in ("--expected-zip-sha256", "--expected-source-sha256")
+                or flag in digests
+                or position + 1 >= len(args) - 1
+                or not _canonical_sha256(args[position + 1])
+            ):
+                valid = False
+                break
+            digests[flag] = args[position + 1]
+            position += 2
+        if valid and position == len(args) - 1 and type(args[-1]) is str:
+            receipt = inspect_offline_human_zip(
+                args[-1],
+                expected_zip_sha256=digests.get("--expected-zip-sha256"),
+                expected_source_sha256=digests.get("--expected-source-sha256"),
+            )
     print(json.dumps(receipt, sort_keys=True, separators=(",", ":")))
     return (
         2 if receipt["internal_zip_consistent"]
