@@ -2121,8 +2121,8 @@ class LightUpWebApp:
             note = (" Zero findings with unknown coverage is not a clean bill of health;"
                     " coverage reporting arrives with the assessment engine.")
             return f"<p class=\"empty\">No findings recorded.{note if portal else ''}</p>"
-        cards = []
-        for f in findings:
+
+        def render_finding(f) -> str:
             retest_badge = {
                 RetestStatus.FIXED: "<span class=\"badge ok\">Fixed & verified</span>",
                 RetestStatus.REGRESSION: "<span class=\"badge lock\">Regression</span>",
@@ -2135,17 +2135,59 @@ class LightUpWebApp:
                     "<details><summary>Evidence references</summary><p class=\"meta\">"
                     + "<br>".join(_e(e) for e in f.evidence_ids) + "</p></details>"
                 )
-            cards.append(
-                "<div class=\"card\"><div class=\"row\">"
+            # The portal is authenticated, but its landing view should not
+            # shoulder-surf raw system identifiers. The detail disclosure is
+            # presentation only; it is NOT a secrecy or authorization boundary.
+            asset_detail = (
+                "<details><summary>Show affected system</summary>"
+                f'<p class="meta">{_e(f.asset)}</p></details>'
+                if portal else ""
+            )
+            asset_meta = "" if portal else f" · asset {_e(f.asset)}"
+            return (
+                '<section class="card"><div class="row">'
                 f"<strong>{_e(f.title)}</strong>{retest_badge}</div>"
-                f"<p class=\"meta\">Severity {_e(f.severity.value)} · asset {_e(f.asset)}</p>"
+                f'<p class="meta">Severity {_e(f.severity.value)}{asset_meta}</p>'
+                f"{asset_detail}"
                 "<details><summary>Impact</summary>"
                 f"<p>{_e(f.impact) or '—'}</p></details>"
                 "<details><summary>Fix</summary>"
                 f"<p>{_e(f.remediation)}</p></details>"
-                f"{evidence}</div>"
+                f"{evidence}</section>"
             )
-        return "".join(cards)
+
+        if not portal:
+            return "".join(render_finding(f) for f in findings)
+
+        # Read-only human triage. Never equate 'fixed' with independently
+        # established scope coverage or permission to perform another retest.
+        severity_priority = {
+            "critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4,
+        }
+        def attention_order(f):
+            return (
+                0 if f.retest_status is RetestStatus.REGRESSION else 1,
+                severity_priority.get(f.severity.value, 5),
+                f.title.casefold(),
+            )
+
+        needs_follow_up = sorted(
+            (f for f in findings if f.retest_status is not RetestStatus.FIXED),
+            key=attention_order,
+        )
+        marked_fixed = [f for f in findings if f.retest_status is RetestStatus.FIXED]
+        return (
+            '<p class="meta">Only recorded findings are shown. A recorded '
+            'fixed status does not establish full assessment coverage or '
+            'authorize new tests. System identifiers are collapsed by default.</p>'
+            f'<h3>Needs follow-up ({len(needs_follow_up)})</h3>'
+            + ("".join(render_finding(f) for f in needs_follow_up)
+               or '<p class="empty">No recorded findings currently need follow-up. '
+                  'Check assessment coverage before drawing conclusions.</p>')
+            + f'<h3>Recorded fixed &amp; verified ({len(marked_fixed)})</h3>'
+            + ("".join(render_finding(f) for f in marked_fixed)
+               or '<p class="empty">No findings are marked fixed yet.</p>')
+        )
 
 
 def create_app(store: DomainStore, security: WebSecurity | None = None) -> LightUpWebApp:
