@@ -171,6 +171,11 @@ def _admitted_components(payload) -> bool:
         payload["report_type"], payload["source_status"],
         payload["accepted_case_count"],
     )
+    # An admitted source bundle can only contain one standalone comparison
+    # or 1–64 members of a bounded cohort. Reject semantically impossible
+    # case counts even when the forged nested sections agree with each other.
+    if not 1 <= count <= 64 or (kind == "single_case" and count != 1):
+        return False
     for section in (metrics, human, resources):
         if (
             type(section["schema_version"]) is not int
@@ -300,6 +305,12 @@ def _admitted_components(payload) -> bool:
             and _count(metric["decreased_cases"])
         ):
             return False
+    # A source-admitted HOLD is caused by at least one adverse comparator
+    # metric. A clean population must be REVIEW_ONLY. These labels remain
+    # advisory and never become an authorization or release verdict.
+    adverse = any(case["source_adverse_metric_count"] > 0 for case in metric_cases)
+    if status != ("HOLD" if adverse else "REVIEW_ONLY"):
+        return False
     return (
         reports._bundle_case_alignment(metric_cases, human_questions, resource_cases)
         and reports._bundle_summary_alignment(metrics, resources)
