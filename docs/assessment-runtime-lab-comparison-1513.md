@@ -908,6 +908,39 @@ after the optional separately supplied `--expected-sha256` equality check;
 it cannot authenticate the sender or validate source evidence, consent,
 authority or release. Do not treat it as a signature or automatic sign-off.
 
+### Verifying the rendered HUMAN artifact after offline transfer
+
+The embedded JSON digest does **not** detect later edits to a copied Markdown,
+HTML or CSV document by itself. The separate, stdlib-only, read-only receiver
+verifier reconstructs the requested output from the exact supplied JSON bytes
+and compares the **entire received artifact byte-for-byte**. It reuses the
+same symlink-free and inode-pinned 4 MiB local reader, strict full-packet
+schema/case/rank/resource admission, and deterministic renderers. It never
+opens URLs, scans, contacts an external system or grants authorization.
+
+```sh
+PYTHONPATH=src python scripts/assessment_runtime_review_artifact_verify_cli_1513.py \
+  --format bundle-md private-bundle.json received-human-review.md
+
+PYTHONPATH=src python scripts/assessment_runtime_review_artifact_verify_cli_1513.py \
+  --format bundle-html --expected-sha256 "$INDEPENDENT_SOURCE_SHA256" \
+  private-bundle.json received-human-review.html
+```
+
+Use `--format bundle-csv` for the CSV artifact. On an exact match the verifier
+returns minimal JSON with `render_matches=true`, a byte-identity SHA-256, and
+the source-reported `REVIEW_ONLY` or `HOLD`; exit code 2 is reserved for an
+exact `REVIEW_ONLY` match, exit code 3 for HOLD or any failure. Incomplete,
+corrupted, changed or mismatched files, malformed flags and failed optional
+source-digest checks produce **the same source-free generic HOLD** with no
+case details, no fingerprints and all authority flags false.
+
+Exact render matching proves neither who made the JSON nor whether its
+numbers are true. For trustworthy byte identity, the source digest must
+come independently from an authenticated owner/channel. Human source,
+scope/consent, security/privacy, operator, revocation and release gates are
+still mandatory outside offline review.
+
 Rejected, malformed, changed or digest-mismatched input produces a **fixed,
 source-free HOLD** message with no checkboxes, metrics or case content.
 An admitted source-reported HOLD does retain all anonymous HUMAN questions
