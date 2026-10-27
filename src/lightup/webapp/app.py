@@ -133,6 +133,11 @@ label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0
   .report-section { break-inside:avoid-page; }
   .report-section[id^="report-open-"]:target { outline:none; }
 }
+.report-index { border-left:4px solid var(--line); }
+.report-index ol { padding-left:24px; margin:8px 0 16px; }
+.report-index li { padding:4px 0; overflow-wrap:anywhere; }
+.report-index li a { display:inline-flex; align-items:center;
+                     min-height:38px; }
 .decision-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
                  gap:14px; align-items:stretch; }
 .decision-choice { min-width:0; display:flex; flex-direction:column; }
@@ -2408,7 +2413,11 @@ class LightUpWebApp:
             'current safety or authorize another test.</p>'
             f'<ol>{priority_items}</ol>'
             f'<p><a href="/portal/{_e(client_id)}/report#report-agenda-heading">'
-            'Open the full private follow-up report</a></p></section>'
+            'Open the full private follow-up report</a></p>'
+            + (f'<p><a href="/portal/{_e(client_id)}/report#report-index-heading">'
+               f'Jump to all {len(human_followups)} unresolved original findings</a></p>'
+               if len(human_followups) > 3 else '')
+            + '</section>'
             if human_followups else ""
         )
         request_rows = "".join(
@@ -2800,9 +2809,12 @@ class LightUpWebApp:
         import hashlib
         import json
 
-        def finding_payload(f):
+        def finding_payload(f, *, report_local_fragment: str):
             label, meaning = finding_statuses[f.retest_status]
             return {
+                # Report-local navigation only; not a persisted finding ID,
+                # export authentication token or independently verified fact.
+                "report_local_fragment": report_local_fragment,
                 "title": f.title,
                 "severity": f.severity.value,
                 "recorded_impact": f.impact or "",
@@ -2855,10 +2867,12 @@ class LightUpWebApp:
                     for index, f in enumerate(follow_up[:3], 1)
                 ],
                 "open_human_follow_up": [
-                    finding_payload(f) for f in follow_up
+                    finding_payload(f, report_local_fragment=f"report-open-{index}")
+                    for index, f in enumerate(follow_up, 1)
                 ],
                 "recorded_fixed_history": [
-                    finding_payload(f) for f in recorded_fixed
+                    finding_payload(f, report_local_fragment=f"report-fixed-{index}")
+                    for index, f in enumerate(recorded_fixed, 1)
                 ],
                 "recorded_regression_count": regressions,
                 "open_critical_high_count": urgent,
@@ -2922,6 +2936,38 @@ class LightUpWebApp:
             'details in this report</a></li>'
             for index, f in enumerate(follow_up[:3], 1)
         )
+        def report_index_item(f, index: int, *, fixed: bool) -> str:
+            label, _ = finding_statuses[f.retest_status]
+            anchor = f"report-{'fixed' if fixed else 'open'}-{index}"
+            return (
+                f'<li><a href="#{_e(anchor)}">{_e(f.title)}</a> '
+                f'<span class="meta">— {_e(f.severity.value)} severity · '
+                f'{_e(label)}</span></li>'
+            )
+
+        # Every private original finding has a matching printable HTML
+        # heading and a report-local JSON fragment, in the same stable order.
+        # The index provides navigation even beyond the first three actions.
+        evidence_index = (
+            '<section class="card report-section report-index" '
+            'aria-labelledby="report-index-heading">'
+            '<h2 id="report-index-heading">All recorded findings · quick index</h2>'
+            '<p class="meta">Links stay inside this private report. They are '
+            'not stable finding identifiers, new test results or authorization.</p>'
+            f'<h3>Human follow-up needed ({len(follow_up)})</h3>'
+            + ('<ol>' + ''.join(
+                report_index_item(f, index, fixed=False)
+                for index, f in enumerate(follow_up, 1)
+            ) + '</ol>' if follow_up else
+               '<p class="empty">No unresolved findings recorded.</p>')
+            + f'<h3>Recorded fixed history ({len(recorded_fixed)})</h3>'
+            + ('<ol>' + ''.join(
+                report_index_item(f, index, fixed=True)
+                for index, f in enumerate(recorded_fixed, 1)
+            ) + '</ol>' if recorded_fixed else
+               '<p class="empty">No findings marked fixed.</p>')
+            + '</section>'
+        )
         agenda = (
             '<section class="card report-section report-agenda" '
             'aria-labelledby="report-agenda-heading">'
@@ -2965,6 +3011,7 @@ class LightUpWebApp:
             'approval to scan. Unknown coverage must not be treated as safe.</p>'
             '</section>'
             + agenda
+            + evidence_index
             + '<div class="grid report-kpis">'
             f'<div class="card"><strong>{len(follow_up)}</strong>'
             '<p class="meta">Findings needing human follow-up</p></div>'
