@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "purpose": "offline incident response rehearsal only; never an authorization grant",
+  "exercises": [
+    {"id":"revoked-before-dispatch","trigger":"revoke after enqueue","expected_dispatch":"deny","expected_next_action":"none","tenant_isolation":true},
+    {"id":"expired-retry","trigger":"expiry before retry","expected_dispatch":"deny","expected_next_action":"none","tenant_isolation":true},
+    {"id":"in-flight-revocation","trigger":"revoke between steps","expected_dispatch":"deny_next_step","expected_next_action":"none","tenant_isolation":true},
+    {"id":"audit-write-failure","trigger":"denial ledger unavailable","expected_dispatch":"deny","expected_next_action":"none","tenant_isolation":true},
+    {"id":"cross-tenant-id-reuse","trigger":"grant ID collision across tenants","expected_dispatch":"deny_cross_tenant","expected_next_action":"none","tenant_isolation":true},
+    {"id":"broadened-replacement","trigger":"same ID broader capabilities","expected_dispatch":"deny","expected_next_action":"none","tenant_isolation":true},
+    {"id":"new-approval","trigger":"new explicit authorization","expected_dispatch":"new_run_only","expected_next_action":"fresh_gate","tenant_isolation":true},
+    {"id":"analysis-only","trigger":"non-target operation","expected_dispatch":"analysis_only","expected_next_action":"no_target_io","tenant_isolation":true}
+  ]
+}
