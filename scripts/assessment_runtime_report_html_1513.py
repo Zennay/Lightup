@@ -29,7 +29,7 @@ p{margin:.55rem 0}.eyebrow{text-transform:uppercase;letter-spacing:.1em;font-siz
 .stat{padding:1rem;border:1px solid #d7e0eb;border-radius:.7rem;background:#fff}
 .stat b{font-size:1.5rem;display:block;font-variant-numeric:tabular-nums}
 .stat span{font-size:.86rem;color:#46566b}.warning{border-left:5px solid #995008;background:#fff8e9}
-.hold{background:#ffe9e6;color:#852b23}.review{background:#e0f0ec;color:#105044}
+.hold{background:#ffe9e6;color:#852b23}.review{background:#fff0cc;color:#71420a}
 .muted{color:#55677b}.table-scroll{width:100%;overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
 th,td{padding:.57rem .7rem;border-bottom:1px solid #e1e6ee;text-align:left;white-space:nowrap}
@@ -232,7 +232,7 @@ def render_comparison_html(result, *, cohort: bool = False,
     for idx, comp in enumerate(accepted, 1):
         title = ("Scenario " + str(idx).zfill(2)) if cohort else "Single lab comparison"
         indicator = ("HOLD: source-reported adverse metrics" if comp.regressions
-                     else "REVIEW_ONLY: no adverse metric flags")
+                     else "Human review required: no adverse source flags; not approval")
         sections.append(
             '<section class="panel" id="scenario-' + str(idx) + '">' +
             "<h3>" + title + "</h3><p class='muted'>" + indicator + "</p>" +
@@ -259,7 +259,7 @@ def render_comparison_html(result, *, cohort: bool = False,
         "<header><p class='eyebrow'>LightUp · private local diagnostic</p>" +
         "<h1>" + report_kind + " assessment-runtime review</h1>" +
         "<p><span class='badge " + ("review" if state == "REVIEW_ONLY" else "hold") +
-        "'>Source status: " + state + "</span></p>" +
+        "'>" + ("Human review required · Source: " if state == "REVIEW_ONLY" else "Source status: ") + state + "</span></p>" +
         "<p>" + headline + "</p></header>" +
         '<section class="panel warning"><h2>Authority boundary</h2>' +
         "<p>PLAN/LAB ONLY. This is an unauthenticated, source-reported, "

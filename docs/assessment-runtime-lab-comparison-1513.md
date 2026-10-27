@@ -167,6 +167,8 @@ The HTML report also provides an anonymous **HUMAN follow-up index** before the 
 
 The source-reported `coverage_unknown` metric remains separate **uncertainty**, not an invented regression. Cost/runtime and other informational metrics retain their original comparator flags. Rejected or inconsistent input prints a generic `HOLD` HTML report **without partial metrics or scenario details**. The HTML is unsigned and numeric values are unauthenticated source data; do not publish private lab outputs or interpret the report as remediation, real safety evidence, authorization or consent.
 
+In the printable report, `REVIEW_ONLY` now uses an amber **human review required** badge, not success-green. A no-adverse case explicitly says **not approval**. `HOLD` retains its distinct warning state; status computation, source flags, metrics, and zero authority remain unchanged.
+
 The program exit contract is unchanged for all formats: **2 for REVIEW_ONLY, 3 for HOLD, never zero**. Shell redirection can create a local file even when the command exits 3: inspect the displayed HOLD status instead of treating file existence as success. Four authority flags remain false; no new execution, dispatch, scan, grant, deployment or release permission is created.
 
 ## Baseline replay is not an independent candidate
