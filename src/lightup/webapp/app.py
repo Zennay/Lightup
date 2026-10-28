@@ -298,8 +298,12 @@ class LightUpWebApp:
             except TenantIsolationError:
                 return Response(_page("Forbidden", "", "<h1>Forbidden</h1>", auth),
                                 status="403 Forbidden")
-            except (KeyError, ValueError) as exc:
-                body = f"<h1>Request failed</h1><p class=\"sub\">{_e(exc)}</p>"
+            except (KeyError, ValueError):
+                # Domain exceptions can include client-controlled identifiers,
+                # grant references or database field content. Never echo them.
+                body = ("<h1>Request failed</h1>"
+                        "<p class=\"sub\">The request could not be processed. "
+                        "Check the information and try again.</p>")
                 return Response(_page("Error", "", body, auth), status="400 Bad Request")
         return Response(_page("Not found", "", "<h1>Not found</h1>", ANONYMOUS),
                         status="404 Not Found")
@@ -687,6 +691,32 @@ class LightUpWebApp:
             f"<p class=\"meta\">Requested risk: {_risk(r.requested_risk)}</p></div>"
             for r in requests
         ) or "<p class=\"empty\">No assessment requests yet.</p>"
+        if auth.is_operator:
+            request_section = (
+                "<h2>Assessment request submissions</h2>"
+                "<p class=\"sub\">Read-only operator view. Only the client's "
+                "own signed-in users may submit an assessment request. "
+                "Review existing requests from the operator Assessments page.</p>"
+            )
+        else:
+            request_section = (
+                "<h2>Request an assessment</h2>"
+                "<div class=\"card\">"
+                f"<form method=\"post\" action=\"/portal/{_e(client_id)}/requests\">"
+                f"{self._csrf_field(auth)}"
+                "<label>Assets (comma-separated hostnames/systems you own)</label>"
+                "<input name=\"assets\" required>"
+                "<label>Requested risk level</label><select name=\"risk\">"
+                "<option value=\"1\">1 — Passive</option>"
+                "<option value=\"2\">2 — Low impact</option>"
+                "<option value=\"3\" selected>3 — Standard</option>"
+                "<option value=\"4\">4 — Elevated</option></select>"
+                "<label>Notes</label><textarea name=\"notes\" rows=\"3\"></textarea>"
+                "<button>Submit request</button>"
+                "<p class=\"meta\">Submitting a request starts a review. Active testing "
+                "begins only after you provide written authorization and an operator "
+                "approves scope and risk.</p></form></div>"
+            )
         body = (
             f"<h1>{_e(client.name)}</h1>"
             "<p class=\"sub\">Your security posture, in plain terms.</p>"
@@ -704,29 +734,20 @@ class LightUpWebApp:
                        for e in self.store.list_engagements(ctx))
                or "<p class=\"empty\">No engagements yet.</p>")
             + f"<h2>Your assessment requests</h2>{request_rows}"
-            "<h2>Request an assessment</h2>"
-            "<div class=\"card\">"
-            f"<form method=\"post\" action=\"/portal/{_e(client_id)}/requests\">"
-            f"{self._csrf_field(auth)}"
-            "<label>Assets (comma-separated hostnames/systems you own)</label>"
-            "<input name=\"assets\" required>"
-            "<label>Requested risk level</label><select name=\"risk\">"
-            "<option value=\"1\">1 — Passive</option>"
-            "<option value=\"2\">2 — Low impact</option>"
-            "<option value=\"3\" selected>3 — Standard</option>"
-            "<option value=\"4\">4 — Elevated</option></select>"
-            "<label>Notes</label><textarea name=\"notes\" rows=\"3\"></textarea>"
-            "<button>Submit request</button>"
-            "<p class=\"meta\">Submitting a request starts a review. Active testing "
-            "begins only after you provide written authorization and an operator "
-            "approves scope and risk.</p></form></div>"
+            + request_section
         )
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
 
     def portal_submit_request(self, auth: AuthState, form: dict[str, str],
                               client_id: str) -> Response:
-        ctx = self._portal_context(auth, client_id)
+        # Client request provenance must come from the client's real session.
+        # Operator access to the portal is deliberately read-only.
+        if auth.is_operator or auth.context is None or auth.context.client_id != client_id:
+            return Response(_page("Forbidden", "",
+                                  "<h1>Client session required</h1>", auth),
+                            status="403 Forbidden")
+        ctx = auth.context
         assets = tuple(part.strip() for part in form.get("assets", "").split(",") if part.strip())
         risk = RiskLevel(int(form.get("risk", "3")))
         if risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
