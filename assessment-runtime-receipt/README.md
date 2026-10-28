@@ -1,7 +1,11 @@
 # Offline lab comparison receipt
 
-Run `python3 assessment-runtime-receipt/receipt.py PRIVATE_COMPARISON.json` on an already-exported local lab comparison. The output contains only status, byte count, SHA-256 and explicit false authority flags. The command always exits 3 and never scans, dispatches or contacts targets.
+This is a **non-authorizing, read-only byte receipt**, not a validator of the original comparison schema.
 
-Malformed, oversized, duplicate-key, nonfinite, symlinked and noncanonical status/authority inputs yield a source-minimal HOLD. The SHA-256 is only a local byte-fidelity identifier: it does **not** authenticate the producer, prove ground truth, establish consent or grant permission.
+Run `python3 assessment-runtime-receipt/receipt.py PRIVATE_COMPARISON.json` on an already-exported local file. It always exits **3 (HOLD)**. Accepted inputs reveal only the original *unverified* source-reported status, byte count and SHA-256. The receipt itself stays HOLD with `source_authenticated=false`, `source_schema_verified=false` and all four authority flags false. Even a source-reported REVIEW_ONLY can never become a security or release verdict.
 
-**INCUBATE · PLAN/LAB ONLY · REVIEW/HOLD.** This companion is independent of the active #1515 source-owner branch. It is not a release candidate until existing CI and independent security/privacy review gates are met. No real-target assessment or deployment is permitted.
+Intake constraints: regular file, single hard link, no final-component symlink, private mode (no group/other permission), nonempty and at most 256 KiB, file descriptor checked before and after reading; strict UTF-8 JSON, no duplicate keys, nonfinite constants or partial/invalid authority fields. Malformed inputs produce an anonymous, source-minimal HOLD without echoing private paths, contents or hashes.
+
+**Limitations:** final-component no-follow protects against final symlink substitutions, but parent directory components are not currently traversed using pinned directory descriptors. Use an owner-controlled private directory, never untrusted path ancestors. A locally computed digest proves equality to separately held bytes, **not** sender identity, schema/ground-truth truthfulness, genuine consent or authorization.
+
+**INCUBATE · PLAN/LAB ONLY · HOLD.** No active target, scan, grant, dispatch, merge or deployment without original project gates, exact-head CI, source-owner review and independent security/privacy authorization.
