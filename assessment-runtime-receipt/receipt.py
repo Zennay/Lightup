@@ -8,6 +8,7 @@ import hashlib
 import json
 import math
 import os
+import secrets
 import stat
 
 MAX_BYTES = 262144
@@ -62,12 +63,18 @@ def _read_private_regular(path):
         os.close(fd)
 
 
-def inspect(path):
+def inspect(path, expected_sha256=None):
     """Return only an anonymous HOLD receipt, never validated source evidence."""
     receipt = {"status": "HOLD", "source_authenticated": False,
                "source_schema_verified": False,
                **{flag: False for flag in FALSE_FLAGS}}
     try:
+        if expected_sha256 is not None and (
+            type(expected_sha256) is not str
+            or len(expected_sha256) != 64
+            or any(ch not in "0123456789abcdef" for ch in expected_sha256)
+        ):
+            return receipt
         data = _read_private_regular(path)
         source = json.loads(data.decode("utf-8"), object_pairs_hook=_unique_pairs,
                             parse_constant=_reject_constant,
@@ -79,9 +86,12 @@ def inspect(path):
         if any(source.get(flag) is not False for flag in FALSE_FLAGS):
             return receipt
         # No source value can promote the output to REVIEW_ONLY or authorize work.
+        digest = hashlib.sha256(data).hexdigest()
         receipt.update(source_reported_status=source["status"],
-                       source_sha256=hashlib.sha256(data).hexdigest(),
+                       source_sha256=digest,
                        byte_count=len(data))
+        if expected_sha256 is not None:
+            receipt["byte_identity_matches"] = secrets.compare_digest(digest, expected_sha256)
     except (OSError, ValueError, UnicodeError, TypeError, RecursionError):
         pass
     return receipt
@@ -89,5 +99,7 @@ def inspect(path):
 
 if __name__ == "__main__":
     import sys
-    print(json.dumps(inspect(sys.argv[1] if len(sys.argv) == 2 else ""), sort_keys=True))
+    print(json.dumps(inspect(sys.argv[1] if len(sys.argv) in (2, 3) else "",
+                             sys.argv[2] if len(sys.argv) == 3 else None),
+                     sort_keys=True))
     raise SystemExit(3)
