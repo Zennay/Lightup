@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
+  <!--LIGHTUP_CSP-->
+  <!--LIGHTUP_STYLE-->
+</head>
+<body>
+  <a class="skip" href="#main">Skip to workspace</a>
+  <header class="top">
+    <div class="brand"><span class="mark">L<span>●</span></span> LightUp <span class="slash">/</span> Lab declarations</div>
+    <span class="posture">INCUBATE · HUMAN ONLY · DRAFT/HOLD</span>
+  </header>
+  <main id="main" class="shell">
+    <section class="hero">
+      <span class="eyebrow">OFFLINE REVIEW WORKSPACE / 01</span>
+      <h1>See what your lab results <em>declare.</em><br>Never mistake absence for safety.</h1>
+      <p class="lead">Compare the literal capability/check labels in <strong>2–8 previously produced PRIVATE isolated-lab result files</strong>. Rows are source declarations, not vulnerability verification or evidence of coverage. Nothing is assessed, contacted, dispatched or authorized here.</p>
+    </section>
+    <section class="load panel" aria-labelledby="load-title">
+      <div>
+        <h2 id="load-title">Choose existing PRIVATE original result files</h2>
+        <p>All files must declare the <strong>same exact scenario and endpoint set</strong>, with distinct original run IDs. You decide their display order; it is <em>not verified chronology</em>. Whole-batch structural admission; no partial import, storage, tracker or network.</p>
+      </div>
+      <div class="load-actions">
+        <label for="files">Local original .json files · 2–8 · ≤8 MiB each</label>
+        <input id="files" type="file" accept=".json,application/json" multiple aria-describedby="privacy">
+        <div class="buttons">
+          <button class="primary" id="load" type="button">Open PRIVATE batch</button>
+          <button class="secondary" id="forget" type="button">Forget local data</button>
+        </div>
+      </div>
+    </section>
+    <section class="panel vault-panel" aria-labelledby="vault-title">
+      <div>
+        <span class="eyebrow">LOCAL ENCRYPTED ORIGINALS + HUMAN CONTINUITY</span>
+        <h2 id="vault-title">Keep the whole offline workroom together.</h2>
+        <p>Unlike the HUMAN-only plan, a <strong>complete PRIVATE encrypted workspace includes your original lab report bytes</strong> (which may contain sensitive targets and evidence) and the exact associated HUMAN planning choices. Nothing is sent to any server. Encryption is local AES-256-GCM with a fresh salt and nonce; no account or recovery service exists.</p>
+        <p id="vaultAvailable" class="hint" aria-live="polite">Only admitted originals can be included in a complete encrypted workroom.</p>
+      </div>
+      <div class="vault-work">
+        <div class="vault-card">
+          <h3>Encrypt current originals + HUMAN decisions</h3>
+          <label for="vaultSavePass">PRIVATE passphrase (12–256 characters)
+            <input id="vaultSavePass" type="password" autocomplete="new-password" placeholder="Never sent or stored">
+          </label>
+          <button id="vaultSave" type="button" class="primary" disabled>Download complete ENCRYPTED workroom</button>
+          <p class="hint">Export accepts a total of at most 24 MiB original source bytes. Use the normal separate-source workflow for larger collections. Only someone who can unlock the file can read its PRIVATE original contents.</p>
+        </div>
+        <div class="vault-card">
+          <h3>Open complete PRIVATE encrypted workroom</h3>
+          <label for="vaultFile">Choose encrypted workspace file
+            <input id="vaultFile" type="file" accept=".json,application/json">
+          </label>
+          <label for="vaultOpenPass">PRIVATE decryption passphrase
+            <input id="vaultOpenPass" type="password" autocomplete="off" placeholder="Local passphrase">
+          </label>
+          <button id="vaultOpen" type="button" class="secondary" disabled>Inspect complete ENCRYPTED workroom</button>
+          <p class="hint">First decrypt and fully admit a PRIVATE file without overwriting your current originals or HUMAN notes. Review the minimum-necessary counts summary, then explicitly apply or discard. The staged decrypted original data remain in local browser memory until applied/discarded; the browser cannot guarantee physical memory erasure.</p>
+          <p id="vaultPreview" class="hint" role="status" aria-live="polite">No decrypted PRIVATE workroom staged.</p>
+          <div class="buttons">
+            <button id="vaultApply" class="primary" type="button" disabled>Apply inspected PRIVATE workroom</button>
+            <button id="vaultApplyNotes" class="secondary" type="button" disabled>Restore HUMAN choices only (same original bytes)</button>
+            <button id="vaultDiscard" class="secondary" type="button" disabled>Discard decrypted preview</button>
+          </div>
+        </div>
+      </div>
+      <p class="hint"><strong>IMPORTANT:</strong> Encryption protects local file confidentiality, not source authenticity, reviewer identity, consent, true vulnerability status, action-time authorization or completed remediation. There has been no independent cryptographic audit; secure your device, passphrase and downloaded file.</p>
+    </section>
+    <p id="message" role="status" aria-live="polite" data-error="false">Nothing loaded. This app has no network calls or scan operations.</p>
+    <aside id="intro" class="note" aria-label="Privacy and interpretation" >
+      <h2>Important boundaries</h2>
+      <p>PRIVATE source fields may contain customer names, target addresses, sensitive findings and evidence. Only open files on a trusted offline device. No identity, grant, consent or original source authenticity is established by this tool.</p>
+      <p id="privacy"><strong>An empty cell means not declared under the selected filter.</strong> It never means scanned, safe, fixed, remediated, covered or approved. This is not a ground-truth or release report.</p>
+    </aside>
+    <section id="workspace" hidden aria-label="PRIVATE declared check workspace">
+      <div class="workspace-heading">
+        <div>
+          <span class="eyebrow">PRIVATE / SOURCE-DECLARED MATRIX</span>
+          <h2 id="sourceCount">0 original PRIVATE files</h2>
+          <p id="sourceSummary"></p>
+        </div>
+        <div class="buttons">
+          <button id="exportJSON" class="secondary" type="button">Export counts JSON</button>
+          <button id="exportCSV" class="secondary" type="button">Export counts CSV</button>
+        </div>
+      </div>
+      <section id="sourceMetrics" class="panel source-metrics" aria-label="Source-reported adverse metrics">
+        <h3>Unverified source metric declarations</h3><p>No metric is an independent lab or safety observation.</p>
+      </section>
+      <section id="endpointCounts" class="panel source-metrics" aria-label="Original source-declared endpoint distribution">
+        <h3>Endpoint appearance distribution</h3>
+        <p>Only unverified literal source reports, never assessment coverage or verified findings.</p>
+      </section>
+      <section id="attention" class="panel attention" aria-label="Human attention suggestions">
+        <h3>HUMAN attention</h3><p>Loading local literal source differences…</p>
+      </section>
+      <section id="humanPanel" class="panel human-panel" aria-label="HUMAN-only follow-up routing board">
+        <div class="human-intro">
+          <div>
+            <span class="eyebrow">PRIVATE / HUMAN FOLLOW-UP</span>
+            <h3>Decide what to discuss next.</h3>
+            <p>Review literal source-declaration groups with predefined HUMAN stage, reviewing group and next question. The local choices cannot change original evidence, authorize scanning, approve a finding or certify remediation. No person names, arbitrary case IDs or external channels are used.</p>
+          </div>
+          <div id="humanSummary" role="status" aria-live="polite">No HUMAN work loaded.</div>
+        </div>
+        <div class="human-tools">
+          <label for="humanSearch">Local source label search <input id="humanSearch" type="search" autocomplete="off" placeholder="Private capability / check"></label>
+          <label for="humanStage">HUMAN stage <select id="humanStage"><option value="all">All HUMAN stages</option><option value="needs_review">Needs review</option><option value="queued">Queued</option><option value="discussing">Discussing</option><option value="documented">Documented (HUMAN only)</option><option value="blocked">Blocked</option></select></label>
+        </div>
+        <section class="human-bulk" aria-label="Bulk HUMAN planning for current local filter">
+          <h4>Bulk HUMAN routing · current local search / stage selection</h4>
+          <div class="bulk-fields">
+            <label for="humanBulkStage">Stage <select id="humanBulkStage">
+              <option value="keep">Keep unchanged</option><option value="needs_review">Needs review</option><option value="queued">Queued</option><option value="discussing">Discussing</option><option value="documented">Documented (HUMAN only)</option><option value="blocked">Blocked</option>
+            </select></label>
+            <label for="humanBulkRoute">Review group <select id="humanBulkRoute">
+              <option value="keep">Keep unchanged</option><option value="unassigned">Unassigned</option><option value="scope">Scope</option><option value="findings">Findings</option><option value="evidence">Evidence</option><option value="remediation">Remediation</option><option value="privacy">Privacy</option>
+            </select></label>
+            <label for="humanBulkAction">Next HUMAN question <select id="humanBulkAction">
+              <option value="keep">Keep unchanged</option><option value="none">None</option><option value="clarify_source">Clarify source</option><option value="review_scope_policy">Review scope/policy</option><option value="request_evidence_review">Ask HUMAN evidence review</option><option value="discuss_declared_difference">Discuss source difference</option><option value="prepare_private_human_brief">Prepare private brief</option><option value="request_independent_human_review">Ask independent human review</option>
+            </select></label>
+            <div class="buttons"><button id="humanBulk" class="primary" type="button">Apply to matching HUMAN rows</button><button id="humanUndo" class="secondary" type="button" disabled>Undo last bulk edit</button></div>
+          </div>
+          <p class="hint">At most 512 matching rows per confirmed edit. No original source data or verified finding status is ever edited.</p>
+        </section>
+        <div class="table-scroll human-table-scroll"><table id="humanTable"></table></div>
+        <div class="human-paging">
+          <span id="humanPages">No HUMAN work loaded.</span>
+          <div class="buttons"><button id="humanPrev" class="secondary" type="button" disabled>Previous</button><button id="humanNext" class="secondary" type="button" disabled>Next</button></div>
+        </div>
+        <div class="human-actions">
+          <div>
+            <strong>PRIVATE save / exact original bytes required to resume</strong>
+            <p>The downloaded PRIVATE JSON has original SHA-256 digests and anonymous original row ordinals, but never original result bytes or customer names. An unsigned digest is only a byte match, not proof of trusted sources, reviewer identity or consent. Without local WebCrypto you can still plan, but not save or resume this bound plan.</p>
+            <label for="humanResume">Open saved PRIVATE HUMAN plan <input id="humanResume" type="file" accept=".json,application/json"></label>
+            <label for="humanResumePass">Resume passphrase (only if encrypted)
+              <input id="humanResumePass" type="password" autocomplete="off" placeholder="Private local passphrase">
+            </label>
+            <label for="humanEncryptPass">New encrypted plan passphrase (at least 12 characters)
+              <input id="humanEncryptPass" type="password" autocomplete="new-password" placeholder="Not stored, not sent, required for encrypted export">
+            </label>
+            <p class="hint">AES-256-GCM + PBKDF2-SHA256 with fresh random salt/IV. Optional encrypted exports protect at-rest confidentiality only to the extent your passphrase and device are secure; no independent crypto/security audit is implied. Wrong/lost passphrases cannot be recovered.</p>
+          </div>
+          <div class="buttons">
+            <button id="humanSave" class="secondary" type="button" disabled>Save UNENCRYPTED PRIVATE plan</button>
+            <button id="humanSaveEncrypted" class="primary" type="button" disabled>Save ENCRYPTED PRIVATE plan</button>
+            <button id="humanResumeButton" class="secondary" type="button" disabled>Resume against same source bytes</button>
+            <button id="humanBrief" class="secondary" type="button" disabled>Export counts-only HUMAN brief</button>
+            <button id="humanHandoff" class="secondary" type="button" disabled>Download PRIVATE read-only HUMAN handoff</button>
+            <button id="humanReset" class="secondary" type="button">Reset HUMAN choices</button>
+          </div>
+        </div>
+      </section>
+      <section id="historyPanel" class="panel human-history" aria-label="PRIVATE HUMAN saved-plan comparison and conflict-safe rebase">
+        <span class="eyebrow">PRIVATE / HUMAN CHANGE CONTINUITY</span>
+        <h3>Review two saved HUMAN plans. Carry forward only compatible choices.</h3>
+        <p>Select an earlier and a later PRIVATE plan <strong>in the order you choose</strong>. Their filenames, order and downloaded content do not prove dates, client identity, authority or genuine team agreement. Both must match the original source files already opened in this app, byte-for-byte. Nothing scans, reaches the network or rewrites the originals.</p>
+        <div class="human-history-load">
+          <label for="historyEarlier">Earlier manually selected PRIVATE plan
+            <input id="historyEarlier" type="file" accept=".json,application/json" autocomplete="off">
+          </label>
+          <label for="historyPassEarlier">Earlier plan passphrase (only if encrypted)
+            <input id="historyPassEarlier" type="password" autocomplete="off" placeholder="Private local passphrase">
+          </label>
+          <label for="historyLater">Later manually selected PRIVATE plan
+            <input id="historyLater" type="file" accept=".json,application/json" autocomplete="off">
+          </label>
+          <label for="historyPassLater">Later plan passphrase (only if encrypted)
+            <input id="historyPassLater" type="password" autocomplete="off" placeholder="Private local passphrase">
+          </label>
+          <div class="buttons">
+            <button type="button" class="primary" id="historyOpen">Compare PRIVATE HUMAN plans</button>
+            <button type="button" class="secondary" id="historyForget">Forget comparison</button>
+          </div>
+        </div>
+        <div id="historySummary" class="history-summary" role="status" aria-live="polite">
+          No PRIVATE source-bound snapshots loaded.
+        </div>
+        <div class="human-tools">
+          <label for="historySearch">Find original private source labels
+            <input id="historySearch" type="search" autocomplete="off" placeholder="Source capability or check ID">
+          </label>
+          <label for="historyState">Local proposal reconciliation
+            <select id="historyState">
+              <option value="all">All changed HUMAN rows</option>
+              <option value="pending">Applicable to current HUMAN plan</option>
+              <option value="conflict">Conflicts — hold</option>
+              <option value="matched">Already matches later HUMAN choices</option>
+            </select>
+          </label>
+        </div>
+        <div class="table-scroll history-scroll"><table id="historyTable" aria-label="Private earlier and later HUMAN fields, original local labels and conflict disposition"></table></div>
+        <div class="human-paging">
+          <span id="historyPagination">No snapshots loaded.</span>
+          <div class="buttons">
+            <button type="button" class="secondary" id="historyPrev" disabled>Previous 60</button>
+            <button type="button" class="secondary" id="historyNext" disabled>Next 60</button>
+          </div>
+        </div>
+        <div class="history-actions">
+          <div>
+            <strong>Conflict-safe HUMAN-only merge</strong>
+            <p>Each proposed field from the later file is applied only when the CURRENT HUMAN field still equals the EARLIER plan. Fields already matching later are left alone. Any third value causes an <strong>all-or-nothing HOLD</strong>; there is no silent conflict override. The source records, evidence, targets, grants and actual security statuses never change. A valid HUMAN proposal is never authorization.</p>
+          </div>
+          <div class="buttons">
+            <button type="button" class="primary" id="historyApply" disabled>Apply nonconflicting HUMAN choices</button>
+            <button type="button" class="secondary" id="historyCounts" disabled>Download anonymous changes CSV + JSON</button>
+            <button type="button" class="secondary" id="historyPrivate" disabled>Download PRIVATE read-only change brief</button>
+          </div>
+        </div>
+        <p class="hint">PRIVATE original capability/check labels in the HTML handoff require a separately approved protected channel. Anonymous numeric outputs may still be sensitive. Snapshots never enter persistent browser storage. No true clock chronology is inferred.</p>
+      </section>
+      <div class="panel filterbar">
+        <label for="query">Filter literal capability / check <input id="query" type="search" autocomplete="off" placeholder="Local check or capability label"></label>
+        <label for="severity">Source severity <select id="severity"><option value="all">All declared severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
+        <label for="endpoint">Declared endpoint ordinal <select id="endpoint"><option value="0">All declared endpoints</option></select></label>
+        <p class="hint">Endpoint ordinals come from the first locally opened source; exact target literals stay private in memory.</p>
+      </div>
+      <p id="visible" class="summary"></p>
+      <div class="grid">
+        <section class="panel matrix-pane" aria-label="Check declarations by local file">
+          <div class="table-scroll"><table id="matrix"></table></div>
+          <div class="human-paging matrix-paging">
+            <span id="matrixPages">No matrix loaded.</span>
+            <div class="buttons">
+              <button id="matrixPrev" class="secondary" type="button" disabled>Previous 100</button>
+              <button id="matrixNext" class="secondary" type="button" disabled>Next 100</button>
+            </div>
+          </div>
+          <p class="legend"><strong>— not declared</strong> is never a verified PASS, valid negative observation, scan coverage, fix or closure. Cell counts are source-reported finding appearances.</p>
+        </section>
+        <section id="details" class="panel details" tabindex="-1" aria-label="Original PRIVATE source detail">
+          <h3>Inspect a declared cell</h3>
+          <p>Click a cell to see the source’s unverified human-readable statement and proposed mitigation without changing the source file.</p>
+        </section>
+      </div>
+    </section>
+    <section class="hold panel">
+      <strong>REVIEW_ONLY · NOT AUTHORIZED</strong>
+      <p>No live targets, DNS, requests, grant issuance, scanning, consent claim, retesting, remediation verification or publication to main. The original hosted and permanent named VPS CI, owner/security/privacy reviews, #177/#182/#829, genuinely separate current client/operator consent including action-time revocation and explicit HUMAN GO remain required for any release.</p>
+    </section>
+  </main>
+  <footer>LightUp · PRIVATE untrusted original lab declarations · Source-only local HUMAN planning · No persistence</footer>
+  <!--LIGHTUP_SCRIPT-->
+</body>
+</html>
