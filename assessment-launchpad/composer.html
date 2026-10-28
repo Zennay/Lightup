@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-nFFi80zGa/muqa6yIv7RQGNem2rHlpfBWy+jbMpmYg4='; style-src 'sha256-O3DeetiOr2PGN3ROfFkBTV3Nijv/R3hXW54fTkzzKgw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+<title>LightUp · Isolated Lab Launchpad</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#17212f;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hero,main,footer{max-width:960px;margin:0 auto;padding:1rem}.hero{padding-top:2rem}.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:750;color:#475569}h1{font-size:clamp(2rem,4vw,3rem);line-height:1.1;margin:.35rem 0}.status{padding:.8rem 1rem;border:1px solid #b6c1d0;border-left:5px solid #9a5b18;border-radius:.45rem;background:#fff7ed;font-weight:750;margin:1rem 0}.panel{background:white;border:1px solid #dbe1e8;border-radius:.8rem;padding:1.2rem;margin:1rem 0}.endpoint{display:grid;grid-template-columns:1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid #e2e8f0}.endpoint label{display:block;font-weight:700}.endpoint input{display:block;width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem;margin-top:.35rem}.controls{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}button{font:inherit;font-weight:750;padding:.65rem .9rem;border:1px solid #1e3a5f;border-radius:.45rem;background:#1e3a5f;color:white;cursor:pointer}button.secondary{background:white;color:#1e3a5f}.row-actions select{width:auto;max-width:9rem;padding:.45rem}button:disabled,input:disabled{opacity:.5;cursor:not-allowed}textarea,select{width:100%;font:inherit;padding:.65rem;border:1px solid #aab6c5;border-radius:.4rem}textarea{min-height:10rem;resize:vertical}label{font-weight:650}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #e0a83a;outline-offset:2px}.message{min-height:1.5rem;font-weight:700;color:#334155}.note{font-size:.9rem;color:#536174}.import-diff{overflow-wrap:anywhere;word-break:break-word}.warning{border-left:4px solid #9a5b18;padding:.65rem .85rem;background:#fff7ed}.count{font-variant-numeric:tabular-nums;font-weight:800}@media(max-width:620px){.hero,main,footer{padding:.7rem}.panel{padding:.8rem}.endpoint{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:1fr}button{width:100%}}.row-actions{display:flex;gap:.4rem;flex-wrap:wrap}.row-actions button{padding:.4rem .55rem;min-width:2.5rem}@media(max-width:620px){.row-actions button{width:auto}}</style>
+</head>
+<body>
+<header class="hero">
+  <p class="eyebrow">LIGHTUP / ASSESSMENT RUNTIME</p>
+  <h1>Isolated-lab batch launchpad</h1>
+  <p>Compose a bounded local text manifest for the existing <code>lightup lab-assess</code> CLI. This page never opens a connection, resolves DNS, starts a model, creates a plan or runs an assessment.</p>
+  <div class="status" role="status">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · PREVIEW ONLY · NOT AUTHORIZED</div>
+</header>
+<main>
+  <section class="panel">
+    <h2>Endpoint manifest</h2>
+    <p>Add 1–16 distinct literal HTTP(S) URLs, append or replace from a private local manifest or pasted batch, and move any endpoint directly to its desired ordinal slot (or use earlier/later arrows). Import does not upload source bytes. Use display-only masking for screen reviews; exported manifests still include all private URL values. Browser checks are only a convenience; the native CLI re-runs the original URL validator and original <code>LabScenario</code> private/loopback scope policy before it creates the preview command.</p>
+    <div id="endpointList" aria-label="Local endpoint manifest"></div>
+    <p class="count" id="endpointCount">0 / 16 slots</p>
+    <p class="count" id="manifestSize" role="status" aria-live="polite">Estimated manifest size: 0 / 16384 bytes</p>
+    <p class="note">Choose up to eight PRIVATE local manifest files in the file picker. File selection order is local and unauthenticated; each file is checked separately, then the combined result is reviewed before Apply. Only the native CLI can enforce original lab scope.</p>
+    <label for="fileMode">File import action</label>
+    <select id="fileMode"><option value="replace">Replace current draft with imported manifest</option><option value="append">Append imported manifest after filled draft slots</option></select>
+    <div class="controls">
+      <button id="addEndpoint" type="button" class="secondary">Add endpoint</button>
+      <button id="cleanDraft" type="button" class="secondary">Review draft cleanup</button>
+      <button id="chooseManifest" type="button" class="secondary">Import 1–8 manifest files</button>
+      <button id="showBulk" type="button" class="secondary" aria-expanded="false" aria-controls="bulkPanel">Paste multiple endpoints</button>
+      <button id="toggleMask" type="button" class="secondary" aria-pressed="false">Hide endpoint values</button>
+      <button id="undoAppliedImport" type="button" class="secondary" disabled>Undo last applied import</button>
+      <input id="manifestImport" type="file" accept=".txt,text/plain" multiple hidden>
+      <button id="downloadManifest" type="button" disabled>Download private text manifest</button>
+    </div>
+    <p id="message" class="message" role="status" aria-live="polite">Add a local lab URL to begin.</p>
+  </section>
+  <section class="panel" id="bulkPanel" hidden>
+    <h2>Paste a local batch</h2>
+    <p>Paste 1–16 literal HTTP(S) URL lines (or existing manifest lines). This never uploads or saves the text. Review a complete slot-by-slot proposal before changing any existing endpoints.</p>
+    <label for="bulkMode">How to combine with current slots</label>
+    <select id="bulkMode"><option value="replace">Replace entire current draft</option><option value="append">Append after filled current slots</option></select>
+    <label for="bulkText">Private endpoint lines</label>
+    <p id="bulkMaskNotice" class="warning" hidden>Private pasted values are concealed in display-only mode. Select “Show endpoint values” to edit them. The text remains in local browser memory.</p>
+    <textarea id="bulkText" spellcheck="false" autocomplete="off" maxlength="16384" placeholder="http://127.0.0.1:18080/&#10;http://127.0.0.1:18081/"></textarea>
+    <p class="note" id="bulkBudget" aria-live="polite">Pasted text: 0 / 16384 bytes.</p>
+    <div class="controls"><button id="previewBulk" type="button">Review pasted batch</button><button id="closeBulk" class="secondary" type="button">Close without applying</button></div>
+  </section>
+  <section class="panel" id="importPreviewPanel" hidden>
+    <h2>Review proposed manifest before applying</h2>
+    <p id="importPreviewSummary" role="status" aria-live="polite"></p>
+    <div id="importPreviewRows"></div>
+    <label id="normalizationAckRow" hidden><input id="normalizationAck" type="checkbox"> I reviewed the proposal: any blank/comment lines, duplicate endpoints or empty draft slots may be discarded and endpoint whitespace may be trimmed. Changes are not original-scope validation.</label>
+    <div class="controls">
+      <button id="downloadProposedManifest" type="button" class="secondary" disabled>Download proposed manifest without applying</button>
+      <button id="applyManifestImport" type="button" disabled>Apply imported manifest</button>
+      <button id="cancelManifestImport" type="button" class="secondary">Cancel import</button>
+    </div>
+    <p class="note">The current editor stays unchanged until Apply. Previewed URLs remain local to this page; no network request or browser storage is used.</p>
+  </section>
+  <section class="panel">
+    <h2>What happens next</h2>
+    <ol>
+      <li>The browser downloads one URL per line; no content is uploaded or saved to browser storage.</li>
+      <li>Move the file into a private local folder and set its permissions to <code>0600</code>. Browser downloads cannot enforce file permissions.</li>
+      <li>The native CLI re-admits the file against the pinned original validator and <code>LabScenario</code> scope policy, then creates private no-overwrite artifacts.</li>
+      <li>The generated command contains <code>--preview-only</code> and is displayed for a human to inspect. This tool never executes it.</li>
+    </ol>
+    <p><a href="manifest_change_review.html">Open the offline HUMAN follow-up editor</a> to review an ordinal-only delta CSV from two saved PRIVATE manifests. It keeps fixed HUMAN follow-up stages separate from source status and does not establish a fix or authorization.</p>
+    <p class="warning">A URL passing browser syntax checks is not proof that it is an isolated lab endpoint. The original native scope gate is mandatory and may reject it. No authorization, consent or release is created.</p>
+  </section>
+</main>
+<footer><p class="note">Standalone local HTML · no external assets · no network API · no active target access.</p></footer>
+<script>"use strict";
+(() => {
+  const $ = id => document.getElementById(id);
+  const list = $("endpointList");
+  let rowSequence = 0;
+  let importSequence = 0;
+  let draftRevision = 0;
+  let pendingImport = null;
+  let undoAppliedImport = null;
+  let masked = false;
+  function values() {
+    return [...list.querySelectorAll(".endpoint input")].map(input => input.value);
+  }
+  function renumber() {
+    [...list.querySelectorAll(".endpoint")].forEach((row, index) => {
+      const text = "Endpoint slot " + String(index + 1).padStart(2, "0");
+      row.querySelector("label").firstChild.textContent = text;
+      row.querySelector("input").setAttribute("aria-label", text);
+      const selector = row.querySelector(".slot-target");
+      if (selector) {
+        const slots = list.querySelectorAll(".endpoint").length;
+        if (selector.options.length !== slots) {
+          selector.replaceChildren();
+          for (let position = 1; position <= slots; position++) {
+            const option = document.createElement("option");
+            option.value = String(position);
+            option.textContent = "Slot " + String(position).padStart(2, "0");
+            selector.append(option);
+          }
+        }
+        selector.value = String(index + 1);
+        selector.setAttribute("aria-label", "Move " + text.toLowerCase() + " to position");
+      }
+    });
+  }
+  function addRow(value = "") {
+    if (list.querySelectorAll("input").length >= 16) {
+      $("message").textContent = "Maximum 16 endpoint slots.";
+      return;
+    }
+    rowSequence += 1;
+    const row = document.createElement("div");
+    row.className = "endpoint";
+    const label = document.createElement("label");
+    label.textContent = "Endpoint slot " + String(rowSequence).padStart(2, "0");
+    const input = document.createElement("input");
+    input.type = masked ? "password" : "text";
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.maxLength = 2048;
+    input.placeholder = "http://127.0.0.1:18080/";
+    input.value = value;
+    input.setAttribute("aria-label", label.textContent);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "secondary";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => {
+      if (list.querySelectorAll("input").length === 1) input.value = "";
+      else row.remove();
+      draftRevision++;
+      refresh();
+    });
+    const buttons = document.createElement("div");
+    buttons.className = "row-actions";
+    const up = document.createElement("button");
+    up.type = "button"; up.className = "secondary"; up.textContent = "↑";
+    up.setAttribute("aria-label", "Move endpoint earlier");
+    up.addEventListener("click", () => {
+      if (row.previousElementSibling) {
+        list.insertBefore(row, row.previousElementSibling);
+        draftRevision++;
+      }
+      refresh();
+    });
+    const down = document.createElement("button");
+    down.type = "button"; down.className = "secondary"; down.textContent = "↓";
+    down.setAttribute("aria-label", "Move endpoint later");
+    down.addEventListener("click", () => {
+      if (row.nextElementSibling) {
+        list.insertBefore(row.nextElementSibling, row);
+        draftRevision++;
+      }
+      refresh();
+    });
+    const slotTarget = document.createElement("select");
+    slotTarget.className = "slot-target";
+    slotTarget.setAttribute("aria-label", "Move endpoint to position");
+    slotTarget.addEventListener("change", () => {
+      const position = Number(slotTarget.value);
+      const rows = [...list.querySelectorAll(".endpoint")];
+      if (!Number.isInteger(position) || position < 1 || position > rows.length) {
+        refresh();
+        return;
+      }
+      // Retain the actual input element, listeners and private value while moving the row.
+      const remainder = rows.filter(other => other !== row);
+      remainder.splice(position - 1, 0, row);
+      list.replaceChildren(...remainder);
+      draftRevision++;
+      refresh();
+      input.focus();
+    });
+    buttons.append(up, down, slotTarget, remove);
+    label.append(input);
+    row.append(label, buttons);
+    list.append(row);
+    input.addEventListener("input", () => { draftRevision++; refresh(); });
+    refresh();
+  }
+  function manifestBytes(entries = values()) {
+    return new Blob([entries.join("\n") + "\n"]).size;
+  }
+  function validate(entries = values()) {
+    if (entries.length < 1 || entries.length > 16) return {error:"Enter 1–16 endpoint URLs."};
+    const malformedSlots = entries.map((value, index) => ({value, slot:index + 1})).filter(item =>
+      !item.value || item.value !== item.value.trim() || item.value.length > 2048 ||
+      [...item.value].some(char => char.charCodeAt(0) < 33 || char.charCodeAt(0) === 127));
+    if (malformedSlots.length) return {error:"Endpoint slots " +
+      malformedSlots.map(item => item.slot).join(", ") +
+      " must be non-empty, trimmed literal text of at most 2048 characters without controls."};
+    if (manifestBytes(entries) > 16384) return {error:"Manifest exceeds the native CLI 16 KiB limit."};
+    const duplicateSlots = entries.map((value, index) =>
+      entries.indexOf(value) !== entries.lastIndexOf(value) ? index + 1 : null).filter(Boolean);
+    if (duplicateSlots.length) return {error:"Duplicate literal endpoint values at slots " +
+      duplicateSlots.join(", ") + "."};
+    const invalidSlots = [];
+    entries.forEach((value, index) => {
+      try {
+        const url = new URL(value);
+        if ((url.protocol !== "http:" && url.protocol !== "https:") ||
+            !url.hostname || url.username || url.password || url.hash || value.includes("#")) {
+          invalidSlots.push(index + 1);
+        }
+      } catch (_) { invalidSlots.push(index + 1); }
+    });
+    if (invalidSlots.length) return {error:"Endpoint slots " + invalidSlots.join(", ") +
+      " must use valid HTTP(S) URLs without credentials or fragments."};
+    return {entries};
+  }
+  function refresh() {
+    const checked = validate();
+    renumber();
+    $("endpointCount").textContent = String(list.querySelectorAll("input").length) + " / 16 slots";
+    const currentBytes = manifestBytes();
+    $("manifestSize").textContent = "Estimated manifest size: " + currentBytes +
+      " / 16384 bytes" + (currentBytes > 16384 ? " · exceeds limit by " +
+      (currentBytes - 16384) + " bytes" : " · " + (16384 - currentBytes) + " bytes remaining");
+    const currentValues = values();
+    let undoInvalidated = false;
+    if (undoAppliedImport && (currentValues.length !== undoAppliedImport.applied.length ||
+        !currentValues.every((value, index) => value === undoAppliedImport.applied[index]))) {
+      undoAppliedImport = null;
+      undoInvalidated = true;
+    }
+    $("undoAppliedImport").disabled = !undoAppliedImport;
+    $("downloadManifest").disabled = !checked.entries;
+    $("message").textContent = checked.error || (undoInvalidated
+      ? "Undo disabled after the first post-import edit; your current edits are preserved."
+      : "Ready to export a local text manifest. Native original-scope validation has not run.");
+    if (pendingImport && pendingImport.baseline &&
+        (currentValues.length !== pendingImport.baseline.length ||
+         !currentValues.every((value, index) => value === pendingImport.baseline[index]))) {
+      pendingImport = null;
+      importSequence++;
+      $("message").textContent = "Pending proposal invalidated by a draft edit. Stage the batch again; your edits are preserved.";
+    }
+    renderImportPreview();
+  }
+  function downloadManifest() {
+    const checked = validate();
+    if (!checked.entries) {
+      $("message").textContent = checked.error;
+      return;
+    }
+    if (masked && !window.confirm("This private manifest download includes all hidden endpoint URLs in plain text. Continue?")) return;
+    const blob = new Blob([checked.entries.join("\n") + "\n"], {type:"text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "lightup-lab-targets.txt";
+    link.style.display = "none";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    $("message").textContent = "Private local text manifest downloaded. Move it to a private directory and set mode 0600 before the native CLI; the browser cannot set file permissions.";
+  }
+  function renderImportPreview() {
+    const panel = $("importPreviewPanel");
+    const summary = $("importPreviewSummary");
+    const rows = $("importPreviewRows");
+    rows.replaceChildren();
+    if (!pendingImport) {
+      panel.hidden = true;
+      $("applyManifestImport").disabled = true;
+      $("downloadProposedManifest").disabled = true;
+      return;
+    }
+    const current = values();
+    const proposed = pendingImport.entries;
+    let unchanged = 0, changed = 0, reordered = 0, emptyDraft = 0;
+    for (let index = 0; index < Math.max(current.length, proposed.length); index++) {
+      const hasCurrent = index < current.length;
+      const hasProposed = index < proposed.length;
+      const oldValue = hasCurrent ? current[index] : null;
+      const newValue = hasProposed ? proposed[index] : null;
+      let status;
+      if (hasCurrent && hasProposed && oldValue === newValue) {
+        status = "UNCHANGED"; unchanged++;
+      } else if (!hasCurrent) {
+        status = current.includes(newValue) ? "MOVED IN" : "ADDED";
+      } else if (!hasProposed) {
+        if (!oldValue) { status = "EMPTY DRAFT SLOT"; emptyDraft++; }
+        else status = proposed.includes(oldValue) ? "MOVED OUT" : "REMOVED";
+      } else if (!oldValue) {
+        status = current.some((value, other) => other !== index && value === newValue)
+          ? "MOVED IN" : "ADDED";
+      } else {
+        const oldMoves = proposed.some((value, other) => other !== index && value === oldValue);
+        const newMoves = current.some((value, other) => other !== index && value === newValue);
+        if (oldMoves && newMoves) { status = "REORDERED"; reordered++; }
+        else if (oldMoves && !current.includes(newValue)) status = "MOVED OUT + ADDED";
+        else if (!proposed.includes(oldValue) && newMoves) status = "REMOVED + MOVED IN";
+        else { status = "CHANGED"; changed++; }
+      }
+      const line = document.createElement("p");
+      line.className = "import-diff";
+      line.textContent = "Slot " + String(index + 1).padStart(2, "0") + " · " + status +
+        " · current: " + (hasCurrent ? (oldValue ? (masked ? "(hidden)" : oldValue) : "(blank)") : "(none)") +
+        " · proposed: " + (hasProposed ? (newValue ? (masked ? "(hidden)" : newValue) : "(blank)") : "(none)");
+      rows.append(line);
+    }
+    const moved = current.filter((value, index) => value &&
+      proposed.some((candidate, other) => other !== index && candidate === value)).length;
+    const added = proposed.filter(value => !current.includes(value)).length;
+    const removed = current.filter(value => value && !proposed.includes(value)).length;
+    const duplicateCurrentRows = current.filter((value, index) => value && current.indexOf(value) !== index).length;
+    const duplicateWarning = duplicateCurrentRows
+      ? " Current editor has " + duplicateCurrentRows +
+        " duplicate endpoint rows beyond first occurrence; movement labels may be ambiguous until duplicates are removed."
+      : "";
+    summary.textContent = (pendingImport.sourceKind || "Imported local file") + " · source " + pendingImport.sourceBytes + " bytes / " +
+      pendingImport.sourceLines + " lines; " + pendingImport.blankLines + " blank and " +
+      pendingImport.commentLines + " comment lines omitted; " + pendingImport.trimmedLines +
+      " endpoint lines trimmed" + (pendingImport.cleanup ? "; " + pendingImport.duplicateLines + " repeated literal endpoints omitted" : "") + ". Canonical proposed output: " + manifestBytes(proposed) + " bytes. " +
+      "Current " + current.length + (current.length === 1 ? " slot" : " slots") +
+      " / " + manifestBytes(current) + " bytes · proposed " + proposed.length +
+      (proposed.length === 1 ? " slot" : " slots") + " / " + manifestBytes(proposed) + " bytes" +
+      " · " + unchanged + " unchanged slots · " + reordered + " reordered slots · " +
+      changed + " changed slots · " + moved + " existing endpoints moved · " +
+      added + " added endpoints · " + removed + " removed endpoints · " + emptyDraft +
+      " empty draft slots ignored. Slot labels describe position changes; added/removed counts compare endpoint values across both manifests. " +
+      duplicateWarning + (pendingImport.skippedDraft ? " Empty current draft slots will be discarded on append." : "") +
+      (pendingImport.cleanup ? " Cleanup would remove " + pendingImport.duplicateLines + " repeat values; first occurrences remain in original order." : "") + " Native scope validation has not run.";
+    panel.hidden = false;
+    const requiresAck = pendingImport.requiresAck;
+    $("normalizationAckRow").hidden = !requiresAck;
+    $("normalizationAck").checked = Boolean(pendingImport.normalizationAcknowledged);
+    $("applyManifestImport").disabled = requiresAck && !pendingImport.normalizationAcknowledged;
+    $("downloadProposedManifest").disabled = !validate(proposed).entries ||
+      (requiresAck && !pendingImport.normalizationAcknowledged);
+  }
+  function downloadProposedManifest() {
+    if (!pendingImport) return;
+    if (pendingImport.requiresAck && !pendingImport.normalizationAcknowledged) {
+      $("message").textContent = "Review and acknowledge the normalization details before downloading the canonical proposal.";
+      return;
+    }
+    const checked = validate(pendingImport.entries);
+    if (!checked.entries) {
+      $("message").textContent = checked.error;
+      return;
+    }
+    if (masked && !window.confirm("This private manifest download includes all hidden endpoint URLs in plain text. Continue?")) return;
+    const blob = new Blob([checked.entries.join("\n") + "\n"], {type:"text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "lightup-lab-targets-proposed.txt";
+    link.style.display = "none";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    $("message").textContent = "Proposed manifest downloaded without applying it. Move the file to a private directory and set mode 0600 before native admission.";
+  }
+  function cancelManifestImport() {
+    importSequence++;
+    pendingImport = null;
+    renderImportPreview();
+    $("message").textContent = "Import cancelled; the current editor was preserved.";
+  }
+  function applyManifestImport() {
+    if (!pendingImport) return;
+    if (pendingImport.requiresAck && !pendingImport.normalizationAcknowledged) {
+      $("message").textContent = "Review and acknowledge the normalization details before applying this import.";
+      return;
+    }
+    const entries = pendingImport.entries.slice();
+    const previous = values();
+    if (pendingImport.baseline &&
+        (previous.length !== pendingImport.baseline.length ||
+         !previous.every((value, index) => value === pendingImport.baseline[index]))) {
+      pendingImport = null;
+      renderImportPreview();
+      $("message").textContent = "Proposal is stale; current editor preserved. Stage the batch again.";
+      return;
+    }
+    const metadata = pendingImport;
+    if (metadata.sourceKind && metadata.sourceKind.startsWith("pasted batch")) closeBulkPanel(true);
+    undoAppliedImport = null;
+    pendingImport = null;
+    renderImportPreview();
+    list.replaceChildren();
+    draftRevision++;
+    rowSequence = 0;
+    entries.forEach(item => addRow(item));
+    undoAppliedImport = {previous, applied: entries.slice()};
+    refresh();
+    $("message").textContent = "Applied " + entries.length + " imported local endpoint slots from " +
+      metadata.sourceBytes + " source bytes; " + metadata.blankLines + " blank and " +
+      metadata.commentLines + " comment lines were omitted and " + metadata.trimmedLines +
+      " endpoint lines trimmed. Undo is available until the first post-apply editor change. Native original scope validation has NOT run.";
+  }
+  function restorePreviousImport() {
+    if (!undoAppliedImport) return;
+    const current = values();
+    if (current.length !== undoAppliedImport.applied.length ||
+        !current.every((value, index) => value === undoAppliedImport.applied[index])) {
+      $("message").textContent = "Undo refused because the editor changed after the import; current edits were preserved.";
+      refresh();
+      return;
+    }
+    const previous = undoAppliedImport.previous.slice();
+    undoAppliedImport = null;
+    list.replaceChildren();
+    draftRevision++;
+    rowSequence = 0;
+    previous.forEach(item => addRow(item));
+    refresh();
+    $("message").textContent = "Restored the editor contents from before the last applied import. No browser storage was used; native scope validation has NOT run.";
+  }
+  function reviewDraftCleanup() {
+    const original = values();
+    const seen = new Set();
+    const proposed = [];
+    let blankLines = 0, trimmedLines = 0, duplicateLines = 0;
+    for (const raw of original) {
+      const candidate = raw.trim();
+      if (!candidate) { blankLines++; continue; }
+      if (raw !== candidate) trimmedLines++;
+      if (seen.has(candidate)) { duplicateLines++; continue; }
+      seen.add(candidate);
+      proposed.push(candidate);
+    }
+    if (!blankLines && !trimmedLines && !duplicateLines) {
+      $("message").textContent = "Draft has no blank slots, exact duplicates or leading/trailing whitespace to clean.";
+      return;
+    }
+    const checked = validate(proposed);
+    if (!checked.entries) {
+      $("message").textContent = "Cleanup cannot produce an admissible manifest. " + checked.error +
+        " Correct the listed endpoint slots manually before cleanup.";
+      return;
+    }
+    importSequence++;
+    pendingImport = {entries: proposed, baseline: original.slice(), sourceKind:"Current draft cleanup",
+      sourceBytes:manifestBytes(original), sourceLines:original.length, blankLines,
+      commentLines:0, trimmedLines, duplicateLines, cleanup:true,
+      requiresAck:true, normalizationAcknowledged:false};
+    renderImportPreview();
+    $("message").textContent = "Review all removed duplicate/blank rows and trimmed whitespace. Apply only after acknowledging the changes; Undo remains available.";
+    $("importPreviewPanel").scrollIntoView({block:"start"});
+  }
+  function previewPastedBatch() {
+    importSequence++; // Cancel any still-reading file import.
+    pendingImport = null;
+    renderImportPreview();
+    const raw = $("bulkText").value;
+    const sourceBytes = new Blob([raw]).size;
+    const current = values();
+    try {
+      if (!sourceBytes || sourceBytes > 16384) throw Error("Paste must be 1–16384 UTF-8 bytes.");
+      if (raw.startsWith("\uFEFF") || raw.includes("\u0000") ||
+          /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(raw)) {
+        throw Error("Paste contains a BOM, NUL or invalid Unicode.");
+      }
+      const sourceLines = raw.split(/\r\n|\r|\n|\u0085|\u2028|\u2029/);
+      if (sourceLines.length > 1 && sourceLines[sourceLines.length - 1] === "" &&
+          /(?:\r\n|\r|\n|\u0085|\u2028|\u2029)$/.test(raw)) sourceLines.pop();
+      const blankLines = sourceLines.filter(line => !line.trim()).length;
+      const commentLines = sourceLines.filter(line => line.trim() && line.trimStart().startsWith("#")).length;
+      const sourceEntries = sourceLines.filter(line => line.trim() && !line.trimStart().startsWith("#"));
+      const trimmedLines = sourceEntries.filter(line => line !== line.trim()).length;
+      const addedEntries = sourceEntries.map(line => line.trim());
+      const batchCheck = validate(addedEntries);
+      if (!batchCheck.entries) throw Error(batchCheck.error);
+      const mode = $("bulkMode").value;
+      if (mode !== "replace" && mode !== "append") throw Error("Unknown batch mode.");
+      const filledCurrent = current.filter(item => item !== "");
+      if (mode === "append" && filledCurrent.length && !validate(filledCurrent).entries)
+        throw Error("Complete and correct current rows before appending.");
+      const entries = mode === "append" ? filledCurrent.concat(addedEntries) : addedEntries;
+      const checked = validate(entries);
+      if (!checked.entries) throw Error(checked.error);
+      const skippedDraft = mode === "append" && filledCurrent.length !== current.length;
+      const requiresAck = blankLines > 0 || commentLines > 0 || trimmedLines > 0 || skippedDraft;
+      pendingImport = {entries: entries.slice(), sourceBytes, sourceLines: sourceLines.length,
+        blankLines, commentLines, trimmedLines, requiresAck,
+        normalizationAcknowledged: !requiresAck, baseline: current.slice(),
+        sourceKind: mode === "append" ? "pasted batch (append)" : "pasted batch (replace)",
+        skippedDraft};
+      renderImportPreview();
+      $("message").textContent = "Review the pasted proposal below before Apply; existing slots are unchanged.";
+      $("importPreviewPanel").scrollIntoView({block:"start"});
+    } catch (error) {
+      const reason = typeof error.message === "string" ? error.message : "";
+      const expected = /^(?:Endpoint slots \d+(?:, \d+)* (?:must be non-empty, trimmed literal text of at most 2048 characters without controls|must use valid HTTP\(S\) URLs without credentials or fragments)\.|Duplicate literal endpoint values at slots \d+(?:, \d+)*\.|Enter 1–16 endpoint URLs\.|Manifest exceeds the native CLI 16 KiB limit\.|Paste must be 1–16384 UTF-8 bytes\.|Paste contains a BOM, NUL or invalid Unicode\.|Unknown batch mode\.|Complete and correct current rows before appending\.)$/.test(reason);
+      $("message").textContent = "Paste refused; existing endpoints preserved. " +
+        (expected ? reason : "Check local endpoint syntax and the 16-slot bound.");
+    }
+  }
+  function closeBulkPanel(keepProposal = false) {
+    if (!keepProposal && pendingImport && pendingImport.sourceKind &&
+        pendingImport.sourceKind.startsWith("pasted batch")) {
+      pendingImport = null;
+      renderImportPreview();
+      $("message").textContent = "Paste cancelled; existing endpoint slots preserved.";
+    }
+    $("bulkText").value = "";
+    $("bulkBudget").textContent = "Pasted text: 0 / 16384 bytes.";
+    $("bulkPanel").hidden = true;
+    $("showBulk").setAttribute("aria-expanded", "false");
+  }
+  async function importManifest() {
+    const ticket = ++importSequence;
+    const input = $("manifestImport"), files = Array.from(input.files || []);
+    input.value = "";
+    pendingImport = null;
+    renderImportPreview();
+    if (!files.length) return;
+    const baseline = values();
+    const baselineRevision = draftRevision;
+    const mode = $("fileMode").value;
+    try {
+      if (files.length > 8) throw Error("Too many files");
+      const sourceTexts = [];
+      let sourceBytes = 0;
+      for (const file of files) {
+        if (file.size < 1 || file.size > 16384) throw Error("Too large or empty");
+        sourceBytes += file.size;
+        // Strict bounded UTF-8 decode; original bytes never leave the local browser.
+        const text = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true})
+          .decode(await file.arrayBuffer());
+        if (ticket !== importSequence) return;
+        if (text.startsWith("\uFEFF") || text.includes("\u0000")) throw Error("BOM or NUL");
+        sourceTexts.push(text);
+      }
+      if (ticket !== importSequence || $("fileMode").value !== mode ||
+          draftRevision !== baselineRevision || values().length !== baseline.length ||
+          !values().every((value, index) => value === baseline[index])) {
+        $("message").textContent = "Draft changed during file read; import cancelled and edits preserved.";
+        return;
+      }
+      let sourceLinesCount = 0, blankLines = 0, commentLines = 0, trimmedLines = 0;
+      const sourceEntries = [];
+      for (const text of sourceTexts) {
+        const lines = text.split(/\r\n|\r|\n|\u0085|\u2028|\u2029/);
+        if (lines.length > 1 && lines[lines.length - 1] === "" &&
+            /(?:\r\n|\r|\n|\u0085|\u2028|\u2029)$/.test(text)) lines.pop();
+        sourceLinesCount += lines.length;
+        blankLines += lines.filter(line => !line.trim()).length;
+        commentLines += lines.filter(line => line.trim() && line.trimStart().startsWith("#")).length;
+        const endpoints = lines.filter(line => line.trim() && !line.trimStart().startsWith("#"));
+        trimmedLines += endpoints.filter(line => line !== line.trim()).length;
+        const admitted = endpoints.map(line => line.trim());
+        const sourceCheck = validate(admitted);
+        if (!sourceCheck.entries) throw Error(sourceCheck.error);
+        sourceEntries.push(...admitted);
+      }
+      const sourceCheck = validate(sourceEntries);
+      if (!sourceCheck.entries) throw Error(sourceCheck.error);
+      if (mode !== "replace" && mode !== "append") throw Error("Invalid file mode");
+      const filledCurrent = baseline.filter(value => value !== "");
+      if (mode === "append" && filledCurrent.length && !validate(filledCurrent).entries)
+        throw Error("Invalid current draft");
+      const entries = mode === "append" ? filledCurrent.concat(sourceEntries) : sourceEntries;
+      const checked = validate(entries);
+      if (!checked.entries) throw Error(checked.error);
+      // Stage against an exact editor snapshot. Re-admit the complete combined proposal.
+      const skippedDraft = mode === "append" && filledCurrent.length !== baseline.length;
+      const requiresAck = blankLines > 0 || commentLines > 0 || trimmedLines > 0 || skippedDraft;
+      pendingImport = {entries: entries.slice(), sourceBytes, sourceLines: sourceLinesCount,
+        blankLines, commentLines, trimmedLines, requiresAck, normalizationAcknowledged: !requiresAck,
+        baseline: baseline.slice(), skippedDraft,
+        sourceKind: "Imported " + files.length + " local file(s) (" + mode + ")"};
+      renderImportPreview();
+      $("message").textContent = "Review the proposed import below. Current editor remains unchanged until Apply.";
+    } catch (error) {
+      if (ticket !== importSequence) return;
+      const reason = error && typeof error.message === "string" ? error.message : "";
+      const details = {
+        "Too large or empty": "Each local file must be non-empty and at most 16 KiB.",
+        "Too many files": "Choose no more than eight local source manifests.",
+        "Invalid file mode": "Choose replace or append before selecting the file.",
+        "Invalid current draft": "Complete and correct the current endpoint slots before appending a file.",
+        "BOM or NUL": "UTF-8 BOM and NUL characters are not accepted.",
+        "Enter 1–16 endpoint URLs.": "Include between 1 and 16 endpoint lines.",
+        "Fill every row with bounded literal text; remove blank rows and whitespace.": "Remove empty endpoint values and leading/trailing endpoint whitespace.",
+        "Manifest exceeds the native CLI 16 KiB limit.": "The canonical endpoint manifest exceeds the native CLI 16 KiB limit.",
+        "Duplicate literal endpoint values are not allowed.": "Remove duplicate endpoint values.",
+        "Use HTTP(S) URLs without credentials or fragments.": "Use literal HTTP(S) URLs without credentials or fragments.",
+        "One or more entries are not syntactically valid HTTP(S) URLs.": "One or more endpoint lines are not valid HTTP(S) URLs."
+      };
+      const positionalReason = /^(?:Endpoint slots \d+(?:, \d+)* (?:must be non-empty, trimmed literal text of at most 2048 characters without controls|must use valid HTTP\(S\) URLs without credentials or fragments)\.|Duplicate literal endpoint values at slots \d+(?:, \d+)*\.)$/.test(reason);
+      const detail = details[reason] || (positionalReason ? reason :
+        "The file could not be read as strict UTF-8. Use a bounded UTF-8 text manifest without BOM or NUL.");
+      $("message").textContent = "Import refused; your existing editor was preserved. " + detail;
+    }
+  }
+  $("toggleMask").addEventListener("click", () => {
+    masked = !masked;
+    [...list.querySelectorAll(".endpoint input")].forEach(input => {
+      input.type = masked ? "password" : "text";
+    });
+    $("bulkText").hidden = masked;
+    $("bulkMaskNotice").hidden = !masked;
+    $("toggleMask").textContent = masked ? "Show endpoint values" : "Hide endpoint values";
+    $("toggleMask").setAttribute("aria-pressed", String(masked));
+    renderImportPreview();
+  });
+  $("cleanDraft").addEventListener("click", reviewDraftCleanup);
+  $("showBulk").addEventListener("click", () => {
+    const open = $("bulkPanel").hidden;
+    if (open) {
+      $("bulkPanel").hidden = false;
+      $("showBulk").setAttribute("aria-expanded", "true");
+      $("bulkText").focus();
+    } else closeBulkPanel();
+  });
+  $("closeBulk").addEventListener("click", () => closeBulkPanel());
+  function invalidatePastedProposal() {
+    if (pendingImport && pendingImport.sourceKind &&
+        pendingImport.sourceKind.startsWith("pasted batch")) {
+      pendingImport = null;
+      renderImportPreview();
+      $("message").textContent = "Paste source changed; previous preview cancelled. Review the edited batch again.";
+    }
+  }
+  $("bulkMode").addEventListener("change", invalidatePastedProposal);
+  $("bulkText").addEventListener("input", () => {
+    invalidatePastedProposal();
+    const bytes = new Blob([$("bulkText").value]).size;
+    $("bulkBudget").textContent = "Pasted text: " + bytes + " / 16384 bytes" +
+      (bytes > 16384 ? " · too large" : " · " + (16384 - bytes) + " bytes remaining");
+  });
+  $("previewBulk").addEventListener("click", previewPastedBatch);
+  $("chooseManifest").addEventListener("click", () => $("manifestImport").click());
+  $("manifestImport").addEventListener("change", importManifest);
+  $("fileMode").addEventListener("change", () => {
+    importSequence++;
+    if (pendingImport && pendingImport.sourceKind &&
+        pendingImport.sourceKind.startsWith("Imported ")) {
+      pendingImport = null;
+      renderImportPreview();
+      $("message").textContent = "File import mode changed; earlier proposal cancelled. Choose the local file again.";
+    }
+  });
+  $("normalizationAck").addEventListener("change", () => {
+    if (!pendingImport) return;
+    pendingImport.normalizationAcknowledged = $("normalizationAck").checked;
+    renderImportPreview();
+  });
+  $("undoAppliedImport").addEventListener("click", restorePreviousImport);
+  $("addEndpoint").addEventListener("click", () => { draftRevision++; addRow(""); });
+  $("downloadManifest").addEventListener("click", downloadManifest);
+  $("downloadProposedManifest").addEventListener("click", downloadProposedManifest);
+  $("applyManifestImport").addEventListener("click", applyManifestImport);
+  $("cancelManifestImport").addEventListener("click", cancelManifestImport);
+  addRow("");
+})();</script>
+</body>
+</html>

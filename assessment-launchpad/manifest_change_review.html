@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-x7nhWPaz4X+Ab9ZNa7CABJD7xAAeqP4sId/P5Ix45uU='; style-src 'sha256-1JmdbJ1AJ0hEcY4T8XvvX425VGOFoJwsxFFZWoJbkig='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · PRIVATE manifest HUMAN follow-up</title>
+<style>:root{font-family:system-ui,-apple-system,sans-serif;color:#17212f;background:#f3f6fa;font-synthesis:none}*{box-sizing:border-box}body{max-width:1100px;margin:0 auto;padding:1.25rem;line-height:1.5}header,section{background:#fff;border:1px solid #d6dfeb;border-radius:14px;padding:1.1rem;margin-bottom:1rem}h1{font-size:clamp(1.7rem,4vw,2.4rem);line-height:1.15;margin:.35rem 0 .7rem}h2{font-size:1.15rem;margin:.1rem 0 .65rem}.eyebrow{font-size:.78rem;font-weight:800;letter-spacing:.09em;color:#46576e}.status{border-left:5px solid #a35b12;background:#fff4df;padding:.8rem 1rem;font-weight:800}.note{color:#4d5d71;font-size:.92rem}.controls{display:flex;gap:.7rem;align-items:end;flex-wrap:wrap}.field{display:grid;gap:.3rem;min-width:180px;flex:1}label{font-weight:700}input,select,button{font:inherit;border:1px solid #8c9bb0;border-radius:8px;padding:.6rem .7rem;background:white;color:inherit}button{cursor:pointer;font-weight:750;background:#173f70;color:white;border-color:#173f70}button.secondary{background:#fff;color:#173f70}button:disabled{opacity:.45;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #dfaa45;outline-offset:2px}.summary{display:flex;gap:.6rem;flex-wrap:wrap;margin:.85rem 0}.pill{border:1px solid #d3dce8;border-radius:999px;padding:.3rem .7rem;font-weight:750;font-variant-numeric:tabular-nums;background:#f8fafc}.table-wrap{overflow-x:auto;border:1px solid #d6dfeb;border-radius:10px}table{border-collapse:collapse;width:100%;min-width:680px}th,td{text-align:left;padding:.65rem .7rem;border-bottom:1px solid #e3e9f0;vertical-align:middle}th{background:#f0f4f9;font-size:.88rem}tbody tr:last-child td{border-bottom:0}td:first-child{font-weight:800}td select{width:100%;min-width:155px}.empty{padding:1.3rem;text-align:center;color:#536174}.error{color:#8a261e;font-weight:750}.success{color:#225d3b;font-weight:750}footer{padding:.4rem .2rem 1.5rem;color:#4d5d71;font-size:.9rem}code{overflow-wrap:anywhere}@media(max-width:620px){body{padding:.6rem}.controls{display:grid;grid-template-columns:1fr}.field{min-width:0}header,section{padding:.85rem}}</style>
+</head>
+<body>
+<header>
+  <p class="eyebrow">LIGHTUP / ASSESSMENT RUNTIME / OFFLINE HUMAN WORKFLOW</p>
+  <h1>Manifest change follow-up</h1>
+  <p class="status">INCUBATE M3/M7 · PLAN/LAB ONLY · REVIEW_ONLY · NOT AUTHORIZED</p>
+  <p class="note">Review the ordinal-only CSV produced by <code>manifest_change_desk.py</code>. This page works locally in memory. It does not read endpoints, source paths, notes or hashes, and makes no network requests.</p>
+</header>
+<section>
+  <h2>1. Import the native change CSV</h2>
+  <div class="controls">
+    <div class="field"><label for="csvFile">PRIVATE delta or saved follow-up CSV (max 64 KiB)</label><input id="csvFile" type="file" accept=".csv,text/csv"></div>
+    <button id="clearAll" class="secondary" type="button">Clear local review</button>
+  </div>
+  <p class="note">Import the native four-column delta CSV to start a review, or re-import this tool’s five-column HUMAN follow-up CSV to resume saved stages. The page checks exact headers, allowed states, slot ordinals, row shape and REVIEW_ONLY marker. This is format validation only; the original native CLI remains responsible for source-bundle admission.</p>
+  <p id="status" role="status" aria-live="polite">Import a native delta or a previously exported HUMAN follow-up CSV to begin. Nothing is sent or saved automatically.</p>
+</section>
+<section>
+  <h2>2. Record HUMAN follow-up</h2>
+  <div class="controls">
+    <div class="field"><label for="changeFilter">Change state</label><select id="changeFilter"><option value="ALL">All states</option><option>UNCHANGED</option><option>MOVED</option><option>REMOVED</option><option>ADDED</option></select></div>
+    <div class="field"><label for="stageFilter">Human follow-up</label><select id="stageFilter"><option value="ALL">All stages</option><option>NOT_REVIEWED</option><option>REVIEWED</option><option>FOLLOW_UP</option><option>NOT_APPLICABLE</option></select></div>
+  </div>
+  <div id="summary" class="summary" aria-label="Review counts"></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Change</th><th>Before slot</th><th>After slot</th><th>Source status</th><th>Human follow-up</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p id="emptyState" class="empty">Import a native delta CSV to begin. Nothing is sent or saved automatically.</p>
+  </div>
+  <p class="note">“REVIEWED” records a human workflow stage only. “FOLLOW_UP” is not a finding, remediation request, approval or release decision. These labels never change the source status.</p>
+  <div class="controls"><button id="exportCsv" type="button" disabled>Export full HUMAN follow-up CSV</button></div>
+</section>
+<footer>
+  <strong>Privacy and authority boundary:</strong> no cookies, browser storage, external assets, fetch, telemetry, DNS, target access, model calls, scan, grant, consent or release. The downloaded CSV is a PRIVATE planning artifact. Keep it owner-private. A removed or moved endpoint is not evidence of a fix; local unsigned consistency is not source authenticity or HUMAN GO.
+</footer>
+<script>(()=>{"use strict";
+const MAX_BYTES=65536,MAX_ROWS=32;
+const fileInput=document.getElementById("csvFile"),clearButton=document.getElementById("clearAll"),exportButton=document.getElementById("exportCsv"),changeFilter=document.getElementById("changeFilter"),stageFilter=document.getElementById("stageFilter"),tableBody=document.getElementById("rows"),emptyState=document.getElementById("emptyState"),status=document.getElementById("status"),summary=document.getElementById("summary");
+const CHANGE_STATES=["UNCHANGED","MOVED","REMOVED","ADDED"];
+const STAGES=["NOT_REVIEWED","REVIEWED","FOLLOW_UP","NOT_APPLICABLE"];
+let entries=[],loaded=false;
+function safeError(message){const e=new Error();e.safeMessage=message;throw e;}
+function setStatus(message,kind){status.textContent=message;status.className=kind||"";}
+function parseCsv(text){
+ if(text.charCodeAt(0)===0xfeff)safeError("A UTF-8 BOM is not accepted; export a fresh native delta CSV.");
+ const rows=[];let row=[],field="",quoted=false,afterQuote=false;
+ for(let i=0;i<text.length;i++){
+  const ch=text[i];
+  if(quoted){if(ch==='"'){if(text[i+1]==='"'){field+='"';i++;}else{quoted=false;afterQuote=true;}}else{field+=ch;}continue;}
+  if(afterQuote){if(ch===","){row.push(field);field="";afterQuote=false;continue;}if(ch==="\r"||ch==="\n"){row.push(field);rows.push(row);row=[];field="";afterQuote=false;if(ch==="\r"&&text[i+1]==="\n")i++;continue;}safeError("The CSV contains characters after a closing quote.");}
+  if(ch==='"'){if(field.length)safeError("The CSV contains a malformed quoted field.");quoted=true;}
+  else if(ch===","){row.push(field);field="";}
+  else if(ch==="\r"||ch==="\n"){row.push(field);rows.push(row);row=[];field="";if(ch==="\r"&&text[i+1]==="\n")i++;}
+  else field+=ch;
+ }
+ if(quoted)safeError("The CSV contains an unclosed quoted field.");
+ if(afterQuote||field.length||row.length){row.push(field);rows.push(row);}
+ return rows;
+}
+function slot(value){
+ if(value==="")return null;
+ if(!/^(?:[1-9]|1[0-6])$/.test(value))safeError("Slot ordinals must be blank or integers from 1 to 16.");
+ return Number(value);
+}
+function admitCsv(text){
+ if(text.length===0)safeError("The selected CSV is empty.");
+ if(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text))safeError("The CSV contains unsupported control characters.");
+ const parsed=parseCsv(text),nativeHeader=["change_state","before_slot","after_slot","review_state"],humanHeader=["change_state","before_slot","after_slot","review_state","human_follow_up"];
+ const header=parsed[0]||[];
+ const resumed=header.length===humanHeader.length&&header.every((x,i)=>x===humanHeader[i]);
+ const native=header.length===nativeHeader.length&&header.every((x,i)=>x===nativeHeader[i]);
+ if(!native&&!resumed)safeError("Expected the exact native delta CSV header or a previously exported HUMAN follow-up CSV.");
+ const width=resumed?5:4,data=parsed.slice(1);
+ if(data.length>MAX_ROWS)safeError("The delta has more rows than the native 16-slot manifest limit allows.");
+ const seenBefore=new Set(),seenAfter=new Set(),seenRows=new Set(),result=[];
+ for(const values of data){
+  if(values.length!==width)safeError("Every row must match the exact native or HUMAN follow-up CSV shape.");
+  const [state,beforeText,afterText,review,stageText]=values;
+  const stage=resumed?stageText:"NOT_REVIEWED";
+  if(!CHANGE_STATES.includes(state)||review!=="REVIEW_ONLY")safeError("The CSV contains an unknown state or a non-REVIEW_ONLY source status.");
+  if(!STAGES.includes(stage))safeError("The CSV contains an unknown HUMAN follow-up stage.");
+  const before=slot(beforeText),after=slot(afterText);
+  if(state==="UNCHANGED"&&(before===null||after===null||before!==after))safeError("An UNCHANGED row must have matching before and after slots.");
+  if(state==="MOVED"&&(before===null||after===null||before===after))safeError("A MOVED row must have two different slot ordinals.");
+  if(state==="REMOVED"&&(before===null||after!==null))safeError("A REMOVED row must have only a before slot.");
+  if(state==="ADDED"&&(before!==null||after===null))safeError("An ADDED row must have only an after slot.");
+  if(before!==null&&seenBefore.has(before))safeError("The CSV repeats a before slot.");
+  if(after!==null&&seenAfter.has(after))safeError("The CSV repeats an after slot.");
+  const key=[state,beforeText,afterText,review].join("|");
+  if(seenRows.has(key))safeError("The CSV repeats a change row.");
+  if(before!==null)seenBefore.add(before);if(after!==null)seenAfter.add(after);seenRows.add(key);
+  result.push({state,before,after,review,stage});
+ }
+ return {rows:result,resumed};
+}
+function render(){
+ tableBody.replaceChildren();
+ const visible=entries.filter(item=>(changeFilter.value==="ALL"||item.state===changeFilter.value)&&(stageFilter.value==="ALL"||item.stage===stageFilter.value));
+ for(const item of visible){
+  const index=entries.indexOf(item),tr=document.createElement("tr");
+  const cells=[item.state,item.before===null?"—":String(item.before),item.after===null?"—":String(item.after),item.review];
+  for(const value of cells){const td=document.createElement("td");td.textContent=value;tr.appendChild(td);}
+  const td=document.createElement("td"),select=document.createElement("select");
+  select.setAttribute("aria-label","Human follow-up for change row "+String(index+1));
+  for(const stage of STAGES){const option=document.createElement("option");option.value=stage;option.textContent=stage;select.appendChild(option);}
+  select.value=item.stage;select.addEventListener("change",()=>{entries[index].stage=select.value;render();});
+  td.appendChild(select);tr.appendChild(td);tableBody.appendChild(tr);
+ }
+ emptyState.hidden=visible.length>0;
+ if(loaded&&entries.length===0)emptyState.textContent="No slot changes were recorded. The native delta contains only its header; you can still export a zero-row HUMAN follow-up ledger.";
+ else emptyState.textContent=loaded?"No rows match the selected filters.":"Import a native delta CSV to begin. Nothing is sent or saved automatically.";
+ summary.replaceChildren();
+ const counts=[["Changes",entries.length],["Visible",visible.length],["Follow-up",entries.filter(x=>x.stage==="FOLLOW_UP").length],["Not reviewed",entries.filter(x=>x.stage==="NOT_REVIEWED").length]];
+ for(const [label,count] of counts){const span=document.createElement("span");span.className="pill";span.textContent=label+": "+String(count);summary.appendChild(span);}
+ exportButton.disabled=!loaded;
+}
+function csvCell(value){const text=String(value);return /[",\r\n]/.test(text)?'"'+text.replace(/"/g,'""')+'"':text;}
+function exportAll(){
+ if(!loaded)return;
+ const lines=[["change_state","before_slot","after_slot","review_state","human_follow_up"].join(",")];
+ for(const item of entries){lines.push([item.state,item.before===null?"":item.before,item.after===null?"":item.after,item.review,item.stage].map(csvCell).join(","));}
+ const blob=new Blob([lines.join("\r\n")+"\r\n"],{type:"text/csv;charset=utf-8"});
+ const url=URL.createObjectURL(blob),anchor=document.createElement("a");
+ anchor.href=url;anchor.download="lightup-private-manifest-human-follow-up.csv";anchor.hidden=true;document.body.appendChild(anchor);anchor.click();anchor.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),0);
+ setStatus("Export created locally. HUMAN stages describe follow-up only; source status remains REVIEW_ONLY.","success");
+}
+fileInput.addEventListener("change",async()=>{
+ const file=fileInput.files&&fileInput.files[0];if(!file)return;
+ if(file.size>MAX_BYTES){loaded=false;entries=[];render();setStatus("CSV not admitted: maximum input size is 64 KiB.","error");return;}
+ try{
+  const text=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+  const admitted=admitCsv(text);
+  entries=admitted.rows;loaded=true;changeFilter.value="ALL";stageFilter.value="ALL";render();
+  setStatus(admitted.resumed?"Previously exported HUMAN stages restored locally. Source status remains REVIEW_ONLY; no authorization is established.":"Native-shaped delta admitted locally. Stages start NOT_REVIEWED; no source authenticity or authorization is established.","success");
+ }catch(error){
+  entries=[];loaded=false;render();
+  setStatus("CSV not admitted: "+(error&&error.safeMessage?error.safeMessage:"invalid UTF-8 or unreadable input."),"error");
+ }
+});
+clearButton.addEventListener("click",()=>{
+ entries=[];loaded=false;fileInput.value="";changeFilter.value="ALL";stageFilter.value="ALL";render();setStatus("Local review cleared. No browser storage was used.");
+});
+changeFilter.addEventListener("change",render);stageFilter.addEventListener("change",render);exportButton.addEventListener("click",exportAll);
+render();
+})();</script>
+</body>
+</html>
