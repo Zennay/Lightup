@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-7xhHonu9Q7KGf/tyWurJBHX2oP8swcWSw6/5KQq5xe8=' 'sha256-0TSOdLvoAxLnJIORPyN6xDgusCrhagoQ1NfsGl1kKZw=' 'sha256-FkOgl38htVjlAq+iDHquAE7eJd4V8h4bbbvNWTXe1Ik='; style-src 'sha256-W9nmTSlmvxdBnXfU+AEm+wgkyfRdPZHzKO785fl31as='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · Private Owner Reply Desk</title><style>:root{font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:#edf3fe;background:#101726;color-scheme:dark}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1150px;padding:32px 24px;margin:auto}header{padding-top:55px}.brand{color:#a1c4ff;letter-spacing:.14em;font-size:.77rem;font-weight:800}h1{font-size:clamp(2rem,5vw,3.5rem);margin:.25em 0}h2{font-size:1.35rem;margin:0 0 12px}h3{font-size:1.05rem;margin:0}p{color:#b9c9df}.hold{display:inline-block;border:1px solid #8b6738;color:#ffcc8e;padding:8px 12px;border-radius:9px;background:#342719;font-weight:650;font-size:.85rem}.panel{border:1px solid #364866;border-radius:16px;background:#19253b;padding:22px;margin-bottom:22px}label{display:block;margin:15px 0;font-weight:650}input,textarea,select,button{font:inherit}input:not([type=checkbox]),textarea,select{display:block;width:100%;background:#0d1626;color:#f4f8ff;border:1px solid #667994;border-radius:8px;padding:9px;margin-top:6px}input:focus-visible,textarea:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid #a2c3ff;outline-offset:2px}textarea{resize:vertical;min-height:90px}.ack{display:flex;gap:10px;align-items:flex-start;font-weight:450}.ack input{flex:none;width:19px;height:19px}.owner{font-size:1.25rem;font-weight:800;color:#b6ceff}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:15px}.card{padding:18px;border-radius:13px;border:1px solid #425673;background:#111e32;overflow-wrap:anywhere}.card .source{background:#233550;border-radius:9px;padding:10px;color:#dfebff;white-space:pre-wrap;font-size:.87rem}.tag{display:inline-block;border:1px solid #70819b;border-radius:7px;padding:2px 6px;font-size:.75rem;margin-bottom:8px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{display:flex;gap:12px;flex-wrap:wrap}button{background:#bad0ff;color:#132036;border:0;padding:11px 17px;font-weight:800;border-radius:8px;cursor:pointer}button:disabled{opacity:.35;cursor:not-allowed}.quiet{background:#3a4c67;color:#fff}footer{font-size:.83rem;color:#aabbd2}@media(max-width:600px){header,main,footer{padding-left:14px;padding-right:14px}.panel{padding:16px}.row{grid-template-columns:1fr}}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:9px;margin:15px 0}.metric{padding:13px;background:#263b59;border:1px solid #486080;border-radius:10px}.metric strong{display:block;font-size:1.5rem}.metric span{color:#c1cfe4;font-size:.8rem}.filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:11px;align-items:end}.bulk-panel{padding:16px;margin:15px 0 22px;border:1px solid #4e6480;border-radius:12px;background:#192b45}.bulk-panel button{margin:15px 0}
+</style></head>
+<body><header><div class="brand">LIGHTUP / PRIVATE HUMAN COLLABORATION</div><h1>Owner Reply Desk</h1><p>Review only the original finding summaries selectively shared with your intended team. Update local human planning; no source, retest or permission changes.</p><div class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</div></header>
+<main>
+<section class="panel"><h2>1. Confirm an independently authorized private handoff</h2>
+<p>A file or hash does not verify your identity, the sender, client/engagement, consent, revocation, scope, or grant. Do not import data from an unknown source or an unapproved channel.</p>
+<label class="ack"><input id="ack" type="checkbox"> I independently verified that I am the intended recipient of this PRIVATE handoff for the exact actual client and engagement, through a separately approved confidential channel. My edits are human planning only.</label>
+<label>PRIVATE single-owner JSON<input id="file" type="file" accept=".json,application/json"></label>
+<label>Resume previously saved PRIVATE owner reply JSON (for this exact original handoff)<input id="resume" type="file" accept=".json,application/json"></label>
+<p id="resume-message" role="status" aria-live="polite"></p>
+<p id="message" role="status" aria-live="polite">No private packet loaded.</p></section>
+<section id="workspace" hidden>
+<section class="panel"><h2>2. Coordinate human work for the selected owner</h2>
+<p id="owner" class="owner"></p><p id="count"></p><p>Original five finding fields and human owner label are read-only. All updates remain in browser memory until you explicitly export a PRIVATE reply.</p>
+<div id="recipient-metrics" class="metrics" aria-label="Local human-only workload summary"></div>
+<div class="filter-grid">
+<label>View original finding or human status<select id="recipient-filter">
+<option value="all">All original findings</option><option value="urgent">Critical/high source severity</option>
+<option value="overdue">Past-due human actions</option><option value="blocked">Human blocked</option>
+<option value="missing_date">Open human work without due date</option>
+<option value="retest">Ready for separately authorized retest</option></select></label>
+<label>Search original finding ID or title<input id="recipient-search" type="search" maxlength="120" placeholder="Find original finding"></label>
+<label>Sort human work<select id="recipient-sort"><option value="priority">Source severity</option><option value="due">Human due date</option><option value="title">Original title</option></select></label></div>
+<section class="bulk-panel"><h3>Bulk HUMAN-ONLY work stage</h3><p>Changes only the visible original findings after explicit confirmation. Original LightUp retest status never changes.</p>
+<div class="filter-grid"><label>Human stage<select id="recipient-bulk-stage"><option value="">Select a human stage</option><option value="unassigned">Unassigned</option><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="blocked">Blocked</option><option value="ready_for_retest">Ready for separately authorized retest</option><option value="deferred">Deferred HUMAN work</option><option value="completed">Locally completed — NOT verified fixed</option></select></label>
+<button id="recipient-bulk-apply" type="button">Confirm and apply to visible human work</button></div>
+<p id="recipient-bulk-message" role="status" aria-live="polite"></p></section>
+<div id="cards" class="cards"></div></section>
+<section class="panel"><h2>3. Return only the privately reviewed human notes</h2>
+<p>The return includes the same original subset and human-baseline fingerprint so the sender can reject changed or stale work. It does not approve a real retest, verify a fix, or contact LightUp.</p>
+<div class="actions"><button id="return-preview-button" type="button" class="quiet">Review HUMAN-only edits before sending</button></div>
+<section id="return-review" class="bulk-panel" hidden><h3>PRIVATE human change summary</h3>
+<p id="return-review-summary" role="status" aria-live="polite"></p>
+<div id="return-review-rows" class="cards"></div>
+<label class="ack"><input id="return-review-ack" type="checkbox"> I reviewed the HUMAN-ONLY edits listed above. No original source, consent, grant, remediation verdict or retest is changed.</label></section>
+<label class="ack"><input id="return-ack" type="checkbox"> I explicitly confirm the independently approved PRIVATE return channel and understand this output is unsigned human coordination only.</label>
+<div class="actions"><button id="export" type="button" disabled>Save / export PRIVATE owner reply JSON</button><button id="clear" type="button" class="quiet">Clear private memory</button></div>
+<p id="reply-message" role="status" aria-live="polite"></p></section>
+</section></main><footer>Offline-only · no account, network, storage, scan, grant, verified retest or automated ticket. Handle downloaded PRIVATE files securely.</footer>
+<script>/* LightUp local casework. Parsing/presentation only; never authenticates source or authorizes assessments. */
+(function(global){
+'use strict';
+const EXPECTED=['finding_id','title','severity','retest_status','remediation'];
+const SEVERITY=['critical','high','medium','low','info'];
+const RETEST=['not_tested','fix_pending','fixed','regression'];
+const PROGRESS=['unassigned','planned','in_progress','blocked','ready_for_retest','deferred','completed'];
+const MAX_BYTES=1048576,MAX_ROWS=350,MAX_CELL=6000;
+function sizeOf(text){return new TextEncoder().encode(text).length;}
+function parseCSV(text){
+ if(typeof text!=='string'||sizeOf(text)>MAX_BYTES)throw Error('CSV exceeds 1 MiB.');
+ if(text.charCodeAt(0)===0xfeff)text=text.slice(1);
+ const rows=[];let row=[],field='',quoted=false,closed=false;
+ for(let i=0;i<text.length;i++){
+  const c=text[i];
+  if(quoted){
+   if(c==='"' && text[i+1]==='"'){field+='"';i++;}
+   else if(c==='"') {quoted=false;closed=true;}
+   else field+=c;
+  }else if(c==='"'){
+   if(field!==''||closed)throw Error('Malformed quoted CSV field.');
+   quoted=true;
+  }else if(c===','){
+   row.push(field);field='';closed=false;
+  }else if(c==='\r'||c==='\n'){
+   if(c==='\r'&&text[i+1]==='\n')i++;
+   row.push(field);field='';closed=false;
+   if(row.length>1||row[0]!=='')rows.push(row);
+   row=[];
+   if(rows.length>MAX_ROWS+1)throw Error('Too many findings.');
+  }else{
+   if(closed)throw Error('Malformed CSV after closing quote.');
+   field+=c;
+  }
+  if(field.length>MAX_CELL)throw Error('An imported CSV cell is too long.');
+ }
+ if(quoted)throw Error('Unclosed CSV quote.');
+ if(row.length||field!==''||closed){row.push(field);if(row.length>1||row[0]!=='')rows.push(row);}
+ if(!rows.length)throw Error('No CSV header found.');
+ if(rows[0].length!==EXPECTED.length || rows[0].some((v,i)=>v!==EXPECTED[i]))
+  throw Error('Expected the five-column LightUp findings summary CSV export.');
+ if(rows.length===1)throw Error('CSV export contains no findings.');
+ if(rows.length-1>MAX_ROWS)throw Error('Too many findings.');
+ const seen=new Set();
+ return rows.slice(1).map((values,index)=>{
+  if(values.length!==EXPECTED.length)throw Error('Malformed CSV row '+(index+2)+'.');
+  const [finding_id,title,severity,retest_status,remediation]=values;
+  if(!finding_id.trim()||finding_id.length>160||seen.has(finding_id))
+   throw Error('Invalid or duplicate finding ID at row '+(index+2)+'.');
+  if(!title.trim()||!remediation.trim()||!SEVERITY.includes(severity)||!RETEST.includes(retest_status))
+   throw Error('Malformed finding data at row '+(index+2)+'.');
+  seen.add(finding_id);
+  return {finding_id,title,severity,retest_status,remediation};
+ });
+}
+function normalizeSource(findings){
+ if(!Array.isArray(findings)||!findings.length||findings.length>MAX_ROWS)throw Error('Unsupported findings list.');
+ const seen=new Set();
+ return findings.map(x=>{
+  if(!x||typeof x!=='object'||Array.isArray(x))throw Error('Malformed finding.');
+  const y={};
+  for(const col of EXPECTED){
+   if(typeof x[col]!=='string'||x[col].length>MAX_CELL)throw Error('Invalid finding '+col+'.');
+   y[col]=x[col];
+  }
+  if(!y.finding_id.trim()||y.finding_id.length>160||seen.has(y.finding_id)||
+   !y.title.trim()||!y.remediation.trim()||!SEVERITY.includes(y.severity)||!RETEST.includes(y.retest_status))
+   throw Error('Invalid source finding.');
+  seen.add(y.finding_id);return y;
+ });
+}
+function newCase(f){
+ return {finding_id:f.finding_id,owner:'',status:f.retest_status==='fixed'?'completed':'unassigned',
+   due_date:null,next_action:'',verification_plan:'',blocker:'',note:'',updated_utc:null};
+}
+function cleanCase(x,existingIds){
+ if(!x||typeof x!=='object'||Array.isArray(x)||typeof x.finding_id!=='string'||
+    !existingIds.has(x.finding_id))throw Error('Case refers to unknown finding.');
+ const c={finding_id:x.finding_id};
+ for(const [key,max] of [['owner',120],['next_action',1800],['verification_plan',1600],['blocker',1200],['note',1600]]){
+  if(typeof x[key]!=='string'||x[key].length>max)throw Error('Invalid case field '+key+'.');
+  c[key]=x[key];
+ }
+ if(!PROGRESS.includes(x.status))throw Error('Unknown remediation status.');
+ c.status=x.status;
+ if(x.due_date!==null && (typeof x.due_date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x.due_date)||
+  Number.isNaN(Date.parse(x.due_date+'T00:00:00Z'))||
+  new Date(x.due_date+'T00:00:00Z').toISOString().slice(0,10)!==x.due_date))
+   throw Error('Invalid case due date.');
+ c.due_date=x.due_date;
+ if(x.updated_utc!==null && (typeof x.updated_utc!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(x.updated_utc)||
+ Number.isNaN(Date.parse(x.updated_utc))))throw Error('Invalid case update timestamp.');
+ c.updated_utc=x.updated_utc;return c;
+}
+async function digest(findings){
+ const normalized=normalizeSource(findings);
+ const canonical=JSON.stringify(normalized.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0));
+ if(!global.crypto||!global.crypto.subtle)return null;
+ const hash=await global.crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical));
+ return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function makePacket(findings,cases,sourceHash){
+ const source=normalizeSource(findings),ids=new Set(source.map(x=>x.finding_id));
+ if(!Array.isArray(cases)||cases.length!==source.length)throw Error('Casework count mismatch.');
+ const seen=new Set(),clean=cases.map(x=>{
+  const y=cleanCase(x,ids);
+  if(seen.has(y.finding_id))throw Error('Duplicate casework entry.');
+  seen.add(y.finding_id);return y;
+ });
+ return {
+  kind:'lightup.remediation_casework_draft',schema_version:1,disposition:'LOCAL_CLIENT_PLANNING',
+  authenticated:false,tenant_verified:false,source_authorized:false,assessment_authorized:false,
+  grant:false,client_consent:false,operator_consent:false,execution:false,scan:false,
+  audit_verdict:false,retest_verified:false,release:false,
+  source_contract:'lightup.finding_export._COLUMNS_v1',source_sha256:sourceHash||null,
+  findings:source,cases:clean,
+  instructions:'This file contains unverified local notes and exported summaries. Do not treat any row or status as proof of remediation, verified retest, authentication or grant.'
+ };
+}
+function loadPacket(packet){
+ if(!packet||typeof packet!=='object'||Array.isArray(packet)||packet.kind!=='lightup.remediation_casework_draft'||
+   packet.schema_version!==1||packet.disposition!=='LOCAL_CLIENT_PLANNING'||
+   packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+   !['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent',
+     'operator_consent','execution','scan','audit_verdict','retest_verified','release']
+      .every(k=>Object.prototype.hasOwnProperty.call(packet,k)&&packet[k]===false))
+  throw Error('Not a supported non-authorizing LightUp casework draft.');
+ const source=normalizeSource(packet.findings),ids=new Set(source.map(x=>x.finding_id));
+ if(!Array.isArray(packet.cases)||packet.cases.length!==source.length)throw Error('Casework incomplete.');
+ const seen=new Set(),cases=packet.cases.map(x=>{
+  const y=cleanCase(x,ids);if(seen.has(y.finding_id))throw Error('Duplicate case.');seen.add(y.finding_id);return y;
+ });
+ if(packet.source_sha256!==null && (typeof packet.source_sha256!=='string'||!/^[0-9a-f]{64}$/.test(packet.source_sha256)))
+  throw Error('Invalid source fingerprint.');
+ return {findings:source,cases,source_sha256:packet.source_sha256||null};
+}
+function rank(x){return SEVERITY.indexOf(x.severity);}
+function metrics(findings,cases,today){
+ const byId=new Map(cases.map(x=>[x.finding_id,x]));
+ const totals={findings:findings.length,critical_or_high:0,open:0,blocked:0,overdue:0,ready_for_retest:0,source_fixed:0};
+ for(const finding of findings){
+  const c=byId.get(finding.finding_id);
+  if(rank(finding)<=1)totals.critical_or_high++;
+  if(finding.retest_status==='fixed')totals.source_fixed++;
+  if(c&&c.status!=='completed'&&c.status!=='deferred')totals.open++;
+  if(c&&c.status==='blocked')totals.blocked++;
+  if(c&&c.status==='ready_for_retest')totals.ready_for_retest++;
+  if(c&&c.due_date&&c.due_date<today&&c.status!=='completed'&&c.status!=='deferred')totals.overdue++;
+ }
+ return totals;
+}
+function csvCell(raw){
+ let s=String(raw??'');
+ const probe=s.replace(/^[\s\x00-\x1f]+/,'');
+ if(/^[=+\-@]/.test(probe))s="'"+s;
+ return '"'+s.replace(/"/g,'""')+'"';
+}
+function exportActionsCSV(findings,cases){
+ const byId=new Map(cases.map(c=>[c.finding_id,c]));
+ const columns=['finding_id','severity','title','source_retest_status','casework_status','assigned_owner','due_date','next_action','verification_plan','blocker'];
+ const rows=findings.map(f=>{
+  const c=byId.get(f.finding_id);
+  return [f.finding_id,f.severity,f.title,f.retest_status,c.status,c.owner,c.due_date||'',c.next_action,c.verification_plan,c.blocker];
+ });
+ return String.fromCharCode(0xFEFF)+[columns,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';
+}
+
+/* Re-import review: changing finding payload is not automatically a confirmed retest.
+ * The caller must explicitly confirm the same independently verified account/engagement.
+ * Only byte-for-byte unchanged source findings retain unverified local casework notes. */
+function compareSource(before,after){
+ const old=normalizeSource(before),incoming=normalizeSource(after);
+ const a=new Map(old.map(item=>[item.finding_id,item]));
+ const b=new Map(incoming.map(item=>[item.finding_id,item]));
+ const compare=(x,y)=>EXPECTED.every(k=>x[k]===y[k]);
+ const added=[],missing=[],changed=[],unchanged=[];
+ for(const item of incoming){
+  const prev=a.get(item.finding_id);
+  if(!prev)added.push(item.finding_id);
+  else if(compare(prev,item))unchanged.push(item.finding_id);
+  else changed.push({finding_id:item.finding_id,
+    changed_fields:EXPECTED.filter(k=>prev[k]!==item[k])});
+ }
+ for(const item of old)if(!b.has(item.finding_id))missing.push(item.finding_id);
+ return {added,missing,changed,unchanged,
+  warning:'Missing findings are NOT proof of remediation; changed source findings reset their local plans. Independently verify same client and engagement first.'};
+}
+function reconcileSource(before,existingCases,after){
+ const diff=compareSource(before,after);
+ const oldCases=new Map(existingCases.map(c=>[c.finding_id,c]));
+ const allowed=new Set(diff.unchanged);
+ const source=normalizeSource(after);
+ const merged=source.map(f=>allowed.has(f.finding_id)&&oldCases.has(f.finding_id) ?
+  cleanCase(oldCases.get(f.finding_id),new Set(source.map(item=>item.finding_id))) : newCase(f));
+ return {findings:source,cases:merged,change_summary:diff};
+}
+
+global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,normalizeSource,newCase,cleanCase,digest,makePacket,loadPacket,metrics,exportActionsCSV,SEVERITY,RETEST,PROGRESS,MAX_BYTES});
+})(window);
+</script><script>/* Strict bounded JSON for PRIVATE owner handoff; rejects duplicate object keys. */
+(function(global){
+'use strict';
+const MAX_JSON=2097152;
+function bytes(s){return new TextEncoder().encode(s).length;}
+function fail(msg){throw Error(msg);}
+function strictJSON(s){
+ if(typeof s!=='string'||bytes(s)>MAX_JSON)fail('Private draft exceeds 2 MiB.');
+ let i=0,nodes=0; const ws=()=>{while(i<s.length&&/[\x20\t\r\n]/.test(s[i]))i++;};
+ function str(){
+  const start=i;if(s[i++]!=='"')fail('Expected JSON string.');
+  while(i<s.length){const c=s[i++];
+   if(c==='"')return JSON.parse(s.slice(start,i));
+   if(c==='\\'){const e=s[i++];if(e==='u'){if(!/^[a-fA-F0-9]{4}$/.test(s.slice(i,i+4)))fail('Bad Unicode escape.');i+=4;}else if(!'"\\/bfnrt'.includes(e))fail('Invalid JSON escape.');}
+   else if(c.charCodeAt(0)<32)fail('Unescaped control character.');
+  }fail('Unclosed JSON string.');
+ }
+ function read(depth){
+  if(++nodes>50000||depth>40)fail('JSON structure exceeds bounds.');
+  ws();let c=s[i];
+  if(c==='"')return str();
+  if(c==='{'){i++;const o=Object.create(null),seen=new Set();ws();if(s[i]==='}'){i++;return o;}
+   while(true){ws();const k=str();if(seen.has(k))fail('Duplicate JSON property.');seen.add(k);ws();if(s[i++]!==':')fail('Expected JSON colon.');o[k]=read(depth+1);ws();if(s[i]==='}'){i++;return o;}if(s[i++]!==',')fail('Expected JSON comma.');}
+  }
+  if(c==='['){i++;const a=[];ws();if(s[i]===']'){i++;return a;}
+   while(true){a.push(read(depth+1));ws();if(s[i]===']'){i++;return a;}if(s[i++]!==',')fail('Expected array comma.');}
+  }
+  for(const [word,val] of [['true',true],['false',false],['null',null]])if(s.startsWith(word,i)){i+=word.length;return val;}
+  const m=s.slice(i).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);if(m){i+=m[0].length;const v=Number(m[0]);if(!Number.isFinite(v))fail('Invalid JSON number.');return v;}
+  fail('Invalid JSON value.');
+ }
+ const v=read(0);ws();if(i!==s.length)fail('Trailing JSON data.');return v;
+}
+
+global.LightUpOwnerPrivateJson=Object.freeze({read:strictJSON});
+})(window);
+</script><script>/* LightUp: PRIVATE owner-specific HUMAN planning packet. No identity or authority.
+ * The original Casework five-column source and current human baseline are immutable.
+ */
+(function(global){
+'use strict';
+const engine=()=>global.LightUpCasework;
+const COLS=['finding_id','title','severity','retest_status','remediation'];
+const HUMAN=['owner','status','due_date','next_action','blocker'];
+const ROW=[...COLS,...HUMAN];
+const FLAGS=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
+const FIELDS=['kind','schema_version','disposition','source_contract','source_sha256','owner_label','baseline_sha256','rows','instructions',...FLAGS];
+const REPLY_FIELDS=[...FIELDS,'reply_rows'];
+const MAX=350,MAX_JSON=2097152;
+const KIND='lightup.private_calendar_owner_handoff';
+const ANSWER='lightup.private_calendar_owner_reply';
+const DISPOSITION='UNVERIFIED_HUMAN_PLANNING_ONLY';
+const CONTRACT='lightup.finding_export._COLUMNS_v1';
+function fail(msg){throw Error(msg);}
+function exact(o,keys,what){
+ if(!o||Object.getPrototypeOf(o)===null&&typeof o!=='object'||typeof o!=='object'||Array.isArray(o))fail('Invalid '+what+'.');
+ const set=new Set(keys),present=Object.keys(o);
+ if(present.length!==set.size||present.some(k=>!set.has(k)))fail('Unknown or missing '+what+' field.');
+}
+function str(s,max=1800){
+ if(typeof s!=='string'||s.length>max||/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/.test(s))fail('Invalid human text field.');
+ return s;
+}
+function sourceDate(value){
+ if(value===null)return null;
+ if(typeof value!=='string'||!/^(?:20\d{2}|2100)-\d\d-\d\d$/.test(value))
+  fail('Invalid human due date.');
+ const ms=Date.parse(value+'T00:00:00Z');
+ if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,10)!==value||value>'2100-12-30')
+  fail('Invalid human due date.');
+ return value;
+}
+function rowFrom(f,c){
+ return {finding_id:f.finding_id,title:f.title,severity:f.severity,
+  retest_status:f.retest_status,remediation:f.remediation,
+  owner:c.owner,status:c.status,due_date:c.due_date,next_action:c.next_action,blocker:c.blocker};
+}
+function checkRows(rows,label){
+ if(!Array.isArray(rows)||!rows.length||rows.length>MAX)fail('Owner handoff must have 1–350 rows.');
+ const seen=new Set();
+ return rows.map(row=>{
+  exact(row,ROW,'owner row');
+  const original={};
+  for(const k of COLS)original[k]=row[k];
+  const validated=engine().normalizeSource([original])[0];
+  if(seen.has(validated.finding_id))fail('Duplicate original finding ID.');
+  seen.add(validated.finding_id);
+  if(str(row.owner,120)!==label)fail('Owner team label changed.');
+  const progress=engine().PROGRESS;
+  if(!progress.includes(row.status))fail('Invalid human work stage.');
+  sourceDate(row.due_date);str(row.next_action,1800);str(row.blocker,1200);
+  return {...validated,...Object.fromEntries(HUMAN.map(k=>[k,row[k]]))};
+ });
+}
+function canonical(rows){
+ return JSON.stringify(rows.slice().sort((a,b)=>
+  a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0));
+}
+async function sha(value){
+ if(!global.crypto||!global.crypto.subtle)fail('Secure SHA-256 is unavailable: private owner handoff HELD.');
+ const digest=await global.crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));
+ return Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');
+}
+function flags(){return Object.fromEntries(FLAGS.map(f=>[f,false]));}
+function validateHeader(packet,kind,fields){
+ exact(packet,fields,'handoff envelope');
+ if(packet.kind!==kind||packet.schema_version!==1||packet.disposition!==DISPOSITION||
+    packet.source_contract!==CONTRACT)fail('Unknown owner handoff schema or disposition.');
+ if(typeof packet.owner_label!=='string'||packet.owner_label.length>120||
+    !packet.owner_label.trim()||packet.owner_label!==packet.owner_label.trim()||
+    /[\u0000-\u001f\u007f-\u009f]/.test(packet.owner_label))fail('Invalid owner identity label.');
+ if(typeof packet.instructions!=='string'||packet.instructions.length>1500)fail('Invalid safety instructions.');
+ if(packet.source_sha256!==null&&
+    (typeof packet.source_sha256!=='string'||!/^[0-9a-f]{64}$/.test(packet.source_sha256)))
+  fail('Invalid original source fingerprint.');
+ if(typeof packet.baseline_sha256!=='string'||!/^[0-9a-f]{64}$/.test(packet.baseline_sha256))
+  fail('Invalid owner human baseline fingerprint.');
+ for(const k of FLAGS)if(packet[k]!==false)fail('Owner handoff claims '+k+' authority.');
+}
+async function validateRequest(request){
+ validateHeader(request,KIND,FIELDS);
+ const rows=checkRows(request.rows,request.owner_label);
+ const digest=await sha(canonical(rows));
+ if(digest!==request.baseline_sha256)fail('Original handoff baseline mismatch.');
+ return {...request,rows};
+}
+function fromSource(findings,cases,label){
+ const fs=engine().normalizeSource(findings);
+ const ids=new Set(fs.map(f=>f.finding_id));
+ if(!Array.isArray(cases)||cases.length!==fs.length)fail('Incomplete original casework.');
+ const original=engine().loadPacket(engine().makePacket(fs,cases,null));
+ const byId=new Map(original.cases.map(c=>[c.finding_id,c]));
+ const rows=fs.filter(f=>byId.get(f.finding_id).owner===label)
+  .map(f=>rowFrom(f,byId.get(f.finding_id)));
+ return checkRows(rows,label);
+}
+async function createRequest(findings,cases,label,sourceSha){
+ if(typeof label!=='string'||!label.trim()||label!==label.trim())fail('Choose a specific original human owner label.');
+ if(sourceSha!==null&&sourceSha!==undefined&&
+   (typeof sourceSha!=='string'||!/^[a-f0-9]{64}$/.test(sourceSha)))fail('Invalid original source fingerprint.');
+ const rows=fromSource(findings,cases,label);
+ const packet={
+  kind:KIND,schema_version:1,disposition:DISPOSITION,source_contract:CONTRACT,
+  source_sha256:sourceSha||null,owner_label:label,baseline_sha256:await sha(canonical(rows)),
+  rows,instructions:'PRIVATE original findings and human-only planning. This unsigned handoff is not an identity, tenant/consent, authorization, verified repair or retest claim.',
+  ...flags()
+ };
+ return await validateRequest(packet);
+}
+async function createReply(request,replyRows){
+ const validated=await validateRequest(request);
+ const latest=checkRows(replyRows,validated.owner_label);
+ if(latest.length!==validated.rows.length)fail('Owner response omitted original findings.');
+ const before=new Map(validated.rows.map(x=>[x.finding_id,x])),seen=new Set();
+ for(const row of latest){
+  const old=before.get(row.finding_id);
+  if(!old||seen.has(row.finding_id)||COLS.some(k=>row[k]!==old[k]))
+   fail('Owner response attempted to alter original finding identity or source.');
+  seen.add(row.finding_id);
+ }
+ const packet={...validated,kind:ANSWER,reply_rows:latest};
+ await validateReply(packet);
+ return packet;
+}
+async function validateReply(reply){
+ validateHeader(reply,ANSWER,REPLY_FIELDS);
+ const request={...reply,kind:KIND};
+ delete request.reply_rows;
+ const admitted=await validateRequest(request);
+ const after=checkRows(reply.reply_rows,reply.owner_label);
+ if(after.length!==admitted.rows.length)fail('Incomplete owner response.');
+ const byId=new Map(admitted.rows.map(x=>[x.finding_id,x])),seen=new Set();
+ for(const row of after){
+  const baseline=byId.get(row.finding_id);
+  if(!baseline||seen.has(row.finding_id)||COLS.some(k=>row[k]!==baseline[k]))
+   fail('Owner reply changed immutable original source.');
+  seen.add(row.finding_id);
+ }
+ return {...reply,rows:admitted.rows,reply_rows:after};
+}
+async function applyReply(findings,cases,sourceSha,reply){
+ const accepted=await validateReply(reply);
+ const original=engine().normalizeSource(findings);
+ const before=engine().loadPacket(engine().makePacket(original,cases,null));
+ const computed=await engine().digest(original);
+ if(reply.source_sha256!==null&&reply.source_sha256!==computed)
+  fail('Original source has changed since owner handoff.');
+ if(sourceSha!==null&&sourceSha!==undefined&&computed!==sourceSha)
+  fail('Current private source digest has changed.');
+ const existing=fromSource(original,before.cases,accepted.owner_label);
+ if(existing.length!==accepted.rows.length||await sha(canonical(existing))!==accepted.baseline_sha256)
+  fail('Current owner assignment, original source, or human notes have changed. No auto-merge.');
+ const changed=new Map(accepted.reply_rows.map(x=>[x.finding_id,x])),idSet=new Set(original.map(f=>f.finding_id));
+ const casesNext=before.cases.map(c=>{
+  const r=changed.get(c.finding_id);
+  if(!r)return c;
+  return engine().cleanCase({...c,owner:r.owner,status:r.status,due_date:r.due_date,
+    next_action:r.next_action,blocker:r.blocker,updated_utc:new Date().toISOString()},idSet);
+ });
+ engine().loadPacket(engine().makePacket(original,casesNext,computed));
+ return {cases:casesNext,changed:accepted.reply_rows.length,owner_label:accepted.owner_label};
+}
+global.LightUpOwnerProtocol=Object.freeze({createRequest,validateRequest,createReply,validateReply,applyReply,MAX_JSON});
+})(window);
+</script><script>/* LightUp: private single-owner HUMAN planning replies, entirely offline. */
+(function(global){
+'use strict';
+const $=id=>document.getElementById(id);
+const MAX=2097152;
+const STATUS=[
+ ['unassigned','Unassigned HUMAN work'],['planned','Planned'],['in_progress','In progress'],
+ ['blocked','Blocked'],['ready_for_retest','Ready for separately authorized retest'],
+ ['deferred','Deferred locally'],['completed','Locally completed — NOT a verified fix']
+];
+let request=null,draft=null,dirty=false;
+function fail(msg){throw Error(msg);}
+function el(tag,text){const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);return e;}
+function save(name,content){
+ const b=new Blob([content],{type:'application/json;charset=utf-8'});
+ const url=URL.createObjectURL(b),a=document.createElement('a');
+ a.href=url;a.download=name;document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function controls(){
+ $('export').disabled=!request||!$('ack').checked||!$('return-ack').checked||
+  !$('return-review-ack').checked||returnReviewFingerprint!==JSON.stringify(draft);
+}
+function field(labelText,control){
+ const label=el('label',labelText);label.append(control);return label;
+}
+function visibleRows(){
+ if(!draft)return [];
+ const mode=$('recipient-filter').value,search=$('recipient-search').value.trim().toLowerCase();
+ const severity=['critical','high','medium','low','info'];
+ const today=new Date().toISOString().slice(0,10);
+ return draft.map((r,i)=>({r,i})).filter(({r})=>{
+  if(search&&!((r.finding_id+' '+r.title).toLowerCase().includes(search)))return false;
+  if(mode==='urgent'&&!['critical','high'].includes(r.severity))return false;
+  if(mode==='overdue'&&!(r.due_date&&r.due_date<today&&!['completed','deferred'].includes(r.status)))return false;
+  if(mode==='blocked'&&r.status!=='blocked')return false;
+  if(mode==='missing_date'&&(r.due_date||['completed','deferred'].includes(r.status)))return false;
+  if(mode==='retest'&&r.status!=='ready_for_retest')return false;
+  return true;
+ }).sort((a,b)=>{
+  const sort=$('recipient-sort').value;
+  if(sort==='due')return (a.r.due_date||'9999').localeCompare(b.r.due_date||'9999')||
+    severity.indexOf(a.r.severity)-severity.indexOf(b.r.severity);
+  if(sort==='title')return a.r.title.localeCompare(b.r.title);
+  return severity.indexOf(a.r.severity)-severity.indexOf(b.r.severity)||
+    (a.r.due_date||'9999').localeCompare(b.r.due_date||'9999');
+ });
+}
+function renderRecipientMetrics(){
+ const target=$('recipient-metrics');target.replaceChildren();if(!draft)return;
+ const today=new Date().toISOString().slice(0,10);
+ const counts=[
+  ['Original assigned',draft.length],
+  ['Critical/high',draft.filter(r=>['critical','high'].includes(r.severity)).length],
+  ['Human blocked',draft.filter(r=>r.status==='blocked').length],
+  ['Past-due local',draft.filter(r=>r.due_date&&r.due_date<today&&!['completed','deferred'].includes(r.status)).length],
+  ['Missing human date',draft.filter(r=>!r.due_date&&!['completed','deferred'].includes(r.status)).length],
+  ['Awaiting separate retest',draft.filter(r=>r.status==='ready_for_retest').length]
+ ];
+ for(const [label,count] of counts){
+  const box=el('div');box.className='metric';
+  box.append(el('strong',count),el('span',label));target.append(box);
+ }
+}
+function applyRecipientBulk(){
+ if(!request||!draft||!$('ack').checked)throw Error('Private source and recipient acknowledgment required.');
+ const stage=$('recipient-bulk-stage').value;
+ if(!STATUS.some(x=>x[0]===stage))throw Error('Select a valid HUMAN-ONLY planning stage.');
+ const visible=visibleRows();
+ if(!visible.length)throw Error('There are no visible original findings to update.');
+ if(!global.confirm('Apply HUMAN stage '+stage+' to '+visible.length+
+  ' currently visible original findings? This NEVER updates original retest, authorization, consent or real remediation.'))return;
+ for(const item of visible)item.r.status=stage;
+ dirty=true;clearReturnReview();render();
+ $('recipient-bulk-message').textContent=visible.length+
+  ' original findings updated in PRIVATE memory only. Export a return JSON through the approved channel.';
+}
+let returnReviewFingerprint=null;
+function clearReturnReview(){
+ returnReviewFingerprint=null;$('return-review').hidden=true;
+ $('return-review-ack').checked=false;$('return-review-rows').replaceChildren();
+ controls();
+}
+function reviewReturn(){
+ if(!request||!draft||!$('ack').checked)
+  throw Error('Private handoff and intended recipient acknowledgment required.');
+ const previous=new Map(request.rows.map(x=>[x.finding_id,x]));
+ const fields=['status','due_date','next_action','blocker'];
+ const changes=[];
+ for(const current of draft){
+  const prior=previous.get(current.finding_id);
+  if(!prior)throw Error('Original handoff finding ID changed.');
+  const changed=fields.filter(k=>current[k]!==prior[k]);
+  if(changed.length)changes.push({current,prior,changed});
+ }
+ const target=$('return-review-rows');
+ target.replaceChildren();
+ for(const item of changes){
+  const card=el('div');card.className='card';
+  card.append(el('h3','Original finding ID: '+item.current.finding_id));
+  for(const key of item.changed){
+   const row=el('p',key+': '+String(item.prior[key]??'(no date)')+
+    '  →  '+String(item.current[key]??'(no date)'));
+   row.className='review-delta';card.append(row);
+  }
+  target.append(card);
+ }
+ if(!changes.length)target.append(el('p','No HUMAN-only planning edits versus this original owner handoff. An unchanged private response may still be explicitly returned.'));
+ $('return-review-summary').textContent=changes.length+' of '+draft.length+
+  ' original findings contain changed HUMAN-only planning fields. This is not a verified fix, original retest or grant.';
+ returnReviewFingerprint=JSON.stringify(draft);
+ $('return-review').hidden=false;$('return-review-ack').checked=false;
+ $('reply-message').textContent='PRIVATE human changes prepared for review; confirm review and separately authorized return channel before export.';
+ controls();
+}
+function render(){
+ const cards=$('cards');cards.replaceChildren();
+ if(!request)return;
+ $('owner').textContent='Human owner/team label: '+request.owner_label+' (not authenticated identity)';
+ $('count').textContent=request.rows.length+' original findings, shared exclusively for this single owner label. Original retest remains read-only.';
+ renderRecipientMetrics();
+ const visible=visibleRows();
+ $('count').textContent=visible.length+' visible of '+request.rows.length+' assigned original findings. Original retest is read-only.';
+ for(const {r,i} of visible){
+  const card=el('section');card.className='card';
+  const h=el('h3',r.title),sev=el('span',r.severity.toUpperCase()+' · Original retest: '+r.retest_status);sev.className='tag';
+  const fid=el('p','Original finding ID: '+r.finding_id);
+  const rem=el('div',r.remediation);rem.className='source';
+  card.append(sev,h,fid,el('p','Original remediation summary (read-only)'),rem);
+  const row=el('div');row.className='row';
+  const select=el('select');
+  for(const [value,title] of STATUS){
+   const option=el('option',title);option.value=value;select.append(option);
+  }
+  select.value=r.status;
+  select.addEventListener('change',()=>{r.status=select.value;dirty=true;clearReturnReview();});
+  const date=el('input');date.type='date';date.min='2020-01-01';date.max='2100-12-30';date.value=r.due_date||'';
+  date.addEventListener('change',()=>{r.due_date=date.value||null;dirty=true;clearReturnReview();});
+  row.append(field('Local human status',select),field('Human follow-up date, NOT scan window',date));
+  const action=el('textarea');action.maxLength=1800;action.value=r.next_action;action.rows=3;
+  action.addEventListener('input',()=>{r.next_action=action.value;dirty=true;clearReturnReview();});
+  const blocker=el('textarea');blocker.maxLength=1200;blocker.value=r.blocker;blocker.rows=2;
+  blocker.addEventListener('input',()=>{r.blocker=blocker.value;dirty=true;clearReturnReview();});
+  card.append(row,field('Human next action',action),field('Human blocker / dependency',blocker));
+  cards.append(card);
+ }
+ if(!visible.length){const p=el('p','No original findings match these local filters.');cards.append(p);}
+ $('workspace').hidden=false;controls();
+}
+async function load(file){
+ if(!file||file.size>MAX)fail('Select the PRIVATE owner handoff JSON no larger than 2 MiB.');
+ if(!$('ack').checked)fail('Confirm independent actual client/engagement and intended recipient first.');
+ const raw=global.LightUpOwnerPrivateJson.read(await file.text());
+ const accepted=await global.LightUpOwnerProtocol.validateRequest(raw);
+ request=accepted;draft=accepted.rows.map(x=>({...x}));dirty=false;clearReturnReview();
+ $('resume').value='';$('resume-message').textContent='';
+ $('recipient-filter').value='all';$('recipient-search').value='';$('recipient-sort').value='priority';
+ $('return-ack').checked=false;$('reply-message').textContent='';
+ $('message').textContent='PRIVATE owner-specific handoff loaded. Source hash is not proof of identity, consent, or current authorization.';
+ render();
+}
+async function resumeReply(file){
+ if(!request||!draft||!$('ack').checked)
+  fail('First load the independently verified original PRIVATE single-owner handoff.');
+ if(!file||file.size>MAX)fail('Select saved PRIVATE owner reply JSON of 2 MiB or less.');
+ const baseline=request,current=draft,original=JSON.stringify(draft);
+ const loaded=global.LightUpOwnerPrivateJson.read(await file.text());
+ const accepted=await global.LightUpOwnerProtocol.validateReply(loaded);
+ if(request!==baseline||draft!==current||JSON.stringify(draft)!==original)
+  fail('The current original or human notes changed during resume. No draft replaced.');
+ if(accepted.source_sha256!==request.source_sha256||
+    accepted.owner_label!==request.owner_label||
+    accepted.baseline_sha256!==request.baseline_sha256||
+    accepted.rows.length!==request.rows.length)
+  fail('Saved PRIVATE reply is for a DIFFERENT original handoff/owner/source. No import.');
+ const expected=new Map(request.rows.map(r=>[r.finding_id,r]));
+ const originalFields=['finding_id','title','severity','retest_status','remediation',
+  'owner','status','due_date','next_action','blocker'];
+ for(const row of accepted.rows){
+  const previous=expected.get(row.finding_id);
+  if(!previous||originalFields.some(k=>row[k]!==previous[k]))
+   fail('Saved PRIVATE reply does not match the EXACT original handoff baseline.');
+ }
+ if(!global.confirm('Resume '+accepted.reply_rows.length+
+   ' HUMAN-ONLY entries from this source-bound PRIVATE draft? The current unsaved local human edits will be replaced. This is not authority or retest.'))return;
+ draft=accepted.reply_rows.map(x=>({...x}));dirty=true;clearReturnReview();
+ $('resume').value='';$('return-ack').checked=false;
+ $('resume-message').textContent=accepted.reply_rows.length+
+  ' original source-bound HUMAN entries safely resumed from PRIVATE reply. Export again before closing.';
+ render();
+}
+function clear(){
+ request=null;draft=null;dirty=false;clearReturnReview();$('file').value='';$('resume').value='';
+ $('ack').checked=false;$('return-ack').checked=false;$('workspace').hidden=true;
+ $('cards').replaceChildren();$('message').textContent=
+  'In-memory private handoff cleared. Already downloaded files remain under your control.';
+}
+async function exportReply(){
+ if(!request||!draft||!$('ack').checked||!$('return-ack').checked||
+    !$('return-review-ack').checked||returnReviewFingerprint!==JSON.stringify(draft))
+  fail('Explicit independently approved return channel acknowledgment required.');
+ const base=request;const before=JSON.stringify(draft);
+ const reply=await global.LightUpOwnerProtocol.createReply(base,draft);
+ if(request!==base||JSON.stringify(draft)!==before)fail('Human notes changed during reply preparation. Review and retry.');
+ if(!global.confirm('Export PRIVATE owner reply with '+draft.length+
+   ' original findings and HUMAN-ONLY notes via the approved confidential return channel? This is NOT authenticated consent or verified remediation.'))return;
+ save('lightup-PRIVATE-calendar-owner-reply.json',JSON.stringify(reply,null,2)+'\n');
+ dirty=false;$('reply-message').textContent='PRIVATE human reply exported. Share through the independently approved recipient channel only.';
+}
+$('file').addEventListener('change',async e=>{
+ if(dirty&&!global.confirm('Discard unsaved PRIVATE human notes and replace handoff?')){e.target.value='';return;}
+ request=null;draft=null;$('workspace').hidden=true;
+ try{await load(e.target.files[0]);}catch(err){$('message').textContent='HOLD: '+err.message;}
+});
+for(const id of ['recipient-filter','recipient-search','recipient-sort'])$(id).addEventListener('input',()=>{if(request)render();});
+$('recipient-bulk-apply').addEventListener('click',()=>{try{applyRecipientBulk();}catch(err){$('recipient-bulk-message').textContent='HOLD: '+err.message;}});
+$('resume').addEventListener('change',async e=>{try{await resumeReply(e.target.files[0]);}catch(err){$('resume-message').textContent='HOLD: '+err.message;e.target.value='';}});
+$('return-preview-button').addEventListener('click',()=>{try{reviewReturn();}catch(err){clearReturnReview();$('reply-message').textContent='HOLD: '+err.message;}});
+$('return-review-ack').addEventListener('change',controls);
+$('ack').addEventListener('change',controls);
+$('return-ack').addEventListener('change',controls);
+$('export').addEventListener('click',async()=>{try{await exportReply();}catch(err){$('reply-message').textContent='HOLD: '+err.message;}});
+$('clear').addEventListener('click',()=>{if(dirty&&!global.confirm('Discard unsaved human notes?'))return;clear();});
+global.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+})(window);
+</script></body></html>

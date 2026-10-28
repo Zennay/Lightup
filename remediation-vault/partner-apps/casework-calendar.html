@@ -1,0 +1,1288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-Tsn3rjlsrVBKsSIHK1x43sUVih3vNgrf8whdzXjsqg0=' 'sha256-2NU0ysKRFZNzkPxlEBUtRttxZzRCBx0/j+wVe5U1veQ=' 'sha256-I4MyZsp/MgmczFhs/8OcszyRQyRmMV874+EqN8qrcqo=' 'sha256-0TSOdLvoAxLnJIORPyN6xDgusCrhagoQ1NfsGl1kKZw=' 'sha256-VFVv13MLb6IzoapW5BHUJnL6prygqTuPSlk+1xbOr0c='; style-src 'sha256-Bv3IdgoolxVTNsuWBb5w5lv7Mmhi3Ock8Pf4r16NKqQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · Private Remediation Calendar</title>
+<style>:root{color-scheme:dark;font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;background:#0c111d;color:#eef2fb}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1160px;margin:auto;padding:26px 24px}header{padding-top:48px}.brand{color:#a4bcff;letter-spacing:.18em;font-size:.75rem;font-weight:800}h1{font-size:clamp(2rem,5vw,3.3rem);line-height:1.08;margin:.5em 0}h2{font-size:1.32rem;margin:0 0 16px}p{color:#bbc5d6}.hold{display:inline-block;color:#ffca7a;border:1px solid #846332;background:#3a2b19;padding:8px 12px;border-radius:8px;font-size:.82rem}.panel{background:#172137;border:1px solid #34435d;border-radius:18px;padding:24px;margin:22px 0;box-shadow:0 8px 24px #050b1740}label{display:block;font-weight:650;color:#ebf0fa}input,select,button{font:inherit}select,input[type=search],input[type=file]{width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin-top:6px}input:focus,select:focus,button:focus-visible{outline:2px solid #8ab2ff;outline-offset:2px}.filelabel{max-width:600px}.check{display:flex;gap:12px;align-items:flex-start;margin:18px 0;max-width:950px;font-weight:450;color:#d3dced}.check input{width:20px;height:20px;flex:none;margin-top:3px}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:20px}.metric{background:#202e49;border-radius:12px;padding:16px}.metric strong{font-size:1.8rem;display:block}.metric span{color:#bbc5d6;font-size:.88rem}.filters,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:760px;text-align:left}th,td{border-bottom:1px solid #34445e;padding:13px 10px;vertical-align:top;overflow-wrap:anywhere}th{color:#9fb7e8;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}td{font-size:.88rem}td small{color:#aebed0;display:block}.chip{display:inline-block;background:#293957;border-radius:6px;padding:2px 7px}.urgent{color:#ffcc9d}.muted{color:#aab7cf}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{background:#a7c1ff;border:0;border-radius:9px;color:#071226;padding:11px 17px;font-weight:750;cursor:pointer}button:hover:not(:disabled){filter:brightness(1.12)}button:disabled{opacity:.35;cursor:not-allowed}.muted-button{background:#394961;color:#fff}footer{font-size:.83rem;color:#aeb8c8;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:16px;padding-right:16px}.panel{padding:17px}}
+textarea{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin:6px 0 14px;resize:vertical}#edit-form .grid{margin-bottom:14px}input[type=date],#edit-owner{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin-top:6px}textarea:focus-visible{outline:2px solid #8ab2ff}#edit-panel[hidden]{display:none}
+.month-controls{align-items:center;margin-bottom:14px}.month-controls label{min-width:200px;max-width:240px}.month-controls input{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:8px;border-radius:8px}.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.month-head{text-align:center;font-size:.78rem;color:#abbddb;font-weight:800;padding:8px 2px}.month-day{display:flex;flex-direction:column;align-items:flex-start;min-height:84px;background:#16233a;border:1px solid #384964;border-radius:8px;color:#eef2fb;padding:8px;cursor:pointer;font-weight:500;overflow-wrap:anywhere;text-align:left}.month-day:hover:not(:disabled){background:#26385a}.month-day:disabled{opacity:.24;cursor:default}.month-day.selected{outline:2px solid #a7c1ff}.month-day.has-work{border-color:#7c97ca}.month-day .date-number{font-weight:850;font-size:.9rem}.month-day .day-count{font-size:.78rem;color:#b6caef}.month-day .day-critical{font-size:.7rem;color:#ffbf97}@media(max-width:620px){.month-grid{gap:3px}.month-day{min-height:72px;padding:4px}.month-day .day-count,.month-day .day-critical{font-size:.65rem}.month-head{font-size:.67rem}}
+
+.reply-value{white-space:pre-wrap;overflow-wrap:anywhere;max-width:360px;font-size:.8rem}
+</style>
+</head>
+<body>
+<header><div class="brand">LIGHTUP / HUMAN WORKSPACE</div><h1>Remediation Calendar</h1><p>Coordinate human follow-ups from the original <code>lightup.remediation_casework_draft</code> v1. No scanning, approval, verified fix, live grant, or calendar sync.</p><strong class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong></header>
+<main>
+<section class="panel">
+<h2>1. Open a private Casework draft</h2>
+<p>Get a private JSON draft from the original Casework workspace after independently authorized findings export. This page cannot authenticate its source or establish current consent.</p>
+<label class="filelabel">Choose Casework v1 JSON <input id="file" type="file" accept=".json,application/json"></label>
+<label class="check"><input id="source-ack" type="checkbox"> I independently confirm I am handling the intended client and exact engagement. I understand these are unverified historical notes, not current authorization or remediation evidence.</label>
+<p id="message" role="status" aria-live="polite">No source loaded.</p>
+</section>
+<section id="workspace" hidden>
+<div class="metrics" id="metrics" aria-label="Human work summary"></div>
+<section class="panel">
+<h2>Monthly human follow-up calendar</h2>
+<p>Original source severity, human planning dates and blockers only. A missing item is never evidence of a fix; no automatic calendar synchronization occurs.</p>
+<div class="actions month-controls"><button id="month-prev" type="button" class="muted-button" aria-label="Previous month">Previous month</button>
+<label>Planning month <input id="month" type="month" min="2020-01" max="2100-12"></label>
+<button id="month-next" type="button" class="muted-button" aria-label="Next month">Next month</button>
+<button id="day-clear" type="button" class="muted-button">Clear day filter</button></div>
+<p id="month-message" class="muted" aria-live="polite"></p>
+<div id="month-grid" class="month-grid" role="group" aria-label="Local human follow-up dates"></div>
+</section>
+<section class="panel">
+<h2>2. Review the human follow-up queue</h2>
+<div class="filters"><label>Filter <select id="filter"><option value="all">All pending dates</option><option value="overdue">Overdue</option><option value="blocked">Blocked</option><option value="unassigned">Missing owner</option><option value="retest">Ready for independently authorized retest</option><option value="urgent">Critical or high</option></select></label>
+<label>Severity <select id="severity"><option value="all">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></select></label>
+<label>Search <input id="search" type="search" maxlength="120" placeholder="Human owner or finding ID"></label></div>
+<p id="scope-info" class="muted"></p>
+<div class="tablewrap"><table><thead><tr><th>Finding</th><th>Original retest</th><th>Human stage</th><th>Owner</th><th>Human due</th><th>Follow-up</th><th>Edit human notes</th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<section class="panel">
+<h2>3. Human owner workload and safe bulk assignment</h2>
+<p>Understand open HUMAN-ONLY work across self-declared owners, including urgent source severity, blockers, late human dates and separately authorized retest follow-ups. Owner labels are not authenticated identities.</p>
+<p id="owner-filter-message" class="muted"></p><button id="owner-filter-clear" type="button" class="muted-button">Clear exact owner filter</button>
+<div class="tablewrap"><table><thead><tr><th>Human owner</th><th>Open</th><th>Critical/high</th><th>Blocked</th><th>Overdue</th><th>Scheduled</th><th>Retest coordination</th><th>Show</th></tr></thead><tbody id="owners"></tbody></table></div>
+<div class="grid"><label>New human owner/team<input id="assign-owner" maxlength="120" placeholder="Required — local human label"></label>
+<label class="check"><input id="assign-empty-only" type="checkbox" checked> Only currently unassigned and open human cases</label></div>
+<button id="assign-preview-button" type="button">Preview assignment to currently filtered findings</button>
+<div id="assign-preview" class="refresh-preview" hidden>
+<p id="assign-summary" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Original finding ID</th><th>Previous human owner</th><th>Proposed human owner</th></tr></thead><tbody id="assign-rows"></tbody></table></div>
+<label class="check"><input id="assign-ack" type="checkbox"> I confirm this is a local HUMAN-ONLY planning assignment, not an authenticated owner, authorization, SLA, retest or verified repair.</label>
+<button id="assign-apply" type="button" disabled>Apply selected human owners locally</button></div>
+<p id="assign-message" role="status" aria-live="polite"></p>
+</section>
+<section class="panel">
+<h2>4. Refresh the original authorized finding summary</h2>
+<p>Import a separately authorized, original five-column LightUp findings CSV for the <strong>same actual client and exact engagement</strong>. This preview is historical and never validates a new retest, permission or real remediation. New/changed original records reset their human casework; records absent from this CSV are NOT confirmed fixed.</p>
+<label class="filelabel">New original findings CSV (maximum 1 MiB / 350 findings)<input id="refresh-file" type="file" accept=".csv,text/csv"></label>
+<label class="check"><input id="refresh-ack" type="checkbox"> I independently confirmed the SAME real client and exact engagement for both original authenticated exports, and know this browser cannot prove that claim or current consent.</label>
+<button id="refresh-preview-button" type="button">Preview source differences</button>
+<div id="refresh-preview" class="refresh-preview" hidden><h3>Private source difference preview</h3><p id="refresh-summary" role="status" aria-live="polite"></p><div class="tablewrap"><table><thead><tr><th>Source difference</th><th>Original finding ID</th><th>Original fields changed</th></tr></thead><tbody id="refresh-rows"></tbody></table></div>
+<p class="hold">Changed or newly added source rows lose previous human notes. Missing rows are never proof of remediation or verified retest. Export the old private Casework draft before replacing it.</p>
+<label class="check"><input id="refresh-apply-ack" type="checkbox"> I reviewed all changes and accept that the previous private human notes must be preserved separately before this source replacement.</label>
+<button id="refresh-apply" type="button" disabled>Apply reviewed source to local human calendar</button> <button id="refresh-receipt" type="button" disabled>Export PRIVATE source-change receipt</button></div>
+<p id="refresh-message" role="status" aria-live="polite"></p>
+</section>
+<section class="panel">
+<h2>5. Propose HUMAN-ONLY follow-up dates</h2>
+<p>Reuse the original Casework planning engine to suggest local dates for unscheduled human plans. These are <strong>not contractual SLAs</strong>, real retest windows or approvals; existing dates and completed/deferred human plans stay untouched.</p>
+<div class="grid"><label>Explicit local anchor date<input id="schedule-anchor" type="date" min="2020-01-01" max="2100-12-30"></label>
+<label>Critical: calendar days<input id="schedule-critical" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>High: calendar days<input id="schedule-high" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Medium: calendar days<input id="schedule-medium" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Low: calendar days<input id="schedule-low" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Info: calendar days<input id="schedule-info" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Scope<select id="schedule-scope"><option value="filtered">Currently visible missing-date cases</option><option value="all">All missing-date cases</option></select></label></div>
+<button id="schedule-preview-button" type="button">Preview human-only date suggestions</button>
+<div id="schedule-preview" class="refresh-preview" hidden>
+<p id="schedule-summary" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Original severity</th><th>Finding ID</th><th>Proposed human date</th></tr></thead><tbody id="schedule-rows"></tbody></table></div>
+<label class="check"><input id="schedule-ack" type="checkbox"> I understand these are ONLY local human planning proposals, not authorization, verified remediation, contractual deadlines or consent.</label>
+<button id="schedule-apply" type="button" disabled>Apply selected human dates locally</button></div>
+<p id="schedule-message" role="status" aria-live="polite"></p>
+</section>
+<section id="edit-panel" class="panel" hidden>
+<h2>6. Update HUMAN-ONLY casework</h2>
+<p id="edit-label">Choose Edit next to a finding. Changes affect only local planning, never original source retest, the database or consent.</p>
+<form id="edit-form">
+<div class="grid"><label>Human owner/team<input id="edit-owner" maxlength="120"></label>
+<label>Human stage<select id="edit-status">
+<option value="unassigned">Unassigned</option><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="blocked">Blocked</option><option value="ready_for_retest">Ready for independently authorized retest</option><option value="deferred">Deferred</option><option value="completed">Locally completed — NOT a verified fix</option></select></label>
+<label>Human follow-up date (not an authorized test window)<input id="edit-date" type="date" min="2020-01-01" max="2100-12-30"></label></div>
+<label>Human next action<textarea id="edit-action" maxlength="1800" rows="3"></textarea></label>
+<label>Human blocker<textarea id="edit-blocker" maxlength="1200" rows="2"></textarea></label>
+<div class="actions"><button type="submit">Apply to local draft</button><button id="edit-cancel" type="button" class="muted-button">Cancel</button></div>
+</form>
+</section>
+<section class="panel">
+<h2>7. Private single-owner human handoff + safe reply import</h2>
+<p>Create a PRIVATE packet containing ONLY original findings currently assigned to one self-declared human owner, rather than sharing the full Casework portfolio. A label is not authenticated identity, client consent or authorization. Send through an independently verified confidential channel only.</p>
+<div class="grid"><label>Specific local human owner/team<select id="owner-handoff-label"><option value="">Select exact human owner</option></select></label>
+<label>Received PRIVATE human reply JSON<input id="owner-reply-file" type="file" accept=".json,application/json"></label></div>
+<label class="check"><input id="owner-handoff-ack" type="checkbox"> I independently verified the intended HUMAN recipient and exact client/engagement, and have approval for this PRIVATE data sharing. No file proves identity or consent.</label>
+<div class="actions"><button id="owner-handoff-export" type="button" disabled>Export PRIVATE single-owner handoff</button><button id="owner-reply-import" type="button" disabled>Preview PRIVATE owner reply</button></div>
+<div id="owner-reply-review" class="refresh-preview" hidden><h3>PRIVATE human reply changes — review before acceptance</h3>
+<p id="owner-reply-summary" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Original finding ID</th><th>Human fields changed</th><th>Existing HUMAN values</th><th>Proposed HUMAN values</th></tr></thead><tbody id="owner-reply-changes"></tbody></table></div>
+<label class="check"><input id="owner-reply-ack" type="checkbox"> I reviewed the proposed HUMAN-ONLY notes, independently confirmed the correct sender, real client and exact engagement, and accept this PRIVATE local return. No verified repair or retest is implied.</label>
+<button id="owner-reply-apply" type="button" disabled>Apply reviewed HUMAN-ONLY reply</button></div>
+<p id="owner-handoff-message" role="status" aria-live="polite"></p>
+</section>
+<section class="panel">
+<h2>8. Export private Casework or calendar</h2>
+<p>Only locally scheduled open casework is included; <strong>completed or deferred human plans are excluded</strong>. No new deadlines are invented. Calendar clients may upload imported items to external services: use only an independently approved destination.</p>
+<div class="grid"><label>Calendar events <select id="export-scope"><option value="filtered">Currently visible eligible queue</option><option value="all">All eligible scheduled casework</option></select></label>
+<label>Output detail <select id="detail"><option value="anonymous">Redacted — no finding IDs, titles, owner or private notes</option><option value="private">PRIVATE — finding ID, title, owner and next action</option></select></label>
+</div>
+<label class="check"><input id="calendar-ack" type="checkbox"> I have explicitly checked the receiving calendar or handoff channel and understand that even redacted dates, risk levels and event counts can be confidential.</label>
+<label class="check"><input id="draft-ack" type="checkbox"> I approve saving a PRIVATE source-bound human planning draft for an independently authorized receiving channel. This is not verified remediation or a grant.</label>
+<div class="actions"><button id="casework-save" type="button" disabled>Save updated PRIVATE Casework v1 JSON</button><button id="download" type="button" disabled>Export private local .ics</button><button id="aggregate" type="button">Export anonymous workload CSV</button><button id="clear" type="button" class="muted-button">Clear private workspace</button></div>
+<p id="export-message" role="status" aria-live="polite"></p>
+</section>
+</section>
+</main>
+<footer>Local memory only · no network, storage, authentication, consent capture, automatic changes, scans or grant issuance. Files are unsigned human drafts.</footer>
+<script>/* LightUp local casework. Parsing/presentation only; never authenticates source or authorizes assessments. */
+(function(global){
+'use strict';
+const EXPECTED=['finding_id','title','severity','retest_status','remediation'];
+const SEVERITY=['critical','high','medium','low','info'];
+const RETEST=['not_tested','fix_pending','fixed','regression'];
+const PROGRESS=['unassigned','planned','in_progress','blocked','ready_for_retest','deferred','completed'];
+const MAX_BYTES=1048576,MAX_ROWS=350,MAX_CELL=6000;
+function sizeOf(text){return new TextEncoder().encode(text).length;}
+function parseCSV(text){
+ if(typeof text!=='string'||sizeOf(text)>MAX_BYTES)throw Error('CSV exceeds 1 MiB.');
+ if(text.charCodeAt(0)===0xfeff)text=text.slice(1);
+ const rows=[];let row=[],field='',quoted=false,closed=false;
+ for(let i=0;i<text.length;i++){
+  const c=text[i];
+  if(quoted){
+   if(c==='"' && text[i+1]==='"'){field+='"';i++;}
+   else if(c==='"') {quoted=false;closed=true;}
+   else field+=c;
+  }else if(c==='"'){
+   if(field!==''||closed)throw Error('Malformed quoted CSV field.');
+   quoted=true;
+  }else if(c===','){
+   row.push(field);field='';closed=false;
+  }else if(c==='\r'||c==='\n'){
+   if(c==='\r'&&text[i+1]==='\n')i++;
+   row.push(field);field='';closed=false;
+   if(row.length>1||row[0]!=='')rows.push(row);
+   row=[];
+   if(rows.length>MAX_ROWS+1)throw Error('Too many findings.');
+  }else{
+   if(closed)throw Error('Malformed CSV after closing quote.');
+   field+=c;
+  }
+  if(field.length>MAX_CELL)throw Error('An imported CSV cell is too long.');
+ }
+ if(quoted)throw Error('Unclosed CSV quote.');
+ if(row.length||field!==''||closed){row.push(field);if(row.length>1||row[0]!=='')rows.push(row);}
+ if(!rows.length)throw Error('No CSV header found.');
+ if(rows[0].length!==EXPECTED.length || rows[0].some((v,i)=>v!==EXPECTED[i]))
+  throw Error('Expected the five-column LightUp findings summary CSV export.');
+ if(rows.length===1)throw Error('CSV export contains no findings.');
+ if(rows.length-1>MAX_ROWS)throw Error('Too many findings.');
+ const seen=new Set();
+ return rows.slice(1).map((values,index)=>{
+  if(values.length!==EXPECTED.length)throw Error('Malformed CSV row '+(index+2)+'.');
+  const [finding_id,title,severity,retest_status,remediation]=values;
+  if(!finding_id.trim()||finding_id.length>160||seen.has(finding_id))
+   throw Error('Invalid or duplicate finding ID at row '+(index+2)+'.');
+  if(!title.trim()||!remediation.trim()||!SEVERITY.includes(severity)||!RETEST.includes(retest_status))
+   throw Error('Malformed finding data at row '+(index+2)+'.');
+  seen.add(finding_id);
+  return {finding_id,title,severity,retest_status,remediation};
+ });
+}
+function normalizeSource(findings){
+ if(!Array.isArray(findings)||!findings.length||findings.length>MAX_ROWS)throw Error('Unsupported findings list.');
+ const seen=new Set();
+ return findings.map(x=>{
+  if(!x||typeof x!=='object'||Array.isArray(x))throw Error('Malformed finding.');
+  const y={};
+  for(const col of EXPECTED){
+   if(typeof x[col]!=='string'||x[col].length>MAX_CELL)throw Error('Invalid finding '+col+'.');
+   y[col]=x[col];
+  }
+  if(!y.finding_id.trim()||y.finding_id.length>160||seen.has(y.finding_id)||
+   !y.title.trim()||!y.remediation.trim()||!SEVERITY.includes(y.severity)||!RETEST.includes(y.retest_status))
+   throw Error('Invalid source finding.');
+  seen.add(y.finding_id);return y;
+ });
+}
+function newCase(f){
+ return {finding_id:f.finding_id,owner:'',status:f.retest_status==='fixed'?'completed':'unassigned',
+   due_date:null,next_action:'',verification_plan:'',blocker:'',note:'',updated_utc:null};
+}
+function cleanCase(x,existingIds){
+ if(!x||typeof x!=='object'||Array.isArray(x)||typeof x.finding_id!=='string'||
+    !existingIds.has(x.finding_id))throw Error('Case refers to unknown finding.');
+ const c={finding_id:x.finding_id};
+ for(const [key,max] of [['owner',120],['next_action',1800],['verification_plan',1600],['blocker',1200],['note',1600]]){
+  if(typeof x[key]!=='string'||x[key].length>max)throw Error('Invalid case field '+key+'.');
+  c[key]=x[key];
+ }
+ if(!PROGRESS.includes(x.status))throw Error('Unknown remediation status.');
+ c.status=x.status;
+ if(x.due_date!==null && (typeof x.due_date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x.due_date)||
+  Number.isNaN(Date.parse(x.due_date+'T00:00:00Z'))||
+  new Date(x.due_date+'T00:00:00Z').toISOString().slice(0,10)!==x.due_date))
+   throw Error('Invalid case due date.');
+ c.due_date=x.due_date;
+ if(x.updated_utc!==null && (typeof x.updated_utc!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(x.updated_utc)||
+ Number.isNaN(Date.parse(x.updated_utc))))throw Error('Invalid case update timestamp.');
+ c.updated_utc=x.updated_utc;return c;
+}
+async function digest(findings){
+ const normalized=normalizeSource(findings);
+ const canonical=JSON.stringify(normalized.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0));
+ if(!global.crypto||!global.crypto.subtle)return null;
+ const hash=await global.crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical));
+ return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function makePacket(findings,cases,sourceHash){
+ const source=normalizeSource(findings),ids=new Set(source.map(x=>x.finding_id));
+ if(!Array.isArray(cases)||cases.length!==source.length)throw Error('Casework count mismatch.');
+ const seen=new Set(),clean=cases.map(x=>{
+  const y=cleanCase(x,ids);
+  if(seen.has(y.finding_id))throw Error('Duplicate casework entry.');
+  seen.add(y.finding_id);return y;
+ });
+ return {
+  kind:'lightup.remediation_casework_draft',schema_version:1,disposition:'LOCAL_CLIENT_PLANNING',
+  authenticated:false,tenant_verified:false,source_authorized:false,assessment_authorized:false,
+  grant:false,client_consent:false,operator_consent:false,execution:false,scan:false,
+  audit_verdict:false,retest_verified:false,release:false,
+  source_contract:'lightup.finding_export._COLUMNS_v1',source_sha256:sourceHash||null,
+  findings:source,cases:clean,
+  instructions:'This file contains unverified local notes and exported summaries. Do not treat any row or status as proof of remediation, verified retest, authentication or grant.'
+ };
+}
+function loadPacket(packet){
+ if(!packet||typeof packet!=='object'||Array.isArray(packet)||packet.kind!=='lightup.remediation_casework_draft'||
+   packet.schema_version!==1||packet.disposition!=='LOCAL_CLIENT_PLANNING'||
+   packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+   !['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent',
+     'operator_consent','execution','scan','audit_verdict','retest_verified','release']
+      .every(k=>Object.prototype.hasOwnProperty.call(packet,k)&&packet[k]===false))
+  throw Error('Not a supported non-authorizing LightUp casework draft.');
+ const source=normalizeSource(packet.findings),ids=new Set(source.map(x=>x.finding_id));
+ if(!Array.isArray(packet.cases)||packet.cases.length!==source.length)throw Error('Casework incomplete.');
+ const seen=new Set(),cases=packet.cases.map(x=>{
+  const y=cleanCase(x,ids);if(seen.has(y.finding_id))throw Error('Duplicate case.');seen.add(y.finding_id);return y;
+ });
+ if(packet.source_sha256!==null && (typeof packet.source_sha256!=='string'||!/^[0-9a-f]{64}$/.test(packet.source_sha256)))
+  throw Error('Invalid source fingerprint.');
+ return {findings:source,cases,source_sha256:packet.source_sha256||null};
+}
+function rank(x){return SEVERITY.indexOf(x.severity);}
+function metrics(findings,cases,today){
+ const byId=new Map(cases.map(x=>[x.finding_id,x]));
+ const totals={findings:findings.length,critical_or_high:0,open:0,blocked:0,overdue:0,ready_for_retest:0,source_fixed:0};
+ for(const finding of findings){
+  const c=byId.get(finding.finding_id);
+  if(rank(finding)<=1)totals.critical_or_high++;
+  if(finding.retest_status==='fixed')totals.source_fixed++;
+  if(c&&c.status!=='completed'&&c.status!=='deferred')totals.open++;
+  if(c&&c.status==='blocked')totals.blocked++;
+  if(c&&c.status==='ready_for_retest')totals.ready_for_retest++;
+  if(c&&c.due_date&&c.due_date<today&&c.status!=='completed'&&c.status!=='deferred')totals.overdue++;
+ }
+ return totals;
+}
+function csvCell(raw){
+ let s=String(raw??'');
+ const probe=s.replace(/^[\s\x00-\x1f]+/,'');
+ if(/^[=+\-@]/.test(probe))s="'"+s;
+ return '"'+s.replace(/"/g,'""')+'"';
+}
+function exportActionsCSV(findings,cases){
+ const byId=new Map(cases.map(c=>[c.finding_id,c]));
+ const columns=['finding_id','severity','title','source_retest_status','casework_status','assigned_owner','due_date','next_action','verification_plan','blocker'];
+ const rows=findings.map(f=>{
+  const c=byId.get(f.finding_id);
+  return [f.finding_id,f.severity,f.title,f.retest_status,c.status,c.owner,c.due_date||'',c.next_action,c.verification_plan,c.blocker];
+ });
+ return String.fromCharCode(0xFEFF)+[columns,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';
+}
+
+/* Re-import review: changing finding payload is not automatically a confirmed retest.
+ * The caller must explicitly confirm the same independently verified account/engagement.
+ * Only byte-for-byte unchanged source findings retain unverified local casework notes. */
+function compareSource(before,after){
+ const old=normalizeSource(before),incoming=normalizeSource(after);
+ const a=new Map(old.map(item=>[item.finding_id,item]));
+ const b=new Map(incoming.map(item=>[item.finding_id,item]));
+ const compare=(x,y)=>EXPECTED.every(k=>x[k]===y[k]);
+ const added=[],missing=[],changed=[],unchanged=[];
+ for(const item of incoming){
+  const prev=a.get(item.finding_id);
+  if(!prev)added.push(item.finding_id);
+  else if(compare(prev,item))unchanged.push(item.finding_id);
+  else changed.push({finding_id:item.finding_id,
+    changed_fields:EXPECTED.filter(k=>prev[k]!==item[k])});
+ }
+ for(const item of old)if(!b.has(item.finding_id))missing.push(item.finding_id);
+ return {added,missing,changed,unchanged,
+  warning:'Missing findings are NOT proof of remediation; changed source findings reset their local plans. Independently verify same client and engagement first.'};
+}
+function reconcileSource(before,existingCases,after){
+ const diff=compareSource(before,after);
+ const oldCases=new Map(existingCases.map(c=>[c.finding_id,c]));
+ const allowed=new Set(diff.unchanged);
+ const source=normalizeSource(after);
+ const merged=source.map(f=>allowed.has(f.finding_id)&&oldCases.has(f.finding_id) ?
+  cleanCase(oldCases.get(f.finding_id),new Set(source.map(item=>item.finding_id))) : newCase(f));
+ return {findings:source,cases:merged,change_summary:diff};
+}
+
+global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,normalizeSource,newCase,cleanCase,digest,makePacket,loadPacket,metrics,exportActionsCSV,SEVERITY,RETEST,PROGRESS,MAX_BYTES});
+})(window);
+</script>
+<script>/* Local date suggestions for remediation planning. Not regulatory SLAs, approvals or scanner deadlines. */
+(function(global){
+'use strict';
+const SEVERITIES=['critical','high','medium','low','info'];
+const DAY=86400000;
+function day(iso){
+ if(typeof iso!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(iso))return null;
+ const d=new Date(iso+'T00:00:00.000Z');
+ if(!Number.isFinite(d.valueOf())||d.toISOString().slice(0,10)!==iso)return null;
+ if(d.getUTCFullYear()<2020||d.getUTCFullYear()>2100)return null;
+ return d.getTime();
+}
+function prepare(findings,cases,anchor,policy){
+ const start=day(anchor);
+ if(start===null)throw Error('Select a valid local planning start date (2020–2100).');
+ if(!policy||typeof policy!=='object'||Array.isArray(policy))throw Error('Specify a per-severity planning policy.');
+ for(const level of SEVERITIES)
+  if(!Number.isInteger(policy[level])||policy[level]<1||policy[level]>365)
+   throw Error('Planning days must be integers from 1 to 365 for every severity.');
+ const byId=new Map(cases.map(c=>[c.finding_id,c]));
+ const entries=[];
+ for(const f of findings){
+  const c=byId.get(f.finding_id);
+  if(!c)throw Error('Missing finding casework for '+f.finding_id.slice(0,60)+'.');
+  if(c.due_date||c.status==='completed'||c.status==='deferred')continue;
+  const horizon=start+policy[f.severity]*DAY;
+  const d=new Date(horizon);
+  if(!Number.isFinite(d.valueOf())||d.getUTCFullYear()>2100)throw Error('Proposed deadline exceeds supported calendar.');
+  entries.push({finding_id:f.finding_id,severity:f.severity,proposed_due_date:d.toISOString().slice(0,10),days:policy[f.severity]});
+ }
+ return {
+  kind:'lightup.local_deadline_suggestions',disposition:'UNAPPROVED_PLANNING_ONLY',
+  authority:false,contractual_sla:false,retention_enforced:false,grant:false,
+  anchor_date:anchor,policy:{...policy},entries
+ };
+}
+global.LightUpRemediationSchedule=Object.freeze({prepare});
+})(window);
+</script>
+<script>/* LightUp offline original-source revision handoff. Never authenticates a CSV or approves remediation. */
+(function(global){
+'use strict';
+const SOURCE_COLS=Object.freeze(['finding_id','title','severity','retest_status','remediation']);
+function ensureBaseline(findings,cases){
+ const engine=global.LightUpCasework;
+ const current=engine.normalizeSource(findings);
+ if(!Array.isArray(cases)||cases.length!==current.length)throw Error('Incomplete previous human Casework draft.');
+ const packet=engine.makePacket(current,cases,null);
+ const checked=engine.loadPacket(packet);
+ return {findings:checked.findings,cases:checked.cases};
+}
+function sameSource(a,b){
+ if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length)return false;
+ const old=new Map(a.map(f=>[f.finding_id,f]));
+ return b.every(f=>{
+  const was=old.get(f.finding_id);
+  return was&&SOURCE_COLS.every(k=>was[k]===f[k]);
+ });
+}
+function sameHumanCases(a,b){
+ if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length)return false;
+ return JSON.stringify(a)===JSON.stringify(b);
+}
+async function prepare(beforeFindings,beforeCases,newOriginalCSV){
+ const old=ensureBaseline(beforeFindings,beforeCases);
+ const incoming=global.LightUpCasework.parseCSV(newOriginalCSV);
+ const reconciled=global.LightUpCasework.reconcileSource(old.findings,old.cases,incoming);
+ const diff=reconciled.change_summary;
+ if(diff.added.length+diff.changed.length+diff.unchanged.length!==incoming.length)
+  throw Error('Source change partition is incomplete.');
+ if(diff.missing.length+diff.changed.length+diff.unchanged.length!==old.findings.length)
+  throw Error('Original source change partition is incomplete.');
+ const digest=await global.LightUpCasework.digest(reconciled.findings);
+ global.LightUpCasework.loadPacket(global.LightUpCasework.makePacket(reconciled.findings,reconciled.cases,digest));
+ const changedFields=diff.changed.map(x=>({finding_id:x.finding_id,changed_fields:x.changed_fields.slice()}));
+ return Object.freeze({
+  before:old,digest,after:reconciled.findings,cases:reconciled.cases,
+  diff:Object.freeze({
+   added:diff.added.slice(),missing:diff.missing.slice(),
+   changed:changedFields,unchanged:diff.unchanged.slice()
+  })
+ });
+}
+function stillCurrent(prepared,currentFindings,currentCases){
+ return sameSource(prepared.before.findings,currentFindings)&&
+   sameHumanCases(prepared.before.cases,currentCases);
+}
+function revisionReceipt(prepared,previousDigest){
+ if(!prepared||!prepared.diff)throw Error('Missing completed original source preview.');
+ const normalize=xs=>xs.slice().sort();
+ const changed=prepared.diff.changed.map(x=>({finding_id:x.finding_id,changed_fields:normalize(x.changed_fields)}))
+  .sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0);
+ return {
+  kind:'lightup.private_human_casework_source_revision',schema_version:1,
+  disposition:'UNVERIFIED_HUMAN_FOLLOWUP_ONLY',
+  authenticated:false,source_authorized:false,tenant_verified:false,
+  assessment_authorized:false,client_consent:false,operator_consent:false,
+  grant:false,scan:false,execution:false,retest_verified:false,release:false,
+  previous_source_sha256:previousDigest||null,
+  next_source_sha256:prepared.digest||null,
+  added:normalize(prepared.diff.added),changed,missing_NOT_VERIFIED_FIXED:normalize(prepared.diff.missing),
+  exact_unchanged_human_notes_retained:prepared.diff.unchanged.length,
+  warning:'Human source revision only. Absent findings are NEVER verified fixed. These unsigned source digests do not prove client identity, consent, authorization or a retest.'
+ };
+}
+global.LightUpCalendarRefresh=Object.freeze({prepare,stillCurrent,revisionReceipt});
+})(window);
+</script>
+<script>/* LightUp offline HUMAN-only owner allocation. No real identity, consent or permission. */
+(function(global){
+'use strict';
+const MAX=350;
+const ORDER=['critical','high','medium','low','info'];
+function isOpen(c){return c.status!=='completed'&&c.status!=='deferred';}
+function canonical(findings,cases){
+ const engine=global.LightUpCasework;
+ const accepted=engine.loadPacket(engine.makePacket(findings,cases,null));
+ if(accepted.findings.length>MAX)throw Error('Owner work exceeds source bounds.');
+ return accepted;
+}
+function report(findings,cases,today){
+ const data=canonical(findings,cases),byId=new Map(data.findings.map(x=>[x.finding_id,x]));
+ const groups=new Map();
+ for(const c of data.cases){
+  const f=byId.get(c.finding_id);if(!f||!isOpen(c))continue;
+  const owner=c.owner.trim()||'(unassigned)';
+  if(!groups.has(owner))groups.set(owner,{owner,total:0,criticalHigh:0,blocked:0,overdue:0,scheduled:0,readyForRetest:0});
+  const g=groups.get(owner);g.total++;
+  if(ORDER.indexOf(f.severity)<=1)g.criticalHigh++;
+  if(c.status==='blocked')g.blocked++;
+  if(c.due_date)g.scheduled++;
+  if(c.due_date&&c.due_date<today)g.overdue++;
+  if(c.status==='ready_for_retest')g.readyForRetest++;
+ }
+ return Array.from(groups.values()).sort((a,b)=>
+  b.criticalHigh-a.criticalHigh||b.blocked-a.blocked||b.total-a.total||a.owner.localeCompare(b.owner));
+}
+function propose(findings,cases,ids,owner,onlyUnassigned){
+ const data=canonical(findings,cases);
+ if(typeof owner!=='string'||!owner.trim()||owner.length>120||
+   /[\u0000-\u001f\u007f-\u009f]/.test(owner))
+  throw Error('Human owner/team must be nonblank, at most 120 characters, without control characters.');
+ if(!Array.isArray(ids)||ids.length>MAX||ids.length<1||new Set(ids).size!==ids.length)
+  throw Error('Select one or more distinct original findings to assign.');
+ const visible=new Set(ids),rows=[];
+ for(const c of data.cases){
+  if(!visible.has(c.finding_id)||!isOpen(c)||(onlyUnassigned&&c.owner.trim()))continue;
+  rows.push({finding_id:c.finding_id,previous_owner:c.owner,next_owner:owner.trim()});
+ }
+ if(!rows.length)throw Error('No eligible open human cases in this selection.');
+ return Object.freeze({rows,newOwner:owner.trim(),onlyUnassigned:!!onlyUnassigned});
+}
+function apply(findings,cases,proposal){
+ const data=canonical(findings,cases),ids=new Set(data.findings.map(x=>x.finding_id));
+ const prev=new Map(proposal.rows.map(x=>[x.finding_id,x]));
+ if(prev.size!==proposal.rows.length)throw Error('Duplicate human assignment proposal.');
+ const updated=data.cases.map(c=>{
+  const change=prev.get(c.finding_id);
+  if(!change)return c;
+  if(!isOpen(c)||c.owner!==change.previous_owner||
+     (proposal.onlyUnassigned&&c.owner.trim()))throw Error('Human assignment baseline changed; review again.');
+  return global.LightUpCasework.cleanCase({...c,owner:change.next_owner,
+    updated_utc:new Date().toISOString()},ids);
+ });
+ global.LightUpCasework.loadPacket(global.LightUpCasework.makePacket(data.findings,updated,null));
+ return updated;
+}
+global.LightUpCalendarWorkload=Object.freeze({report,propose,apply});
+})(window);
+</script>
+<script>/* LightUp: PRIVATE owner-specific HUMAN planning packet. No identity or authority.
+ * The original Casework five-column source and current human baseline are immutable.
+ */
+(function(global){
+'use strict';
+const engine=()=>global.LightUpCasework;
+const COLS=['finding_id','title','severity','retest_status','remediation'];
+const HUMAN=['owner','status','due_date','next_action','blocker'];
+const ROW=[...COLS,...HUMAN];
+const FLAGS=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
+const FIELDS=['kind','schema_version','disposition','source_contract','source_sha256','owner_label','baseline_sha256','rows','instructions',...FLAGS];
+const REPLY_FIELDS=[...FIELDS,'reply_rows'];
+const MAX=350,MAX_JSON=2097152;
+const KIND='lightup.private_calendar_owner_handoff';
+const ANSWER='lightup.private_calendar_owner_reply';
+const DISPOSITION='UNVERIFIED_HUMAN_PLANNING_ONLY';
+const CONTRACT='lightup.finding_export._COLUMNS_v1';
+function fail(msg){throw Error(msg);}
+function exact(o,keys,what){
+ if(!o||Object.getPrototypeOf(o)===null&&typeof o!=='object'||typeof o!=='object'||Array.isArray(o))fail('Invalid '+what+'.');
+ const set=new Set(keys),present=Object.keys(o);
+ if(present.length!==set.size||present.some(k=>!set.has(k)))fail('Unknown or missing '+what+' field.');
+}
+function str(s,max=1800){
+ if(typeof s!=='string'||s.length>max||/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/.test(s))fail('Invalid human text field.');
+ return s;
+}
+function sourceDate(value){
+ if(value===null)return null;
+ if(typeof value!=='string'||!/^(?:20\d{2}|2100)-\d\d-\d\d$/.test(value))
+  fail('Invalid human due date.');
+ const ms=Date.parse(value+'T00:00:00Z');
+ if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,10)!==value||value>'2100-12-30')
+  fail('Invalid human due date.');
+ return value;
+}
+function rowFrom(f,c){
+ return {finding_id:f.finding_id,title:f.title,severity:f.severity,
+  retest_status:f.retest_status,remediation:f.remediation,
+  owner:c.owner,status:c.status,due_date:c.due_date,next_action:c.next_action,blocker:c.blocker};
+}
+function checkRows(rows,label){
+ if(!Array.isArray(rows)||!rows.length||rows.length>MAX)fail('Owner handoff must have 1–350 rows.');
+ const seen=new Set();
+ return rows.map(row=>{
+  exact(row,ROW,'owner row');
+  const original={};
+  for(const k of COLS)original[k]=row[k];
+  const validated=engine().normalizeSource([original])[0];
+  if(seen.has(validated.finding_id))fail('Duplicate original finding ID.');
+  seen.add(validated.finding_id);
+  if(str(row.owner,120)!==label)fail('Owner team label changed.');
+  const progress=engine().PROGRESS;
+  if(!progress.includes(row.status))fail('Invalid human work stage.');
+  sourceDate(row.due_date);str(row.next_action,1800);str(row.blocker,1200);
+  return {...validated,...Object.fromEntries(HUMAN.map(k=>[k,row[k]]))};
+ });
+}
+function canonical(rows){
+ return JSON.stringify(rows.slice().sort((a,b)=>
+  a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0));
+}
+async function sha(value){
+ if(!global.crypto||!global.crypto.subtle)fail('Secure SHA-256 is unavailable: private owner handoff HELD.');
+ const digest=await global.crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));
+ return Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');
+}
+function flags(){return Object.fromEntries(FLAGS.map(f=>[f,false]));}
+function validateHeader(packet,kind,fields){
+ exact(packet,fields,'handoff envelope');
+ if(packet.kind!==kind||packet.schema_version!==1||packet.disposition!==DISPOSITION||
+    packet.source_contract!==CONTRACT)fail('Unknown owner handoff schema or disposition.');
+ if(typeof packet.owner_label!=='string'||packet.owner_label.length>120||
+    !packet.owner_label.trim()||packet.owner_label!==packet.owner_label.trim()||
+    /[\u0000-\u001f\u007f-\u009f]/.test(packet.owner_label))fail('Invalid owner identity label.');
+ if(typeof packet.instructions!=='string'||packet.instructions.length>1500)fail('Invalid safety instructions.');
+ if(packet.source_sha256!==null&&
+    (typeof packet.source_sha256!=='string'||!/^[0-9a-f]{64}$/.test(packet.source_sha256)))
+  fail('Invalid original source fingerprint.');
+ if(typeof packet.baseline_sha256!=='string'||!/^[0-9a-f]{64}$/.test(packet.baseline_sha256))
+  fail('Invalid owner human baseline fingerprint.');
+ for(const k of FLAGS)if(packet[k]!==false)fail('Owner handoff claims '+k+' authority.');
+}
+async function validateRequest(request){
+ validateHeader(request,KIND,FIELDS);
+ const rows=checkRows(request.rows,request.owner_label);
+ const digest=await sha(canonical(rows));
+ if(digest!==request.baseline_sha256)fail('Original handoff baseline mismatch.');
+ return {...request,rows};
+}
+function fromSource(findings,cases,label){
+ const fs=engine().normalizeSource(findings);
+ const ids=new Set(fs.map(f=>f.finding_id));
+ if(!Array.isArray(cases)||cases.length!==fs.length)fail('Incomplete original casework.');
+ const original=engine().loadPacket(engine().makePacket(fs,cases,null));
+ const byId=new Map(original.cases.map(c=>[c.finding_id,c]));
+ const rows=fs.filter(f=>byId.get(f.finding_id).owner===label)
+  .map(f=>rowFrom(f,byId.get(f.finding_id)));
+ return checkRows(rows,label);
+}
+async function createRequest(findings,cases,label,sourceSha){
+ if(typeof label!=='string'||!label.trim()||label!==label.trim())fail('Choose a specific original human owner label.');
+ if(sourceSha!==null&&sourceSha!==undefined&&
+   (typeof sourceSha!=='string'||!/^[a-f0-9]{64}$/.test(sourceSha)))fail('Invalid original source fingerprint.');
+ const rows=fromSource(findings,cases,label);
+ const packet={
+  kind:KIND,schema_version:1,disposition:DISPOSITION,source_contract:CONTRACT,
+  source_sha256:sourceSha||null,owner_label:label,baseline_sha256:await sha(canonical(rows)),
+  rows,instructions:'PRIVATE original findings and human-only planning. This unsigned handoff is not an identity, tenant/consent, authorization, verified repair or retest claim.',
+  ...flags()
+ };
+ return await validateRequest(packet);
+}
+async function createReply(request,replyRows){
+ const validated=await validateRequest(request);
+ const latest=checkRows(replyRows,validated.owner_label);
+ if(latest.length!==validated.rows.length)fail('Owner response omitted original findings.');
+ const before=new Map(validated.rows.map(x=>[x.finding_id,x])),seen=new Set();
+ for(const row of latest){
+  const old=before.get(row.finding_id);
+  if(!old||seen.has(row.finding_id)||COLS.some(k=>row[k]!==old[k]))
+   fail('Owner response attempted to alter original finding identity or source.');
+  seen.add(row.finding_id);
+ }
+ const packet={...validated,kind:ANSWER,reply_rows:latest};
+ await validateReply(packet);
+ return packet;
+}
+async function validateReply(reply){
+ validateHeader(reply,ANSWER,REPLY_FIELDS);
+ const request={...reply,kind:KIND};
+ delete request.reply_rows;
+ const admitted=await validateRequest(request);
+ const after=checkRows(reply.reply_rows,reply.owner_label);
+ if(after.length!==admitted.rows.length)fail('Incomplete owner response.');
+ const byId=new Map(admitted.rows.map(x=>[x.finding_id,x])),seen=new Set();
+ for(const row of after){
+  const baseline=byId.get(row.finding_id);
+  if(!baseline||seen.has(row.finding_id)||COLS.some(k=>row[k]!==baseline[k]))
+   fail('Owner reply changed immutable original source.');
+  seen.add(row.finding_id);
+ }
+ return {...reply,rows:admitted.rows,reply_rows:after};
+}
+async function applyReply(findings,cases,sourceSha,reply){
+ const accepted=await validateReply(reply);
+ const original=engine().normalizeSource(findings);
+ const before=engine().loadPacket(engine().makePacket(original,cases,null));
+ const computed=await engine().digest(original);
+ if(reply.source_sha256!==null&&reply.source_sha256!==computed)
+  fail('Original source has changed since owner handoff.');
+ if(sourceSha!==null&&sourceSha!==undefined&&computed!==sourceSha)
+  fail('Current private source digest has changed.');
+ const existing=fromSource(original,before.cases,accepted.owner_label);
+ if(existing.length!==accepted.rows.length||await sha(canonical(existing))!==accepted.baseline_sha256)
+  fail('Current owner assignment, original source, or human notes have changed. No auto-merge.');
+ const changed=new Map(accepted.reply_rows.map(x=>[x.finding_id,x])),idSet=new Set(original.map(f=>f.finding_id));
+ const casesNext=before.cases.map(c=>{
+  const r=changed.get(c.finding_id);
+  if(!r)return c;
+  return engine().cleanCase({...c,owner:r.owner,status:r.status,due_date:r.due_date,
+    next_action:r.next_action,blocker:r.blocker,updated_utc:new Date().toISOString()},idSet);
+ });
+ engine().loadPacket(engine().makePacket(original,casesNext,computed));
+ return {cases:casesNext,changed:accepted.reply_rows.length,owner_label:accepted.owner_label};
+}
+global.LightUpOwnerProtocol=Object.freeze({createRequest,validateRequest,createReply,validateReply,applyReply,MAX_JSON});
+})(window);
+</script>
+<script>/* LightUp private human Remediation Calendar. Browser-only; no authority or network. */
+(function(global){
+'use strict';
+const $=id=>document.getElementById(id);
+const MAX_FILE=2097152,FLAGS=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
+const COLS=['finding_id','title','severity','retest_status','remediation'];
+const CASE=['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+const PACKET=['kind','schema_version','disposition','source_contract','source_sha256','findings','cases','instructions',...FLAGS];
+const PRIORITY=['critical','high','medium','low','info'];
+let state=null,activeId=null,dirty=false,selectedDay=null,pendingRefresh=null,pendingSchedule=null,pendingAssignment=null,ownerFilter=null;
+function fail(message){throw Error(message);}
+function bytes(s){return new TextEncoder().encode(s).length;}
+function exactKeys(o,keys,what){
+ if(!o||typeof o!=='object'||Array.isArray(o))fail('Invalid '+what+' object.');
+ const allowed=new Set(keys);
+ if(Object.keys(o).length!==allowed.size||Object.keys(o).some(k=>!allowed.has(k)))fail('Unexpected or missing '+what+' fields.');
+}
+function strictJSON(s){
+ if(typeof s!=='string'||bytes(s)>MAX_FILE)fail('Private draft exceeds 2 MiB.');
+ let i=0,nodes=0; const ws=()=>{while(i<s.length&&/[\x20\t\r\n]/.test(s[i]))i++;};
+ function str(){
+  const start=i;if(s[i++]!=='"')fail('Expected JSON string.');
+  while(i<s.length){const c=s[i++];
+   if(c==='"')return JSON.parse(s.slice(start,i));
+   if(c==='\\'){const e=s[i++];if(e==='u'){if(!/^[a-fA-F0-9]{4}$/.test(s.slice(i,i+4)))fail('Bad Unicode escape.');i+=4;}else if(!'"\\/bfnrt'.includes(e))fail('Invalid JSON escape.');}
+   else if(c.charCodeAt(0)<32)fail('Unescaped control character.');
+  }fail('Unclosed JSON string.');
+ }
+ function read(depth){
+  if(++nodes>50000||depth>40)fail('JSON structure exceeds bounds.');
+  ws();let c=s[i];
+  if(c==='"')return str();
+  if(c==='{'){i++;const o=Object.create(null),seen=new Set();ws();if(s[i]==='}'){i++;return o;}
+   while(true){ws();const k=str();if(seen.has(k))fail('Duplicate JSON property.');seen.add(k);ws();if(s[i++]!==':')fail('Expected JSON colon.');o[k]=read(depth+1);ws();if(s[i]==='}'){i++;return o;}if(s[i++]!==',')fail('Expected JSON comma.');}
+  }
+  if(c==='['){i++;const a=[];ws();if(s[i]===']'){i++;return a;}
+   while(true){a.push(read(depth+1));ws();if(s[i]===']'){i++;return a;}if(s[i++]!==',')fail('Expected array comma.');}
+  }
+  for(const [word,val] of [['true',true],['false',false],['null',null]])if(s.startsWith(word,i)){i+=word.length;return val;}
+  const m=s.slice(i).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);if(m){i+=m[0].length;const v=Number(m[0]);if(!Number.isFinite(v))fail('Invalid JSON number.');return v;}
+  fail('Invalid JSON value.');
+ }
+ const v=read(0);ws();if(i!==s.length)fail('Trailing JSON data.');return v;
+}
+function safeDate(day){
+ if(typeof day!=='string'||!/^20\d\d-\d\d-\d\d$/.test(day))return false;
+ const ms=Date.parse(day+'T00:00:00Z');
+ return Number.isFinite(ms)&&new Date(ms).toISOString().slice(0,10)===day&&day<='2100-12-30';
+}
+function dayAfter(day){return new Date(Date.parse(day+'T00:00:00Z')+86400000).toISOString().slice(0,10);}
+function dateCompact(day){return day.replace(/-/g,'');}
+function isOpen(c){return !['completed','deferred'].includes(c.status);}
+function eligible(x){return isOpen(x.case)&&safeDate(x.case.due_date);}
+function todayUTC(){return new Date().toISOString().slice(0,10);}
+function classify(x){
+ if(!eligible(x))return 'not_scheduled';
+ if(x.case.due_date<todayUTC())return 'overdue';
+ if(x.case.status==='blocked')return 'blocked';
+ if(!x.case.owner.trim())return 'unassigned';
+ if(x.case.status==='ready_for_retest')return 'retest';
+ return 'scheduled';
+}
+function allRows(){
+ if(!state)return [];
+ const byId=new Map(state.cases.map(c=>[c.finding_id,c]));
+ return state.findings.map(f=>({finding:f,case:byId.get(f.finding_id)})).sort((a,b)=>
+  (a.case.due_date||'9999').localeCompare(b.case.due_date||'9999')||
+  PRIORITY.indexOf(a.finding.severity)-PRIORITY.indexOf(b.finding.severity)||
+  a.finding.finding_id.localeCompare(b.finding.finding_id));
+}
+function filtered(){
+ const text=$('search').value.trim().toLowerCase(),scope=$('filter').value,sev=$('severity').value;
+ return allRows().filter(x=>{
+  const c=x.case,f=x.finding;
+  if(ownerFilter!==null&&(c.owner.trim()||'(unassigned)')!==ownerFilter)return false;
+  if(selectedDay&&(!eligible(x)||c.due_date!==selectedDay))return false;
+  if(sev!=='all'&&f.severity!==sev)return false;
+  if(text&&!((f.finding_id+' '+c.owner).toLowerCase().includes(text)))return false;
+  if(scope==='all')return true;
+  if(scope==='urgent')return ['critical','high'].includes(f.severity);
+  if(scope==='blocked')return c.status==='blocked';
+  if(scope==='unassigned')return !c.owner.trim();
+  if(scope==='retest')return c.status==='ready_for_retest';
+  if(scope==='overdue')return eligible(x)&&c.due_date<todayUTC();
+  return true;
+ });
+}
+function clearRefresh(){
+ pendingRefresh=null;
+ $('refresh-preview').hidden=true;$('refresh-apply-ack').checked=false;
+ $('refresh-rows').replaceChildren();$('refresh-apply').disabled=true;
+ $('refresh-receipt').disabled=true;
+}
+function refreshControls(){
+ const ready=!!pendingRefresh&&!!state&&$('source-ack').checked&&
+  $('refresh-ack').checked&&$('refresh-apply-ack').checked;
+ $('refresh-apply').disabled=!ready;$('refresh-receipt').disabled=!ready;
+}
+async function previewRefresh(){
+ clearRefresh();
+ if(!state||!$('source-ack').checked||!$('refresh-ack').checked)
+  fail('Confirm original source and independently verified same client/exact engagement.');
+ const file=$('refresh-file').files[0];
+ if(!file||file.size>global.LightUpCasework.MAX_BYTES)
+  fail('Select original five-column CSV at most 1 MiB.');
+ const baseline=state,priorCases=JSON.stringify(state.cases),priorSource=JSON.stringify(state.findings);
+ const incoming=await file.text();
+ if(state!==baseline||JSON.stringify(state.cases)!==priorCases)
+  fail('Previous human notes changed during import. Preview again.');
+ const prepared=await global.LightUpCalendarRefresh.prepare(baseline.findings,baseline.cases,incoming);
+ if(state!==baseline||JSON.stringify(state.cases)!==priorCases||
+    JSON.stringify(state.findings)!==priorSource)fail('Previous source changed during preview; held.');
+ pendingRefresh={prepared,baseline,priorCases,priorSource};
+ const diff=prepared.diff,tbody=$('refresh-rows');
+ const add=(kind,id,fields)=>{
+  const row=document.createElement('tr');
+  row.append(textEl('td',kind),textEl('td',id),textEl('td',fields));
+  tbody.append(row);
+ };
+ for(const id of diff.added)add('NEW: reset human work',id,'New original finding');
+ for(const x of diff.changed)add('CHANGED: reset human work',x.finding_id,x.changed_fields.join(', '));
+ for(const id of diff.missing)add('MISSING: not repaired',id,'Absent is NOT proof of remediation');
+ if(!diff.added.length&&!diff.changed.length&&!diff.missing.length)
+  add('No original source change','—','Existing human notes remain');
+ $('refresh-summary').textContent=
+  diff.unchanged.length+' original rows unchanged; '+diff.added.length+' new; '+
+  diff.changed.length+' changed; '+diff.missing.length+' missing. Missing never means fixed.';
+ $('refresh-preview').hidden=false;$('refresh-message').textContent=
+  'Private changes previewed only in memory. Your old Casework draft is unchanged.';
+ refreshControls();
+}
+function checkRefreshReady(){
+ if(!state||!pendingRefresh||!$('source-ack').checked||
+    !$('refresh-ack').checked||!$('refresh-apply-ack').checked)
+  fail('Review original source preview and confirm same exact client/engagement before handoff.');
+ const x=pendingRefresh;
+ if(state!==x.baseline||JSON.stringify(state.cases)!==x.priorCases||
+   JSON.stringify(state.findings)!==x.priorSource||
+   !global.LightUpCalendarRefresh.stillCurrent(x.prepared,state.findings,state.cases)){
+  clearRefresh();fail('Source or human notes changed. Preview anew before applying.');
+ }
+ return x;
+}
+function exportRefreshReceipt(){
+ const x=checkRefreshReady();
+ if(!global.confirm('Export PRIVATE original finding IDs and source differences through an approved protected channel? This is NOT an authenticated source or retest verdict.'))return;
+ const receipt=global.LightUpCalendarRefresh.revisionReceipt(x.prepared,x.baseline.digest);
+ saveFile('lightup-PRIVATE-source-change-review.json',JSON.stringify(receipt,null,2)+'\n',
+          'application/json;charset=utf-8');
+ $('refresh-message').textContent='Unsigned PRIVATE historical source-change receipt exported.';
+}
+function applyRefresh(){
+ const x=checkRefreshReady();
+ if(!global.confirm('You must retain the previous PRIVATE Casework draft separately. Apply newer original source and RESET all human notes for changed/new rows? Missing findings are NOT fixed.'))return;
+ const data=x.prepared;
+ const packet=global.LightUpCasework.makePacket(data.after,data.cases,data.digest);
+ const clean=packetStructure(packet);
+ state={...clean,digest:data.digest};ownerFilter=null;
+ dirty=true;activeId=null;selectedDay=null;clearSchedule();$('edit-panel').hidden=true;
+ $('month').value=todayUTC().slice(0,7);
+ $('refresh-file').value='';$('refresh-ack').checked=false;
+ $('draft-ack').checked=false;$('calendar-ack').checked=false;
+ clearRefresh();render();
+ $('refresh-message').textContent='New original CSV applied locally: '+data.diff.added.length+
+ ' added, '+data.diff.changed.length+' changed, '+data.diff.missing.length+
+ ' absent (NOT verified fixed); '+data.diff.unchanged.length+
+ ' unchanged human plans retained. Export updated PRIVATE Casework before closing.';
+}
+function clearSchedule(){
+ pendingSchedule=null;$('schedule-preview').hidden=true;$('schedule-ack').checked=false;
+ $('schedule-apply').disabled=true;$('schedule-rows').replaceChildren();
+}
+function scheduleControls(){
+ $('schedule-apply').disabled=!pendingSchedule||!state||
+  !$('source-ack').checked||!$('schedule-ack').checked;
+}
+function previewSchedule(){
+ clearSchedule();
+ if(!state||!$('source-ack').checked)fail('Confirm original Casework first.');
+ const anchor=$('schedule-anchor').value;
+ const policy={};
+ for(const sev of PRIORITY){
+  const input=$('schedule-'+sev).value;
+  if(!/^[1-9][0-9]{0,2}$/.test(input)||Number(input)>365)
+   fail('Specify explicit human planning horizons of 1–365 calendar days for every severity.');
+  policy[sev]=Number(input);
+ }
+ const snapshot=state,previous=JSON.stringify(state.cases);
+ const plan=global.LightUpRemediationSchedule.prepare(state.findings,state.cases,anchor,policy);
+ if(plan.kind!=='lightup.local_deadline_suggestions'||plan.authority!==false||
+   plan.grant!==false||plan.contractual_sla!==false||plan.retention_enforced!==false)
+  fail('Not an original non-authorizing planning proposal.');
+ const visible=new Set(filtered().map(x=>x.finding.finding_id));
+ const scope=$('schedule-scope').value;
+ const selected=plan.entries.filter(x=>scope==='all'||visible.has(x.finding_id));
+ if(!selected.length)fail('No unscheduled, open human cases match the selected scope. Clear the day filter or select All.');
+ if(selected.length>350||selected.some(x=>!safeDate(x.proposed_due_date)))
+  fail('Original human planning dates exceed the supported private calendar bounds.');
+ if(state!==snapshot||JSON.stringify(state.cases)!==previous)
+  fail('Casework changed while preparing human dates. Preview again.');
+ pendingSchedule={snapshot,previous,selected,policy,anchor};
+ const tbody=$('schedule-rows');
+ for(const x of selected){
+  const tr=document.createElement('tr');
+  tr.append(textEl('td',x.severity),textEl('td',x.finding_id),
+   textEl('td',x.proposed_due_date+' ('+x.days+' days)'));tbody.append(tr);
+ }
+ $('schedule-summary').textContent=selected.length+
+  ' human-only dates proposed. Existing due dates and completed/deferred local cases are unchanged; none is a real SLA or approved retest window.';
+ $('schedule-preview').hidden=false;$('schedule-message').textContent=
+  'Source-bound private preview. Nothing has been changed.';
+ scheduleControls();
+}
+function applySchedule(){
+ if(!state||!pendingSchedule||!$('source-ack').checked||!$('schedule-ack').checked)
+  fail('Confirm the original source and review the explicit human date proposal.');
+ const stage=pendingSchedule;
+ if(stage.snapshot!==state||JSON.stringify(state.cases)!==stage.previous){
+  clearSchedule();fail('Human cases changed since the date preview. Preview again.');
+ }
+ if(!global.confirm('Apply '+stage.selected.length+' proposed HUMAN-ONLY dates? These are NOT contractual SLAs, authorized scan/retest windows or verified fixes.'))return;
+ const additions=new Map(stage.selected.map(x=>[x.finding_id,x.proposed_due_date]));
+ const ids=new Set(state.findings.map(f=>f.finding_id)),utc=new Date().toISOString();
+ const cases=state.cases.map(c=>{
+  const due=additions.get(c.finding_id);
+  if(!due)return c;
+  if(c.due_date!==null||!isOpen(c))fail('Planning eligibility changed. Apply refused.');
+  return global.LightUpCasework.cleanCase({...c,due_date:due,updated_utc:utc},ids);
+ });
+ global.LightUpCasework.loadPacket(global.LightUpCasework.makePacket(state.findings,cases,state.digest));
+ state={...state,cases};dirty=true;activeId=null;selectedDay=null;
+ $('edit-panel').hidden=true;clearSchedule();clearRefresh();render();
+ $('schedule-message').textContent=additions.size+
+  ' HUMAN-ONLY due dates saved locally. Export the updated PRIVATE Casework draft; no original finding or retest was updated.';
+}
+function clearAssignments(){
+ pendingAssignment=null;$('assign-preview').hidden=true;$('assign-ack').checked=false;
+ $('assign-apply').disabled=true;$('assign-rows').replaceChildren();
+}
+function assignmentControls(){
+ $('assign-apply').disabled=!pendingAssignment||!state||!$('source-ack').checked||!$('assign-ack').checked;
+}
+function renderOwners(){
+ const tbody=$('owners');tbody.replaceChildren();
+ $('owner-filter-message').textContent=ownerFilter===null?'No exact human owner filter is active.':
+  'Exact HUMAN owner filter: '+ownerFilter+' (not an authenticated identity).';
+ $('owner-filter-clear').hidden=ownerFilter===null;
+ const entries=global.LightUpCalendarWorkload.report(state.findings,state.cases,todayUTC());
+ for(const g of entries){
+  const tr=document.createElement('tr');
+  for(const v of [g.owner,g.total,g.criticalHigh,g.blocked,g.overdue,g.scheduled,g.readyForRetest])
+   tr.append(textEl('td',v));
+  const action=document.createElement('td'),button=textEl('button','Filter','muted-button');
+  button.type='button';button.addEventListener('click',()=>{
+   ownerFilter=g.owner;selectedDay=null;$('filter').value='all';
+   $('search').value='';render();
+  });
+  action.append(button);tr.append(action);tbody.append(tr);
+ }
+ if(!entries.length){const tr=document.createElement('tr'),cell=textEl('td','No open human cases in this source.');cell.colSpan=8;tr.append(cell);tbody.append(tr);}
+}
+function previewAssignment(){
+ clearAssignments();
+ if(!state||!$('source-ack').checked)fail('Load and independently confirm the original private Casework source.');
+ const current=state,before=JSON.stringify(state.cases),ids=filtered().map(x=>x.finding.finding_id);
+ const proposal=global.LightUpCalendarWorkload.propose(state.findings,state.cases,ids,
+  $('assign-owner').value,$('assign-empty-only').checked);
+ if(state!==current||JSON.stringify(state.cases)!==before)fail('Human casework changed while preparing ownership. Preview again.');
+ pendingAssignment={current,before,proposal};
+ const tbody=$('assign-rows');
+ for(const x of proposal.rows){
+  const tr=document.createElement('tr');
+  tr.append(textEl('td',x.finding_id),textEl('td',x.previous_owner||'(unassigned)'),
+    textEl('td',x.next_owner));tbody.append(tr);
+ }
+ $('assign-summary').textContent=proposal.rows.length+' currently visible OPEN human cases would receive owner '+proposal.newOwner+'. Existing original source and retest do not change.';
+ $('assign-preview').hidden=false;$('assign-message').textContent='Preview only. No human assignment changed.';
+ assignmentControls();
+}
+function applyAssignment(){
+ if(!state||!pendingAssignment||!$('source-ack').checked||!$('assign-ack').checked)
+  fail('Explicit review and HUMAN-ONLY assignment confirmation required.');
+ const p=pendingAssignment;
+ if(state!==p.current||JSON.stringify(state.cases)!==p.before){
+  clearAssignments();fail('Previous human work changed; source-bound assignment preview must be recreated.');
+ }
+ if(!global.confirm('Assign '+p.proposal.rows.length+' currently selected OPEN human cases to local HUMAN label '+p.proposal.newOwner+'? This is NOT authenticated identity, consent or permission.'))return;
+ const cases=global.LightUpCalendarWorkload.apply(state.findings,state.cases,p.proposal);
+ state={...state,cases};dirty=true;activeId=null;ownerFilter=null;
+ $('edit-panel').hidden=true;clearRefresh();clearSchedule();
+ render();
+ $('assign-message').textContent=p.proposal.rows.length+
+  ' human ownership notes updated locally. Export the PRIVATE Casework v1 draft for separate authorized handoff.';
+}
+function renderHandoffOwners(){
+ const select=$('owner-handoff-label'),current=select.value;
+ const owners=[...new Set(state.cases.map(c=>c.owner))]
+  .filter(s=>typeof s==='string'&&s.trim()===s&&s&&s.length<=120&&
+    !/[\u0000-\u001f\u007f-\u009f]/.test(s)).sort();
+ select.replaceChildren(new Option('Select exact human owner',''));
+ for(const name of owners)select.add(new Option(name,name));
+ select.value=owners.includes(current)?current:'';
+ if(select.value!==current)$('owner-handoff-ack').checked=false;
+ updateHandoffControls();
+}
+function updateHandoffControls(){
+ const ack=!!state&&$('source-ack').checked&&$('owner-handoff-ack').checked;
+ $('owner-handoff-export').disabled=!ack||!$('owner-handoff-label').value;
+ $('owner-reply-import').disabled=!ack||!$('owner-reply-file').files.length;
+}
+async function exportOwnerHandoff(){
+ if(!state||!$('source-ack').checked||!$('owner-handoff-ack').checked)
+  fail('Confirm the source and independent private sharing before owner handoff.');
+ const before=state,baseline=JSON.stringify(state.cases),source=JSON.stringify(state.findings);
+ const owner=$('owner-handoff-label').value;
+ if(!owner)fail('Select one exact human owner.');
+ if(!global.confirm('This packet includes ORIGINAL sensitive findings for human owner '+owner+'. Confirm approved independent recipient and exact engagement. It is not an authorization.'))return;
+ const packet=await global.LightUpOwnerProtocol.createRequest(state.findings,state.cases,owner,state.digest);
+ if(state!==before||JSON.stringify(state.cases)!==baseline||
+    JSON.stringify(state.findings)!==source)fail('Casework changed during owner handoff. Export held.');
+ const name='lightup-PRIVATE-owner-handoff.json';
+ saveFile(name,JSON.stringify(packet,null,2)+'\n','application/json;charset=utf-8');
+ $('owner-handoff-message').textContent=packet.rows.length+
+  ' original findings included only for owner '+owner+'. Transfer privately; no identity or authorization established.';
+}
+let ownerReplyPreview=null;
+function clearOwnerReplyPreview(){
+ ownerReplyPreview=null;
+ $('owner-reply-review').hidden=true;$('owner-reply-ack').checked=false;
+ $('owner-reply-apply').disabled=true;$('owner-reply-changes').replaceChildren();
+}
+function updateOwnerReplyApplyControl(){
+ $('owner-reply-apply').disabled=!ownerReplyPreview||
+  !$('source-ack').checked||!$('owner-handoff-ack').checked||!$('owner-reply-ack').checked;
+}
+async function importOwnerReply(){
+ clearOwnerReplyPreview();
+ if(!state||!$('source-ack').checked||!$('owner-handoff-ack').checked)
+  fail('Confirm original source, exact client/engagement and independent return sender.');
+ const file=$('owner-reply-file').files[0];
+ if(!file||file.size>2097152)fail('Select PRIVATE owner reply JSON of at most 2 MiB.');
+ const snapshot=state,baseline=JSON.stringify(state.cases),original=JSON.stringify(state.findings);
+ const packet=strictJSON(await file.text());
+ if(packet.owner_label!==$('owner-handoff-label').value)
+  fail('Select the exact human owner named in this PRIVATE reply before reviewing it.');
+ const accepted=await global.LightUpOwnerProtocol.applyReply(
+  state.findings,state.cases,state.digest,packet);
+ if(state!==snapshot||JSON.stringify(state.cases)!==baseline||
+    JSON.stringify(state.findings)!==original)
+  fail('Source or human notes changed during owner reply preview. No update applied.');
+ const previous=new Map(state.cases.map(x=>[x.finding_id,x]));
+ const changes=[];
+ for(const c of accepted.cases){
+  const old=previous.get(c.finding_id);
+  if(!old)fail('Owner reply contains an unrecognized original finding.');
+  const keys=['status','due_date','next_action','blocker','owner'].filter(k=>old[k]!==c[k]);
+  if(keys.length)changes.push({finding_id:c.finding_id,keys,before:old,after:c});
+ }
+ ownerReplyPreview={snapshot,baseline,original,accepted,changes};
+ const tbody=$('owner-reply-changes');
+ for(const change of changes){
+  const tr=document.createElement('tr');
+  tr.append(textEl('td',change.finding_id),textEl('td',change.keys.join(', ')));
+  const details=(v)=>change.keys.map(k=>k+': '+String(v[k]??'(no date)')).join('\n');
+  tr.append(textEl('td',details(change.before),'reply-value'),
+    textEl('td',details(change.after),'reply-value'));tbody.append(tr);
+ }
+ $('owner-reply-summary').textContent=changes.length+' of '+accepted.changed+
+  ' original finding(s) have changed HUMAN planning fields. Original source, authorizations, and retest are not modified.';
+ $('owner-reply-review').hidden=false;
+ $('owner-handoff-message').textContent=
+  'PRIVATE reply previewed without local changes. Review all human field differences and explicitly confirm before applying.';
+ updateOwnerReplyApplyControl();
+}
+function applyOwnerReply(){
+ if(!state||!ownerReplyPreview||!$('source-ack').checked||
+    !$('owner-handoff-ack').checked||!$('owner-reply-ack').checked)
+  fail('Review and explicitly approve the PRIVATE human reply before applying.');
+ const pending=ownerReplyPreview;
+ if(state!==pending.snapshot||JSON.stringify(state.cases)!==pending.baseline||
+    JSON.stringify(state.findings)!==pending.original){
+  clearOwnerReplyPreview();fail('Private casework changed since the preview. Reimport the reply before any update.');
+ }
+ if(!pending.changes.length)fail('The owner reply contains no new HUMAN planning changes.');
+ if(!global.confirm('Accept '+pending.changes.length+
+    ' inspected HUMAN planning changes for '+pending.accepted.owner_label+
+    '? Current actual consent, remediation and authorized retest remain UNVERIFIED.'))return;
+ state={...state,cases:pending.accepted.cases};dirty=true;activeId=null;
+ $('edit-panel').hidden=true;clearRefresh();clearSchedule();clearAssignments();
+ $('owner-handoff-ack').checked=false;$('owner-reply-file').value='';
+ clearOwnerReplyPreview();render();
+ $('owner-handoff-message').textContent=pending.changes.length+
+  ' approved HUMAN planning changes imported atomically. Export updated PRIVATE Casework v1 JSON before closing.';
+}
+function openEdit(id){
+ if(!state||!$('source-ack').checked)fail('Source confirmation required.');
+ const c=state.cases.find(x=>x.finding_id===id);
+ if(!c)fail('Original finding is not in this private workspace.');
+ activeId=id;
+ $('edit-label').textContent='Editing human notes for original finding '+id+'. The original finding and source retest state remain read-only.';
+ $('edit-owner').value=c.owner;$('edit-status').value=c.status;
+ $('edit-date').value=c.due_date||'';$('edit-action').value=c.next_action;$('edit-blocker').value=c.blocker;
+ $('edit-panel').hidden=false;$('edit-panel').scrollIntoView({block:'nearest'});
+}
+function saveEdit(event){
+ event.preventDefault();
+ if(!state||!$('source-ack').checked||!activeId)fail('No editable human case selected.');
+ const index=state.cases.findIndex(x=>x.finding_id===activeId);
+ if(index<0)fail('Original finding no longer present.');
+ const old=state.cases[index],date=$('edit-date').value;
+ if(date&&!safeDate(date))fail('Human follow-up date must be within 2020–2100.');
+ const next=global.LightUpCasework.cleanCase({
+  ...old,owner:$('edit-owner').value,status:$('edit-status').value,
+  due_date:date||null,next_action:$('edit-action').value,
+  blocker:$('edit-blocker').value,updated_utc:new Date().toISOString()
+ },new Set(state.findings.map(f=>f.finding_id)));
+ const cases=state.cases.slice();cases[index]=next;state={...state,cases};
+ dirty=true;activeId=null;clearOwnerReplyPreview();clearSchedule();clearRefresh();$('edit-panel').hidden=true;render();
+ $('export-message').textContent='Human-only local change saved in memory. Export a PRIVATE Casework v1 draft before closing.';
+}
+function exportDraft(){
+ if(!state||!$('source-ack').checked||!$('draft-ack').checked)
+  fail('Private Casework export requires separately confirmed source and handoff.');
+ const packet=global.LightUpCasework.makePacket(state.findings,state.cases,state.digest);
+ saveFile('lightup-PRIVATE-updated-casework.json',JSON.stringify(packet,null,2)+'\n','application/json;charset=utf-8');
+ dirty=false;$('export-message').textContent='Updated PRIVATE human Casework draft saved. Return via a separately approved secure channel, never as proof of remediation.';
+}
+function textEl(tag,text,cls){const e=document.createElement(tag);e.textContent=String(text);if(cls)e.className=cls;return e;}
+function renderMonth(){
+ const grid=$('month-grid');grid.replaceChildren();
+ const value=$('month').value,valid=/^\d{4}-\d{2}$/.test(value)&&value>='2020-01'&&value<='2100-12';
+ if(!valid){$('month-message').textContent='Choose a month within 2020–2100.';return;}
+ const first=Date.parse(value+'-01T00:00:00Z');if(!Number.isFinite(first))return;
+ for(const name of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])grid.append(textEl('span',name,'month-head'));
+ const offset=(new Date(first).getUTCDay()+6)%7;
+ const counts=new Map();
+ for(const x of allRows()){
+  if(!eligible(x))continue;
+  const day=x.case.due_date,existing=counts.get(day)||{total:0,urgent:0,blocked:0};
+  existing.total++;if(['critical','high'].includes(x.finding.severity))existing.urgent++;
+  if(x.case.status==='blocked')existing.blocked++;counts.set(day,existing);
+ }
+ for(let i=0;i<42;i++){
+  const d=new Date(first+(i-offset)*86400000),day=d.toISOString().slice(0,10);
+  const inMonth=day.slice(0,7)===value,metric=counts.get(day)||{total:0,urgent:0,blocked:0};
+  const b=document.createElement('button');b.type='button';b.className='month-day'+(metric.total&&inMonth?' has-work':'')+(selectedDay===day?' selected':'');
+  b.disabled=!inMonth;b.setAttribute('aria-pressed',selectedDay===day?'true':'false');
+  b.setAttribute('aria-label',day+': '+metric.total+' human deadlines, '+metric.urgent+' critical/high, '+metric.blocked+' blocked. Filter this date.');
+  b.append(textEl('span',d.getUTCDate(),'date-number'));
+  if(metric.total&&inMonth){
+   b.append(textEl('span',metric.total+' planned','day-count'));
+   if(metric.urgent)b.append(textEl('span',metric.urgent+' critical/high','day-critical'));
+   if(metric.blocked)b.append(textEl('span',metric.blocked+' blocked','day-critical'));
+  }
+  b.addEventListener('click',()=>{selectedDay=selectedDay===day?null:day;render();});
+  grid.append(b);
+ }
+ $('month-message').textContent=selectedDay?'Date filter: '+selectedDay+'. Select it again or choose Clear day filter.':'Select a day to filter the human work queue. No deadlines are automatically scheduled.';
+}
+function adjustMonth(delta){
+ const value=$('month').value;
+ if(!/^\d{4}-\d{2}$/.test(value))return;
+ const d=new Date(value+'-01T00:00:00Z');d.setUTCMonth(d.getUTCMonth()+delta);
+ const next=d.toISOString().slice(0,7);if(next<'2020-01'||next>'2100-12')return;
+ $('month').value=next;selectedDay=null;render();
+}
+function render(){
+ if(!state)return;
+ clearAssignments();renderOwners();renderHandoffOwners();renderMonth();
+ const rows=filtered(),body=$('rows');body.replaceChildren();
+ for(const x of rows){
+  const f=x.finding,c=x.case,tr=document.createElement('tr');
+  const id=document.createElement('td');id.append(textEl('strong',f.severity.toUpperCase(),['critical','high'].includes(f.severity)?'urgent':''));
+  id.append(textEl('small',f.finding_id));tr.append(id);
+  tr.append(textEl('td',f.retest_status));
+  tr.append(textEl('td',c.status));
+  tr.append(textEl('td',c.owner||'Unassigned'));
+  tr.append(textEl('td',c.due_date||'No human date',!c.due_date?'muted':undefined));
+  const next=document.createElement('td');next.append(textEl('span',c.next_action||'No human action'));if(c.blocker.trim())next.append(textEl('small','BLOCKED: '+c.blocker));tr.append(next);const action=document.createElement('td'),button=textEl('button','Edit','muted-button');button.type='button';button.addEventListener('click',()=>{try{openEdit(f.finding_id);}catch(e){$('export-message').textContent='HOLD: '+e.message;}});action.append(button);tr.append(action);body.append(tr);
+ }
+ if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.textContent='No matching original findings.';tr.append(td);body.append(tr);}
+ const all=allRows(),counts=[
+  ['Original findings',all.length],['Scheduled human dates',all.filter(eligible).length],
+  ['Past-due human dates',all.filter(x=>eligible(x)&&x.case.due_date<todayUTC()).length],
+  ['Human blockers',all.filter(x=>x.case.status==='blocked').length],
+  ['Awaiting separate retest',all.filter(x=>x.case.status==='ready_for_retest').length],
+  ['Missing a human due date',all.filter(x=>isOpen(x.case)&&!x.case.due_date).length]
+ ];
+ const m=$('metrics');m.replaceChildren();for(const [label,count] of counts){const d=textEl('div','', 'metric');d.append(textEl('strong',count),textEl('span',label));m.append(d);}
+ $('scope-info').textContent=rows.length+' matching original findings'+(ownerFilter!==null?' for exact human owner '+ownerFilter:'')+'; '+rows.filter(eligible).length+' with eligible human follow-up dates. Missing dates are NOT assumed resolved.';
+ $('download').disabled=!$('calendar-ack').checked||!$('source-ack').checked;
+ $('casework-save').disabled=!$('draft-ack').checked||!$('source-ack').checked;
+}
+async function shaHex(s){
+ if(!global.crypto||!global.crypto.subtle)fail('This browser cannot calculate SHA-256 offline; calendar export held.');
+ const out=await global.crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+ return Array.from(new Uint8Array(out),x=>x.toString(16).padStart(2,'0')).join('');
+}
+function packetStructure(packet){
+ exactKeys(packet,PACKET,'Casework packet');
+ for(const k of FLAGS)if(packet[k]!==false)fail('Casework packet claims '+k+' authority.');
+ if(typeof packet.instructions!=='string'||packet.instructions.length>2000)fail('Invalid source instructions.');
+ if(!Array.isArray(packet.findings)||!Array.isArray(packet.cases))fail('Missing original findings/casework.');
+ for(const row of packet.findings)exactKeys(row,COLS,'finding');
+ for(const row of packet.cases)exactKeys(row,CASE,'case');
+ return global.LightUpCasework.loadPacket(packet);
+}
+async function openFile(file){
+ if(!file||file.size>MAX_FILE)fail('Select a Casework v1 JSON of 2 MiB or less.');
+ if(!$('source-ack').checked)fail('Confirm the independently authorized original client and engagement before import.');
+ const packet=strictJSON(await file.text());
+ const clean=packetStructure(packet);
+ const digest=await global.LightUpCasework.digest(clean.findings);
+ if(clean.source_sha256&&(!digest||clean.source_sha256!==digest))fail('Original source fingerprint mismatch or browser digest unavailable.');
+ const newState={...clean,digest};
+ state=newState;ownerFilter=null;clearOwnerReplyPreview();clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;dirty=false;activeId=null;selectedDay=null;$('month').value=todayUTC().slice(0,7);$('edit-panel').hidden=true;$('draft-ack').checked=false;
+ $('workspace').hidden=false;$('calendar-ack').checked=false;$('export-message').textContent='';
+ render();
+ $('message').textContent=clean.findings.length+' original findings loaded locally. Source is a historical unsigned draft; no current identity or consent checked.';
+}
+function icalEscape(s){
+ return String(s).replace(/\r\n?/g,'\n').replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/g,'');
+}
+function fold(line){
+ let out='',length=0;
+ for(const ch of line){const n=bytes(ch);if(length+n>75){out+='\r\n ';length=1;}out+=ch;length+=n;}
+ return out;
+}
+function stamp(){return new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');}
+function saveFile(name,content,type){
+ const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function exportCalendar(){
+ if(!state||!$('source-ack').checked||!$('calendar-ack').checked)fail('Private-calendar acknowledgment and source confirmation required.');
+ const candidates=$('export-scope').value==='all'?allRows():filtered();
+ const selected=candidates.filter(eligible),invalid=candidates.filter(x=>isOpen(x.case)&&x.case.due_date&&!safeDate(x.case.due_date));
+ if(invalid.length)fail('One or more human dates cannot be represented safely in the calendar (2020–2100).');
+ if(!selected.length)fail('No eligible human deadlines in the selected queue.');
+ if(selected.length>350)fail('Calendar exceeds source bounds.');
+ const privateMode=$('detail').value==='private',seen=new Set(),now=stamp();
+ const base=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//LightUp//Offline Human Remediation Calendar//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+ for(const x of selected){
+  const f=x.finding,c=x.case,uid=(await shaHex('lightup-human-due-v1\\0'+state.digest+'\\0'+f.finding_id)).slice(0,48)+'@local.lightup.invalid';
+  if(seen.has(uid))fail('Calendar UID collision; export held.');seen.add(uid);
+  const title=privateMode?('LightUp HUMAN PLAN: '+f.title):('LightUp human follow-up ('+f.severity+')');
+  const description=privateMode?'UNVERIFIED HUMAN CASEWORK; NOT RETEST OR APPROVAL.\\nFinding: '+f.finding_id+'\\nOwner: '+(c.owner||'unassigned')+'\\nNext action: '+c.next_action+'\\nOriginal retest: '+f.retest_status+'\\nHuman stage: '+c.status:'UNVERIFIED HUMAN FOLLOW-UP; NOT RETEST OR APPROVAL.';
+  base.push('BEGIN:VEVENT','UID:'+uid,'DTSTAMP:'+now,'DTSTART;VALUE=DATE:'+dateCompact(c.due_date),
+   'DTEND;VALUE=DATE:'+dateCompact(dayAfter(c.due_date)),'SUMMARY:'+icalEscape(title),
+   'DESCRIPTION:'+icalEscape(description),'STATUS:TENTATIVE','TRANSP:TRANSPARENT','CLASS:PRIVATE','END:VEVENT');
+ }
+ base.push('END:VCALENDAR');
+ const result=base.map(fold).join('\r\n')+'\r\n';
+ if(bytes(result)>1048576)fail('Calendar exceeds safe export size.');
+ saveFile(privateMode?'lightup-PRIVATE-human-followup.ics':'lightup-redacted-human-followup.ics',result,'text/calendar;charset=utf-8');
+ $('export-message').textContent=selected.length+' local tentative calendar events exported. They are NOT proof of current consent, remediation or retest.';
+}
+function exportAggregate(){
+ if(!state)fail('Open original Casework first.');
+ const list=allRows(),out=['severity,open,blocked,scheduled,overdue,ready_for_separate_retest,missing_due_date'];
+ for(const sev of PRIORITY){
+  const rows=list.filter(x=>x.finding.severity===sev);
+  out.push([sev,rows.filter(x=>isOpen(x.case)).length,rows.filter(x=>x.case.status==='blocked').length,
+    rows.filter(eligible).length,rows.filter(x=>eligible(x)&&x.case.due_date<todayUTC()).length,
+    rows.filter(x=>x.case.status==='ready_for_retest').length,rows.filter(x=>isOpen(x.case)&&!x.case.due_date).length].join(','));
+ }
+ saveFile('lightup-anonymous-human-workload.csv',out.join('\r\n')+'\r\n','text/csv;charset=utf-8');
+ $('export-message').textContent='Anonymous category counts exported. This is neither a retest outcome nor proof of a safe public disclosure.';
+}
+function reset(){
+ state=null;activeId=null;dirty=false;selectedDay=null;ownerFilter=null;clearOwnerReplyPreview();clearAssignments();clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
+ $('workspace').hidden=true;$('message').textContent='Private workspace cleared from app state. Already exported files and calendar imports remain under your control.';
+}
+$('file').addEventListener('change',async e=>{
+ if(dirty&&!global.confirm('Discard in-memory human changes? Export your PRIVATE Casework draft first.')){e.target.value='';return;}
+ if(state&&!global.confirm('Replace the previous source? Independently verify the newly selected client and exact engagement first.')){e.target.value='';return;}
+ state=null;activeId=null;dirty=false;$('edit-panel').hidden=true;$('workspace').hidden=true;
+ try{await openFile(e.target.files[0]);}catch(err){$('message').textContent='HOLD: '+err.message;}
+});
+for(const id of ['filter','severity','search'])$(id).addEventListener('input',render);
+$('refresh-preview-button').addEventListener('click',async()=>{try{await previewRefresh();}catch(e){clearRefresh();$('refresh-message').textContent='HOLD: '+e.message;}});
+$('refresh-apply-ack').addEventListener('change',refreshControls);
+$('refresh-ack').addEventListener('change',()=>{clearRefresh();});
+$('refresh-file').addEventListener('change',clearRefresh);
+$('refresh-apply').addEventListener('click',()=>{try{applyRefresh();}catch(e){$('refresh-message').textContent='HOLD: '+e.message;}});
+$('refresh-receipt').addEventListener('click',()=>{try{exportRefreshReceipt();}catch(e){$('refresh-message').textContent='HOLD: '+e.message;}});
+$('owner-filter-clear').addEventListener('click',()=>{ownerFilter=null;render();});
+$('assign-preview-button').addEventListener('click',()=>{try{previewAssignment();}catch(e){clearAssignments();$('assign-message').textContent='HOLD: '+e.message;}});
+$('assign-ack').addEventListener('change',assignmentControls);
+$('assign-apply').addEventListener('click',()=>{try{applyAssignment();}catch(e){$('assign-message').textContent='HOLD: '+e.message;}});
+for(const id of ['assign-owner','assign-empty-only'])$(id).addEventListener('change',clearAssignments);
+$('schedule-preview-button').addEventListener('click',()=>{try{previewSchedule();}catch(e){clearSchedule();$('schedule-message').textContent='HOLD: '+e.message;}});
+$('schedule-ack').addEventListener('change',scheduleControls);
+$('schedule-apply').addEventListener('click',()=>{try{applySchedule();}catch(e){$('schedule-message').textContent='HOLD: '+e.message;}});
+for(const id of ['schedule-anchor','schedule-scope',...PRIORITY.map(x=>'schedule-'+x)])$(id).addEventListener('change',clearSchedule);
+$('owner-handoff-label').addEventListener('change',()=>{$('owner-handoff-ack').checked=false;clearOwnerReplyPreview();updateHandoffControls();});
+$('owner-reply-file').addEventListener('change',()=>{clearOwnerReplyPreview();updateHandoffControls();});
+$('owner-handoff-ack').addEventListener('change',()=>{if(!$('owner-handoff-ack').checked)clearOwnerReplyPreview();updateHandoffControls();});
+$('owner-reply-ack').addEventListener('change',updateOwnerReplyApplyControl);
+$('owner-reply-apply').addEventListener('click',()=>{try{applyOwnerReply();}catch(e){$('owner-handoff-message').textContent='HOLD: '+e.message;}});
+$('owner-handoff-export').addEventListener('click',async()=>{try{await exportOwnerHandoff();}catch(e){$('owner-handoff-message').textContent='HOLD: '+e.message;}});
+$('owner-reply-import').addEventListener('click',async()=>{try{await importOwnerReply();}catch(e){$('owner-handoff-message').textContent='HOLD: '+e.message;}});
+$('calendar-ack').addEventListener('change',render);
+$('draft-ack').addEventListener('change',render);
+$('month').addEventListener('change',()=>{selectedDay=null;render();});
+$('month-prev').addEventListener('click',()=>adjustMonth(-1));
+$('month-next').addEventListener('click',()=>adjustMonth(1));
+$('day-clear').addEventListener('click',()=>{selectedDay=null;render();});
+$('edit-form').addEventListener('submit',e=>{try{saveEdit(e);}catch(err){e.preventDefault();$('export-message').textContent='HOLD: '+err.message;}});
+$('edit-cancel').addEventListener('click',()=>{activeId=null;$('edit-panel').hidden=true;});
+$('casework-save').addEventListener('click',()=>{try{exportDraft();}catch(err){$('export-message').textContent='HOLD: '+err.message;}});
+$('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked){clearRefresh();clearSchedule();clearOwnerReplyPreview();$('owner-handoff-ack').checked=false;}if(state)render();});
+$('download').addEventListener('click',async()=>{try{await exportCalendar();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
+$('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
+$('clear').addEventListener('click',()=>{if(dirty&&!global.confirm('Discard unsaved human notes?'))return;reset();});
+global.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+})(window);</script>
+</body>
+</html>
