@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; connect-src 'none'; frame-src 'none'; style-src 'unsafe-inline'">
+<title>LightUp | Offline Remediation Workspace</title><style>
+:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#09121d;color:#e6eff8}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse 70% 35% at 50% -10%,#215066,transparent 75%),#09121d}
+main{max-width:1140px;padding:38px 25px 65px;margin:auto}
+.kicker{color:#8ee4eb;letter-spacing:.17em;font-size:11px;font-weight:850}.kicker em{color:#f5c27b;font-style:normal}
+h1{font-size:clamp(38px,5.6vw,65px);letter-spacing:-.055em;margin:23px 0 15px;line-height:1.06}
+h1 span{color:#82dce3}.lead{color:#a5bbd0;max-width:800px;line-height:1.7;font-size:16px}
+.notice{padding:19px 21px;margin:30px 0 35px;border:1px solid #795a39;border-radius:12px;background:#29251e;color:#f4d7a9;font-size:13px}
+.sub{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+h2{font-size:21px;letter-spacing:-.03em}.sub p{font-size:12px;color:#a4c2d0}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.card{border:1px solid #355265;background:#142433;border-radius:17px;padding:23px;display:flex;flex-direction:column;min-height:255px}
+.card.feature{grid-column:span 2;background:linear-gradient(135deg,#153447,#152332);border-color:#5b95a5}
+.tag{font-size:10px;font-weight:850;letter-spacing:.15em;color:#8fe7ed}
+.card h3{font-size:21px;line-height:1.2;margin:12px 0 10px}.card p{font-size:13px;color:#b1c5d5;line-height:1.58;flex:1}
+.card a{background:#83e0e5;color:#07323c;text-decoration:none;font-size:13px;font-weight:850;border-radius:9px;padding:12px 15px;display:inline-flex;justify-content:space-between;align-items:center;gap:12px}
+.card a:focus-visible{outline:3px solid #f6cb83;outline-offset:4px}
+.card a:hover{background:#baf7f6}.hint{font-size:11px;color:#8aa4b5;margin-top:14px}
+.flow{margin-top:35px;border:1px solid #2f4659;border-radius:16px;padding:24px;background:#101d2a}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:16px}
+.steps div{border-top:2px solid #42798a;padding-top:10px}.steps strong{display:block;color:#ace6eb;font-size:13px}.steps span{display:block;font-size:12px;color:#a6bdce;margin-top:4px}
+footer{border-top:1px solid #294356;color:#83a9ba;font-size:11px;margin-top:40px;padding-top:24px;line-height:1.8}
+@media(max-width:900px){.grid{grid-template-columns:1fr 1fr}.card.feature{grid-column:span 2}.steps{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.grid,.steps{grid-template-columns:1fr}.card.feature{grid-column:span 1}main{padding:25px 16px 40px}.sub{display:block}}
+</style></head><body><main>
+<div class="kicker">LIGHTUP / OFFLINE HUMAN REMEDIATION <em>• PRIVATE PREVIEW</em></div>
+<h1>One workspace.<br><span>Safer handoffs.</span></h1>
+<p class="lead">Seven independently prepared LightUp human coordination tools in a single offline folder: review original findings, plan human dates and dependencies, prepare owner replies, and privately encrypt approved exports. Every app stays separate and source-bound; there is no automatic transfer of customer data between apps.</p>
+<div class="notice"><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</strong> This offline kit does not verify your identity, establish client or operator consent, validate current authority, approve scans or retests, mark remediation as fixed, or send anything to a target. Confirm original client, exact engagement and private channel independently before each import/export. Never interpret an absent finding as repaired.</div>
+<div class="sub"><h2>Choose your task</h2><p>Files open directly from this folder. No account, backend or internet required.</p></div>
+<div class="grid">
+<article class="card feature"><div class="tag">01 / PRIVATE FILE TRANSFER</div><h3>Encrypted Handoff Vault</h3><p>Bundle existing privately authorised CSV, JSON, text and Markdown exports, encrypt with a passphrase, securely reopen later and prepare a minimum-files onward handoff. Protected content and filenames stay inside ciphertext, without external services.</p><a href="standalone.html">Open the encrypted vault <span>↗</span></a><div class="hint">NEW · self-contained LightUp Handoff Vault · no customer data in kit</div></article>
+<article class="card"><div class="tag">02 / EVIDENCE</div><h3>Evidence Review Board</h3><p>Original five-column findings source and optional original Casework handoff; private human evidence references, reviewer questions and unchanged-source note follow-up.</p><a href="partner-apps/evidence-review.html">Open evidence review <span>↗</span></a><div class="hint">Pinned source · PR #1623</div></article>
+<article class="card"><div class="tag">03 / CALENDAR</div><h3>Casework Calendar</h3><p>Plan human due dates, owners and blocked follow-ups. Import original private Casework, export tentative calendar and prepare owner-specific private packets.</p><a href="partner-apps/casework-calendar.html">Open calendar <span>↗</span></a><div class="hint">Pinned source · PR #1635</div></article>
+<article class="card"><div class="tag">04 / OWNER RESPONSE</div><h3>Owner Reply Desk</h3><p>Reopen an exact-source human-only single-owner handoff, draft next action, due date or blocker response, and send the private reply through an independent approved channel.</p><a href="partner-apps/owner-reply.html">Open owner reply <span>↗</span></a><div class="hint">Pinned source · PR #1635</div></article>
+<article class="card"><div class="tag">05 / PREREQUISITES</div><h3>Dependency Board</h3><p>Plan human dependencies, critical estimated chains and owner workloads from original Casework, without issuing remediation commands or inventing completed fixes.</p><a href="partner-apps/dependency-board.html">Open dependency board <span>↗</span></a><div class="hint">Pinned source · PR #1638</div></article>
+<article class="card"><div class="tag">06 / RESOURCE MODEL</div><h3>Remediation Capacity Studio</h3><p>Original source-bound human staffing estimates, availability, blockers, hours-at-risk and tentative backlog. Import original separately authorized findings and Casework sources.</p><a href="partner-apps/capacity-studio.html">Open capacity studio <span>↗</span></a><div class="hint">Pinned source · PR #1583</div></article>
+<article class="card"><div class="tag">07 / BUDGET MODEL</div><h3>Remediation Funding Studio</h3><p>Model cash releases, finance coverage and illustrative critical/high risk pressure from existing aggregate Capacity exports only. No billing or actual work approvals.</p><a href="partner-apps/funding-studio.html">Open funding studio <span>↗</span></a><div class="hint">Pinned source · PR #1586</div></article>
+</div>
+<section class="flow"><h2>Private collaboration flow</h2><div class="steps"><div><strong>1. Start with original source</strong><span>Obtain original files through independently authenticated, authorised channels.</span></div><div><strong>2. Coordinate human work</strong><span>Open Evidence, Calendar and Dependency tools independently against the exact same engagement.</span></div><div><strong>3. Prepare owner return</strong><span>Send a source-bound owner packet privately; preview and accept separately inside the original workflow.</span></div><div><strong>4. Encrypt minimum needed</strong><span>In the Vault, choose only authorised files. Share password separately; recipient rechecks identity and scope.</span></div></div></section>
+<footer>Source artifacts are pinned by SHA-256 in <strong>MANIFEST.json</strong> and the packager; only unchanged, separately held original owner snapshots are included. All five applications run independently; no runtime network or shared browser storage. Cryptographic integrity does not constitute current authorisation. This workspace is not deployed to production.</footer>
+</main></body></html>

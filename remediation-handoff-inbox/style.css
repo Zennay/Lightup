@@ -1,0 +1,19 @@
+:root{font-family:ui-sans-serif,system-ui,sans-serif;color-scheme:dark;color:#e3f7f4;background:#081923}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#21546a,transparent 44%),#081923}main{max-width:1150px;margin:auto;padding:42px 20px 70px}header{max-width:830px;padding-bottom:14px}.eyebrow{color:#73efd4;font-weight:900;font-size:.8rem;letter-spacing:.23em}h1{font-size:clamp(2.3rem,6vw,4.2rem);letter-spacing:-.065em;margin:12px 0 14px}h2{margin-top:0;font-size:1.4rem}p{line-height:1.6;color:#b3d0d7}.hold{display:inline-block;padding:10px 15px;color:#f0d490;border:1px solid #c4a354;border-radius:9px;font-size:.85rem}section{border:1px solid #355f6d;background:#132b36;padding:25px;border-radius:17px;margin:18px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px}label{font-weight:700;font-size:.87rem;display:grid;gap:7px}input:not([type=checkbox]),select{font:inherit;color:#fff;background:#0b202b;border:1px solid #73919b;border-radius:9px;padding:10px;margin:8px 0 16px;width:100%}button{padding:12px 17px;margin:5px 7px 5px 0;border:0;border-radius:9px;background:#72efd1;color:#072328;font-weight:900;cursor:pointer}.secondary{background:#315664;color:#e5ffff}button:disabled{opacity:.38;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e8ca85;outline-offset:3px}.numbers{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:18px 0}.number{background:#0d212a;border:1px solid #356071;border-radius:11px;padding:16px}.number strong{display:block;font-size:1.8rem;color:#78f4d5}.number span{font-size:.81rem;color:#b5cbd4}.warn{border-left:4px solid #d9ae5a;color:#f1d8a6;background:#24343a;padding:11px 14px;font-size:.87rem}.tableWrap{overflow:auto;max-height:660px}table{width:100%;border-collapse:collapse;font-size:.85rem}td,th{border-bottom:1px solid #315865;text-align:left;vertical-align:top;padding:11px 9px;overflow-wrap:anywhere}th{position:sticky;top:0;background:#1b3946}small{display:block;color:#95bac4}#binding{overflow-wrap:anywhere}#notice[data-error=true]{color:#ffb4b4}footer{text-align:center;font-size:.83rem;color:#98b9c2;margin-top:35px}
+/* HUMAN workplan: readable inline human-only editing, no status-as-verdict badges. */
+#workplan .tableWrap{max-height:680px}
+#workplan td input:not([type=checkbox]),#workplan td select,#workplan td textarea{box-sizing:border-box;width:100%;min-width:135px;margin:0;font-size:.82rem}
+#workplan td textarea{min-width:200px;min-height:56px;resize:vertical;padding:9px 10px;background:#0b202b;border:1px solid #668a97;color:#f2ffff;border-radius:8px;font-family:inherit}
+#workplan td:first-child{min-width:35px}
+#planSaved[data-dirty=true]{color:#ffe1a3;font-weight:750}
+#planNotice[data-error=true]{color:#ffb4b4}
+#workplan h3{margin-top:30px;border-top:1px solid #3a626d;padding-top:20px}
+#workplan .grid button{align-self:end}
+
+/* Source-bound PRIVATE reviewer merge decisions: readable conflicts without implying authority. */
+#planMergePanel{border:1px solid #7c9eae;border-radius:12px;padding:16px;background:#0b202b;margin:14px 0}
+#planMergeChoices{max-height:460px;margin:14px 0}
+.planMergeItem{margin:8px 0;padding:14px;border:1px solid #365766;border-radius:10px;background:#142d39;overflow-wrap:anywhere}
+.planMergeItem p{margin:8px 0;line-height:1.35}
+.planMergeItem strong{color:#d1f4ec}
+.planMergeItem label{max-width:440px;margin:12px 0 0}
+#planMergePanel button:disabled{opacity:.4}

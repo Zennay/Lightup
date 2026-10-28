@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp · PRIVATE cross-app HUMAN triage</title><link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="triage.css"><script src="../remediation-handoff-inbox/original-casework.js" defer></script><script src="triage.js" defer></script><script src="custody.js" defer></script><script src="windows-overlay.js" defer></script><script src="owner-actions.js" defer></script></head>
+<body><header><p class="kicker">LIGHTUP / PRIVATE ORIGINAL-SOURCE HUMAN COORDINATION / DRAFT-HOLD</p>
+<h1>Cross-app HUMAN Inbox</h1><p>One original finding at a time: local workplan + PRIVATE artifact fingerprints + human runbooks + owner request/reply history. All source claims stay unverified and unchanged.</p>
+<nav><a href="index.html">← Operations Hub</a><a href="#intake">Import local PRIVATE records</a><a href="#workqueue">Find human follow-ups</a><a href="#custody">Check local file fingerprints</a><a href="#owner-actions">HUMAN owner action desk</a><a href="#boundaries">Authority boundaries</a></nav></header>
+<main><section id="intake"><h2>1 · Bind to the original HUMAN finding set</h2>
+<p>The original <strong>Evidence Handoff Inbox workplan JSON</strong> is required first; it supplies every original finding ID. The other three PRIVATE exports are optional and may join only to precisely the same declared source SHA, client label, engagement label, and original IDs. Never infer ownership or proof from these labels.</p>
+<div class="notice">
+<h3>Atomic multi-source intake</h3>
+<p>Select the original HUMAN workplan JSON and any combination of its original CSV, Artifact Ledger, HUMAN Runbooks and Response Register exports. The desk admits <strong>all complete matching sources together or none at all</strong>. Existing locally imported data is not changed on HOLD. With no workplan selected, the active original source is used and only chosen companions are replaced.</p>
+<label for="batch-intake">Select 1–5 original PRIVATE files (max 12 MiB total)</label>
+<input id="batch-intake" type="file" multiple accept=".json,.csv,application/json,text/csv">
+<div class="actions"><button id="batch-admit" type="button">Preview and import original sources atomically</button></div>
+<p id="batch-status" role="status" aria-live="polite">No multi-source intake queued.</p>
+</div>
+<div class="notice">
+<h3>PRIVATE portable source session</h3>
+<p>Once the original sources are admitted, export them as a single source-bound PRIVATE JSON envelope to continue the same HUMAN investigation on another approved offline workstation. The export contains original finding IDs, self-declared client and owner details, notes and evidence metadata; <strong>it is not encrypted</strong>. For confidential transfer use the separately bundled encrypted Handoff Vault and verify your recipient.</p>
+<div class="actions"><button type="button" id="session-export" disabled>Export PRIVATE source session JSON</button>
+<label for="session-import">Choose existing PRIVATE source session JSON</label>
+<input type="file" id="session-import" accept=".json,application/json">
+<button type="button" id="session-restore">Restore entire PRIVATE source session atomically</button></div>
+<p id="session-status" role="status" aria-live="polite">No portable PRIVATE session restored.</p>
+</div>
+<div class="cards"><article><h3>Original HUMAN workplan <span class="required">REQUIRED</span></h3><label for="workplan">Import original `lightup.private_human_original_finding_workplan`</label><input type="file" id="workplan" accept=".json,application/json"><p id="workplan-state" class="intake-state">Not imported</p></article>
+<article><h3>Original findings CSV (optional)</h3><label for="csv">Import exact five-column ORIGINAL findings export; locally compare canonical SHA-256 to original workplan</label><input type="file" id="csv" accept=".csv,text/csv"><p id="csv-state" class="intake-state">Not imported · source severity unknown</p></article>
+<article><h3>PRIVATE evidence artifact inventory</h3><label for="artifact">Import `lightup.private_artifact_ledger`</label><input type="file" id="artifact" accept=".json,application/json"><p id="artifact-state" class="intake-state">Not imported</p></article>
+<article><h3>PRIVATE HUMAN runbooks</h3><label for="runbook">Import `lightup.private_human_remediation_runbooks`</label><input type="file" id="runbook" accept=".json,application/json"><p id="runbook-state" class="intake-state">Not imported</p></article>
+<article><h3>PRIVATE HUMAN change-window plan</h3>
+<label for="human-windows">Import original Source Change Window Board JSON; requires source-matched findings CSV</label>
+<input type="file" id="human-windows" accept=".json,application/json">
+<p id="human-windows-state" class="intake-state">Not imported</p></article>
+<article><h3>PRIVATE response register</h3><label for="response">Import `lightup.private_human_response_reconciliation`</label><input type="file" id="response" accept=".json,application/json"><p id="response-state" class="intake-state">Not imported</p></article></div>
+<p id="source" class="source-line">No ORIGINAL HUMAN workplan loaded. Import that first.</p><div class="actions"><button id="forget" class="quiet" type="button">Forget all imported PRIVATE data</button></div><p role="status" id="notice" aria-live="polite"></p></section>
+<section id="workqueue" hidden><h2>2 · Whole-finding HUMAN coordination queue</h2><div class="stats" id="stats" aria-live="polite"></div><p class="small">A missing optional import is <strong>unknown</strong>, not zero or proof of missing evidence, rejected owner consent, completed retest or genuine severity. Original report/source labels are self-declared; urgency is advisory for HUMAN coordination only.</p>
+<div class="filters"><label>Find exact ID / declared owner / note<input id="query" type="search" placeholder="Search local HUMAN work"></label>
+<label>Human follow-up filter<select id="mode"><option value="all">All ORIGINAL findings</option><option value="critical_high">Original source CLAIM: critical/high</option><option value="missing_docs">No listed artifact (inventory imported)</option><option value="no_owner">No HUMAN owner alias</option><option value="no_steps">No runbook steps (runbooks imported)</option><option value="needs_reply">Unanswered original HUMAN request (register imported)</option><option value="custody_attention">Local SHA checks needing HUMAN review</option>
+<option value="unscheduled_window">Unscheduled HUMAN change-window allocations</option>
+<option value="window_human_hold">Tentative window HUMAN HOLD</option><option value="needs_input">HUMAN clarification/input flagged</option><option value="due">Tentative HUMAN due date reached</option><option value="handoff">Human handoff prepared</option></select></label>
+<label>Self-declared human owner<select id="owner"><option value="">All owners</option></select></label></div>
+<p id="count" class="counter"></p><div id="items" class="inbox-items"></div>
+<div class="actions"><button type="button" id="brief">Export PRIVATE team discussion brief</button><button type="button" id="ownerBrief" class="quiet">Export PRIVATE one-owner handoff</button><button type="button" id="anonymous" class="quiet">Export anonymous coverage counts CSV</button><button type="button" id="binding" class="quiet">Export PRIVATE source-binding receipt</button></div>
+<p class="small">Exports are generated locally. A PRIVATE briefing may contain original finding IDs, self-declared owners and notes: verify recipient, storage and transport independently. Counts CSV contains neither source/tenant labels nor IDs, dates or notes. No scripts appear in generated HTML.</p>
+</section>
+<section id="custody" aria-labelledby="custody-head"><h2 id="custody-head">3 · Local file fingerprint custody desk</h2>
+<p>After loading an ORIGINAL HUMAN workplan and the PRIVATE Artifact Ledger, choose local evidence files yourself. SHA-256 is computed <strong>locally in your browser</strong> and compared to the Ledger&#39;s original source-bound filename, size and SHA-256 rows. File bytes are never uploaded, stored or printed. This checks a local byte fingerprint, <strong>not authenticity, evidence truth or a remediation fix</strong>.</p>
+<p class="notice" id="custody-state" role="status">Import workplan + Artifact Ledger before selecting local files.</p>
+<label for="custody-files">Choose local evidence files to compare (up to 120; max 16 MiB per file)</label>
+<input type="file" id="custody-files" multiple disabled>
+<div class="actions"><button type="button" id="custody-review" disabled>Compare selected local files</button>
+<button type="button" id="custody-export" disabled>Export PRIVATE local SHA comparison report</button>
+<button type="button" id="custody-brief" class="quiet" disabled>Export scriptless PRIVATE review brief</button>
+<button type="button" id="custody-forget" class="quiet">Forget file selections and results</button></div>
+<p id="custody-progress" role="status" aria-live="polite"></p><p id="custody-summary" class="counter"></p>
+<div class="inbox-items" id="custody-results"></div>
+<p class="small">No original evidence bytes are present in the Ledger; SHA matches do not authenticate custody, ownership or content meaning. Duplicate filenames, repeated local selections and cross-finding fingerprint collisions are reported as HUMAN review ambiguities, never silently assigned. Unselected Ledger rows mean <strong>not locally compared</strong>, not missing security evidence.</p>
+</section>
+<section id="owner-actions" aria-labelledby="owner-actions-title">
+<h2 id="owner-actions-title">4 · Original-finding HUMAN Owner Action Desk</h2>
+<p>Prepare original-source-bound HUMAN handoff actions without granting a fix, retest, scan or approval. This separate read-only owner view combines only original findings assigned to the same self-declared HUMAN owner. Original owner-response requests are shown <strong>only</strong> when their intended recipient alias exactly matches that owner. Runbook steps are restricted to that same declared responsible alias. No unrelated owner replies, private review notes, evidence filenames or evidence file bytes are exported.</p>
+<p class="notice" id="owner-actions-state" role="status">Import an ORIGINAL HUMAN workplan to view self-declared owner workloads.</p>
+<div class="filters"><label for="owner-actions-select">Declared HUMAN owner</label>
+<select id="owner-actions-select"><option value="">Choose one owner for a minimal handoff</option></select></div>
+<div class="stats" id="owner-actions-summary"></div>
+<div class="inbox-items" id="owner-actions-list"></div>
+<div class="actions"><button type="button" id="owner-actions-export" disabled>Export PRIVATE one-owner actionable brief</button>
+<button type="button" id="owner-actions-json" class="quiet" disabled>Export PRIVATE source-bound one-owner JSON</button>
+<button type="button" id="owner-actions-counts" disabled>Export human workload counts CSV</button>
+<button type="button" id="owner-actions-clear" class="quiet">Clear selected HUMAN owner</button></div>
+<p id="owner-actions-feedback" role="status" aria-live="polite"></p>
+<p class="small">Recipient labels are self-declared and never authenticated. An owner-only export is confidential, recipient-scoped human planning, not an action instruction, legal authorization or security outcome. Source SHA equality is not issuer authentication. Source changes clear the active owner handoff immediately.</p>
+</section>
+<section id="boundaries"><h2>Unchanged HOLD / release and privacy</h2><p class="notice"><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</strong> This is a human-only offline observer of separately exported unverified records. It only reads explicitly selected local evidence-file bytes transiently to calculate SHA-256; it does not store or transmit those bytes. It never accesses URLs, targets, scanners, grants, retests, runtimes, external services or cookies. It cannot authenticate client/operator identities, source origins, evidence truth, fixes or release approval.</p><p>Production activation, main merge and deployment require original exact-head hosted and permanent named VPS CI, original source-owner and independent privacy/security reviews, authenticated separate genuine client and operator consent revalidated at action time, original #177/#182/#829, and explicit HUMAN GO.</p></section>
+</main><footer><p>PRIVATE local memory only · no persistence, requests, grants, fixes, retests or production activity</p></footer></body></html>
