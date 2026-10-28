@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import stat
 
@@ -24,6 +25,13 @@ def _unique_pairs(pairs):
 
 def _reject_constant(value):
     raise ValueError("non-finite JSON number")
+
+
+def _finite_float(value):
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError("out-of-range JSON decimal")
+    return number
 
 
 def _read_private_regular(path):
@@ -62,7 +70,8 @@ def inspect(path):
     try:
         data = _read_private_regular(path)
         source = json.loads(data.decode("utf-8"), object_pairs_hook=_unique_pairs,
-                            parse_constant=_reject_constant)
+                            parse_constant=_reject_constant,
+                            parse_float=_finite_float)
         if type(source) is not dict:
             return receipt
         if source.get("status") not in ("HOLD", "REVIEW_ONLY"):
