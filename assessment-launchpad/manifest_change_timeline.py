@@ -53,6 +53,10 @@ def admit_sources(paths: list[str]):
     """Re-admit 2–8 original source bundles through the existing pinned scope gate."""
     if not 2 <= len(paths) <= MAX_SOURCES:
         raise Hold("source timeline requires 2–8 original PRIVATE manifest bundles")
+    # Reject repeated inputs before opening any private source. The admitted
+    # canonical paths below remain the authoritative overlap check.
+    if len(set(paths)) != len(paths):
+        raise Hold("source timeline directories must be distinct")
     admitted = [admit_saved_bundle(path) for path in paths]
     absolute = [item[0] for item in admitted]
     if len(set(absolute)) != len(absolute):
