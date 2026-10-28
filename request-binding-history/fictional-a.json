@@ -1,0 +1,62 @@
+{
+  "format": "lightup.request_binding_preparation.v1",
+  "authority": {
+    "client_consent_verified": false,
+    "operator_consent_verified": false,
+    "authorization_granted": false,
+    "execution_allowed": false,
+    "release_approved": false
+  },
+  "source": {
+    "source_owner_ref": "PR-1570",
+    "request_selection_digest_unsigned": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "source_revision_sha256_unsigned": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "review_instant_utc": "2026-10-18T09:00:00+00:00",
+    "engagement": "Fictional engagement",
+    "client": "Fictional client",
+    "requested_risk": 2,
+    "proposed_asset_count": 1,
+    "proposed_assets_private_opt_in": []
+  },
+  "disposition": "REVIEW_ONLY_SINGLE_CANDIDATE",
+  "summary": {
+    "mismatch_reason_counts_non_authorizing": {
+      "NOT_ADMINISTRATIVELY_APPROVED": 1
+    },
+    "recorded_requests": 2,
+    "approved_candidate_matches": 1,
+    "approved_but_not_compatible": 0,
+    "not_administratively_approved": 1,
+    "prior_stored_grant_rows": 0,
+    "unbound_legacy_grant_rows": 0
+  },
+  "candidates": [
+    {
+      "ordinal": 1,
+      "private_reference": "ed8d5bbcc6204282",
+      "request_id": null,
+      "stored_status": "approved",
+      "requested_risk": 2,
+      "request_source_status": "candidate_review_only",
+      "previously_bound_grant_rows": 0,
+      "review_flags_non_authorizing": [],
+      "review_action": "Fictional only; no client permission."
+    },
+    {
+      "ordinal": 2,
+      "private_reference": "a7a8af00db83c622",
+      "request_id": null,
+      "stored_status": "submitted",
+      "requested_risk": 2,
+      "request_source_status": "not_administratively_approved",
+      "previously_bound_grant_rows": 0,
+      "review_flags_non_authorizing": [
+        "NOT_ADMINISTRATIVELY_APPROVED"
+      ],
+      "review_action": "Fictional only."
+    }
+  ],
+  "caveats": [
+    "FICTIONAL EXAMPLE FOR USER INTERFACE; NOT CREATED BY AN AUTHENTICATED OPERATOR. NO PERMISSION."
+  ]
+}
