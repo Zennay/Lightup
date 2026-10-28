@@ -71,6 +71,8 @@ def admit_sources(paths: list[str]):
 def build_packet(admitted, compare_from=None, compare_to=None):
     """Create an operator-ordered source timeline without publishing endpoint values."""
     snapshot_count = len(admitted)
+    if not 2 <= snapshot_count <= MAX_SOURCES:
+        raise Hold("source timeline requires 2–8 original PRIVATE manifest bundles")
     if (compare_from is None) != (compare_to is None):
         raise Hold("select both interval snapshot ordinals or neither")
     if compare_from is None:
