@@ -84,6 +84,8 @@ def build_packet(admitted, compare_from=None, compare_to=None):
     seen = set()
 
     for ordinal, (_path, raw_manifest, endpoints) in enumerate(admitted, start=1):
+        if len(set(endpoints)) != len(endpoints):
+            raise Hold("original PRIVATE manifest contains duplicate endpoint identities")
         position = {value: slot for slot, value in enumerate(endpoints, start=1)}
         positions.append(position)
         for value in endpoints:
