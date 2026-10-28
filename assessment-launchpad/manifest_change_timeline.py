@@ -301,7 +301,7 @@ def render_preview(packet):
         " ".join(state.lower() + "=" + str(interval["counts"][state]) for state in TRANSITIONS)
     )
     lines.append("authority=NONE · no assessment, target contact, grant, dispatch or release")
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 
 def main(argv=None):
