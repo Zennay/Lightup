@@ -64,6 +64,8 @@ def _read_private_regular(path):
             before = os.fstat(fd)
             if not stat.S_ISREG(before.st_mode):
                 raise ValueError("not a regular file")
+            if before.st_uid != os.geteuid():
+                raise ValueError("file not owned by invoking account")
             if before.st_mode & 0o077 or before.st_nlink != 1:
                 raise ValueError("not private")
             if not 0 < before.st_size <= MAX_BYTES:
