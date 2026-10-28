@@ -104,13 +104,18 @@ def inspect(path, expected_sha256=None):
             return receipt
         if any(source.get(flag) is not False for flag in FALSE_FLAGS):
             return receipt
-        # No source value can promote the output to REVIEW_ONLY or authorize work.
+        # Never disclose untrusted source metadata when byte custody mismatches.
         digest = hashlib.sha256(data).hexdigest()
+        if expected_sha256 is not None:
+            matches = secrets.compare_digest(digest, expected_sha256)
+            if not matches:
+                receipt["byte_identity_matches"] = False
+                return receipt
+            receipt["byte_identity_matches"] = True
+        # No source value can promote the output to REVIEW_ONLY or authorize work.
         receipt.update(source_reported_status=source["status"],
                        source_sha256=digest,
                        byte_count=len(data))
-        if expected_sha256 is not None:
-            receipt["byte_identity_matches"] = secrets.compare_digest(digest, expected_sha256)
     except (OSError, ValueError, UnicodeError, TypeError, RecursionError):
         pass
     return receipt
