@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src '__LIGHTUP_EDITOR_SCRIPT_HASH__'; style-src '__LIGHTUP_EDITOR_STYLE_HASH__'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp — PRIVATE HUMAN Remediation Runbook</title>
+<!--LIGHTUP_EDITOR_STYLE-->
+</head>
+<body>
+<header>
+ <h1>LightUp · PRIVATE HUMAN remediation runbooks</h1>
+ <p>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · Human preparation, never execution or verification.</p>
+ <span class="pill">Offline · no network · no browser storage · no grants</span>
+</header>
+<main>
+<section>
+ <h2>1 · Attach original PRIVATE HUMAN workplan</h2>
+ <p>Import the <strong>complete original-source-bound HUMAN workplan JSON</strong> exported by the held Evidence Handoff Inbox PR #1644. The packet is self-declared: matching source SHA or identity is <strong>not authentication</strong>. Verify the original source and human recipients outside this application.</p>
+ <label for="workFile">Full source-bound human workplan JSON (max 1 MiB)</label>
+ <input id="workFile" type="file" accept=".json,application/json">
+ <div class="actions"><button class="primary" id="loadWork">Open original workplan</button><button class="danger" id="forget">Forget all PRIVATE content</button></div>
+ <p id="source" class="meta">No PRIVATE source loaded.</p><p id="dirty" class="warning">No local storage. Save your PRIVATE work before leaving or refreshing.</p>
+ <p id="notice" class="notice" role="status" aria-live="polite">Choose an original workplan to start.</p>
+</section>
+<section id="editor" hidden>
+ <h2>2 · Draft stepwise HUMAN change runbooks</h2>
+ <p class="warning">These are proposed human coordination steps, not commands to execute. A proposed rollback is NOT proof it was tested. A human review stage is NOT client consent, approval, verified fix, or authority to retest.</p>
+ <p id="summary" class="meta"></p>
+ <div class="grid">
+  <div><label for="finding">Original finding</label><select id="finding"></select></div>
+  <div><label for="filter">View</label><select id="filter"><option value="all">All original findings</option><option value="missing">Without a runbook</option><option value="blocked">Human-input requested</option><option value="handoff">Human handoff prepared</option></select></div>
+ </div>
+ <div class="actions"><button id="add" class="primary">Add HUMAN runbook step</button><button id="removeAll">Clear steps for this finding</button></div>
+ <div id="details" class="meta"></div><div id="steps"></div>
+</section>
+<section id="io" hidden>
+ <h2>3 · Save or privately hand off</h2>
+ <div class="actions">
+ <button id="save" class="primary">Download complete PRIVATE runbook JSON</button>
+ <button id="print">Download selected PRIVATE scriptless HTML</button>
+ <button id="counts">Download counts-only CSV</button>
+ </div>
+ <div class="grid">
+  <div><label for="ownerSelect">HUMAN recipient alias (unverified)</label><select id="ownerSelect"><option value="">No declared HUMAN owner</option></select></div>
+  <div><label for="ownerExport">PRIVATE HUMAN owner-specific handoff</label><button id="ownerExport" disabled>Download only this owner's HUMAN steps (JSON)</button><button id="ownerPrint" disabled>Readable PRIVATE owner briefing (HTML)</button></div>
+ </div>
+ <p>PRIVATE exports include declared source and original finding identifiers; transfer only over a separately authenticated confidential channel. Counts-only CSV removes source, finding, recipient and note identifiers; small groups can still be sensitive.</p>
+ <p><strong>New complete recipient workflow:</strong> place the independently published <a href="owner-return.html">PRIVATE HUMAN owner handoff and return desk (owner-return.html)</a> beside this offline file. The owner can open the one-owner packet, add human questions and download a source-bound PRIVATE return. An operator can open the same desk with the original one-owner packet plus the returned packet to review every original step without accepting it as an authenticated owner response, verified fix or consent. No network connection is used.</p>
+ <label for="restoreFile">Restore previously exported PRIVATE runbooks (max 8 MiB)</label>
+ <input type="file" id="restoreFile" accept=".json,application/json">
+ <div class="actions"><button id="restore">Preview and replace local HUMAN runbooks</button></div>
+</section>
+<section id="collab" hidden>
+ <h2>4 · PRIVATE HUMAN reviewer collaboration</h2>
+ <p>Open another complete exported runbook from the same self-declared original source. Nonempty changes are previewed; conflicting HUMAN planning for the same finding must be resolved explicitly. This never verifies findings or changes the original evidence.</p>
+ <label for="mergeFile">Other reviewer PRIVATE complete runbook JSON (max 8 MiB)</label>
+ <input type="file" id="mergeFile" accept=".json,application/json">
+ <div class="actions"><button id="mergePreview" class="primary">Preview exact-source HUMAN differences</button><button id="mergeCancel">Discard preview</button><button id="mergeUndo" disabled>Undo last local HUMAN merge</button></div>
+ <p id="mergeSummary" class="meta"></p>
+ <div id="mergePanel" hidden><div id="mergeChoices"></div>
+ <div class="actions"><button class="primary" id="mergeApply" disabled>Apply manually resolved HUMAN differences</button></div></div>
+</section>
+
+<section id="ownerReplies" hidden>
+ <h2>5 · Combined read-only HUMAN owner-return desk</h2>
+ <p>Import PRIVATE HUMAN owner returns created in the separate owner-return.html recipient desk. This reads several self-declared owners against the current exact local runbooks. It cannot authenticate a person, change original plans, execute remediation or verify a fix.</p>
+ <label for="returnFile">Source-bound one-owner HUMAN return JSON (max 8 MiB)</label><input type="file" id="returnFile" accept=".json,application/json">
+ <div class="actions"><button id="returnImport" class="primary">Add exact-source HUMAN reply to dashboard</button><button id="returnForget">Forget all received PRIVATE replies</button></div>
+ <label for="returnFilter">Human-only status view</label><select id="returnFilter"><option value="all">All received human steps</option><option value="clarification_needed_human">Needs HUMAN clarification</option><option value="not_responded_human">Unanswered HUMAN steps</option><option value="received_human">HUMAN receipt acknowledged</option><option value="discussion_prepared_human">HUMAN discussion prepared</option></select>
+ <p id="returnSummary" class="meta">No owner returns imported.</p><div id="returnCoverage"></div><div class="actions"><button id="returnAggregate">Download anonymous HUMAN team coverage counts</button></div><div id="returnRows"></div>
+ <p class="warning">All received replies are ephemeral, private and UNVERIFIED. Any edit of the local authored runbooks invalidates imported replies; re-import exact-current owner returns after an edit. Original issue/evidence/source-owner/grant data are never mutated.</p>
+</section>
+<section id="humanReviewDesk" hidden>
+ <h2>6 · PRIVATE HUMAN follow-up action register</h2>
+ <p>Prepare individual, locally editable HUMAN coordination actions against exact currently imported owner returns. Notes, aliases and tentative dates are unverified private operator planning: they never modify original casework, security verdicts, consent, grants or source owner packets.</p>
+ <div class="grid">
+  <div><label for="actionFilter">HUMAN follow-up view</label><select id="actionFilter"><option value="all">All received HUMAN steps</option><option value="needs_human_input">Needs HUMAN clarification</option><option value="human_contact_planned">Human contact planned</option><option value="human_review_prepared">Human review prepared</option><option value="human_discussion_closed">HUMAN discussion closed (not a fix)</option><option value="no_owner">Without local coordinator</option><option value="overdue">Tentative HUMAN date passed (UTC)</option></select></div>
+  <div><label for="actionSearch">Search original ID / owner / HUMAN next action</label><input id="actionSearch" maxlength="150" placeholder="Search PRIVATE human actions"></div>
+ </div>
+ <p id="actionSaved" class="warning">No browser persistence. Save PRIVATE actions separately.</p>
+ <p id="actionSummary" class="meta"></p>
+ <h3>HUMAN follow-up batch assignments (local annotations only)</h3>
+ <p id="actionSelection" class="meta">0 exact-current HUMAN steps selected.</p>
+ <div class="actions"><button id="actionSelectVisible">Select all filtered HUMAN steps</button><button id="actionDeselect">Clear HUMAN selection</button><button id="actionUndoBatch" disabled>Undo last local HUMAN batch</button></div>
+ <div class="grid">
+  <div><label for="actionBatchStage">HUMAN batch stage</label><select id="actionBatchStage"><option value="untriaged_human">Untriaged HUMAN</option><option value="needs_human_input">Needs HUMAN input</option><option value="human_contact_planned">HUMAN contact planned</option><option value="human_review_prepared">HUMAN review prepared</option><option value="human_discussion_closed">HUMAN discussion closed (not a fix)</option></select></div>
+  <div><label for="actionBatchOwner">Optional locally declared coordinator (blank retains each old)</label><input id="actionBatchOwner" maxlength="120"></div>
+  <div><label for="actionBatchDue">Optional tentative HUMAN date (blank retains each old)</label><input id="actionBatchDue" type="date"></div>
+ </div>
+ <div class="actions"><button class="primary" id="actionBatchApply">Preview and apply selected HUMAN changes</button></div>
+ <div class="actions"><button id="actionSave" class="primary">Download complete PRIVATE HUMAN follow-up JSON</button><button id="actionBrief">Download scriptless PRIVATE human discussion agenda</button><button id="actionCounts">Download anonymous HUMAN action counts</button></div>
+ <div class="grid">
+  <div><label for="actionCoordinator">Locally declared HUMAN coordinator for private one-recipient handoff</label><select id="actionCoordinator"><option value="">Choose locally declared coordinator</option></select></div>
+  <div><label for="actionCoordinatorBrief">Confidential coordinator-only HUMAN work brief</label><button id="actionCoordinatorBrief" disabled>Download PRIVATE one-coordinator HUMAN HTML</button></div>
+ </div>
+ <label for="actionRestoreFile">Restore full PRIVATE HUMAN follow-up JSON, exact current original source + reply snapshots only (8 MiB)</label>
+ <input id="actionRestoreFile" type="file" accept=".json,application/json">
+ <div class="actions"><button id="actionRestore">Restore source-matched PRIVATE HUMAN action register</button><button id="actionForget">Forget only local HUMAN action notes</button></div>
+ <div id="actionRows"></div>
+</section>
+</main>
+<footer>LightUp offline review desk · no scanners, network requests, secret storage, or verified remediation.</footer>
+<!--LIGHTUP_EDITOR_SCRIPT-->
+</body></html>
