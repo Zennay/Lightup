@@ -40,7 +40,7 @@ def _read_private_regular(path):
     if not all(hasattr(os, name) for name in ("O_NOFOLLOW", "O_DIRECTORY")):
         raise ValueError("secure directory walk unsupported")
     path = os.fspath(path)
-    if type(path) is not str or not path or "\\x00" in path:
+    if type(path) is not str or not path or chr(0) in path:
         raise ValueError("invalid path")
     components = path.split("/")
     if os.path.isabs(path):
@@ -118,7 +118,7 @@ def inspect(path, expected_sha256=None):
         receipt.update(source_reported_status=source["status"],
                        source_sha256=digest,
                        byte_count=len(data))
-    except (OSError, ValueError, UnicodeError, TypeError, RecursionError):
+    except (OSError, ValueError, UnicodeError, TypeError, RecursionError, OverflowError):
         pass
     return receipt
 
