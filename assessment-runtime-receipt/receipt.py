@@ -36,31 +36,50 @@ def _finite_float(value):
 
 
 def _read_private_regular(path):
-    """Open the requested file itself without following its final symlink."""
-    flags = os.O_RDONLY | os.O_NONBLOCK
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise ValueError("no-follow unavailable")
-    flags |= os.O_NOFOLLOW
-    fd = os.open(path, flags)
+    """Pin every path component via dirfd; never follow any component symlink."""
+    if not all(hasattr(os, name) for name in ("O_NOFOLLOW", "O_DIRECTORY")):
+        raise ValueError("secure directory walk unsupported")
+    path = os.fspath(path)
+    if type(path) is not str or not path or "\\x00" in path:
+        raise ValueError("invalid path")
+    components = path.split("/")
+    if os.path.isabs(path):
+        components = components[1:]
+        root = "/"
+    else:
+        root = "."
+    # Reject traversal, alternate spellings and trailing slashes, not just symlinks.
+    if not components or any(component in ("", ".", "..") for component in components):
+        raise ValueError("noncanonical path")
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    directory_fd = os.open(root, directory_flags)
     try:
-        before = os.fstat(fd)
-        if not stat.S_ISREG(before.st_mode):
-            raise ValueError("not a regular file")
-        # A private handoff must not be readable by group/other or hard-linked.
-        if before.st_mode & 0o077 or before.st_nlink != 1:
-            raise ValueError("not private")
-        if not 0 < before.st_size <= MAX_BYTES:
-            raise ValueError("invalid size")
-        with os.fdopen(os.dup(fd), "rb", closefd=True) as stream:
-            data = stream.read(MAX_BYTES + 1)
-        after = os.fstat(fd)
-        identity = lambda st: (st.st_dev, st.st_ino, st.st_size,
-                               st.st_mtime_ns, st.st_ctime_ns)
-        if len(data) != before.st_size or identity(before) != identity(after):
-            raise ValueError("source changed during read")
-        return data
+        for component in components[:-1]:
+            next_fd = os.open(component, directory_flags, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = next_fd
+        flags = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW
+        fd = os.open(components[-1], flags, dir_fd=directory_fd)
+        try:
+            before = os.fstat(fd)
+            if not stat.S_ISREG(before.st_mode):
+                raise ValueError("not a regular file")
+            if before.st_mode & 0o077 or before.st_nlink != 1:
+                raise ValueError("not private")
+            if not 0 < before.st_size <= MAX_BYTES:
+                raise ValueError("invalid size")
+            with os.fdopen(os.dup(fd), "rb", closefd=True) as stream:
+                data = stream.read(MAX_BYTES + 1)
+            after = os.fstat(fd)
+            identity = lambda st: (st.st_dev, st.st_ino, st.st_size,
+                                   st.st_mtime_ns, st.st_ctime_ns)
+            if len(data) != before.st_size or identity(before) != identity(after):
+                raise ValueError("source changed during read")
+            return data
+        finally:
+            os.close(fd)
     finally:
-        os.close(fd)
+        os.close(directory_fd)
 
 
 def inspect(path, expected_sha256=None):
