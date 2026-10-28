@@ -86,6 +86,11 @@ def build_packet(admitted, compare_from=None, compare_to=None):
     seen = set()
 
     for ordinal, (_path, raw_manifest, endpoints) in enumerate(admitted, start=1):
+        # Direct callers must not bypass the source admission contract: avoid
+        # silently treating malformed endpoint collections as a valid timeline.
+        if (not isinstance(endpoints, list) or
+                any(type(value) is not str or not value for value in endpoints)):
+            raise Hold("original PRIVATE manifest has invalid endpoint identities")
         if len(set(endpoints)) != len(endpoints):
             raise Hold("original PRIVATE manifest contains duplicate endpoint identities")
         position = {value: slot for slot, value in enumerate(endpoints, start=1)}
