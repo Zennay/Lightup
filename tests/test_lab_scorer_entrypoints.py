@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+import subprocess
+import sys
 import tomllib
 import unittest
 from contextlib import redirect_stderr
@@ -36,6 +38,26 @@ class LabScorerEntrypointTests(unittest.TestCase):
                     lab_canary.main(["--target", "https://example.com"])
         self.assertEqual(raised.exception.code, 2)
         scorer.assert_not_called()
+
+    def test_optimized_python_fails_closed_for_a_failed_first_party_scorer(self) -> None:
+        program = (
+            "from lightup import lab_canary; from unittest.mock import patch; "
+            "bad={'passed':False}; "
+            "patcher=patch.object(lab_canary,'run_lab_service_inventory_score',return_value=bad); "
+            "patcher.start(); lab_canary.main([])"
+        )
+        process = subprocess.run(
+            [sys.executable, "-O", "-c", program],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertNotEqual(process.returncode, 0)
+        self.assertIn("Offline safety gate denied: service scorer", process.stderr)
+        self.assertNotIn('"service_inventory_labeval_passed": true', process.stdout)
+
+    def test_unrelated_loopback_validation_failure_is_not_a_denial_pass(self) -> None:
+        with patch("lightup.lab_canary._loopback", side_effect=RuntimeError("internal failure")):
+            with self.assertRaisesRegex(RuntimeError, "internal failure"):
+                lab_canary.main([])
 
     def test_all_scorer_clis_reject_caller_supplied_targets_before_execution(self) -> None:
         cases = (

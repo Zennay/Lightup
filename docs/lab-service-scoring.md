@@ -42,3 +42,8 @@ refusal, loopback service/TLS/HTTP scoring and cleanup summary. Only fixed
 127.0.0.1 fixtures are used; all CLI overrides are rejected. A PASS asserts
 `lab_only=true` and both `external_target_authorized=false` and
 `deployment_authorized=false`. No authority or external evidence is implied.
+
+The safety gate's mandatory checks run even with optimized Python (`python -O`
+or `PYTHONOPTIMIZE`); failed scorer metrics, login/scope denial or cleanup
+raise a generic failure instead of falsely reporting a successful calibration.
+Only the web shell's expected argument-type denial counts as a valid bind refusal.

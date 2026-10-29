@@ -29,13 +29,16 @@ def main(argv: list[str] | None = None) -> int:
         [sys.executable, "-m", "lightup.cli", "scope-check", "8.8.8.8"],
         capture_output=True, text=True, check=False,
     )
-    assert denied.returncode == 2, (denied.returncode, denied.stdout, denied.stderr)
-    assert json.loads(denied.stdout)["allowed"] is False
+    if not (denied.returncode == 2):
+        raise RuntimeError("Offline safety gate denied: public-target refusal exit")
+    if not (json.loads(denied.stdout)["allowed"] is False):
+        raise RuntimeError("Offline safety gate denied: public-target refusal result")
     plan = subprocess.run(
         [sys.executable, "-m", "lightup.cli", "plan", "127.0.0.1"],
         capture_output=True, text=True, check=True,
     )
-    assert json.loads(plan.stdout)["execution_enabled"] is False
+    if not (json.loads(plan.stdout)["execution_enabled"] is False):
+        raise RuntimeError("Offline safety gate denied: non-executing plan")
 
     with tempfile.TemporaryDirectory(prefix="lightup-ci-") as directory:
         store = DomainStore(Path(directory) / "web.db")
@@ -57,61 +60,74 @@ def main(argv: list[str] | None = None) -> int:
             return response["status"], response["headers"], body
 
         status, headers, _ = get("/")
-        assert status == "303 See Other" and headers["Location"] == "/login"
+        if not (status == "303 See Other" and headers["Location"] == "/login"):
+            raise RuntimeError("Offline safety gate denied: login redirect")
         user = store.bootstrap_operator("ci@lightup.test", "CI", "ci-canary-password")
         token, _csrf = store.create_session(user.user_id)
         status, _, body = get("/", cookie=f"lightup_session={token}")
-        assert status == "200 OK", status
-        assert "Locked" in body and "no real-target execution path" in body
+        if not (status == "200 OK"):
+            raise RuntimeError("Offline safety gate denied: authenticated route")
+        if not ("Locked" in body and "no real-target execution path" in body):
+            raise RuntimeError("Offline safety gate denied: locked activation")
 
         try:
             _loopback("0.0.0.0")
-        except Exception:
+        except argparse.ArgumentTypeError:
             pass
         else:
-            raise AssertionError("web shell accepted a non-loopback bind")
+            raise RuntimeError("Offline safety gate denied: non-loopback shell bind")
 
         service_score = run_lab_service_inventory_score(
             Path(directory) / "service-labeval.db"
         )
-        assert service_score["passed"], service_score
+        if not (service_score["passed"]):
+            raise RuntimeError("Offline safety gate denied: service scorer")
         service_metrics = service_score["evaluation"]["metrics"]
-        assert (
+        if not ((
             service_metrics["valid_findings"],
             service_metrics["invalid_findings"],
             service_metrics["missed_findings"],
             service_metrics["reproducibility"],
             service_metrics["evidence_quality"],
-        ) == (1, 0, 0, 1.0, 1.0), service_metrics
-        assert all(service_score["checks"].values()), service_score["checks"]
+        ) == (1, 0, 0, 1.0, 1.0)):
+            raise RuntimeError("Offline safety gate denied: service findings and quality")
+        if not (all(service_score["checks"].values())):
+            raise RuntimeError("Offline safety gate denied: service persisted checks")
 
         tls_score = run_lab_tls_baseline_score(
             Path(directory) / "tls-labeval.db"
         )
-        assert tls_score["passed"], tls_score
+        if not (tls_score["passed"]):
+            raise RuntimeError("Offline safety gate denied: TLS scorer")
         tls_metrics = tls_score["evaluation"]["metrics"]
-        assert (
+        if not ((
             tls_metrics["valid_findings"],
             tls_metrics["invalid_findings"],
             tls_metrics["missed_findings"],
             tls_metrics["reproducibility"],
             tls_metrics["evidence_quality"],
-        ) == (1, 0, 0, 1.0, 1.0), tls_metrics
-        assert all(tls_score["checks"].values()), tls_score["checks"]
+        ) == (1, 0, 0, 1.0, 1.0)):
+            raise RuntimeError("Offline safety gate denied: TLS findings and quality")
+        if not (all(tls_score["checks"].values())):
+            raise RuntimeError("Offline safety gate denied: TLS persisted checks")
 
         score = run_lab_web_baseline_score(Path(directory) / "web-labeval.db")
-        assert score["passed"], score
+        if not (score["passed"]):
+            raise RuntimeError("Offline safety gate denied: HTTP scorer")
         score_metrics = score["evaluation"]["metrics"]
-        assert (
+        if not ((
             score_metrics["valid_findings"],
             score_metrics["invalid_findings"],
             score_metrics["missed_findings"],
             score_metrics["reproducibility"],
             score_metrics["evidence_quality"],
-        ) == (5, 0, 0, 1.0, 1.0), score_metrics
-        assert all(score["checks"].values()), score["checks"]
+        ) == (5, 0, 0, 1.0, 1.0)):
+            raise RuntimeError("Offline safety gate denied: HTTP findings and quality")
+        if not (all(score["checks"].values())):
+            raise RuntimeError("Offline safety gate denied: HTTP persisted checks")
 
-    assert not Path(directory).exists(), "canary state was not cleaned up"
+    if not (not Path(directory).exists()):
+        raise RuntimeError("Offline safety gate denied: temporary-state cleanup")
     print(json.dumps({
         "public_target_denied": True, "execution_enabled": False,
         "authentication_required": True, "activation_locked": True,
