@@ -734,7 +734,14 @@ footer{border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
     control.addEventListener("change", renderFindings);
   });
   exportReturnButton.addEventListener("click", function () {
-    if (state) downloadJson(exportReturn(), "lightup-lab-review-return.json");
+    if (!state) return;
+    const value = exportReturn();
+    const serialized = JSON.stringify(value, null, 2) + "\n";
+    if (new TextEncoder().encode(serialized).length > MAX_RETURN_BYTES) {
+      setStatus("HOLD: review return exceeds the 1 MiB resume limit. Shorten follow-up questions before exporting.", "error");
+      return;
+    }
+    downloadJson(value, "lightup-lab-review-return.json");
   });
   exportSummaryButton.addEventListener("click", function () {
     if (state) downloadJson(sourceSummary(), "lightup-lab-summary.json");
