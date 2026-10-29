@@ -384,7 +384,7 @@ def _verify_existing_bundle(path: Path, receipt_bytes: bytes, digest: str) -> No
         raise RuntimeError("existing bundle does not match the canonical receipt")
     checksum = path / "receipt.sha256"
     _require_private_artifact(checksum, directory=False)
-    if checksum.read_text(encoding="ascii") != f"{digest}  receipt.json\\n":
+    if checksum.read_text(encoding="ascii") != f"{digest}  receipt.json\n":
         raise RuntimeError("existing bundle checksum does not match")
     for name in ("state.sqlite3", "domain.sqlite3", "replay-ledger.sqlite3"):
         _require_private_artifact(path / name, directory=False)
