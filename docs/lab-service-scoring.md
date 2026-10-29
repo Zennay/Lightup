@@ -71,3 +71,15 @@ return 403 **without** invalidating the valid session; a correct-CSRF logout
 must revoke the stored token, after which the same cookie must be denied.
 The output adds three privacy-minimal booleans. No client user, real grant,
 external target or production session is involved.
+
+## Synthetic tenant boundaries
+
+The same isolated WSGI/SQLite canary now provisions two clearly fictional
+tenant identities. It verifies that tenant A can read only its own portal,
+cannot read tenant B's portal or submit a request on behalf of tenant B,
+and can submit one explicitly synthetic assessment *request* for itself.
+The second tenant's request list must remain empty. This only validates
+request admission and isolation in ephemeral local data: it does **not**
+approve a request, issue a grant, authorize scanning, execute any target,
+or contact an external service. A PASS receipt carries three booleans,
+not client identifiers or request contents.

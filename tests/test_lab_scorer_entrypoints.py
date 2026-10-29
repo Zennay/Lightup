@@ -101,6 +101,21 @@ class LabScorerEntrypointTests(unittest.TestCase):
         self.assertIs(data["external_target_authorized"], False)
         self.assertIs(data["deployment_authorized"], False)
 
+    def test_isolated_tenant_portal_and_request_paths_remain_locked(self) -> None:
+        with redirect_stdout(io.StringIO()) as receipt:
+            exit_code = lab_canary.main([])
+        self.assertEqual(exit_code, 0)
+        data = json.loads(receipt.getvalue())
+        for field in (
+            "cross_tenant_portal_denied",
+            "cross_tenant_request_denied",
+            "own_tenant_request_saved",
+            "session_revocation_verified",
+        ):
+            self.assertIs(data[field], True)
+        self.assertIs(data["external_target_authorized"], False)
+        self.assertIs(data["deployment_authorized"], False)
+
     def test_safety_gate_rejects_missing_checks_and_noncanonical_metrics(self) -> None:
         from copy import deepcopy
         metrics = {

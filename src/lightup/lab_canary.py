@@ -15,7 +15,7 @@ import sys
 import tempfile
 from urllib.parse import urlencode
 
-from lightup.domain import DomainStore
+from lightup.domain import DomainStore, Role
 from lightup.lab_service_score import run_lab_service_inventory_score
 from lightup.lab_tls_score import run_lab_tls_baseline_score
 from lightup.lab_web_score import run_lab_web_baseline_score
@@ -119,6 +119,34 @@ def _run_canary() -> int:
                 or store.session_context(token) is not None):
             raise RuntimeError("Offline safety gate denied: revoked session")
 
+        # Synthetic identities and requests exist only inside this temp DB.
+        operator = store.context_for_user(user.user_id)
+        a = store.create_client(operator, "Fictional Lab A")
+        b = store.create_client(operator, "Fictional Lab B")
+        user_a = store.create_user(operator, "a@lightup.test", "Lab A", Role.CLIENT_ADMIN, a.client_id)
+        user_b = store.create_user(operator, "b@lightup.test", "Lab B", Role.CLIENT_ADMIN, b.client_id)
+        client_token, client_csrf = store.create_session(user_a.user_id)
+        client_cookie = f"lightup_session={client_token}"
+        own_path, other_path = f"/portal/{a.client_id}", f"/portal/{b.client_id}"
+        own_status, _, own_body = get(own_path, client_cookie)
+        if own_status != "200 OK" or "Fictional Lab A" not in own_body:
+            raise RuntimeError("Offline safety gate denied: own-tenant portal")
+        denied_status, _, denied_body = get(other_path, client_cookie)
+        if denied_status != "403 Forbidden" or "Fictional Lab B" in denied_body:
+            raise RuntimeError("Offline safety gate denied: cross-tenant read")
+        form = {"csrf": client_csrf, "assets": "synthetic.example.test", "risk": "1"}
+        cross_write, _, _ = request("POST", other_path + "/requests", client_cookie, form)
+        if cross_write != "403 Forbidden":
+            raise RuntimeError("Offline safety gate denied: cross-tenant write")
+        own_write, own_headers, _ = request("POST", own_path + "/requests", client_cookie, form)
+        if own_write != "303 See Other" or own_headers.get("Location") != own_path:
+            raise RuntimeError("Offline safety gate denied: legitimate tenant write")
+        a_requests = store.list_assessment_requests(store.context_for_user(user_a.user_id))
+        b_requests = store.list_assessment_requests(store.context_for_user(user_b.user_id))
+        if (len(a_requests) != 1 or a_requests[0].requested_assets !=
+                ("synthetic.example.test",) or b_requests):
+            raise RuntimeError("Offline safety gate denied: tenant request isolation")
+
         try:
             _loopback("0.0.0.0")
         except argparse.ArgumentTypeError:
@@ -147,6 +175,9 @@ def _run_canary() -> int:
         "authentication_required": True, "activation_locked": True,
         "forged_session_denied": True, "csrf_guard_enforced": True,
         "session_revocation_verified": True,
+        "cross_tenant_portal_denied": True,
+        "cross_tenant_request_denied": True,
+        "own_tenant_request_saved": True,
         "non_loopback_refused": True,
         "temporary_state_removed": True,
         "lab_only": True,
