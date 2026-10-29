@@ -258,16 +258,24 @@ class PrivateReplayStorageContract(unittest.TestCase):
                 )
 
             with sqlite3.connect(state_path) as state:
+                retest_row = state.execute(
+                    "SELECT evidence_id,run_id FROM evidence "
+                    "WHERE source='lightup.lab_replay' "
+                    "AND kind='fixture-retest-observation' LIMIT 1"
+                ).fetchone()
+            self.assertIsNotNone(retest_row)
+            retest_evidence_id, retest_run_id = retest_row
+            with sqlite3.connect(state_path) as state:
                 state.execute(
                     "UPDATE evidence SET run_id=? WHERE evidence_id=?",
-                    ("missing-run-id", evidence_id),
+                    ("missing-run-id", retest_evidence_id),
                 )
             with self.assertRaisesRegex(RuntimeError, "not bound to exposed baseline run"):
                 _verify_database_lineage(bundle, receipt)
             with sqlite3.connect(state_path) as state:
                 state.execute(
                     "UPDATE evidence SET run_id=? WHERE evidence_id=?",
-                    (run_id, evidence_id),
+                    (retest_run_id, retest_evidence_id),
                 )
 
             metadata = json.loads(raw_meta)
