@@ -268,13 +268,30 @@ class WebAppTest(unittest.TestCase):
         request_id = self.store.list_assessment_requests(self.operator)[0].request_id
         status, _, _ = self.request(
             "POST", f"/assessments/requests/{request_id}/decision",
-            {"decision": "approve"}, token=self.op_token, csrf=self.op_csrf)
+            {"decision": "approve", "reviewed": "yes",
+             "approve_scope_boundary": "understood"},
+            token=self.op_token, csrf=self.op_csrf)
         self.assertEqual(status, "303 See Other")
         decided = self.store.list_assessment_requests(self.operator)[0]
         self.assertEqual(decided.status.value, "approved")
         self.assertEqual(decided.decided_by, self.op_user.user_id)
 
     def test_operator_creates_engagement_and_grant_via_ui(self):
+        self.request(
+            "POST", f"/portal/{self.client_a.client_id}/requests",
+            {"assets": "app.acme.example, api.acme.example", "risk": "3",
+             "notes": "Q4 authorized scope review"},
+            token=self.a_token, csrf=self.a_csrf,
+        )
+        approved_request_id = self.store.list_assessment_requests(self.operator)[0].request_id
+        status, _, _ = self.request(
+            "POST", f"/assessments/requests/{approved_request_id}/decision",
+            {"decision": "approve", "reviewed": "yes",
+             "approve_scope_boundary": "understood"},
+            token=self.op_token, csrf=self.op_csrf,
+        )
+        self.assertEqual(status, "303 See Other")
+
         status, headers, _ = self.request(
             "POST", f"/clients/{self.client_a.client_id}/engagements",
             {"name": "Q4 assessment"}, token=self.op_token, csrf=self.op_csrf)
@@ -289,7 +306,8 @@ class WebAppTest(unittest.TestCase):
             {"approved_by": "CISO Acme", "reference": "AUTH-2026-007",
              "assets": "app.acme.example, api.acme.example",
              "excluded_assets": "legacy.acme.example",
-             "capabilities": "web-baseline", "max_risk": "3", "valid_days": "30"},
+             "capabilities": "web-baseline", "max_risk": "3", "valid_days": "30",
+             "approved_request_id": approved_request_id},
             token=self.op_token, csrf=self.op_csrf)
         self.assertEqual(status, "303 See Other")
         grant = self.store.get_current_grant(self.operator, engagement.engagement_id)
