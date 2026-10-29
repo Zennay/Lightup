@@ -1,0 +1,793 @@
+"use strict";
+/* PRIVATE, unsigned, local-only HUMAN metadata workroom. No network, scans, deletes or grants. */
+(() => {
+  const MAX_FILES = 12, MAX_FILE_BYTES = 8 * 1024 * 1024, MAX_TOTAL_BYTES = 64 * 1024 * 1024;
+  const MAX_RECEIPT_BYTES = 131072;
+  const STATES = Object.freeze({
+    needs_review: "Nog beoordelen",
+    retain: "Behouden (voorstel)",
+    quarantine: "Afzonderen (voorstel)",
+    propose_delete: "Verwijdering voorstellen — GEEN wisopdracht"
+  });
+  const CLASSIFICATIONS = Object.freeze({
+    unknown:"Onbekend (HUMAN)",
+    internal:"Intern (HUMAN)",
+    confidential:"Vertrouwelijk (HUMAN)",
+    restricted:"Beperkt gevoelig (HUMAN)"
+  });
+  const HOLD_FLAGS = Object.freeze({
+    unknown:"Onbekend / nog bespreken",
+    human_claim_active:"HUMAN meldt actieve bewaarbeperking",
+    human_declared_clear:"HUMAN meldt geen bekende beperking — NIET geverifieerd"
+  });
+  const V2_COLUMNS = ["sha256","bytes","alias","status","review_date","action","custodian","classification","hold_flag"];
+  const HUMAN_FIELDS = ["alias","status","review_date","action","custodian","classification","hold_flag"];
+  const AUTHORITY = Object.freeze({
+    authorizes_scan: false, authorizes_delete: false, verifies_finding: false,
+    verifies_remediation: false, proves_consent: false, authenticates_source: false
+  });
+  let entries = [];
+  let processing = false;
+  let lastBulk = null;
+  function invalidateUndo() {
+    lastBulk = null;
+    $("bulk-undo").disabled = true;
+  }
+  const $ = id => document.getElementById(id);
+  const status = (s, bad = false) => {
+    $("message").textContent = s;
+    $("message").classList.toggle("error", bad);
+  };
+  const isPlain = value => !!value && typeof value === "object" && !Array.isArray(value)
+    && Object.getPrototypeOf(value) === Object.prototype;
+  const keysAre = (value, keys) => isPlain(value) &&
+    Object.keys(value).sort().join("|") === keys.slice().sort().join("|");
+  const safeHuman = (value, max) => typeof value === "string" &&
+    value.length <= max && !/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f]/u.test(value);
+  const validDate = s => s === "" || (typeof s === "string" && /^20\d{2}-\d{2}-\d{2}$/.test(s) &&
+    !Number.isNaN(Date.parse(s + "T00:00:00Z")) &&
+    new Date(s + "T00:00:00Z").toISOString().slice(0,10) === s);
+  const hexSha = buffer => Array.from(new Uint8Array(buffer), b => b.toString(16).padStart(2, "0")).join("");
+  const digest = async file => hexSha(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()));
+  function download(name, type, contents) {
+    const blob = new Blob([contents], {type});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name; a.hidden = true;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  function text(tag, value, className) {
+    const element = document.createElement(tag);
+    element.textContent = value;
+    if (className) element.className = className;
+    return element;
+  }
+  function input(value, max, placeholder, update) {
+    const e = document.createElement("input");
+    e.type = "text"; e.value = value; e.maxLength = max;
+    e.placeholder = placeholder; e.addEventListener("change", () => {
+      if (!safeHuman(e.value, max)) { e.value = value; status("Ongeldige controle-/richtingskarakters geweigerd.", true); return; }
+      update(e.value); invalidateUndo(); updateCounts();
+    });
+    return e;
+  }
+  function localDay(day) {
+    const y = day.getFullYear();
+    return String(y).padStart(4,"0") + "-" + String(day.getMonth()+1).padStart(2,"0") +
+      "-" + String(day.getDate()).padStart(2,"0");
+  }
+  function humanReviewWindow() {
+    const today = new Date();
+    const soon = new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    soon.setDate(soon.getDate()+7);
+    return {today:localDay(today), soon:localDay(soon)};
+  }
+  function humanCapacityWeek(index,today) {
+    const d=new Date(today+"T00:00:00Z");
+    d.setUTCDate(d.getUTCDate()-(d.getUTCDay()+6)%7+index*7);
+    return d.toISOString().slice(0,10);
+  }
+  function capacityScenario() {
+    const a = Number($("capacity-a").value), b = Number($("capacity-b").value);
+    if (!Number.isInteger(a) || a<1 || a>12 || !Number.isInteger(b) || b<1 || b>12)
+      return null;
+    const subset = $("capacity-scope").value === "all" ? entries.slice() : visibleEntries();
+    const {today} = humanReviewWindow();
+    const start = new Date(today + "T00:00:00Z");
+    const monday = new Date(start);
+    monday.setUTCDate(start.getUTCDate() - (start.getUTCDay()+6)%7);
+    const iso = day => day.toISOString().slice(0,10);
+    const addDays = (date, days) => {
+      const copy = new Date(date);
+      copy.setUTCDate(copy.getUTCDate()+days);
+      return copy;
+    };
+    const weeks = Array.from({length:4},(_,i)=>({
+      code:"week_"+(i+1),label:"Week "+(i+1)+" · "+iso(addDays(monday,i*7))+" t/m "+
+        iso(addDays(monday,i*7+6)),start:iso(addDays(monday,i*7)),
+      end:iso(addDays(monday,i*7+6)),count:0,attention:0,scheduled:true
+    }));
+    const before={code:"overdue",label:"Voorlopig verstreken (vóór vandaag)",count:0,attention:0,scheduled:false};
+    const after={code:"later",label:"Latere reviewmomenten",count:0,attention:0,scheduled:false};
+    const undated={code:"undated",label:"Zonder voorlopige reviewdatum",count:0,attention:0,scheduled:false};
+    for(const item of subset){
+      let bucket;
+      if (!item.review_date || !validDate(item.review_date)) bucket=undated;
+      else if(item.review_date<today)bucket=before;
+      else {
+        const idx=Math.floor((Date.parse(item.review_date+"T00:00:00Z")-monday.getTime())/604800000);
+        bucket=idx>=0 && idx<4 ? weeks[idx] : after;
+      }
+      bucket.count++;
+      if(item.hold_flag!=="human_declared_clear" || !item.custodian.trim() ||
+         (item.status==="propose_delete" && !removalProposalReady(item)))bucket.attention++;
+    }
+    return {a,b,today,scope:$("capacity-scope").value,
+      total:subset.length,rows:[before,...weeks,after,undated]};
+  }
+  function renderCapacity(){
+    const root=$("capacity-rows");
+    root.replaceChildren();
+    const view=capacityScenario();
+    $("capacity-export").disabled=processing||!entries.length||!view||!view.total;
+    if(!view){
+      $("capacity-summary").textContent="HOLD: kies voor beide fictieve scenario's een geheel getal van 1 t/m 12.";
+      const tr=document.createElement("tr");
+      const td=text("td","Ongeldige fictieve weekcapaciteit: kies twee gehele waarden van 1 t/m 12.");
+      td.colSpan=6;tr.append(td);root.append(tr);
+      return;
+    }
+    const planned=view.rows.filter(r=>r.scheduled).reduce((n,r)=>n+r.count,0);
+    const pending=view.rows.filter(r=>!r.scheduled).reduce((n,r)=>n+r.count,0);
+    const gap=cap=>view.rows.filter(r=>r.scheduled).reduce((n,r)=>n+Math.max(0,r.count-cap),0);
+    $("capacity-summary").textContent=view.total+" geselecteerde HUMAN-rijen · "+
+      planned+" voorgesteld in vier kalenderweken · "+pending+" verstreken/later/ongedateerd · "+
+      "fictief overcapaciteitstekort A "+gap(view.a)+", B "+gap(view.b)+
+      ". Geen automatische planning, toestemming of verwijdering.";
+    for(const row of view.rows){
+      const tr=document.createElement("tr");
+      const difference=cap=>!row.scheduled?"Niet ingedeeld":
+        row.count>cap?"Fictief tekort "+(row.count-cap):
+          "Fictief restant "+(cap-row.count);
+      for(const value of [row.label,String(row.count),String(row.attention),
+        difference(view.a),difference(view.b)])
+        tr.append(text("td",value));
+      const cell=document.createElement("td");
+      if(row.scheduled){
+        const open=text("button","Bekijk HUMAN-rijen","secondary");
+        open.type="button";
+        open.disabled=!row.count;
+        open.setAttribute("aria-label","Filter HUMAN reviewvoorstellen voor "+row.label);
+        open.addEventListener("click",()=>{
+          const week=Number(row.code.slice(5))-1;
+          if(!Number.isInteger(week)||week<0||week>3)return;
+          $("due-filter").value="capacity_week_"+week;
+          render();
+          $("due-filter").focus();
+          status("Fictieve capaciteitsweek "+(week+1)+" zichtbaar gefilterd. "+
+            "HUMAN bulkacties blijven afzonderlijk bevestigd; geen echte taak of toestemming.");
+        });
+        cell.append(open);
+      }else cell.textContent="Buiten vierweekse capaciteit";
+      tr.append(cell);
+      root.append(tr);
+    }
+  }
+  function exportCapacity(){
+    if(processing||!entries.length)return status("Geen PRIVATE HUMAN-planning beschikbaar.",true);
+    const report=capacityScenario();
+    if(!report || !report.total)return status("HOLD: ongeldige capaciteit of lege gekozen selectie.",true);
+    if(!window.confirm("PRIVATE export met alleen datumweek-/aantalgroepen en fictieve scenario-capaciteit? Kleine groepen en voorgestelde datums kunnen indirect vertrouwelijk zijn. Geen namen, SHA, notities, echte agenda-afspraken, verwijdering of consent. Alleen lokaal downloaden?"))
+      return status("PRIVATE capaciteitsplan niet geëxporteerd.");
+    const rows=["reference_day,selection,period,week_start,week_end,count,human_attention,scenario_a_capacity,scenario_a_shortfall,scenario_b_capacity,scenario_b_shortfall"];
+    for(const row of report.rows){
+      const aGap=row.scheduled?Math.max(0,row.count-report.a):0;
+      const bGap=row.scheduled?Math.max(0,row.count-report.b):0;
+      rows.push([report.today,report.scope,row.code,row.start||"",row.end||"",
+        row.count,row.attention,row.scheduled?report.a:"",aGap,
+        row.scheduled?report.b:"",bGap].join(","));
+    }
+    download("lightup-private-human-capacity-scenarios.csv","text/csv;charset=utf-8",
+      "\ufeff"+rows.join("\r\n")+"\r\n");
+    status("PRIVATE HUMAN-capaciteitsscenario's lokaal aangeboden. Alleen aantallen; geen planning, bronbewijs, grant of actie.");
+  }
+  function updateCounts() {
+    $("source-count").textContent = entries.length + " / " + MAX_FILES + " bronnen";
+    const sums = Object.fromEntries(Object.keys(STATES).map(key => [key, 0]));
+    for (const e of entries) sums[e.status] += 1;
+    const {today,soon} = humanReviewWindow();
+    const overdue = entries.filter(e => e.review_date && e.review_date < today).length;
+    const dueSoon = entries.filter(e => e.review_date && e.review_date >= today && e.review_date <= soon).length;
+    const noDate = entries.filter(e => !e.review_date).length;
+    const humanHolds = entries.filter(e=>e.hold_flag==="human_claim_active").length;
+    const unassigned = entries.filter(e=>!e.custodian.trim()).length;
+    const decisionHolds = entries.filter(e=>e.status==="propose_delete" && !removalProposalReady(e)).length;
+    const target = $("stats");
+    target.replaceChildren();
+    for (const [key, label] of Object.entries(STATES)) {
+      const card = text("div", sums[key] + " · " + label, "stat");
+      target.append(card);
+    }
+    target.append(text("div", overdue + " · voorlopige HUMAN reviews verstreken", "stat attention"));
+    target.append(text("div", dueSoon + " · voorlopige HUMAN reviews komende 7 dagen", "stat"));
+    target.append(text("div", noDate + " · zonder voorlopige reviewdatum", "stat"));
+    target.append(text("div", unassigned + " · HUMAN dossierhouder onbekend", "stat attention"));
+    target.append(text("div", humanHolds + " · HUMAN meldt mogelijke bewaarbeperking", "stat attention"));
+    target.append(text("div", decisionHolds + " · verwijdervoorstellen onvolledig (HOLD)", "stat attention"));
+    renderCapacity();
+  }
+  function visibleEntries() {
+    const q = $("query").value.trim().toLowerCase();
+    const filter = $("status-filter").value;
+    const dueFilter = $("due-filter").value;
+    const holdFilter = $("hold-filter").value;
+    const {today, soon} = humanReviewWindow();
+    const items = entries.filter(e => (!filter || e.status === filter) &&
+      (!q || e.alias.toLowerCase().includes(q) || e.custodian.toLowerCase().includes(q) || e.sha256.includes(q)) &&
+      (!holdFilter || (holdFilter==="unassigned" && !e.custodian.trim()) ||
+        (holdFilter==="decision_hold" && e.status==="propose_delete" && !removalProposalReady(e)) ||
+        e.hold_flag===holdFilter) &&
+      (!dueFilter || (dueFilter === "overdue" && e.review_date && e.review_date < today) ||
+        (dueFilter === "soon" && e.review_date && e.review_date >= today && e.review_date <= soon) ||
+        (dueFilter === "no_date" && !e.review_date) ||
+        (dueFilter === "no_action" && !e.action.trim()) ||
+        (dueFilter.startsWith("capacity_week_") &&
+          Number.isInteger(Number(dueFilter.slice(14))) &&
+          Number(dueFilter.slice(14))>=0 && Number(dueFilter.slice(14))<4 &&
+          e.review_date && e.review_date>=today &&
+          e.review_date>=humanCapacityWeek(Number(dueFilter.slice(14)),today) &&
+          e.review_date<humanCapacityWeek(Number(dueFilter.slice(14))+1,today))));
+    if ($("sort-order").value === "due") items.sort((a,b)=>
+      (a.review_date || "9999-99-99").localeCompare(b.review_date || "9999-99-99"));
+    if ($("sort-order").value === "stage") items.sort((a,b)=>a.status.localeCompare(b.status));
+    return items;
+  }
+  function render() {
+    const body = $("rows");
+    body.replaceChildren();
+    const shown = visibleEntries();
+    for (const item of shown) {
+      const row = document.createElement("tr");
+      const identity = document.createElement("td");
+      identity.append(text("strong", item.sha256.slice(0, 14) + "…"),
+        text("small", item.bytes.toLocaleString("nl-NL") + " bytes"));
+      const alias = document.createElement("td");
+      alias.append(input(item.alias, 80, "Vrij alias", value => { item.alias = value; }));
+      const custodian = document.createElement("td");
+      custodian.append(input(item.custodian, 80, "HUMAN dossierhouder of team", value => { item.custodian=value; }));
+      const sensitivity = document.createElement("td");
+      const cls = document.createElement("select");
+      for(const [key,label] of Object.entries(CLASSIFICATIONS))cls.add(new Option(label,key));
+      cls.value = item.classification;
+      cls.addEventListener("change",()=>{item.classification=cls.value;invalidateUndo();updateCounts();});
+      sensitivity.append(cls);
+      const hold = document.createElement("td");
+      const holdSelect=document.createElement("select");
+      for(const [key,label] of Object.entries(HOLD_FLAGS))holdSelect.add(new Option(label,key));
+      holdSelect.value=item.hold_flag;
+      holdSelect.addEventListener("change",()=>{item.hold_flag=holdSelect.value;invalidateUndo();updateCounts();});
+      hold.append(holdSelect);
+      const stage = document.createElement("td");
+      const select = document.createElement("select");
+      for (const [value, label] of Object.entries(STATES)) {
+        const option = new Option(label, value); select.add(option);
+      }
+      select.value = item.status;
+      select.addEventListener("change", () => {
+        item.status = select.value; invalidateUndo(); updateCounts();
+        if ($("status-filter").value) render();
+      });
+      stage.append(select);
+      const due = document.createElement("td");
+      const date = document.createElement("input");
+      date.type = "date"; date.min = "2000-01-01"; date.max = "2099-12-31";
+      date.value = item.review_date;
+      date.addEventListener("change", () => {
+        if (!validDate(date.value)) { date.value = item.review_date; status("Geen geldige reviewdatum.", true); return; }
+        item.review_date = date.value; invalidateUndo(); updateCounts();
+        if ($("due-filter").value || $("sort-order").value === "due") render();
+      });
+      due.append(date);
+      const action = document.createElement("td");
+      action.append(input(item.action, 400, "Menselijke vervolgstap, geen uitvoeropdracht", value => { item.action = value; }));
+      const remove = document.createElement("td");
+      const btn = document.createElement("button");
+      btn.textContent = "Verwijder rij"; btn.className = "danger"; btn.type = "button";
+      btn.addEventListener("click", () => {
+        entries = entries.filter(e => e.sha256 !== item.sha256); invalidateUndo(); resetDrift();
+        status("Alleen de bronrij is uit het browsergeheugen verwijderd; geen bronbestand gewist.");
+        render();
+      });
+      remove.append(btn);
+      row.append(identity, alias, custodian, sensitivity, hold, stage, due, action, remove);
+      body.append(row);
+    }
+    if (!shown.length) {
+      const tr = document.createElement("tr"); const td = document.createElement("td");
+      td.colSpan = 9; td.textContent = entries.length ? "Geen rijen voor dit filter." : "Selecteer eerst bestanden.";
+      tr.append(td); body.append(tr);
+    }
+    updateCounts();
+    $("export-visible-calendar").disabled=processing||!shown.some(item=>Boolean(item.review_date));
+  }
+  async function ingest(event) {
+    if (processing) return;
+    processing = true;
+    const chosen = Array.from(event.target.files || []);
+    try {
+      if (!chosen.length) return;
+      if (!globalThis.crypto?.subtle) throw new Error("WebCrypto SHA-256 is hier niet beschikbaar; open op een vertrouwde HTTPS/file-browseromgeving.");
+      if (chosen.length + entries.length > MAX_FILES) throw new Error("Maximaal " + MAX_FILES + " bestanden.");
+      let size = entries.reduce((a, e) => a + e.bytes, 0);
+      const seen = new Set(entries.map(e => e.sha256));
+      const staged = [];
+      for (const file of chosen) {
+        if (!file.size || file.size > MAX_FILE_BYTES) throw new Error("Lege of te grote bron geweigerd (maximaal 8 MiB).");
+        size += file.size;
+        if (size > MAX_TOTAL_BYTES) throw new Error("Totale invoer groter dan 64 MiB.");
+        const sha256 = await digest(file);
+        if (seen.has(sha256)) throw new Error("Dubbel identiek bestand; geen herhaalde bronidentiteiten.");
+        seen.add(sha256);
+        staged.push({sha256, bytes:file.size, alias:"Bron " + (entries.length + staged.length + 1),
+          status:"needs_review", review_date:"", action:"",
+          custodian:"", classification:"unknown", hold_flag:"unknown"});
+      }
+      // Atomic: no selected source is installed before every new source has been admitted.
+      entries = entries.concat(staged); invalidateUndo(); resetDrift();
+      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
+      render(); status(staged.length + " echte lokale bestandsidentiteiten gecontroleerd en toegevoegd. Geen bytes geüpload.");
+    } catch (e) {
+      status("HOLD: " + e.message + " Er is niets uit deze selectie toegevoegd.", true);
+    } finally {
+      event.target.value = ""; processing = false;
+    }
+  }
+  function record(e) {
+    return {sha256:e.sha256, bytes:e.bytes, alias:e.alias,
+      status:e.status, review_date:e.review_date, action:e.action,
+      custodian:e.custodian, classification:e.classification, hold_flag:e.hold_flag};
+  }
+  function removalProposalReady(e) {
+    return e.status!=="propose_delete" || (
+      Boolean(e.action.trim()) && Boolean(e.custodian.trim()) &&
+      e.hold_flag==="human_declared_clear"
+    );
+  }
+  function requireCompleteHumanProposals() {
+    if(entries.some(e=>!removalProposalReady(e)))
+      throw Error("Verwijdervoorstel-HOLD: dossierhouder, HUMAN-actie en expliciete (onbevestigde) check op bewaarbeperking nodig. Dit verleent NOOIT wisbevoegdheid.");
+  }
+  function sourcePlan() {
+    if (!entries.length || processing) throw Error("Selecteer eerst privébronnen.");
+    requireCompleteHumanProposals();
+    return {kind:"lightup.private.assessment.retention.plan",version:2,authority:AUTHORITY,
+      rows:entries.map(record).sort((a,b)=>a.sha256.localeCompare(b.sha256))};
+  }
+  function restoreOriginal(raw, label) {
+    const rows = validateReceipt(raw, true);
+    if (!window.confirm("Volledige bron-SHA/size match: alle HUMAN voorstellen overnemen uit " + label +
+      "? Dit bewijst GEEN echte herkomst, toestemming, intrekking, herstel of verwijderingsbevoegdheid.")) {
+      return status("Overname geannuleerd. Huidige planning blijft intact.");
+    }
+    entries = entries.map(e=>({...e,...record(rows.get(e.sha256))}));
+    invalidateUndo(); resetDrift();
+    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
+    render(); status("Gehele brongebonden PRIVATE HUMAN-planning overgenomen zonder autorisatieclaim.");
+  }
+  function compareVaultPlan(raw) {
+    const earlier = validateReceipt(raw,true);
+    const target = $("source-drift");
+    const changed = [];
+    const stageCounts = Object.fromEntries(Object.keys(STATES).map(k=>[k,0]));
+    for (const e of entries) {
+      const before = earlier.get(e.sha256);
+      stageCounts[before.status] += 1;
+      const fields = HUMAN_FIELDS.filter(k=>e[k]!==before[k]);
+      if (fields.length) changed.push({sha:e.sha256.slice(0,16),fields});
+    }
+    target.replaceChildren(text("strong","PRIVATE AES-GCM HUMAN-planning vergelijking — zelfde originele bytes"));
+    target.append(text("p","Gelijke SHA-256/bestandsgrootte set: " + entries.length +
+      " · HUMAN rijen met verschillen: " + changed.length +
+      " · bronidentiteiten ongewijzigd; geen enkel veld overgenomen."));
+    const oldStages = Object.entries(stageCounts).map(([k,n])=>STATES[k]+": "+n).join(" · ");
+    target.append(text("p","Eerder door mens opgegeven: "+oldStages));
+    const ul=document.createElement("ul");
+    for (const diff of changed) {
+      ul.append(text("li",diff.sha+"… · eerdere versus huidige HUMAN: "+diff.fields.join(", ")));
+    }
+    if (!changed.length) ul.append(text("li","Geen wijzigingen in HUMAN-alias/status/datum/actie."));
+    target.append(ul);
+    status("Brongebonden versleutelde HUMAN-planning alleen vergeleken. Geen statusovername, autorisatie of bronverandering.");
+  }
+  // Same-origin, offline-only bridge, not a consent or authorization API.
+  Object.defineProperty(window, "LightUpPrivateVaultBridge", {
+    value:Object.freeze({
+      snapshot:sourcePlan, restore:restoreOriginal, compare:compareVaultPlan,
+      admit:raw=>{validateReceipt(raw,true);return true;},
+      busy:()=>processing, setBusy:value=>{processing=value;},
+      notify:status
+    }), writable:false, configurable:false
+  });
+  function exportReceipt() {
+    if (!entries.length || processing) return status("Selecteer eerst privébronnen.", true);
+    try {requireCompleteHumanProposals();} catch(e) {return status("HOLD: "+e.message,true);}
+    const obj = {
+      kind:"lightup.private.assessment.retention.plan", version:2,
+      authority:AUTHORITY,
+      rows:entries.map(record).sort((a,b) => a.sha256.localeCompare(b.sha256))
+    };
+    if (!window.confirm("Dit is een ONVERSLEUTELD PRIVATE JSON-plan met volledige SHA-256 bronidentiteiten, menselijke aliassen, reviewdatums en acties. Alleen bewust exporteren naar een vertrouwde privéopslag. Doorgaan?")) {
+      return status("PRIVATE plaintext export geannuleerd; geen bestand aangemaakt.");
+    }
+    download("lightup-private-assessment-retention.json", "application/json", JSON.stringify(obj));
+    status("PRIVATE ongetekend en bewust onversleuteld JSON-plan geëxporteerd. Vertrouwelijk bewaren.");
+  }
+  function validateReceipt(raw, requireExactMembership = true) {
+    let obj;
+    try { obj = JSON.parse(raw); } catch { throw new Error("Geen geldig JSON-plan."); }
+    // JSON.stringify roundtrip rejects duplicate-key JSON, alternative/ambiguous encodings and noncanonical input.
+    if (JSON.stringify(obj) !== raw.trim()) throw new Error("Niet-canonieke of mogelijk ambigue JSON.");
+    if (!keysAre(obj, ["kind","version","authority","rows"]) ||
+        obj.kind !== "lightup.private.assessment.retention.plan" || ![1,2].includes(obj.version) ||
+        !keysAre(obj.authority, Object.keys(AUTHORITY)) ||
+        Object.keys(AUTHORITY).some(key => obj.authority[key] !== false) ||
+        !Array.isArray(obj.rows) || !obj.rows.length || obj.rows.length > MAX_FILES) {
+      throw new Error("Onbekend plancontract of bevoegdheidsclaim.");
+    }
+    const proposed = new Map();
+    for (const row of obj.rows) {
+      if (!keysAre(row, obj.version === 2 ? V2_COLUMNS : ["sha256","bytes","alias","status","review_date","action"]) ||
+          !/^[a-f0-9]{64}$/.test(row.sha256) || !Number.isSafeInteger(row.bytes) ||
+          row.bytes < 1 || row.bytes > MAX_FILE_BYTES || !safeHuman(row.alias, 80) ||
+          !Object.hasOwn(STATES, row.status) || !validDate(row.review_date) ||
+          !safeHuman(row.action, 400) ||
+          (row.status === "propose_delete" && !row.action.trim()) ||
+          (obj.version === 2 && (!safeHuman(row.custodian,80) ||
+            !Object.hasOwn(CLASSIFICATIONS,row.classification) ||
+            !Object.hasOwn(HOLD_FLAGS,row.hold_flag) ||
+            (row.status === "propose_delete" && !removalProposalReady(row)))) ||
+          proposed.has(row.sha256)) {
+        throw new Error("Onbekende, herhaalde of ambigue oorspronkelijke bron/HUMAN-rij.");
+      }
+      // Older v1 has no custody assertions. Missing fields are UNKNOWN, not cleared.
+      proposed.set(row.sha256, obj.version===1 ?
+        {...row,custodian:"",classification:"unknown",hold_flag:"unknown"} : row);
+    }
+    if (requireExactMembership && (proposed.size !== entries.length ||
+        entries.some(e => !proposed.has(e.sha256) || proposed.get(e.sha256).bytes !== e.bytes))) {
+      throw new Error("Bronset wijkt af: selecteer opnieuw de exacte originele bestanden. Geen gedeeltelijke carry.");
+    }
+    return proposed;
+  }
+  async function decodeStrictJsonFile(file, maxBytes, label) {
+    if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > maxBytes)
+      throw new Error(label + " is leeg of overschrijdt de bytegrens.");
+    const bytes = await file.arrayBuffer();
+    if (bytes.byteLength !== file.size || bytes.byteLength < 1 || bytes.byteLength > maxBytes)
+      throw new Error(label + " veranderde tijdens het lezen of overschrijdt de bytegrens.");
+    let raw;
+    try {
+      raw = new TextDecoder("utf-8", {fatal:true, ignoreBOM:true}).decode(bytes);
+    } catch {
+      throw new Error(label + " bevat ongeldige UTF-8; geen HUMAN-gegevens overgenomen.");
+    }
+    if (raw.charCodeAt(0) === 0xfeff)
+      throw new Error(label + " met UTF-8-BOM wordt niet toegelaten.");
+    return raw;
+  }
+
+  async function importReceipt(event) {
+    if (processing) return;
+    processing = true;
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!entries.length) throw new Error("Selecteer eerst originele bronbestanden voor SHA-binding.");
+      if (file.size > MAX_RECEIPT_BYTES || file.size < 1) throw new Error("Planbestand overschrijdt de 128 KiB grens.");
+      const raw = await decodeStrictJsonFile(file, MAX_RECEIPT_BYTES, "Planbestand");
+      const rows = validateReceipt(raw);
+      if (!window.confirm("Alle geselecteerde echte bestandsbytes komen overeen. De volledige bestaande HUMAN-planning lokaal overnemen? Dit verleent GEEN consent, toestemming tot wissen, bron-authenticatie of scanbevoegdheid.")) {
+        status("Overname geannuleerd. De huidige werkruimte blijft intact."); return;
+      }
+      entries = entries.map(e => ({...e, ...record(rows.get(e.sha256))})); invalidateUndo();
+      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
+      render(); status("Volledige exact-brongebonden PRIVATE HUMAN-planning heropend. Bronbestanden ongewijzigd.");
+    } catch (e) {
+      status("HOLD: " + e.message + " Huidige planning ongewijzigd.", true);
+    } finally {
+      event.target.value = ""; processing = false;
+    }
+  }
+  async function compareReceipt(event) {
+    if (processing) return;
+    processing = true;
+    const target = $("source-drift");
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!entries.length) throw new Error("Selecteer eerst huidige originele bronbestanden.");
+      if (file.size > MAX_RECEIPT_BYTES || file.size < 1) throw new Error("Plan moet 1–128 KiB zijn.");
+      const raw = await decodeStrictJsonFile(file, MAX_RECEIPT_BYTES, "Vergelijkingsplan");
+      const plan = validateReceipt(raw, false);
+      const current = new Map(entries.map(e => [e.sha256, e]));
+      const added = entries.filter(e => !plan.has(e.sha256));
+      const missing = Array.from(plan.values()).filter(e => !current.has(e.sha256));
+      const same = entries.filter(e => plan.has(e.sha256) && plan.get(e.sha256).bytes === e.bytes);
+      const inconsistent = entries.filter(e => plan.has(e.sha256) && plan.get(e.sha256).bytes !== e.bytes);
+      if (inconsistent.length) throw new Error("Zelfde SHA met tegenstrijdige originele bestandsgrootte.");
+      target.replaceChildren();
+      target.append(text("strong", "PRIVATE bronvergelijking · geen automatische overname"));
+      target.append(text("p", "Nieuwe originele bytes in huidige selectie: " + added.length +
+        " · ontbreken ten opzichte van privéplan: " + missing.length +
+        " · exact aanwezige SHA/size: " + same.length));
+      const examples = document.createElement("ul");
+      for (const e of added) examples.append(text("li", "NIEUW in huidige selectie: " + e.sha256.slice(0,16) + "…"));
+      for (const e of missing) examples.append(text("li", "NIET in huidige selectie: " + e.sha256.slice(0,16) +
+        "… (geen claim dat de bron verwijderd, hersteld of ingetrokken is)"));
+      const humanChanged = same.filter(e => {
+        const before = plan.get(e.sha256);
+        return HUMAN_FIELDS.some(key=>e[key]!==before[key]);
+      });
+      target.append(text("p", "Gewijzigde menselijke voorstellen bij ongewijzigde bytes: " +
+        humanChanged.length + ". Er wordt niets samengevoegd of geautoriseerd."));
+      target.append(examples);
+      status("PRIVATE bronverschillen lokaal bekeken; huidige bronset en HUMAN-planning ongewijzigd.");
+    } catch (e) {
+      target.replaceChildren();
+      status("HOLD: bronvergelijking geweigerd: " + e.message + " Niets overgenomen.", true);
+    } finally {
+      event.target.value = ""; processing = false;
+    }
+  }
+  function resetDrift() {
+    $("source-drift").textContent = "Geen actuele bronvergelijking. Verschillen geven nooit een herstel-, intrekkings- of wisclaim.";
+  }
+  function exportPrivateHumanBrief() {
+    if (!entries.length || processing) return status("HOLD: geen PRIVATE brongebonden HUMAN-dossiers.", true);
+    if (!window.confirm("Exporteer ONVERSLEUTELD PRIVATE HUMAN reviewrapport met menselijke houder, gevoeligheid, bewaarbeperking en acties? Bevat geen broninhoud maar wel gevoelige HUMAN informatie; sla uitsluitend privé op. Doorgaan?"))
+      return status("PRIVATE HUMAN rapport geannuleerd; geen overdracht.");
+    // DOM textContent ensures every human-supplied string remains inert.
+    const doc=document.implementation.createHTMLDocument("LightUp PRIVATE HUMAN custody");
+    const meta=doc.createElement("meta");
+    meta.httpEquiv="Content-Security-Policy";
+    meta.content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'";
+    doc.head.append(meta);
+    const style=doc.createElement("style");
+    style.textContent="body{font:15px/1.5 system-ui,sans-serif;max-width:1450px;margin:24px auto;padding:0 15px;color:#192938}header{padding:15px;border:2px solid #b87d4c;border-radius:10px;background:#fff5eb}table{border-collapse:collapse;width:100%;min-width:1080px}th,td{border:1px solid #aab6c0;text-align:left;vertical-align:top;padding:8px;overflow-wrap:anywhere}th{background:#ebf1f6}.scroll{overflow-x:auto}@media print{body{font-size:10px;margin:0}header{background:white}table{min-width:0}td,th{padding:4px}}";
+    doc.head.append(style);
+    const write=(parent,tag,value)=>{
+      const e=doc.createElement(tag);e.textContent=value;parent.append(e);return e;
+    };
+    const banner=doc.createElement("header");doc.body.append(banner);
+    write(banner,"h1","LightUp PRIVATE · HUMAN custody en bewaarbeperkingen");
+    write(banner,"p","INCUBATE · M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Ongetekende, niet-geauthenticeerde HUMAN voorstellen. Geen aangetoonde client/operator toestemming, juridische vrijgave, geverifieerde vulnerability, bronherkomst, grant, scan, remediation of wisopdracht. Bronhash-prefixen vergelijken alleen lokale bytes. Dit bronvrije rapport bevat gevoelige HUMAN persoonsgegevens en mag NIET publiek worden gedeeld.");
+    write(doc.body,"h2","PRIVATE HUMAN werkoverzicht");
+    const ul=doc.createElement("ul");doc.body.append(ul);
+    const stats=[
+      "Geselecteerde oorspronkelijke bronnen: "+entries.length,
+      "Dossierhouder nog niet ingevuld: "+entries.filter(e=>!e.custodian.trim()).length,
+      "HUMAN meldt mogelijk actieve bewaarbeperking: "+entries.filter(e=>e.hold_flag==="human_claim_active").length,
+      "HUMAN verwijdervoorstel nog HOLD: "+entries.filter(e=>e.status==="propose_delete" && !removalProposalReady(e)).length
+    ];
+    for(const value of stats)write(ul,"li",value);
+    write(doc.body,"h2","Brongebonden PRIVATE opvolgdossiers — vereisen echte menselijke beoordeling");
+    const scroll=doc.createElement("div");scroll.className="scroll";doc.body.append(scroll);
+    const table=doc.createElement("table");scroll.append(table);
+    const thead=doc.createElement("thead"),tr=doc.createElement("tr");
+    thead.append(tr);table.append(thead);
+    for(const head of ["#","Originele SHA-prefix","HUMAN alias","HUMAN dossierhouder",
+       "Gevoeligheid (HUMAN)","Bewaarbeperking (HUMAN)","Voorstel (HUMAN)",
+       "Reviewdatum (HUMAN)","Vervolgactie (HUMAN)"])write(tr,"th",head);
+    const tbody=doc.createElement("tbody");table.append(tbody);
+    const sorted=[...entries].sort((a,b)=>
+      (a.hold_flag==="human_claim_active"?0:a.hold_flag==="unknown"?1:2)-
+      (b.hold_flag==="human_claim_active"?0:b.hold_flag==="unknown"?1:2) ||
+      (a.review_date||"9999").localeCompare(b.review_date||"9999") ||
+      a.sha256.localeCompare(b.sha256));
+    sorted.forEach((e,i)=>{
+      const row=doc.createElement("tr");tbody.append(row);
+      const held=e.status==="propose_delete" && !removalProposalReady(e);
+      for(const col of [i+1,e.sha256.slice(0,16)+"…",e.alias,
+        e.custodian||"NIET TOEGEWEZEN",CLASSIFICATIONS[e.classification],
+        HOLD_FLAGS[e.hold_flag],
+        held?"HOLD · HUMAN verwijdervoorstel onvolledig":STATES[e.status],
+        e.review_date||"ONBEKEND",e.action||"Geen HUMAN-actie genoteerd"])write(row,"td",String(col));
+    });
+    write(doc.body,"p","Geen originele bronbytes, volledige bronhash, bestandsnaam of geauthenticeerde toestemming wordt in dit rapport opgenomen. Het rapport is uitsluitend PRIVATE menselijk werkmateriaal.");
+    download("lightup-private-human-custody-review.html","text/html;charset=utf-8",
+      "<!doctype html>\n"+doc.documentElement.outerHTML);
+    status("PRIVATE scriptloos HUMAN custody-reviewdossier lokaal geëxporteerd. Broninhoud blijft gescheiden.");
+  }
+  function exportHumanCalendar() {
+    if (processing || !entries.length) return status("Selecteer eerst originele PRIVÉ-bronnen.", true);
+    const dayCounts = new Map();
+    for (const item of entries) {
+      if (!item.review_date) continue;
+      if (!validDate(item.review_date)) return status("HOLD: ongeldige menselijke reviewdatum.", true);
+      dayCounts.set(item.review_date, (dayCounts.get(item.review_date) || 0) + 1);
+    }
+    if (!dayCounts.size) return status("Voeg eerst minstens één voorlopige HUMAN-reviewdatum toe.", true);
+    if (!globalThis.crypto?.getRandomValues) return status("Beveiligde willekeur is hier niet beschikbaar; geen kalender gegenereerd.", true);
+    if (!window.confirm("Maak een PRIVÉ agenda met uitsluitend voorgestelde datums en aantallen? Kalenders kunnen automatisch naar cloudaccounts synchroniseren; bij kleine groepen kunnen datums indirect gevoelig zijn. Dit is GEEN echt retention-/consentbesluit. Doorgaan?"))
+      return status("PRIVATE agenda-export geannuleerd; geen externe kalender bijgewerkt.");
+    const stamp = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}Z$/,"Z");
+    const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp PRIVATE HUMAN Review//NL",
+      "CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+    for (const [day,count] of [...dayCounts].sort(([a],[b])=>a.localeCompare(b))) {
+      const d = new Date(day + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate()+1);
+      const following = d.toISOString().slice(0,10).replaceAll("-","");
+      const entropy = new Uint8Array(16);
+      crypto.getRandomValues(entropy);
+      lines.push("BEGIN:VEVENT",
+        "UID:"+bytesToHex(entropy)+"@lightup.local.invalid",
+        "DTSTAMP:"+stamp,
+        "DTSTART;VALUE=DATE:"+day.replaceAll("-",""),
+        "DTEND;VALUE=DATE:"+following,
+        "SUMMARY:LightUp PRIVATE "+count+" HUMAN reviewvoorstel"+(count===1?"":"len"),
+        "DESCRIPTION:PRIVATE tentative HUMAN work only. No approval or deletion.",
+        "CLASS:PRIVATE","STATUS:TENTATIVE","TRANSP:TRANSPARENT",
+        "END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    download("lightup-private-human-provisional-reviews.ics","text/calendar;charset=utf-8",
+      lines.join("\r\n")+"\r\n");
+    status("PRIVATE voorlopige HUMAN-reviewdatums geëxporteerd. Geen automatische agenda-upload, grant, verwijdering of statuswijziging.");
+  }
+  function exportVisibleHumanCalendar(){
+    if(processing||!entries.length)return status("Selecteer eerst originele PRIVÉ-bronnen.",true);
+    const shown=visibleEntries(),dayCounts=new Map();
+    for(const item of shown){
+      if(!item.review_date)continue;
+      if(!validDate(item.review_date))return status("HOLD: ongeldige menselijke reviewdatum.",true);
+      dayCounts.set(item.review_date,(dayCounts.get(item.review_date)||0)+1);
+    }
+    if(!dayCounts.size)return status("Geen gedateerde rijen in de huidige filters; er is geen zichtbare kalender gemaakt.",true);
+    if(!globalThis.crypto?.getRandomValues)return status("Beveiligde willekeur is hier niet beschikbaar; geen kalender gegenereerd.",true);
+    if(!window.confirm("Maak een PRIVATE agenda met alleen datums en aantallen van de momenteel zichtbare gefilterde rijen? Agenda-apps kunnen synchroniseren naar cloudaccounts; kleine groepen kunnen indirect gevoelig zijn. Dit is GEEN echt retention-/consentbesluit. Doorgaan?"))
+      return status("PRIVATE zichtbare agenda-export geannuleerd; geen externe kalender bijgewerkt.");
+    const stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}Z$/,"Z");
+    const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp PRIVATE Visible HUMAN Review//NL",
+      "CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+    for(const [day,count] of [...dayCounts].sort(([a],[b])=>a.localeCompare(b))){
+      const d=new Date(day+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+1);
+      const following=d.toISOString().slice(0,10).replaceAll("-","");
+      const entropy=new Uint8Array(16);crypto.getRandomValues(entropy);
+      lines.push("BEGIN:VEVENT","UID:"+bytesToHex(entropy)+"@lightup.local.invalid",
+        "DTSTAMP:"+stamp,"DTSTART;VALUE=DATE:"+day.replaceAll("-",""),
+        "DTEND;VALUE=DATE:"+following,
+        "SUMMARY:LightUp PRIVATE visible "+count+" HUMAN reviewvoorstel"+(count===1?"":"len"),
+        "DESCRIPTION:PRIVATE filtered visible HUMAN work only. No approval or deletion.",
+        "CLASS:PRIVATE","STATUS:TENTATIVE","TRANSP:TRANSPARENT","END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    download("lightup-private-visible-human-review-dates.ics","text/calendar;charset=utf-8",lines.join("\r\n")+"\r\n");
+    status("PRIVATE kalender met uitsluitend datums/aantallen van zichtbare rijen geëxporteerd. Geen bronidentiteit, upload, grant, verwijdering of statuswijziging.");
+  }
+  function exportCounts() {
+    if (!entries.length || processing) return status("Geen aantallen zonder geselecteerde privébronnen.", true);
+    const rows = ["status,count"];
+    for (const key of Object.keys(STATES)) {
+      rows.push(key + "," + entries.filter(e => e.status === key).length);
+    }
+    rows.push("human_custodian_unassigned,"+entries.filter(e=>!e.custodian.trim()).length);
+    rows.push("human_claim_active_hold,"+entries.filter(e=>e.hold_flag==="human_claim_active").length);
+    rows.push("human_unknown_hold,"+entries.filter(e=>e.hold_flag==="unknown").length);
+    rows.push("human_proposal_blocked,"+entries.filter(e=>e.status==="propose_delete" && !removalProposalReady(e)).length);
+    download("lightup-private-human-retention-counts.csv", "text/csv;charset=utf-8",
+      "\ufeff" + rows.join("\r\n") + "\r\n");
+    status("Alleen conservatieve HUMAN-aantallen geëxporteerd; bij kleine groepen nog steeds PRIVATE.");
+  }
+  function applyBulk() {
+    if (processing) return status("Broncontrole loopt nog.", true);
+    const candidates = visibleEntries();
+    if (!candidates.length) return status("Geen zichtbare rijen voor bulkplanning.", true);
+    const stage = $("bulk-status").value;
+    const due = $("bulk-date").value;
+    const action = $("bulk-action").value;
+    const custodian = $("bulk-custodian").value;
+    const classification = $("bulk-classification").value;
+    const hold = $("bulk-hold").value;
+    if ((stage!=="__keep__" && !Object.hasOwn(STATES,stage)) ||
+        (classification!=="__keep__" && !Object.hasOwn(CLASSIFICATIONS,classification)) ||
+        (hold!=="__keep__" && !Object.hasOwn(HOLD_FLAGS,hold)) ||
+        !validDate(due) || !safeHuman(action,400) || !safeHuman(custodian,80)) {
+      return status("HOLD: ongeldige HUMAN bulkstatus, datum, houder of metadata.",true);
+    }
+    if (stage==="__keep__" && !due && !action && !custodian &&
+        classification==="__keep__" && hold==="__keep__") {
+      return status("Geen HUMAN-bulkwijzigingen gekozen.",true);
+    }
+    const preview = candidates.map(e=>({...e,
+      status:stage==="__keep__"?e.status:stage,
+      review_date:due||e.review_date,
+      action:action||e.action,
+      custodian:custodian||e.custodian,
+      classification:classification==="__keep__"?e.classification:classification,
+      hold_flag:hold==="__keep__"?e.hold_flag:hold
+    }));
+    if (preview.some(e=>!removalProposalReady(e))) {
+      return status("HOLD: één of meer nieuwe HUMAN verwijdervoorstellen missen houder/actie of verklaarde check op bewaarbeperking. Niets aangepast.",true);
+    }
+    const count = candidates.length;
+    const summary = "HUMAN werkpakket voor "+count+" zichtbare bronrij(en). "+
+      "Status: "+(stage==="__keep__"?"ongewijzigd":STATES[stage])+
+      "; Houder: "+(custodian?"aangepast":"ongewijzigd")+
+      "; Gevoeligheid: "+(classification==="__keep__"?"ongewijzigd":CLASSIFICATIONS[classification])+
+      "; Bewaarbeperking: "+(hold==="__keep__"?"ongewijzigd":HOLD_FLAGS[hold])+
+      "; datum/actie: "+(due||action?"aangepast waar ingevuld":"ongewijzigd")+
+      ". Dit is nooit een grant, juridische vrijgave of wisopdracht. Doorgaan?";
+    if (!window.confirm(summary)) return status("HUMAN-bulkvoorstel geannuleerd; geen bronwijziging.");
+    const before=candidates.map(record);
+    for(let n=0;n<count;n++) Object.assign(candidates[n],{
+      status:preview[n].status,review_date:preview[n].review_date,
+      action:preview[n].action,custodian:preview[n].custodian,
+      classification:preview[n].classification,hold_flag:preview[n].hold_flag
+    });
+    lastBulk={before,after:candidates.map(record)};
+    $("bulk-undo").disabled=false;
+    render();
+    status("HUMAN brongebonden bulkwijziging voor "+count+" rijen toegepast; directe éénstaps-undo beschikbaar.");
+  }
+  function undoBulk() {
+    if (!lastBulk || processing) return status("Geen geldige directe bulkstap om terug te draaien.", true);
+    const matches = lastBulk.after.every(saved => {
+      const current = entries.find(e => e.sha256 === saved.sha256);
+      return current && JSON.stringify(record(current)) === JSON.stringify(saved);
+    });
+    if (!matches) {
+      invalidateUndo();
+      return status("HOLD: rijen veranderden sinds de bulkstap; ongedaan maken is niet veilig.", true);
+    }
+    for (const original of lastBulk.before) {
+      const item = entries.find(e => e.sha256 === original.sha256);
+      Object.assign(item, original);
+    }
+    const count = lastBulk.before.length;
+    invalidateUndo();
+    render();
+    status("Laatste HUMAN bulkvoorstel voor " + count + " rijen volledig hersteld.");
+  }
+  $("bulk-apply").addEventListener("click", applyBulk);
+  $("bulk-undo").addEventListener("click", undoBulk);
+  $("sources").addEventListener("change", ingest);
+  $("receipt").addEventListener("change", importReceipt);
+  $("compare").addEventListener("change", compareReceipt);
+  $("export-plan").addEventListener("click", exportReceipt);
+  $("export-counts").addEventListener("click", exportCounts);
+  $("capacity-scope").addEventListener("change", renderCapacity);
+  $("capacity-a").addEventListener("input", renderCapacity);
+  $("capacity-b").addEventListener("input", renderCapacity);
+  $("capacity-export").addEventListener("click", exportCapacity);
+  $("capacity-reset-week").addEventListener("click",()=>{
+    $("due-filter").value="";
+    render();
+    status("Alleen de lokale HUMAN weekdatumsfilter is gewist; overige filters en keuzes behouden.");
+  });
+  $("export-brief").addEventListener("click",exportPrivateHumanBrief);
+  $("export-calendar").addEventListener("click", exportHumanCalendar);
+  $("export-visible-calendar").addEventListener("click", exportVisibleHumanCalendar);
+  $("query").addEventListener("input", render);
+  $("status-filter").addEventListener("change", render);
+  $("due-filter").addEventListener("change", render);
+  $("sort-order").addEventListener("change", render);
+  $("hold-filter").addEventListener("change", render);
+  $("print").addEventListener("click", () => {
+    if (!entries.length) return status("Geen overzicht om te printen.", true);
+    if (window.confirm("Dit is een PRIVATE, ongetekend overzicht. Afdrukken kan lokale printsporen maken. Alleen op een vertrouwde printer doorgaan?")) window.print();
+  });
+  $("clear").addEventListener("click", () => {
+    // Do not let a pending async source/vault operation re-add or report against a cleared workspace.
+    if (processing) return status("HOLD: lokale bron-/vaultverwerking loopt nog. Wacht tot deze klaar is voordat je de werkruimte wist; er is niets gewist.", true);
+    if (entries.length && !window.confirm("Alle niet-opgeslagen HUMAN-keuzes uit dit tabblad wissen? Eerder gedownloade privébestanden worden niet gewist.")) return;
+    entries = []; invalidateUndo(); resetDrift(); $("sources").value = ""; $("receipt").value = ""; $("compare").value = "";
+    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
+    render(); status("Lokale werkruimte leeggemaakt (geen garantie op veilig geheugenwissen).");
+  });
+  window.addEventListener("beforeunload", event => {
+    if (!entries.length) return;
+    event.preventDefault(); event.returnValue = "";
+  });
+  render();
+})();

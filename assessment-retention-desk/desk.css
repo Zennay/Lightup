@@ -1,0 +1,68 @@
+:root { color-scheme:dark; font: 16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#0a1220; color:#f1f6fc; }
+* { box-sizing:border-box }
+body { margin:0 }
+main { width:min(1320px,95vw); margin:0 auto; padding:28px 0 55px }
+header { padding:40px 6px 18px }
+.eyebrow { font-size:12px; letter-spacing:.16em; font-weight:750; color:#7bcef9 }
+h1 { max-width:940px; font-size:clamp(29px,3vw,47px); letter-spacing:-.035em; line-height:1.14; margin:10px 0 20px }
+h2 { font-size:1.25rem; margin:0 0 7px }
+p { color:#c0cedd; max-width:1050px; margin:8px 0 16px }
+.warning { border:1px solid #e6ba72; background:#32261d; padding:15px 19px; border-radius:14px; line-height:1.65; max-width:1080px }
+.warning strong { color:#ffe2a2 }
+.panel { background:#111d2e; border:1px solid #2b3f57; border-radius:18px; padding:24px; margin:20px 0; box-shadow:0 10px 24px #060e1850 }
+.actions,.filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:14px 0 }
+.filelabel,button { display:inline-block; padding:11px 16px; border:1px solid #7ed6f8; background:#207fac; color:#fff; border-radius:10px; font:inherit; font-weight:600; cursor:pointer; }
+.filelabel:hover,button:hover { filter:brightness(1.17) }
+.secondary { border-color:#66849e; background:#23364e }
+.danger { border-color:#bd8d91; background:#5a2c3b; font-size:.84rem; padding:8px 10px }
+input[type=file] { max-width:310px; color:#d6e4ee; font:inherit; font-size:.8rem }
+input[type=file]::file-selector-button { display:none }
+input[type=text],input[type=search],input[type=date],select { background:#091422; border:1px solid #54718b; color:#fff; padding:9px; border-radius:9px; font:inherit; max-width:260px; min-width:135px; }
+input[type=text] { width:100%; min-width:175px }
+.filters label { display:grid; gap:3px; color:#b8cadb; font-size:.85rem }
+button:focus-visible,input:focus-visible,select:focus-visible,.filelabel:focus-visible { outline:3px solid #fed483; outline-offset:2px }
+.scroll { width:100%; overflow-x:auto; border:1px solid #31475d; border-radius:11px }
+table { border-collapse:collapse; width:100%; min-width:1710px; font-size:.9rem }
+th { color:#bbd5e7; text-align:left; font-size:.79rem; letter-spacing:.03em; background:#1c3047 }
+td,th { padding:12px; border-bottom:1px solid #34485e; vertical-align:top; }
+tbody tr:hover { background:#1a3046 }
+td small { display:block; color:#a8c0d2; font-size:.77rem; margin-top:2px; }
+.stats { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0 19px; }
+.stat.attention { border-color:#d4a15f; background:#47311f; }
+.stat { background:#20354b; border:1px solid #355672; border-radius:12px; padding:12px 15px; min-width:175px; flex:1; font-size:.87rem; }
+.vault { border:1px solid #468aa8; background:#112f3e; padding:16px 18px; border-radius:14px; margin:15px 0 20px; }
+.vault h3 { margin:0 0 7px; font-size:1.05rem; color:#b5e5ff; }
+.vault .actions label:not(.filelabel) { display:grid; gap:5px; font-size:.9rem; color:#e4f0fc; }
+.vault .actions input[type=password] { background:#07131f; border:1px solid #8cb5cd; border-radius:9px; color:#fff; min-width:220px; padding:9px; font:inherit; }
+.vault .actions input[type=password]:focus-visible {outline:3px solid #fce18b; outline-offset:2px;}
+.drift { border:1px solid #506985; border-radius:11px; background:#1b3046; padding:12px 17px; margin:13px 0; overflow-wrap:anywhere; }
+.drift strong { color:#c1e6f8; }
+.drift li { padding:3px 0; font-size:.85rem; }
+.bulk { border:1px solid #49647c; border-radius:12px; background:#182940; padding:14px; margin-bottom:15px; }
+.bulk h3 { font-size:1rem; margin:0 0 10px; }
+.bulk .actions label { display:grid; gap:3px; font-size:.82rem; color:#bfd6e7; }
+.bulk .actions label:has(#bulk-action) { flex:1; min-width:240px; }
+.bulk .actions input[type=text] { width:100%; max-width:none; }
+button:disabled { opacity:.43; cursor:not-allowed; }
+.muted { color:#a7bed0; font-size:.88rem }
+#message { background:#213751; border-left:4px solid #85c8eb; padding:14px 18px; border-radius:8px; margin:20px 0; }
+#message.error { background:#44292f; border-left-color:#f7a5a8; }
+footer { color:#95adbe; font-size:.78rem; text-align:center; }
+@media(max-width:720px) { main {width:96vw;padding-top:8px} header {padding-top:18px} .panel {padding:16px} .filelabel,button{width:100%;text-align:center} }
+@media print {
+.vault {display:none!important}
+
+:root {color-scheme:light; background:white; color:black}
+main{width:100%;padding:0}header{padding:0}
+.panel{break-inside:avoid;box-shadow:none;background:#fff;color:#000;border:1px solid #999;padding:9px;margin:9px 0}
+.warning{background:white;color:#000;border:2px solid #000}
+.warning strong,p,h1,h2,.eyebrow,.muted,footer {color:#111}
+.actions,.filters,#sources,#receipt,#message,button {display:none!important}
+input,select{background:white!important;color:black!important;border:0!important}
+table{min-width:0;font-size:10px}
+td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
+.stat{background:white;color:black;border:1px solid #aaa}
+}
+/* HUMAN custody/sensitivity/hold fields are visible and always private; none denotes a verified legal decision. */
+td select { max-width: 225px; width: 100%; }
+td input[type=text] { max-width: 255px; }
