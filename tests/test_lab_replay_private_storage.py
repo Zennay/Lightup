@@ -153,6 +153,29 @@ class PrivateReplayStorageContract(unittest.TestCase):
                 _verify_database_lineage(bundle, receipt)
 
 
+    def test_state_store_rejects_unreferenced_foreign_source_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary)
+            receipt, _receipt_bytes, _digest = _build_replay(bundle)
+            state_path = bundle / "state.sqlite3"
+            with sqlite3.connect(state_path) as state:
+                row = state.execute(
+                    "SELECT run_id,capability_id,kind,sha256,metadata_json,created_at "
+                    "FROM evidence WHERE source='lightup.lab_replay' LIMIT 1"
+                ).fetchone()
+            self.assertIsNotNone(row)
+            run_id, capability_id, kind, digest, metadata, created_at = row
+            with sqlite3.connect(state_path) as state:
+                state.execute(
+                    "INSERT INTO evidence "
+                    "(evidence_id,run_id,capability_id,kind,source,sha256,metadata_json,created_at) "
+                    "VALUES(?,?,?,?,?,?,?,?)",
+                    ("injected-foreign-source-evidence", run_id, capability_id, kind,
+                     "untrusted.injected", digest, metadata, created_at),
+                )
+            with self.assertRaisesRegex(RuntimeError, "unexpected evidence source"):
+                _verify_database_lineage(bundle, receipt)
+
     def test_state_store_rejects_unexpected_source_and_broken_run_lineage(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             bundle = Path(temporary)
@@ -189,7 +212,7 @@ class PrivateReplayStorageContract(unittest.TestCase):
                     "UPDATE evidence SET source=? WHERE evidence_id=?",
                     ("untrusted.injected", evidence_id),
                 )
-            with self.assertRaisesRegex(RuntimeError, "StateStore baseline run set does not match receipt"):
+            with self.assertRaisesRegex(RuntimeError, "unexpected evidence source"):
                 _verify_database_lineage(bundle, receipt)
             with sqlite3.connect(state_path) as state:
                 state.execute(
