@@ -1,0 +1,38 @@
+{
+  "contract": "lightup.assessment_lab_review.v1",
+  "source_schema": "lightup.lab_assessment_result.v1",
+  "review_return_schema": "lightup.assessment_lab_review.return.v1",
+  "summary_schema": "lightup.lab_review.summary.v1",
+  "limits": {
+    "source_bytes_max": 8388608,
+    "return_bytes_max": 1048576,
+    "targets_min": 1,
+    "targets_max": 16,
+    "findings_max": 2048,
+    "plan_items_max": 128,
+    "nested_depth_max": 64,
+    "json_nodes_max": 200000,
+    "follow_up_chars_max": 2000
+  },
+  "severity_values": ["critical", "high", "medium", "low", "info"],
+  "retest_values": ["not_tested", "fixed", "fix_pending", "regression"],
+  "coverage_values": ["assessed", "partially_assessed", "not_applicable", "not_authorized", "unknown"],
+  "stage_values": ["triage", "evidence_review", "follow_up", "ready_for_human_review"],
+  "reviewer_role_values": ["lab_operator", "security_reviewer", "privacy_reviewer", "product_owner"],
+  "authority_flags": {
+    "source_authenticated": false,
+    "ground_truth_verified": false,
+    "client_consent_verified": false,
+    "operator_consent_verified": false,
+    "authorization_granted": false,
+    "dispatch_allowed": false,
+    "release_allowed": false
+  },
+  "storage_policy": {
+    "persistent_browser_storage": false,
+    "network_requests": false,
+    "source_content_in_summary_export": false,
+    "targets_in_summary_export": false,
+    "raw_source_in_review_return": false
+  }
+}
