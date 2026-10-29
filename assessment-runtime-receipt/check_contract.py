@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -81,6 +82,12 @@ def check_schema_contracts() -> None:
     require(manifest_schema["properties"]["format"].get("const") == batch.FORMAT, "manifest schema/runtime version drift")
     sources = manifest_schema["properties"]["sources"]
     require((sources.get("minItems"), sources.get("maxItems")) == (2, 8), "manifest schema must bound batches to 2–8 sources")
+    path_pattern = sources["items"]["properties"]["path"].get("pattern")
+    require(isinstance(path_pattern, str), "manifest path schema must define a canonical path pattern")
+    for path in ("/tmp/first.json", "/var/lib/lightup/lab/source.json"):
+        require(re.fullmatch(path_pattern, path) is not None, "manifest schema must accept canonical absolute paths")
+    for path in ("/", "//tmp/source.json", "/tmp//source.json", "/tmp/../source.json", "/tmp/./source.json"):
+        require(re.fullmatch(path_pattern, path) is None, "manifest schema must reject noncanonical paths")
     require(output_schema.get("additionalProperties") is False, "receipt schema must reject extra fields")
     props = output_schema["properties"]
     require(props["receipt_format"].get("const") == batch.RECEIPT_FORMAT, "receipt schema/runtime version drift")
