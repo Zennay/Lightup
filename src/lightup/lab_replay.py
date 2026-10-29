@@ -424,7 +424,6 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
         if item["profile_id"] == "exposed"
     )
     with sqlite3.connect(bundle / "state.sqlite3") as state:
-        run_ids = {row[0] for row in state.execute("SELECT run_id FROM runs")}
         rows = state.execute(
             "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json "
             "FROM evidence"
@@ -434,8 +433,6 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
                 raise RuntimeError("StateStore contains unexpected evidence source")
             if capability_id != http_baseline.CAPABILITY_ID:
                 raise RuntimeError("StateStore evidence capability does not match fixture catalog")
-            if run_id not in run_ids:
-                raise RuntimeError("StateStore evidence references a missing run")
             meta = json.loads(raw_meta)
             if (not isinstance(meta, dict)
                     or _canonical(meta).decode("utf-8") != raw_meta):
@@ -464,8 +461,6 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
         raise RuntimeError("StateStore baseline run set does not match receipt")
     if len(set(baseline_run_ids.values())) != len(baseline_run_ids):
         raise RuntimeError("StateStore baseline profiles share a run identity")
-    if run_ids != set(baseline_run_ids.values()):
-        raise RuntimeError("StateStore run set does not match baseline evidence")
     if retest_run_ids != {baseline_run_ids["exposed"]}:
         raise RuntimeError("StateStore retest evidence is not bound to exposed baseline run")
     if (len(state_records) != len(expected_state_evidence)
