@@ -112,3 +112,14 @@ CSRF protection.
 - **Security Twin (planned)** — durable current-state model, attack graph and future-state change simulation.
 
 See `docs/ai-orchestration.md` for the AI-layer contracts.
+
+
+## Combined lab score suite
+
+Run the service-inventory, TLS-baseline and HTTP-baseline loopback scorers together, with independent evidence databases and a private aggregate report:
+
+```bash
+PYTHONPATH=src python -m lightup.lab_score_suite --output-dir ./lab-score-run-001
+```
+
+The output directory must be new. See [the suite contract](docs/lab-score-suite.md) for its metrics, persisted-evidence checks, storage permissions and loopback-only safety boundary.
