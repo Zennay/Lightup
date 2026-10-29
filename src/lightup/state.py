@@ -43,6 +43,17 @@ CREATE TABLE IF NOT EXISTS evidence (
     created_at TEXT NOT NULL,
     FOREIGN KEY (run_id) REFERENCES runs(run_id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS lab_evaluations (
+    record_id TEXT PRIMARY KEY,
+    scenario_id TEXT NOT NULL,
+    run_id TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL,
+    record_json TEXT NOT NULL,
+    record_sha256 TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_lab_evaluations_scenario_created
+    ON lab_evaluations(scenario_id, created_at DESC);
 """
 
 
@@ -192,3 +203,95 @@ class StateStore:
             ),
             created_at=row["created_at"],
         )
+
+
+    def add_lab_evaluation(self, record: dict) -> str:
+        """Persist one lab evaluation as canonical JSON for later comparison."""
+        required = ("record_id", "scenario_id", "run_id", "engine_version",
+                    "model_bindings", "evidence_ids", "metrics", "created_at", "notes")
+        if not isinstance(record, dict) or any(key not in record for key in required):
+            raise ValueError("lab evaluation record is incomplete")
+        for key in ("record_id", "scenario_id", "run_id", "engine_version", "created_at"):
+            if not isinstance(record[key], str) or not record[key].strip():
+                raise ValueError(f"lab evaluation {key} is required")
+        if not isinstance(record["notes"], str) or not isinstance(record["metrics"], dict):
+            raise ValueError("lab evaluation notes or metrics have an invalid shape")
+        bindings = record["model_bindings"]
+        if not isinstance(bindings, (tuple, list)) or any(
+            not isinstance(pair, (tuple, list)) or len(pair) != 2
+            or any(not isinstance(value, str) for value in pair) for pair in bindings
+        ):
+            raise ValueError("lab evaluation model bindings must be string pairs")
+        evidence_ids = record["evidence_ids"]
+        if (not isinstance(evidence_ids, (tuple, list))
+                or any(not isinstance(item, str) or not item.strip() for item in evidence_ids)
+                or len(set(evidence_ids)) != len(evidence_ids)):
+            raise ValueError("lab evaluation evidence IDs must be unique non-empty strings")
+        encoded = json.dumps(record, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        with self.connect() as con:
+            con.execute("BEGIN IMMEDIATE")
+            for evidence_id in evidence_ids:
+                evidence_row = con.execute(
+                    "SELECT run_id FROM evidence WHERE evidence_id=?", (evidence_id,)
+                ).fetchone()
+                if evidence_row is None or evidence_row["run_id"] != record["run_id"]:
+                    raise ValueError("lab evaluation evidence must belong to its run")
+            con.execute(
+                "INSERT INTO lab_evaluations(record_id,scenario_id,run_id,created_at,record_json,record_sha256) "
+                "VALUES(?,?,?,?,?,?)",
+                (record["record_id"], record["scenario_id"], record["run_id"],
+                 record["created_at"], encoded, digest),
+            )
+            con.execute("COMMIT")
+        return record["record_id"]
+
+    def _decode_lab_evaluation(self, row: sqlite3.Row) -> dict:
+        encoded = row["record_json"]
+        if hashlib.sha256(encoded.encode("utf-8")).hexdigest() != row["record_sha256"]:
+            raise ValueError("persisted lab evaluation checksum mismatch")
+        record = json.loads(encoded)
+        if (not isinstance(record, dict) or record.get("record_id") != row["record_id"]
+                or record.get("scenario_id") != row["scenario_id"]
+                or record.get("run_id") != row["run_id"]):
+            raise ValueError("persisted lab evaluation identity does not match its index")
+        evidence_ids = record.get("evidence_ids")
+        if not isinstance(evidence_ids, list) or any(
+            not isinstance(item, str) or not item.strip() for item in evidence_ids
+        ) or len(set(evidence_ids)) != len(evidence_ids):
+            raise ValueError("persisted lab evaluation evidence IDs are invalid")
+        with self.connect() as con:
+            for evidence_id in evidence_ids:
+                evidence_row = con.execute(
+                    "SELECT run_id FROM evidence WHERE evidence_id=?", (evidence_id,)
+                ).fetchone()
+                if evidence_row is None or evidence_row["run_id"] != record["run_id"]:
+                    raise ValueError("persisted lab evaluation evidence lineage mismatch")
+        return record
+
+    def get_lab_evaluation(self, record_id: str) -> dict:
+        if not isinstance(record_id, str) or not record_id.strip():
+            raise ValueError("record_id is required")
+        with self.connect() as con:
+            row = con.execute(
+                "SELECT record_id,scenario_id,run_id,record_json,record_sha256 FROM lab_evaluations WHERE record_id=?",
+                (record_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(f"unknown lab evaluation {record_id!r}")
+        return self._decode_lab_evaluation(row)
+
+    def list_lab_evaluations(self, scenario_id: str | None = None, limit: int = 20) -> list[dict]:
+        if type(limit) is not int or not 1 <= limit <= 1000:
+            raise ValueError("limit must be an integer between 1 and 1000")
+        if scenario_id is not None and (not isinstance(scenario_id, str) or not scenario_id.strip()):
+            raise ValueError("scenario_id must be a non-empty string when provided")
+        query = "SELECT record_id,scenario_id,run_id,record_json,record_sha256 FROM lab_evaluations "
+        params: tuple = (limit,)
+        if scenario_id is not None:
+            query += "WHERE scenario_id=? "
+            params = (scenario_id, limit)
+        query += "ORDER BY created_at DESC, record_id DESC LIMIT ?"
+        with self.connect() as con:
+            rows = con.execute(query, params).fetchall()
+        return [self._decode_lab_evaluation(row) for row in rows]
