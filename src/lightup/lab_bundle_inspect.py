@@ -283,7 +283,7 @@ def _verify_receipt(receipt: dict[str, Any], digest: str, bundle_name: str) -> N
         known_profile = lab_replay.PROFILES[item["profile_id"]]
         if (
             item["fixture_sha256"] != lab_replay._profile_sha(known_profile)
-            or item["expected_check_ids"] != list(known_profile.expected_check_ids)
+            or item["expected_check_ids"] != sorted(known_profile.expected_check_ids)
         ):
             raise ValueError("fixture ground truth identity mismatch")
         expected_profile_outcome = (
