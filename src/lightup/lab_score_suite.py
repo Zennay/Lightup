@@ -200,6 +200,11 @@ def _summarize_result(
                 failures.append("unexpected_check_field")
             elif value is not True:
                 failures.append(f"check_failed:{key}")
+        # All three first-party scorers depend on persisted evidence lineage.
+        # Omitting a critical check must be a failure, not an empty PASS.
+        for required in ("evidence_lineage_verified", "persisted_record_readback"):
+            if checks.get(required) is not True:
+                failures.append(f"required_check_missing_or_failed:{required}")
 
     evaluation = result.get("evaluation")
     if not isinstance(evaluation, dict):
@@ -266,6 +271,13 @@ def _summarize_result(
             failures.append("invalid_metric_field")
         else:
             safe_metrics[key] = value
+
+    # These fixed local calibration fixtures do not require a human decision
+    # or paid model-provider call. Reject any such reported activity rather
+    # than publishing an unconditional no-external-action declaration.
+    for marker in ("human_interventions", "compute_cost_usd"):
+        if marker in safe_metrics and safe_metrics[marker] != 0:
+            failures.append(f"unexpected_calibration_activity:{marker}")
 
     # A false-positive rate cannot be an independent unchecked source claim:
     # it is derived from the same valid/invalid finding counters we verify.
