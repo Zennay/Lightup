@@ -120,6 +120,8 @@ Run the service-inventory, TLS-baseline and HTTP-baseline loopback scorers toget
 
 ```bash
 PYTHONPATH=src python -m lightup.lab_score_suite --output-dir ./lab-score-run-001
+# Later: verify saved local evidence without rerunning any scorer
+PYTHONPATH=src python -m lightup.lab_score_inspect --output-dir ./lab-score-run-001
 ```
 
-The output directory must be new. See [the suite contract](docs/lab-score-suite.md) for its metrics, persisted-evidence checks, storage permissions and loopback-only safety boundary.
+The output directory must be new; saved runs can later be verified read-only with `lightup-lab-score-inspect` (installed entry point). See [the suite contract](docs/lab-score-suite.md) for its metrics, persisted-evidence checks, storage permissions and loopback-only safety boundary. Verification is lab-local storage integrity, not real-target permission or deployment approval.
