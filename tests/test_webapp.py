@@ -276,6 +276,68 @@ class WebAppTest(unittest.TestCase):
         self.assertEqual(decided.status.value, "approved")
         self.assertEqual(decided.decided_by, self.op_user.user_id)
 
+    def test_request_approval_requires_server_side_scope_acknowledgement(self):
+        self.request(
+            "POST", f"/portal/{self.client_a.client_id}/requests",
+            {"assets": "app.acme.example", "risk": "2"},
+            token=self.a_token, csrf=self.a_csrf,
+        )
+        request_record = self.store.list_assessment_requests(self.operator)[0]
+        decision_url = f"/assessments/requests/{request_record.request_id}/decision"
+
+        status, _, _ = self.request(
+            "POST", decision_url,
+            {"decision": "approve", "reviewed": "yes"},
+            token=self.op_token, csrf=self.op_csrf,
+        )
+        self.assertEqual(status, "400 Bad Request")
+        still_pending = self.store.get_assessment_request(
+            self.operator, request_record.request_id,
+        )
+        self.assertEqual(still_pending.status.value, "submitted")
+
+        status, _, _ = self.request(
+            "POST", decision_url,
+            {"decision": "approve", "reviewed": "yes",
+             "approve_scope_boundary": "understood"},
+            token=self.op_token, csrf=self.op_csrf,
+        )
+        self.assertEqual(status, "303 See Other")
+        approved = self.store.get_assessment_request(
+            self.operator, request_record.request_id,
+        )
+        self.assertEqual(approved.status.value, "approved")
+
+    def test_risk_approval_requires_server_side_scope_acknowledgement(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Risk acknowledgement review",
+        )
+        client_context = self.store.context_for_user(self.user_a.user_id)
+        approval = self.store.request_risk_elevation(
+            client_context, engagement.engagement_id, RiskLevel.ELEVATED,
+            "A separate human risk review is required",
+        )
+        decision_url = f"/assessments/elevations/{approval.approval_id}/decision"
+
+        status, _, _ = self.request(
+            "POST", decision_url,
+            {"decision": "approve", "reviewed": "yes"},
+            token=self.op_token, csrf=self.op_csrf,
+        )
+        self.assertEqual(status, "400 Bad Request")
+        still_pending = self.store.list_risk_approvals(self.operator)[0]
+        self.assertEqual(still_pending.status.value, "pending")
+
+        status, _, _ = self.request(
+            "POST", decision_url,
+            {"decision": "approve", "reviewed": "yes",
+             "approve_risk_boundary": "understood"},
+            token=self.op_token, csrf=self.op_csrf,
+        )
+        self.assertEqual(status, "303 See Other")
+        approved = self.store.list_risk_approvals(self.operator)[0]
+        self.assertEqual(approved.status.value, "approved")
+
     def test_operator_creates_engagement_and_grant_via_ui(self):
         self.request(
             "POST", f"/portal/{self.client_a.client_id}/requests",
