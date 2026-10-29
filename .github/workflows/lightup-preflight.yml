@@ -39,6 +39,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      - name: Offline receipt custody smoke (synthetic fixtures only)
+        run: python assessment-runtime-receipt/check_contract.py
       - name: Compile and unit suite
         env:
           PYTHONPATH: src
