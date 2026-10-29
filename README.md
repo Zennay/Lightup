@@ -88,13 +88,16 @@ python lab/vuln_fixture.py --profile exposed --port 18081 &
 PYTHONPATH=src python -m lightup.cli lab-assess http://127.0.0.1:18081/ \
   --profile exposed
 PYTHONPATH=src python -m lightup.cli lab-evaluations --db lightup-lab.db --limit 20
+PYTHONPATH=src python -m lightup.lab_service_score --db /tmp/lightup-service-score.db
 PYTHONPATH=src python -m lightup.lab_tls_score --db /tmp/lightup-tls-score.db
 PYTHONPATH=src python -m lightup.lab_web_score --db /tmp/lightup-web-score.db
 ```
 
 The TLS scorer evaluates the real worker against an ephemeral self-signed loopback fixture. See docs/lab-tls-scoring.md for the ground-truth contract and safety limits.
 
-The HTTP baseline scorer compares an intentionally weak response with a hardened loopback control and persists a ground-truth-bound labeval record. See docs/lab-web-baseline-scoring.md for its scoring and safety contract.
+The service-inventory scorer checks a known loopback listener against a closed-port control; see docs/lab-service-scoring.md. The TLS scorer checks an ephemeral self-signed loopback HTTPS fixture; see docs/lab-tls-scoring.md. The HTTP baseline scorer compares an intentionally weak response with a hardened loopback control and persists a ground-truth-bound labeval record; see docs/lab-web-baseline-scoring.md.
+
+After installation, the three scoring commands are available as `lightup-lab-service-score`, `lightup-lab-tls-score`, and `lightup-lab-web-score`. Their fixture targets are fixed to loopback and cannot be overridden.
 
 The `plan` command is intentionally non-invasive: it only emits a structured plan.
 

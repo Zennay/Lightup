@@ -14,6 +14,8 @@ import sys
 import tempfile
 
 from lightup.domain import DomainStore
+from lightup.lab_service_score import run_lab_service_inventory_score
+from lightup.lab_tls_score import run_lab_tls_baseline_score
 from lightup.lab_web_score import run_lab_web_baseline_score
 from lightup.webapp import create_app
 from lightup.webapp.__main__ import _loopback
@@ -66,6 +68,34 @@ def main() -> None:
         else:
             raise AssertionError("web shell accepted a non-loopback bind")
 
+        service_score = run_lab_service_inventory_score(
+            Path(directory) / "service-labeval.db"
+        )
+        assert service_score["passed"], service_score
+        service_metrics = service_score["evaluation"]["metrics"]
+        assert (
+            service_metrics["valid_findings"],
+            service_metrics["invalid_findings"],
+            service_metrics["missed_findings"],
+            service_metrics["reproducibility"],
+            service_metrics["evidence_quality"],
+        ) == (1, 0, 0, 1.0, 1.0), service_metrics
+        assert all(service_score["checks"].values()), service_score["checks"]
+
+        tls_score = run_lab_tls_baseline_score(
+            Path(directory) / "tls-labeval.db"
+        )
+        assert tls_score["passed"], tls_score
+        tls_metrics = tls_score["evaluation"]["metrics"]
+        assert (
+            tls_metrics["valid_findings"],
+            tls_metrics["invalid_findings"],
+            tls_metrics["missed_findings"],
+            tls_metrics["reproducibility"],
+            tls_metrics["evidence_quality"],
+        ) == (1, 0, 0, 1.0, 1.0), tls_metrics
+        assert all(tls_score["checks"].values()), tls_score["checks"]
+
         score = run_lab_web_baseline_score(Path(directory) / "web-labeval.db")
         assert score["passed"], score
         score_metrics = score["evaluation"]["metrics"]
@@ -76,6 +106,7 @@ def main() -> None:
             score_metrics["reproducibility"],
             score_metrics["evidence_quality"],
         ) == (5, 0, 0, 1.0, 1.0), score_metrics
+        assert all(score["checks"].values()), score["checks"]
 
     assert not Path(directory).exists(), "canary state was not cleaned up"
     print(json.dumps({
@@ -83,6 +114,18 @@ def main() -> None:
         "authentication_required": True, "activation_locked": True,
         "non_loopback_refused": True,
         "temporary_state_removed": True,
+        "service_inventory_labeval_passed": service_score["passed"],
+        "service_inventory_valid_findings": service_metrics["valid_findings"],
+        "service_inventory_invalid_findings": service_metrics["invalid_findings"],
+        "service_inventory_missed_findings": service_metrics["missed_findings"],
+        "service_inventory_reproducibility": service_metrics["reproducibility"],
+        "service_inventory_evidence_quality": service_metrics["evidence_quality"],
+        "tls_baseline_labeval_passed": tls_score["passed"],
+        "tls_baseline_valid_findings": tls_metrics["valid_findings"],
+        "tls_baseline_invalid_findings": tls_metrics["invalid_findings"],
+        "tls_baseline_missed_findings": tls_metrics["missed_findings"],
+        "tls_baseline_reproducibility": tls_metrics["reproducibility"],
+        "tls_baseline_evidence_quality": tls_metrics["evidence_quality"],
         "web_baseline_labeval_passed": score["passed"],
         "web_baseline_valid_findings": score_metrics["valid_findings"],
         "web_baseline_invalid_findings": score_metrics["invalid_findings"],
