@@ -110,7 +110,7 @@ was supplied and the finding counts are unscored.
   fixture's ground truth with `--expect-fixture`);
 - every baseline and planner-driven lab run persists its canonical evaluation
   record in the same SQLite `StateStore`; records are unique per run, link to
-  the run's exact evidence IDs, reject non-finite JSON numbers, and have their
+  the run's exact evidence IDs (checked on write and read), reject non-finite JSON numbers, and have their
   SHA-256 plus indexed identity rechecked on read;
 - score history remains available after the process exits via
   `lightup lab-evaluations --db lightup-lab.db --limit 20`, optionally filtered

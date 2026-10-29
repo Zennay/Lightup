@@ -230,16 +230,23 @@ class StateStore:
         encoded = json.dumps(record, sort_keys=True, separators=(",", ":"), allow_nan=False)
         digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
         with self.connect() as con:
+            con.execute("BEGIN IMMEDIATE")
+            for evidence_id in evidence_ids:
+                evidence_row = con.execute(
+                    "SELECT run_id FROM evidence WHERE evidence_id=?", (evidence_id,)
+                ).fetchone()
+                if evidence_row is None or evidence_row["run_id"] != record["run_id"]:
+                    raise ValueError("lab evaluation evidence must belong to its run")
             con.execute(
                 "INSERT INTO lab_evaluations(record_id,scenario_id,run_id,created_at,record_json,record_sha256) "
                 "VALUES(?,?,?,?,?,?)",
                 (record["record_id"], record["scenario_id"], record["run_id"],
                  record["created_at"], encoded, digest),
             )
+            con.execute("COMMIT")
         return record["record_id"]
 
-    @staticmethod
-    def _decode_lab_evaluation(row: sqlite3.Row) -> dict:
+    def _decode_lab_evaluation(self, row: sqlite3.Row) -> dict:
         encoded = row["record_json"]
         if hashlib.sha256(encoded.encode("utf-8")).hexdigest() != row["record_sha256"]:
             raise ValueError("persisted lab evaluation checksum mismatch")
@@ -248,6 +255,18 @@ class StateStore:
                 or record.get("scenario_id") != row["scenario_id"]
                 or record.get("run_id") != row["run_id"]):
             raise ValueError("persisted lab evaluation identity does not match its index")
+        evidence_ids = record.get("evidence_ids")
+        if not isinstance(evidence_ids, list) or any(
+            not isinstance(item, str) or not item.strip() for item in evidence_ids
+        ) or len(set(evidence_ids)) != len(evidence_ids):
+            raise ValueError("persisted lab evaluation evidence IDs are invalid")
+        with self.connect() as con:
+            for evidence_id in evidence_ids:
+                evidence_row = con.execute(
+                    "SELECT run_id FROM evidence WHERE evidence_id=?", (evidence_id,)
+                ).fetchone()
+                if evidence_row is None or evidence_row["run_id"] != record["run_id"]:
+                    raise ValueError("persisted lab evaluation evidence lineage mismatch")
         return record
 
     def get_lab_evaluation(self, record_id: str) -> dict:
