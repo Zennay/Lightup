@@ -295,14 +295,15 @@ def _summarize_result(
         failures.append("invalid_scenario_id")
 
     evidence_ids = evaluation.get("evidence_ids")
-    valid_evidence_ids = isinstance(evidence_ids, list) and all(
-        isinstance(item, str) and item for item in evidence_ids
+    # A successful persisted lab run needs multiple bounded, nonempty distinct
+    # evidence identifiers. Reject oversized and malformed provenance before
+    # building a set or exporting a misleading evidence count.
+    valid_evidence_ids = (
+        type(evidence_ids) is list
+        and 2 <= len(evidence_ids) <= 1024
+        and all(_public_identifier(item) is not None for item in evidence_ids)
     )
-    if (
-        not valid_evidence_ids
-        or not evidence_ids
-        or len(set(evidence_ids)) != len(evidence_ids)
-    ):
+    if not valid_evidence_ids or len(set(evidence_ids)) != len(evidence_ids):
         failures.append("evidence_lineage_invalid")
 
     return {
@@ -352,10 +353,21 @@ def run_lab_score_suite(output_dir: str | Path) -> dict[str, Any]:
                 "scenario_id": None,
             }
 
+    # Three distinct scorer capabilities must not accidentally reuse the same
+    # evaluation, run, or scenario identity. Otherwise individually green
+    # responses can silently present one run as three independent evaluations.
+    cross_scorer_failures: list[str] = []
+    for field in ("scenario_id", "run_id", "evaluation_record_id"):
+        values = [item[field] for item in summaries.values()]
+        if any(value is None for value in values) or len(set(values)) != len(values):
+            cross_scorer_failures.append(f"cross_scorer_identity_invalid:{field}")
+
     report: dict[str, Any] = {
         "schema": SCHEMA,
         "passed": all(item["passed"] for item in summaries.values())
-        and len(summaries) == len(_EXPECTED_FINDINGS),
+        and len(summaries) == len(_EXPECTED_FINDINGS)
+        and not cross_scorer_failures,
+        "failure_reasons": cross_scorer_failures,
         # A report already lives in this directory; never echo its user-set name.
         "artifact_directory": ".",
         "scorers": summaries,
