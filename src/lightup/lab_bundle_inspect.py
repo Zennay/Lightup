@@ -128,7 +128,13 @@ def _open_private_bundle(raw_path: str) -> tuple[int, str]:
 
 
 def _open_private_file(directory_fd: int, name: str, max_bytes: int) -> tuple[int, os.stat_result]:
-    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    nofollow_flag = getattr(os, "O_NOFOLLOW", 0)
+    nonblock_flag = getattr(os, "O_NONBLOCK", 0)
+    if not nofollow_flag or not nonblock_flag:
+        raise OSError("safe file open flags are unavailable")
+    # O_NONBLOCK prevents a malicious FIFO from hanging this read-only inspector
+    # before fstat() can reject it as a non-regular artifact.
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | nofollow_flag | nonblock_flag
     fd = os.open(name, flags, dir_fd=directory_fd)
     try:
         info = os.fstat(fd)
