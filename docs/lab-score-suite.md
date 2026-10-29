@@ -12,7 +12,7 @@ After installing the package:
 
     lightup-lab-score-suite --output-dir ./lab-score-run-001
 
-The output directory must not already exist. The command creates it with owner-only permissions and retains three separate SQLite stores plus `report.json`. The JSON report is published atomically with mode `0600`. Existing directories, symlinked path components, parent traversal and writable non-sticky shared parents are rejected rather than reused or repaired. This avoids accidentally mixing this run with old evidence or overwriting an existing report.
+The output directory must not already exist. The command creates it with owner-only permissions and retains three separate SQLite stores plus `report.json`. The JSON report is published atomically with mode `0600`. Existing directories, symlinked path components, parent traversal and group/other-writable ancestors are rejected rather than reused or repaired. The only writable-ancestor exceptions are root-owned sticky `/tmp`, `/var/tmp` and `/dev/shm`. Each parent is opened relative to a pinned `O_NOFOLLOW` directory descriptor before creating the new directory, so a substituted intermediate path cannot redirect creation. The report is fsynced before being published by an atomic no-overwrite hard link, rather than an `exists()`/`replace()` race. This prevents accidental mixing with earlier evidence and protects an existing report even if its final filename appears concurrently.
 
 ## Acceptance contract
 
