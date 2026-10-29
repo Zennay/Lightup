@@ -39,6 +39,11 @@ _EVIDENCE_PROVENANCE = {
     "http_baseline": ("web-baseline", "http-baseline-observation",
                       "lab-http-baseline", 4),
 }
+_ENGINE_VERSIONS = {
+    "service_inventory": "m1-service-inventory",
+    "tls_baseline": "m1-tls-baseline",
+    "http_baseline": "m1-web-baseline",
+}
 _FILES = {"report.json", *(name + ".sqlite3" for name in _EXPECTED_FINDINGS)}
 _TEMP_ROOTS = {"/tmp", "/var/tmp", "/dev/shm"}
 _MAX_REPORT = 1024 * 1024
@@ -166,8 +171,19 @@ def _verify_database(fd: int, name: str, summary: dict[str, Any]) -> dict[str, A
                 or record.get("run_id") != row["run_id"]
                 or record.get("scenario_id") != _SCENARIOS[name]):
             raise ValueError("persisted evaluation identity mismatch")
-        evidence_ids = record.get("evidence_ids")
+        # A fixed first-party calibration must not import model bindings,
+        # masquerade as another engine, or claim a different worker count.
+        metrics = record.get("metrics")
         capability, kind, source, expected_count = _EVIDENCE_PROVENANCE[name]
+        if (record.get("engine_version") != _ENGINE_VERSIONS[name]
+                or record.get("model_bindings") != []
+                or not isinstance(metrics, dict)
+                or type(metrics.get("tool_calls")) is not int
+                or metrics["tool_calls"] != expected_count
+                or metrics.get("human_interventions") != 0
+                or metrics.get("compute_cost_usd") != 0):
+            raise ValueError("persisted evaluation violates offline lab contract")
+        evidence_ids = record.get("evidence_ids")
         if (type(evidence_ids) is not list
                 or len(evidence_ids) != expected_count
                 or len(set(evidence_ids)) != expected_count):
