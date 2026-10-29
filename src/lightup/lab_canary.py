@@ -73,7 +73,8 @@ def _run_canary() -> int:
         app = create_app(store)
 
         def request(method: str, path: str, cookie: str | None = None,
-                    form: dict[str, str] | None = None):
+                    form: dict[str, str] | None = None,
+                    headers: dict[str, str] | None = None):
             payload = urlencode(form or {}).encode() if method == "POST" else b""
             env = {"REQUEST_METHOD": method, "PATH_INFO": path,
                    "wsgi.input": io.BytesIO(payload)}
@@ -82,6 +83,7 @@ def _run_canary() -> int:
                            CONTENT_LENGTH=str(len(payload)))
             if cookie is not None:
                 env["HTTP_COOKIE"] = cookie
+            env.update(headers or {})
             response = {}
             body = b"".join(app(
                 env, lambda status, headers: response.update(
@@ -128,6 +130,8 @@ def _run_canary() -> int:
         client_token, client_csrf = store.create_session(user_a.user_id)
         client_cookie = f"lightup_session={client_token}"
         own_path, other_path = f"/portal/{a.client_id}", f"/portal/{b.client_id}"
+        if get("/", client_cookie)[0] != "403 Forbidden":
+            raise RuntimeError("Offline safety gate denied: client entered operator dashboard")
         own_status, _, own_body = get(own_path, client_cookie)
         if own_status != "200 OK" or "Fictional Lab A" not in own_body:
             raise RuntimeError("Offline safety gate denied: own-tenant portal")
@@ -138,6 +142,19 @@ def _run_canary() -> int:
         cross_write, _, _ = request("POST", other_path + "/requests", client_cookie, form)
         if cross_write != "403 Forbidden":
             raise RuntimeError("Offline safety gate denied: cross-tenant write")
+        denied_origin, _, _ = request(
+            "POST", own_path + "/requests", client_cookie, form,
+            {"HTTP_ORIGIN": "https://untrusted.invalid"}
+        )
+        denied_site, _, _ = request(
+            "POST", own_path + "/requests", client_cookie, form,
+            {"HTTP_SEC_FETCH_SITE": "cross-site"}
+        )
+        if denied_origin != "403 Forbidden" or denied_site != "403 Forbidden":
+            raise RuntimeError("Offline safety gate denied: cross-origin request")
+        if store.list_assessment_requests(store.context_for_user(user_a.user_id)):
+            raise RuntimeError("Offline safety gate denied: cross-origin request persisted")
+
         own_write, own_headers, _ = request("POST", own_path + "/requests", client_cookie, form)
         if own_write != "303 See Other" or own_headers.get("Location") != own_path:
             raise RuntimeError("Offline safety gate denied: legitimate tenant write")
@@ -178,6 +195,8 @@ def _run_canary() -> int:
         "cross_tenant_portal_denied": True,
         "cross_tenant_request_denied": True,
         "own_tenant_request_saved": True,
+        "client_operator_route_denied": True,
+        "cross_origin_request_denied": True,
         "non_loopback_refused": True,
         "temporary_state_removed": True,
         "lab_only": True,

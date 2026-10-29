@@ -83,3 +83,8 @@ request admission and isolation in ephemeral local data: it does **not**
 approve a request, issue a grant, authorize scanning, execute any target,
 or contact an external service. A PASS receipt carries three booleans,
 not client identifiers or request contents.
+
+The synthetic client session is also denied access to the operator dashboard.
+An otherwise valid request with mismatched Origin or cross-site Fetch Metadata
+must be rejected before SQLite mutation, while an equivalent same-origin
+request with valid CSRF is accepted as an unapproved synthetic request.
