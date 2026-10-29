@@ -152,6 +152,8 @@ footer{border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
   const exportSummaryButton = document.getElementById("export-summary");
   let state = null;
   let followUps = new Map();
+  let sourceReadIntent = 0;
+  let resumeReadIntent = 0;
 
   function fail() { throw new Error("not admitted"); }
   function isObject(value) { return value !== null && typeof value === "object" && !Array.isArray(value); }
@@ -538,6 +540,8 @@ footer{border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
     });
   }
   function resetWorkspace(clearInputs) {
+    sourceReadIntent += 1;
+    resumeReadIntent += 1;
     state = null;
     followUps = new Map();
     resumeInput.value = "";
@@ -667,14 +671,17 @@ footer{border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
   sourceInput.addEventListener("change", async function () {
     const file = sourceInput.files && sourceInput.files[0];
     resetWorkspace(false);
+    const intent = sourceReadIntent;
     if (!file) { setStatus("No source loaded.", "info"); return; }
     try {
       if (file.size < 1 || file.size > MAX_SOURCE_BYTES) fail();
       const raw = new Uint8Array(await file.arrayBuffer());
+      if (intent !== sourceReadIntent) return;
       if (raw.length !== file.size) fail();
       const decoded = new TextDecoder("utf-8", {fatal:true,ignoreBOM:true}).decode(raw);
       const source = validateSource(parseStrictJson(decoded));
       const digest = await sha256(raw);
+      if (intent !== sourceReadIntent) return;
       state = {raw:raw,source:source,digest:digest};
       renderEndpointOptions();
       renderStats();
@@ -682,24 +689,29 @@ footer{border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
       setButtons();
       setStatus("Source admitted for human-only review. Claims remain unauthenticated; no action is available.", "success");
     } catch (_error) {
+      if (intent !== sourceReadIntent) return;
       resetWorkspace(true);
       setStatus("HOLD: source could not be admitted. No findings or notes were retained.", "error");
     }
   });
   resumeInput.addEventListener("change", async function () {
     const file = resumeInput.files && resumeInput.files[0];
+    const intent = ++resumeReadIntent;
     followUps = new Map();
     stageInput.value = "triage";
     roleInput.value = "lab_operator";
     renderFindings();
     renderStats();
     if (!state || !file) { setStatus("HOLD: import the exact source before resuming.", "error"); return; }
+    const sourceIntent = sourceReadIntent;
     try {
       if (file.size < 1 || file.size > MAX_RETURN_BYTES) fail();
       const raw = new Uint8Array(await file.arrayBuffer());
+      if (intent !== resumeReadIntent || sourceIntent !== sourceReadIntent || !state) return;
       const decoded = new TextDecoder("utf-8", {fatal:true,ignoreBOM:true}).decode(raw);
       const receipt = parseStrictJson(decoded);
       const resumed = validateReturn(receipt);
+      if (intent !== resumeReadIntent || sourceIntent !== sourceReadIntent || !state) return;
       followUps = resumed.notes;
       stageInput.value = resumed.stage;
       roleInput.value = resumed.role;
@@ -707,6 +719,7 @@ footer{border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
       renderStats();
       setStatus("Human notes resumed against identical source bytes. This does not establish consent or authorization.", "success");
     } catch (_error) {
+      if (intent !== resumeReadIntent || sourceIntent !== sourceReadIntent) return;
       followUps = new Map();
       resumeInput.value = "";
       stageInput.value = "triage";
