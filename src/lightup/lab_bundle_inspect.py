@@ -404,27 +404,38 @@ def _verify_databases(
         state_rows = state.execute(
             "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json FROM evidence"
         ).fetchall()
-    baseline_evidence_ids = verify_state_rows(state_rows, profiles, retests)
+    baseline_evidence_by_profile = verify_state_rows(state_rows, profiles, retests)
 
     with closing(_connect_readonly(database_fds["domain.sqlite3"])) as domain:
         findings = domain.execute(
-            "SELECT evidence_ids_json,retest_status FROM findings"
+            "SELECT title,evidence_ids_json,retest_status FROM findings"
         ).fetchall()
     if len(findings) != len(retests):
         raise ValueError("DomainStore finding count mismatch")
-    recorded_statuses = []
-    for raw_ids, status in findings:
+
+    title_to_check = {
+        title: check_id
+        for check_id, _header, title, *_ in http_baseline.BASELINE_CHECKS
+    }
+    retest_by_check = {item["check_id"]: item for item in retests}
+    if len(retest_by_check) != len(retests):
+        raise ValueError("duplicate DomainStore retest check")
+    recorded_check_ids: set[str] = set()
+    for title, raw_ids, status in findings:
+        check_id = title_to_check.get(title)
+        retest = retest_by_check.get(check_id)
+        if not isinstance(title, str) or retest is None or check_id in recorded_check_ids:
+            raise ValueError("DomainStore finding identity mismatch")
         evidence_ids = json.loads(raw_ids, object_pairs_hook=_unique_object)
         if (
             not isinstance(evidence_ids, list)
-            or not evidence_ids
-            or any(not isinstance(item, str) or item not in baseline_evidence_ids for item in evidence_ids)
+            or evidence_ids != [baseline_evidence_by_profile["exposed"]]
+            or status != retest["stored_retest_status"]
         ):
-            raise ValueError("DomainStore evidence link mismatch")
-        recorded_statuses.append(status)
-    expected_statuses = [item["stored_retest_status"] for item in retests]
-    if sorted(recorded_statuses) != sorted(expected_statuses):
-        raise ValueError("DomainStore retest status mismatch")
+            raise ValueError("DomainStore evidence or retest linkage mismatch")
+        recorded_check_ids.add(check_id)
+    if recorded_check_ids != set(retest_by_check):
+        raise ValueError("DomainStore findings do not cover the exact retest set")
 
     return len(events), len(evidence), len(state_rows), len(findings)
 
