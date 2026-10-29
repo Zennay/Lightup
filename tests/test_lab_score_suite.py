@@ -143,6 +143,48 @@ class LabScoreSuiteTests(unittest.TestCase):
             self.assertTrue(report["scorers"]["tls_baseline"]["passed"])
             self.assertTrue(report["scorers"]["http_baseline"]["passed"])
 
+    def test_boolean_values_cannot_impersonate_numeric_metrics(self) -> None:
+        service_result = _score_result("service_inventory", 1)
+        metrics = service_result["evaluation"]["metrics"]
+        metrics["valid_findings"] = True
+        metrics["invalid_findings"] = False
+        metrics["reproducibility"] = True
+        metrics["evidence_quality"] = True
+        metrics["coverage_assessed"] = True
+
+        with tempfile.TemporaryDirectory() as temporary:
+            with (
+                patch.object(
+                    lab_score_suite,
+                    "run_lab_service_inventory_score",
+                    return_value=service_result,
+                ),
+                patch.object(
+                    lab_score_suite,
+                    "run_lab_tls_baseline_score",
+                    return_value=_score_result("tls_baseline", 1),
+                ),
+                patch.object(
+                    lab_score_suite,
+                    "run_lab_web_baseline_score",
+                    return_value=_score_result("http_baseline", 5),
+                ),
+            ):
+                report = lab_score_suite.run_lab_score_suite(
+                    Path(temporary) / "suite-run"
+                )
+
+        self.assertFalse(report["passed"])
+        failures = report["scorers"]["service_inventory"]["failure_reasons"]
+        for metric in (
+            "valid_findings",
+            "invalid_findings",
+            "reproducibility",
+            "evidence_quality",
+            "coverage_assessed",
+        ):
+            self.assertIn(f"metric_mismatch:{metric}", failures)
+
     def test_scorer_exception_is_private_and_does_not_skip_later_scorers(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             with (
