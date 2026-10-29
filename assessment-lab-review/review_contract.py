@@ -227,7 +227,7 @@ def _open_without_symlink_components(path: str) -> int:
         parts = path.split(os.sep)
 
     try:
-        require(bool(parts) and all(part != ".." for part in parts))
+        require(bool(parts) and parts[-1] not in ("", ".") and all(part != ".." for part in parts))
         components = [part for part in parts if part not in ("", ".")]
         require(bool(components))
         for component in components[:-1]:
