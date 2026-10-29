@@ -161,7 +161,7 @@ class PrivateReplayStorageContract(unittest.TestCase):
             with sqlite3.connect(state_path) as state:
                 row = state.execute(
                     "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json,created_at "
-                    "FROM evidence WHERE kind='fixture-baseline-observation' AND metadata_json LIKE '%"profile_id":"exposed"%' LIMIT 1"
+                    "FROM evidence WHERE kind='fixture-baseline-observation' AND metadata_json LIKE '%\"profile_id\":\"exposed\"%' LIMIT 1"
                 ).fetchone()
             self.assertIsNotNone(row)
             evidence_id, run_id, capability_id, kind, source, digest, raw_meta, created_at = row
