@@ -20,13 +20,15 @@ from receipt import (
     inspect,
 )
 
-FORMAT = "lightup-offline-receipt-batch-v1"
+FORMAT = "lightup-offline-receipt-batch-v2"
+RECEIPT_FORMAT = "lightup-offline-receipt-batch-receipt-v2"
 MIN_SOURCES = 2
 MAX_SOURCES = 8
 
 
 def _hold():
     return {
+        "receipt_format": RECEIPT_FORMAT,
         "status": "HOLD",
         "manifest_authenticated": False,
         "source_authenticated": False,
@@ -76,7 +78,8 @@ def inspect_batch(manifest_path, expected_manifest_sha256):
         seen_paths = set()
         seen_digests = {manifest_digest}
         items = []
-        commitment = hashlib.sha256(b"LightUp offline batch receipt v1\\0")
+        commitment = hashlib.sha256(b"LightUp offline batch receipt v2\0")
+        commitment.update(bytes.fromhex(manifest_digest))
         total_bytes = 0
         for ordinal, entry in enumerate(sources, 1):
             if type(entry) is not dict or set(entry) != {"path", "expected_sha256"}:
@@ -112,7 +115,7 @@ def inspect_batch(manifest_path, expected_manifest_sha256):
             commitment.update(item["byte_count"].to_bytes(8, "big"))
             commitment.update(bytes.fromhex(digest))
             commitment.update(item["source_reported_status"].encode("ascii"))
-            commitment.update(b"\\0")
+            commitment.update(b"\0")
 
         result.update(
             byte_expectations_match=True,

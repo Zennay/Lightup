@@ -12,6 +12,8 @@ import secrets
 import stat
 
 MAX_BYTES = 262144
+MAX_PATH_CHARS = 4096
+RECEIPT_FORMAT = "lightup-offline-receipt-v2"
 FALSE_FLAGS = ("authorized", "consent_verified", "dispatch_allowed", "release_allowed")
 
 
@@ -40,7 +42,7 @@ def _read_private_regular(path):
     if not all(hasattr(os, name) for name in ("O_NOFOLLOW", "O_DIRECTORY")):
         raise ValueError("secure directory walk unsupported")
     path = os.fspath(path)
-    if type(path) is not str or not path or chr(0) in path:
+    if type(path) is not str or not path or len(path) > MAX_PATH_CHARS or chr(0) in path:
         raise ValueError("invalid path")
     components = path.split("/")
     if os.path.isabs(path):
@@ -87,7 +89,7 @@ def _read_private_regular(path):
 
 def inspect(path, expected_sha256=None):
     """Return only an anonymous HOLD receipt, never validated source evidence."""
-    receipt = {"status": "HOLD", "source_authenticated": False,
+    receipt = {"receipt_format": RECEIPT_FORMAT, "status": "HOLD", "source_authenticated": False,
                "source_schema_verified": False,
                **{flag: False for flag in FALSE_FLAGS}}
     try:
