@@ -40,6 +40,17 @@ class LabScorerEntrypointTests(unittest.TestCase):
         self.assertEqual(raised.exception.code, 2)
         scorer.assert_not_called()
 
+    def test_invalid_target_argument_is_never_echoed_to_stderr(self) -> None:
+        private_target = "http://127.0.0.1/private-token-do-not-echo"
+        with patch("lightup.lab_canary.run_lab_service_inventory_score") as scorer:
+            with redirect_stderr(io.StringIO()) as err:
+                with self.assertRaises(SystemExit) as caught:
+                    lab_canary.main(["--target", private_target])
+        self.assertEqual(caught.exception.code, 2)
+        self.assertNotIn(private_target, err.getvalue())
+        self.assertNotIn("private-token-do-not-echo", err.getvalue())
+        scorer.assert_not_called()
+
     def test_optimized_python_fails_closed_for_a_failed_first_party_scorer(self) -> None:
         program = (
             "from lightup import lab_canary; from unittest.mock import patch; "

@@ -59,3 +59,6 @@ it returns exit 2 and only `status=HOLD`, `passed=false`, lab-only and
 false external-target/release flags. Failure receipts omit exception contents,
 private paths, run identities and evidence payloads. Invalid CLI arguments
 are rejected before executing the lab.
+
+Unknown CLI arguments are rejected with a generic error that does not echo
+user-supplied target or file-path values into shared operator logs.

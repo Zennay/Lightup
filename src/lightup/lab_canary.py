@@ -149,9 +149,16 @@ def _run_canary() -> int:
     }, sort_keys=True))
     return 0
 
+class _PrivateArgumentParser(argparse.ArgumentParser):
+    """Never echo caller-provided target or path strings into shared logs."""
+
+    def error(self, message: str) -> None:
+        self.exit(2, f"{self.prog}: unsupported arguments (lab-only)\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     """Return a privacy-minimal receipt instead of exposing exception details."""
-    parser = argparse.ArgumentParser(
+    parser = _PrivateArgumentParser(
         prog="lightup-lab-safety-canary",
         description="Offline fixed-loopback safety gate.",
     )
