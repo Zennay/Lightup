@@ -201,6 +201,32 @@ class LabScoreSuiteTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 lab_score_suite.run_lab_score_suite(link)
 
+    def test_real_loopback_suite_scores_and_persists_all_capabilities(self) -> None:
+        expected_findings = {
+            "service_inventory": 1,
+            "tls_baseline": 1,
+            "http_baseline": 5,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            output_dir = Path(temporary) / "real-suite"
+            report = lab_score_suite.run_lab_score_suite(output_dir)
+
+            self.assertTrue(report["passed"], json.dumps(report, indent=2))
+            self.assertEqual(set(report["scorers"]), set(expected_findings))
+            for name, expected_count in expected_findings.items():
+                with self.subTest(capability=name):
+                    result = report["scorers"][name]
+                    self.assertTrue(result["passed"], result)
+                    self.assertEqual(
+                        result["metrics"]["valid_findings"], expected_count
+                    )
+                    self.assertTrue(result["checks"])
+                    self.assertTrue(all(value is True for value in result["checks"].values()))
+                    self.assertGreaterEqual(result["evidence_count"], 2)
+                    self.assertTrue((output_dir / result["database_file"]).is_file())
+                    self.assertTrue(result["evaluation_record_id"])
+            self.assertTrue((output_dir / "report.json").is_file())
+
     def test_installed_entry_point_targets_suite_main(self) -> None:
         project_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
         project = tomllib.loads(project_path.read_text(encoding="utf-8"))
