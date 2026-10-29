@@ -103,9 +103,11 @@ def _write_report(directory: Path, report: dict[str, Any]) -> None:
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
-        if destination.exists() or destination.is_symlink():
-            raise FileExistsError("score-suite report already exists")
-        os.replace(temporary, destination)
+        # Unlike exists() + replace(), link() cannot overwrite a report
+        # concurrently created after our check. The fully fsynced temporary
+        # inode becomes visible at its final name in one atomic operation.
+        os.link(temporary, destination, follow_symlinks=False)
+        temporary.unlink()
         try:
             directory_fd = os.open(
                 directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
