@@ -139,7 +139,9 @@ def run_lab_baseline(
         tool_calls=1,
         runtime_seconds=round(runtime, 4),
     )
-    record = harness.record(scenario, context, metrics, notes=notes)
+    record = harness.record(scenario, context, metrics, notes=notes,
+                            evidence_ids=(result.evidence_id,))
+    evaluation_record_id = state.add_lab_evaluation(record.to_dict())
 
     return {
         "run_id": context.run_id,
@@ -160,6 +162,7 @@ def run_lab_baseline(
             for f in findings
         ],
         "coverage": coverage.to_dict(),
+        "evaluation_record_id": evaluation_record_id,
         "evaluation": record.to_dict(),
         "report_markdown": render_markdown(findings),
     }
@@ -281,7 +284,11 @@ def run_planned_assessment(
         tool_calls=len(plan),
         runtime_seconds=round(runtime, 4),
     )
-    record = harness.record(scenario, context, metrics, notes=notes)
+    record = harness.record(
+        scenario, context, metrics, notes=notes,
+        evidence_ids=tuple(result.evidence_id for _, result in execution.results),
+    )
+    evaluation_record_id = state.add_lab_evaluation(record.to_dict())
 
     return {
         "run_id": context.run_id,
@@ -301,6 +308,7 @@ def run_planned_assessment(
             for f in findings
         ],
         "coverage": coverage.to_dict(),
+        "evaluation_record_id": evaluation_record_id,
         "evaluation": record.to_dict(),
         "report_markdown": render_markdown(findings),
     }
