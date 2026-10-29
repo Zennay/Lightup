@@ -33,6 +33,43 @@ The aggregate independently requires:
 
 A scorer exception is recorded by exception type only; raw exception text and filesystem paths are not copied into the aggregate. The aggregate exposes fixed `failure_reasons` when identities are aliased across capabilities, rather than silently passing three labels bound to one underlying run. Remaining scorers still run so the operator receives one complete report. Failed or malformed results make the suite exit nonzero. The published report includes only recognized first-party check labels and numeric fields from the canonical EvaluationMetrics schema. Unknown check labels, unrecognized metric names and nonnumeric metric payloads fail the suite with fixed failure codes; no arbitrary source-provided label or value is echoed. The aggregate retains only printable, bounded ASCII scenario/run/record identifiers (maximum 128 characters); path-like, multiline and oversized identifiers are rejected and represented as `null`. The report uses `artifact_directory: "."` instead of repeating the user-supplied output folder name. Original evidence IDs remain in the owner-private SQLite stores; report output contains only an evidence count, never raw evidence payloads.
 
+## Read-only verification of a saved run
+
+A saved `report.json` is a historical claim, not a durable PASS if its SQLite
+evidence changes later. Without starting fixtures or invoking workers, verify all
+three persisted records again:
+
+```bash
+PYTHONPATH=src python -m lightup.lab_score_inspect --output-dir ./lab-score-run-001
+# Or after package installation:
+lightup-lab-score-inspect --output-dir ./lab-score-run-001
+```
+
+The inspector requires an existing owner-private directory and exactly the
+original four artifacts (one report and three SQLite files). It refuses
+symlinked directory components, unsafe writable ancestors, nonregular or
+multiply linked artifacts, oversized files and unexpected SQLite sidecars.
+SQLite is reopened through pinned file descriptors with `mode=ro&immutable=1`
+and `query_only=ON`; the source runtime schema is **not** initialized and no
+replay, network call, retest, provider or authorization gate runs. Existing
+WAL/SHM/journal sidecars are rejected rather than silently ignored.
+
+It verifies strict canonical, duplicate-free report/record JSON, database
+integrity, each persisted record's SHA-256 and indexed identity, expected
+scenario, exact first-party check set, all metric contracts, unique independent
+scenario/run/record IDs, and each evidence reference's run binding and content
+hash metadata. It then compares the reconstructed summaries byte-canonically
+with the saved report. Missing, extra, altered or raced artifacts fail closed.
+
+Only fixed capability names, evidence counts and record digests are printed.
+A successful inspection reports storage consistency of **the saved synthetic
+lab evaluations**, never scan permission, true vulnerability, external source
+trust, client approval, deployment readiness or current real-world status.
+A failed inspection emits a fixed-shape error with exit code 2 and no private
+paths, record contents or evidence payloads. Inspect only after the scorer
+process has finished; the command does not open a live writer or accept a
+target address.
+
 ## Safety boundary
 
 All targets are fixed by the individual scorers to loopback fixtures; the suite accepts no target argument and does not add any network, model-provider or authorization path. It does not issue grants, dispatch workers, run remediation/retests, authorize real assets or deploy. Exit status `0` means the three local calibration contracts passed. It is **not** proof of external authorization, trusted origin, production readiness or permission to contact a real target.
