@@ -1,0 +1,1794 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-QnFC2dmSvHrpQOphYpikyhfqFWt5MIGqDcSMyTslIzE=' 'sha256-SYozJ8HHedzdtkgQf/93YH1Lzx4mQW9SnrZCUXCYCpE=' 'sha256-8MhMb58WJkc5Llfd0r2NRUn7+l0Xue3qzNmyNgkIuUw=' 'sha256-MzR9HBbCVJNrRF0QpDDwEBcxUfLB2w3Q0EiyV8H0kqA='; style-src 'sha256-0W/zIdhZy/bI47UJtCN3YToYyisE3XODLJDTF1CdfYU='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <title>LightUp · Scope Handoff Register</title>
+  <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;--bg:#0b111c;--panel:#172236;--line:#31445e;--text:#f2f6ff;--muted:#b8c7dc;--accent:#77bfff;--warn:#ffd89c}
+*{box-sizing:border-box}body{background:linear-gradient(145deg,#0d1626,#111826 58%,#0d1320);color:var(--text);margin:0;min-height:100vh}header,main,footer{max-width:1160px;margin:auto;padding:24px}header{padding-top:45px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:.76rem;letter-spacing:.15em;color:var(--accent)}.flag{background:#43321e;color:var(--warn);padding:8px 12px;border-radius:30px;border:1px solid #6e5530;font-size:.7rem}h1{font-size:clamp(1.9rem,5vw,3.6rem);max-width:750px;margin:35px 0 15px;line-height:1.11;letter-spacing:-.045em}h2{font-size:1.25rem;margin:0 0 8px;letter-spacing:-.02em}h3{margin:0 0 10px;font-size:1.07rem}p{color:var(--muted);line-height:1.55}header>p{max-width:780px}main{display:grid;gap:23px}.panel{border:1px solid var(--line);border-radius:17px;padding:25px;background:var(--panel);box-shadow:0 18px 44px #0002}.section-head{display:flex;align-items:start;justify-content:space-between;gap:24px;flex-wrap:wrap}.section-head p{margin:0 0 14px}.toolbar,.actions{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.toolbar>label{display:grid;gap:6px;flex:1;min-width:180px;font-size:.86rem;color:var(--muted)}input,select,textarea,button,.button{font:inherit;border-radius:10px}input,select,textarea{padding:11px 12px;color:var(--text);background:#0c1525;border:1px solid #52617b;min-width:0}button,.button{display:inline-block;color:var(--text);padding:11px 14px;background:#253d59;border:1px solid #64809c;cursor:pointer;white-space:normal;text-align:center}button:hover,.button:hover{background:#31567c}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.button.primary{background:#086ab3;border-color:#5eb7ff;font-weight:700}button[disabled]{opacity:.45;cursor:not-allowed}.notice{padding:11px 14px;background:#101b2a;border-left:3px solid var(--accent);white-space:pre-wrap}.notice.error{border-color:#ff8181;color:#ffcdcd}.stats{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.metric{padding:9px 14px;border-radius:12px;border:1px solid #405577;background:#0e1a2b;font-size:.9rem}.metric strong{font-size:1.25rem;margin-right:6px}.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px}.card{display:grid;text-align:left;gap:9px;white-space:normal;background:#102136;border:1px solid #3e5877;padding:17px}.card.selected{outline:2px solid #80c9ff}.card-title{font-size:1.08rem;font-weight:700;overflow-wrap:anywhere}.meta{font-size:.82rem;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:.72rem;padding:4px 7px;border-radius:6px;background:#34455e}.chip.alert{background:#674827;color:#fff2d9}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.controls label{display:grid;gap:5px;min-width:190px;flex:1;color:var(--muted)}.checkrow{display:grid;grid-template-columns:1fr 170px;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid #334860}.checkrow label{font-weight:600}.checkrow small{color:var(--muted);display:block;margin-top:4px}.summary{background:#102136;border:1px solid #344c67;border-radius:12px;padding:15px}.warning{border-left:3px solid #d69e53;padding:11px 14px;background:#2e261d;color:#f9e8d2}.small{font-size:.83rem}footer{font-size:.82rem;color:#94a7bf;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:15px;padding-right:15px}.panel{padding:17px}.checkrow{grid-template-columns:1fr}.topline{align-items:start;flex-direction:column}.controls{flex-direction:column}.controls label{width:100%}}@media print{*{color:#000!important;box-shadow:none!important;background:white!important}header,main{padding:5px}.panel{break-inside:avoid;border:1px solid #888}.toolbar,.actions,.button,#clear,footer{display:none!important}.boards{grid-template-columns:repeat(2,1fr)}.warning{border:1px solid #888}body{font-size:11pt}}
+
+.bulkbar{display:flex;align-items:center;flex-wrap:wrap;gap:16px;border-top:1px solid var(--line);margin-top:22px;padding-top:19px}.bulkbar>div{flex:2;min-width:230px}.bulkbar p{margin:3px 0}.bulkbar>label{display:grid;gap:6px;flex:1;min-width:210px;color:var(--muted);font-size:.86rem}.bulkbar button{max-width:260px;white-space:normal}@media print{.bulkbar{display:none!important}}
+
+.conflicts{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+.conflict-card{background:#102136;border:1px solid #49627d;border-radius:12px;padding:17px;break-inside:avoid}
+.conflict-card h3{overflow-wrap:anywhere}
+.conflict-card .actions button{font-size:.83rem;padding:8px 11px}
+.conflict-card .chips{margin:9px 0}
+@media print{.conflict-card .actions{display:none!important}.conflict-card{break-inside:avoid}.conflicts{grid-template-columns:repeat(2,1fr)}}
+
+.pair-status{display:grid;gap:6px;color:var(--muted);font-size:.83rem;margin-top:14px}
+.pair-status select{width:100%;max-width:380px}
+
+.task-controls{display:grid;grid-template-columns:minmax(130px,1fr) minmax(148px,1fr);gap:10px;align-items:end}
+.task-controls>select,.task-controls input{width:100%}
+.task-controls label{display:grid;gap:4px}
+.action-queue{display:grid;gap:8px;margin:15px 0}
+.action-row{display:grid;grid-template-columns:minmax(165px,2fr) auto minmax(125px,1fr) auto;gap:15px;align-items:center;background:#111e31;border:1px solid #3b5271;padding:10px 12px;border-radius:11px}
+.action-main{display:grid;gap:5px;min-width:0}
+.action-row .chip{max-width:180px;text-align:center}
+.action-row button{font-size:.84rem}
+@media(max-width:780px){.action-row{grid-template-columns:1fr 1fr}.action-row .action-main{grid-column:1 / -1}}
+@media(max-width:580px){.task-controls{grid-template-columns:1fr}.action-row{grid-template-columns:1fr}.action-row .action-main{grid-column:auto}}
+@media print{.action-row button,.task-controls{display:none!important}.action-row{break-inside:avoid}}
+
+.withdrawal-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0}
+.withdrawal-card{padding:17px;background:#352526;border:1px solid #c58a73;border-radius:13px;break-inside:avoid}
+.withdrawal-card h3{color:#ffe0c9}
+.withdrawal-card p{color:#f5cfbe}
+.withdrawal-card .actions button{font-size:.85rem;padding:9px 13px}
+@media(max-width:540px){.withdrawal-board{grid-template-columns:1fr}}
+@media print{.withdrawal-card .actions{display:none!important}.withdrawal-card{border-color:#888}}
+
+.withdrawal-checklist{display:grid;gap:8px;padding:10px 0;border-top:1px solid #8e5744;border-bottom:1px solid #8e5744}
+.withdrawal-step{display:grid;grid-template-columns:minmax(110px,1fr) minmax(155px,2.3fr);gap:5px 14px;padding:7px 0}
+.withdrawal-step .meta{grid-column:2}
+.withdrawal-step strong{font-size:.8rem;overflow-wrap:anywhere}
+.withdrawal-step span{color:#f6dccd}
+@media(max-width:600px){.withdrawal-step{grid-template-columns:1fr}.withdrawal-step .meta{grid-column:1}}
+
+.permission-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.permission-card{background:#10283a;border:1px solid #547ea5;border-radius:12px;padding:16px}
+.permission-questions{display:grid;gap:7px;margin:13px 0}
+.permission-question{display:grid;grid-template-columns:minmax(120px,2fr) auto auto;gap:10px;align-items:center;padding:8px;border-bottom:1px solid #39556d}
+.permission-question strong{font-size:.83rem}
+.permission-question .chip{white-space:normal}
+@media(max-width:760px){.permission-question{grid-template-columns:1fr 1fr}.permission-question strong{grid-column:1/-1}}
+@media(max-width:540px){.permission-board{grid-template-columns:1fr}.permission-question{grid-template-columns:1fr}.permission-question strong{grid-column:auto}}
+@media print{.permission-card .actions{display:none!important}.permission-card{break-inside:avoid}}
+
+.urgent-row{border-color:#cd8865;background:#3a261e}
+.urgent-row .meta{color:#ffe1c8}
+#coordBoard .action-main strong{overflow-wrap:anywhere}
+@media(max-width:760px){#coordBoard .action-row{grid-template-columns:1fr 1fr}#coordBoard .action-row .action-main{grid-column:1/-1}}
+@media(max-width:530px){#coordBoard .action-row{grid-template-columns:1fr}#coordBoard .action-row .action-main{grid-column:auto}}
+@media print{#coordBoard .action-row button{display:none!important}}
+</style>
+  
+  
+  
+  
+  
+  
+  
+</head>
+<body>
+<header>
+  <div class="topline"><strong>LIGHTUP / SCOPE HANDOFF</strong><span class="flag">PLAN/LAB ONLY · DRAFT/HOLD</span></div>
+  <h1>Van scopeconcept naar een heldere overdracht.</h1>
+  <p>Vergelijk concepten, werk menselijke voorbereidingsacties af en maak een heropenbaar overdrachtsregister. Alles blijft op dit apparaat. Dit product authenticeert niemand en geeft nooit toestemming.</p>
+</header>
+<main>
+  <section class="panel">
+    <div class="section-head"><div><h2>1. Concepten inladen</h2><p>Maximaal 16 Studio-v1 JSON-bestanden, elk maximaal 64 KiB. Iedere bestandsinhoud krijgt een eigen SHA-256.</p></div><label class="button primary">Studio-concepten kiezen<input id="imports" type="file" accept=".json,application/json" multiple hidden></label></div>
+    <div class="toolbar"><label>Zoeken <input type="search" id="search" placeholder="Referentie, risiconiveau of actie"></label><label>Filter <select id="filter"><option value="all">Alle concepten</option><option value="attention">Open actiepunten</option><option value="ready">Voorbereiding afgerond</option><option value="high-risk">Risico 4</option><option value="revision">Gekoppelde revisies</option></select></label><label>Risicosortering <select id="sort"><option value="risk">Hoog risico eerst</option><option value="progress">Meeste open acties</option><option value="added">Inleesvolgorde</option></select></label><button id="clear" type="button">Alles vergeten</button></div>
+    <p id="notice" class="notice" role="status" aria-live="polite">Er zijn nog geen concepten ingeladen.</p>
+    <div id="stats" class="stats" aria-live="polite"></div>
+    <div id="boards" class="boards"></div>
+    <div class="bulkbar">
+      <div><h3>Gedeeld voorbereidingsoverleg</h3><p class="small">Zet één specifiek open actiepunt voor alle zichtbare concepten op ‘In gesprek’. Reeds voorbereide of te herziene acties worden nooit overschreven.</p></div>
+      <label>Actie <select id="bulkTask"><option value="owner">Ownership/contact route</option><option value="assets">Asset-/uitsluitingsgrenzen</option><option value="risk">Risico en activiteiten</option><option value="schedule">Tijdvenster</option><option value="stops">Stop-/incidentroute</option><option value="privacy">Privacy/evidence</option><option value="client">Cliënt-aanvraagroute</option><option value="operator">Operator-reviewroute</option></select></label>
+      <button id="bulkStart" type="button">Markeer zichtbaar open werk ‘In gesprek’</button>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="section-head"><div><h2>2. Eén gezamenlijke opvolgagenda</h2><p>Alle lokale voorbereidingsacties, ongelezen cliënt-/operatorvragen, menselijke STOP-opvolging en open dossier-overlapbesprekingen in één prioriteitslijst. Hoogste urgentie eerst; elk item blijft REVIEW_ONLY_HOLD.</p></div>
+      <div class="actions"><button id="coordJson" type="button">Download volledige agenda (JSON)</button><button id="coordCsv" type="button">Download agenda (CSV)</button><button id="coordIcs" type="button">Lokale opvolgdatums (.ics)</button></div></div>
+    <div class="toolbar"><label>Soort werk <select id="coordKind"><option value="all">Alles</option><option value="withdrawal_human_followup">STOP / scopewijziging</option><option value="historical_withdrawal_context">STOP in zelfgekoppelde revisie</option><option value="permission_question">Cliënt-/operatorvragen</option><option value="local_preparation">Dossiervoorbereiding</option><option value="cross_proposal_discussion">Gezamenlijk overleg</option></select></label>
+    <label>Urgentie <select id="coordPriority"><option value="all">Alle prioriteiten</option><option value="0">Dringend</option><option value="1">Hoog</option><option value="2">Normaal</option><option value="3">Voorbereidend</option></select></label></div>
+    <div id="coordStats" class="stats"></div><div id="coordBoard" class="action-queue"></div>
+  </section>
+  <section class="panel">
+    <div class="section-head"><div><h2>3. Cliënt- en operatorvragen</h2><p>Laad een gecombineerd, niet-autorisend antwoordoverzicht uit de bestaande Permission Brief. Antwoorden blijven onbevestigd; een teruggestuurde vraag betekent geen cliënttoestemming of operatorakkoord.</p></div>
+      <label class="button">Permission Brief-overzicht importeren<input id="permissionFile" type="file" accept=".json,application/json" hidden></label></div>
+    <p id="permissionFeedback" class="notice" role="status" aria-live="polite">Geen gecombineerd vragenoverzicht geladen.</p><div id="permissionBoard" class="permission-board"></div>
+  </section>
+  <section class="panel">
+    <div class="section-head"><div><h2>4. Stop-/wijzigingsverzoeken</h2><p>Importeer brongebonden Withdrawal Desk-reviewbestanden. Een verzoek is slechts een ongeverifieerde menselijke melding, nooit een daadwerkelijke stop, intrekking of bevestiging van toestemming.</p></div>
+    <label class="button">Review-only stopverzoek importeren <input id="withdrawalFile" type="file" accept=".json,application/json" hidden></label></div>
+    <p id="withdrawalFeedback" class="notice" role="status">Er is nog geen externe review-only melding gekoppeld.</p>
+    <div id="withdrawalBoard" class="withdrawal-board"></div>
+  </section>
+  <section class="panel">
+    <div class="section-head"><div><h2>5. Actiewerkvoorraad per rol</h2><p>Bereid menselijk werk voor per dossier en verantwoordelijke rol (cliënt, operator of gezamenlijk). De optionele doeldatum is lokaal, geen gereserveerd scanmoment of toestemmingsdeadline.</p></div></div>
+    <div class="toolbar"><label>Rolverdeling <select id="taskRoleFilter"><option value="all">Alle rollen</option><option value="client">Cliëntvoorbereiding</option><option value="operator">Operatorvoorbereiding</option><option value="joint">Gezamenlijke afstemming</option></select></label>
+    <label>Aandacht <select id="taskDueFilter"><option value="all">Alle open voorbereiding</option><option value="overdue">Doeldatum verstreken</option><option value="week">Binnen 7 dagen</option><option value="undated">Zonder doeldatum</option><option value="revision">Herziening nodig</option><option value="withdrawal">Extern stop-/wijzigingsverzoek</option></select></label></div>
+    <div id="actionStats" class="stats"></div><div id="actionQueue" class="action-queue"></div>
+  </section>
+  <section class="panel">
+    <div class="section-head"><div><h2>6. Gedeelde review-agenda</h2><p>Welke voorstellen vragen gezamenlijk overleg door mogelijke numerieke netwerk- of letterlijke hostname-overlap en/of samenvallende voorgestelde UTC-tijden? Geen identiteits- of eigendomscontrole.</p></div></div>
+    <div id="conflictStats" class="stats"></div>
+    <div id="conflicts" class="conflicts"></div>
+  </section>
+  <section class="panel">
+    <div class="section-head"><div><h2>7. Menselijke vervolgacties</h2><p>Lokale voorbereiding, geen klant-/operatorauthenticatie. Controleer identiteit en toestemming altijd afzonderlijk in het echte LightUp-domein.</p></div></div>
+    <div id="detail"><p>Selecteer een scopeconcept om acties en overdrachtsnotities vast te leggen.</p></div>
+  </section>
+  <section class="panel">
+    <h2>8. Overdracht en hervatten</h2>
+    <p>Download een privacy-minimaal register, actielijst-CSV of printbare handoff. Bevat geen ruwe assets, namen, hostnamen, klantnotities, authenticatie of handtekeningen. Hervatten vereist opnieuw openen van de oorspronkelijke conceptbestanden.</p>
+    <div class="actions"><button id="save" type="button">Bewaar lokale voortgang (.json)</button><label class="button">Herstel voortgang (.json)<input id="restore" type="file" accept=".json,application/json" hidden></label><button id="export" type="button">Exporteer review-JSON</button><button id="csv" type="button">Acties als CSV</button><button id="agendaCsv" type="button">Overlegagenda als CSV</button><button id="printPack" type="button">Volledig HTML-overdrachtspakket</button><button id="print" type="button">Print overzicht</button></div>
+    <p class="warning"><strong>Niet-autoriseren­de informatie.</strong> Concepten, lokale vinkjes, SHA-256, acties en exports zijn géén bewijs van asset-eigendom, scopegoedkeuring, revocationstatus, toestemming, bevoegdheid of vrijgave. Stop onmiddellijk met een echte beoordeling als bevoegdheid of context ontbreekt.</p>
+  </section>
+</main>
+<footer>LightUp · uitsluitend offline menselijke voorbereiding · geen netwerkverzoeken of lokale opslag · geen scans, grants of dispatch</footer>
+<script>/* LightUp local proposal planning only. Never grants permission or calls a network API. */
+(function(global) {
+'use strict';
+const IPV4_BITS=32n, IPV6_BITS=128n;
+const dec=/^(?:0|[1-9]\d*)$/;
+function parse4(host) {
+ const words=host.split('.');
+ if(words.length!==4 || !words.every(w=>dec.test(w)&&w.length<=3&&Number(w)<=255))return null;
+ return words.reduce((n,w)=>(n<<8n)|BigInt(w),0n);
+}
+function parse6(host){
+ if(!host.includes(':')||!/^[0-9a-f:]+$/i.test(host))return null;
+ const chunks=host.split('::');
+ if(chunks.length>2)return null;
+ const group=(s)=>s ? s.split(':') : [];
+ const left=group(chunks[0]),right=chunks.length===2?group(chunks[1]):[];
+ const good=words=>words.every(w=>/^[0-9a-f]{1,4}$/i.test(w));
+ if(!good(left)||!good(right))return null;
+ const missing=8-left.length-right.length;
+ if(chunks.length===2 ? missing<1 : missing!==0)return null;
+ const words=[...left,...Array(missing).fill('0'),...right];
+ if(words.length!==8)return null;
+ return words.reduce((n,w)=>(n<<16n)|BigInt(parseInt(w,16)),0n);
+}
+function parse(value) {
+ if(typeof value!=='string'||!value.trim()||value.length>253||value.trim()!==value)return null;
+ const bits=value.split('/');
+ if(bits.length>2)return null;
+ let address=null,family=null,max=IPV4_BITS;
+ const four=parse4(bits[0]);
+ if(four!==null){address=four;family='ipv4';}
+ else {
+   const six=parse6(bits[0]);
+   if(six!==null){address=six;family='ipv6';max=IPV6_BITS;}
+ }
+ if(family!==null) {
+   if(bits.length===2 && (!dec.test(bits[1])||bits[1].length>3))return null;
+   const prefix=bits.length===2?BigInt(bits[1]):max;
+   if(prefix>max)return null;
+   const hostBits=max-prefix, hostMask=(1n<<hostBits)-1n;
+   const start=address&(((1n<<max)-1n)^hostMask);
+   // Do not silently widen e.g. 192.0.2.17/24 to 192.0.2.0/24.
+   if(bits.length===2 && start!==address)return null;
+   const end=start+hostMask;
+   return {raw:value,family,start,end,prefix:Number(prefix),canonical:family+':'+start.toString()+':'+prefix.toString(),isRange:prefix<max};
+ }
+ if(bits.length!==1)return null;
+ if(value.length>253||!value.includes('.')||value.endsWith('.')||value.includes('..'))return null;
+ if(!value.split('.').every(part=>/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(part)))return null;
+ if(/^\d+(?:\.\d+){3}$/.test(value))return null;
+ return {raw:value,family:'hostname',canonical:'hostname:'+value.toLowerCase(),isRange:false};
+}
+function overlaps(a,b){
+ if(!a||!b||a.family!==b.family)return false;
+ if(a.family==='hostname')return a.canonical===b.canonical;
+ return a.start<=b.end && b.start<=a.end;
+}
+function contains(a,b){
+ if(!a||!b||a.family!==b.family)return false;
+ if(a.family==='hostname')return a.canonical===b.canonical;
+ return a.start<=b.start && a.end>=b.end;
+}
+function mergeIntervals(items,family){
+ const sorted=items.filter(a=>a&&a.family===family).map(a=>({start:a.start,end:a.end})).sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:0);
+ const merged=[];
+ for(const a of sorted){
+   const prev=merged[merged.length-1];
+   if(prev && a.start<=prev.end+1n){if(a.end>prev.end)prev.end=a.end;}
+   else merged.push({...a});
+ }
+ return merged;
+}
+function coveredBy(ranges,entry){
+ if(!entry)return false;
+ if(entry.family==='hostname')return ranges.some(a=>a&&a.canonical===entry.canonical);
+ return mergeIntervals(ranges,entry.family).some(a=>a.start<=entry.start&&a.end>=entry.end);
+}
+function inspect(included,excluded){
+ const out=[],inScope=included.map(parse),outScope=excluded.map(parse);
+ const warn=(level,code,message)=>out.push({level,code,message});
+ for(const [kind,items,parsed] of [['Included',included,inScope],['Excluded',excluded,outScope]]){
+   if(items.length>80)warn('error','too_many',kind+' assets exceed 80 items.');
+   const seen=new Set();
+   items.forEach((item,i)=>{
+     const id=parsed[i];
+     if(!id){warn('error','invalid',kind+': invalid host/IP/CIDR '+item.slice(0,80));return;}
+     if(seen.has(id.canonical))warn('error','duplicate',kind+': duplicate/canonical alias '+item.slice(0,80));
+     seen.add(id.canonical);
+     if((id.family==='ipv4'||id.family==='ipv6')&&id.prefix===0)warn('warning','global_range',kind+': whole-address-space CIDR '+item+' requires explicit narrowing.');
+     if(id.family==='ipv6')warn('warning','ipv6',kind+': IPv6 zone/alias and ownership handling require independent authority verification.');
+   });
+ }
+ for(let i=0;i<inScope.length;i++){
+   for(let j=i+1;j<inScope.length;j++){
+     if(overlaps(inScope[i],inScope[j])&&inScope[i].canonical!==inScope[j].canonical)
+       warn('warning','included_overlap','Proposed entries may overlap: '+included[i]+' / '+included[j]);
+   }
+   for(let j=0;j<outScope.length;j++){
+     if(overlaps(inScope[i],outScope[j]))warn('warning','exclusion_overlap','Proposed and excluded entries overlap: '+included[i]+' / '+excluded[j]+' (requires precise operator enforcement).');
+   }
+ }
+ return out.slice(0,100);
+}
+function expansion(before,after){
+ const parsedBefore=before.map(parse),parsedAfter=after.map(parse);
+ const added=parsedAfter.filter(a=>a&&!coveredBy(parsedBefore,a)).map(a=>a.raw);
+ const removed=parsedBefore.filter(a=>a&&!coveredBy(parsedAfter,a)).map(a=>a.raw);
+ return {added,removed,unparsed:parsedAfter.some(a=>a===null)||parsedBefore.some(a=>a===null),
+   caveat:'Addresses and CIDR ranges only; DNS, exclusions, asset ownership and independent authorization are not evaluated.'};
+}
+
+/* Interval arithmetic for UI planning only; no policy or execution decisions.
+ * Subtract excluded IP/CIDR intervals before identifying effective shared address space.
+ * Hostnames remain opaque literals, not DNS-resolved addresses. */
+function subtractIntervals(base, holes){
+ let current=base.map(a=>({start:a.start,end:a.end}));
+ for(const h of holes){
+  const next=[];
+  for(const x of current){
+   if(h.end<x.start||h.start>x.end){next.push(x);continue;}
+   if(h.start>x.start)next.push({start:x.start,end:h.start-1n});
+   if(h.end<x.end)next.push({start:h.end+1n,end:x.end});
+  }
+  current=next;
+  if(!current.length)break;
+ }
+ return current;
+}
+function effectiveCoverage(included,excluded){
+ if(!Array.isArray(included)||!Array.isArray(excluded)||included.length>80||excluded.length>80)return null;
+ const allow=included.map(parse),deny=excluded.map(parse);
+ if(allow.some(x=>!x)||deny.some(x=>!x))return null;
+ const result={hostname:new Set(),ipv4:[],ipv6:[]};
+ const deniedHost=new Set(deny.filter(a=>a.family==='hostname').map(a=>a.canonical));
+ for(const a of allow){
+  if(a.family==='hostname'&&!deniedHost.has(a.canonical))result.hostname.add(a.canonical);
+ }
+ for(const family of ['ipv4','ipv6']){
+  const allowed=mergeIntervals(allow,family);
+  const holes=mergeIntervals(deny,family);
+  result[family]=allowed.flatMap(a=>subtractIntervals([a],holes));
+ }
+ return result;
+}
+function coverageOverlap(a,b){
+ if(!a||!b)return false;
+ for(const h of a.hostname)if(b.hostname.has(h))return true;
+ for(const family of ['ipv4','ipv6']){
+  for(const x of a[family])for(const y of b[family])
+   if(x.start<=y.end&&y.start<=x.end)return true;
+ }
+ return false;
+}
+function coverageDifference(base,updated){
+ if(!base||!updated)return null;
+ const added=[],removed=[];
+ for(const family of ['ipv4','ipv6']){
+  for(const x of updated[family])added.push(...subtractIntervals([x],base[family]).map(y=>({family,start:y.start.toString(),end:y.end.toString()})));
+  for(const x of base[family])removed.push(...subtractIntervals([x],updated[family]).map(y=>({family,start:y.start.toString(),end:y.end.toString()})));
+ }
+ for(const host of updated.hostname)if(!base.hostname.has(host))added.push({family:'hostname',asset:host.slice(9)});
+ for(const host of base.hostname)if(!updated.hostname.has(host))removed.push({family:'hostname',asset:host.slice(9)});
+ return {added:added.slice(0,160),removed:removed.slice(0,160),
+  truncated:added.length>160||removed.length>160,
+  caveat:'Non-authorizing, local exact hostname and numeric IP interval hints. DNS and ownership are never inspected.'};
+}
+
+
+function addressText(family,integer){
+ if(family==='ipv4'){
+  const items=[];
+  for(let shift=24n;shift>=0n;shift-=8n)items.push(Number((integer>>shift)&255n));
+  return items.join('.');
+ }
+ if(family!=='ipv6')return null;
+ const words=[];
+ for(let shift=112n;shift>=0n;shift-=16n)words.push(Number((integer>>shift)&65535n).toString(16));
+ // RFC 5952 longest leftmost zero compression; presentation only, not authority.
+ let bestStart=-1,bestLength=1;
+ for(let i=0;i<8;){
+  if(words[i]!=='0'){i++;continue;}
+  let j=i;while(j<8&&words[j]==='0')j++;
+  if(j-i>bestLength){bestStart=i;bestLength=j-i;}
+  i=j;
+ }
+ if(bestStart<0)return words.join(':');
+ const left=words.slice(0,bestStart).join(':'),right=words.slice(bestStart+bestLength).join(':');
+ return left+'::'+right;
+}
+function describeEffective(included,excluded,maxRows=180){
+ if(!Number.isSafeInteger(maxRows)||maxRows<1||maxRows>300)return null;
+ const coverage=effectiveCoverage(included,excluded);
+ if(!coverage)return null;
+ const groups=[],total={ipv4:'0',ipv6:'0',hostnames:String(coverage.hostname.size)};
+ let truncated=false;
+ for(const family of ['ipv4','ipv6']){
+  const bits=family==='ipv4'?32:128;
+  let count=0n;
+  for(const span of coverage[family]){
+   count+=span.end-span.start+1n;
+   let current=span.start;
+   while(current<=span.end){
+    if(groups.length>=maxRows){truncated=true;break;}
+    let size=1n,aligned=0;
+    while(aligned<bits && (current&((size<<1n)-1n))===0n){size<<=1n;aligned++;}
+    while(size>span.end-current+1n){size>>=1n;aligned--;}
+    groups.push({family,asset:addressText(family,current)+'/'+(bits-aligned),
+      start:addressText(family,current),end:addressText(family,current+size-1n),
+      address_count:size.toString()});
+    current+=size;
+   }
+  }
+  total[family]=count.toString();
+ }
+ const hostnames=[...coverage.hostname].map(h=>h.slice('hostname:'.length)).sort();
+ return {status:'REVIEW_ONLY',total,groups,hostnames,truncated,
+  warning:'Offline numerical preview after text-declared exclusions; does not resolve DNS, authenticate ownership, prove grant scope, evaluate authorization or permit execution.'};
+}
+
+global.LightUpScopeNetwork=Object.freeze({parse,overlaps,contains,inspect,expansion,effectiveCoverage,coverageOverlap,coverageDifference,addressText,describeEffective});
+})(window);
+</script>\n<script>/* Revision identity for local proposal drafts only. A checksum is never consent, a signature or authorization. */
+(function(global){
+'use strict';
+function canonicalObject(d){
+ if(!d||d.kind!=='lightup.scope_proposal_draft'||d.schema_version!==1||d.state!=='DRAFT_ONLY')return null;
+ const normalizeAssets=list=>{
+  if(!Array.isArray(list)||list.length>80)return null;
+  const items=list.map(s=>global.LightUpScopeNetwork.parse(s));
+  if(items.some(item=>!item))return null;
+  return items.map(item=>item.canonical).sort();
+ };
+ const assets=normalizeAssets(d.requested_assets),excluded=normalizeAssets(d.excluded_assets);
+ if(!assets||!excluded)return null;
+ if(!d.proposed_activities||!d.proposed_window_local)return null;
+ if(typeof d.proposal_name!=='string'||typeof d.client_label!=='string'||typeof d.notes!=='string')return null;
+ const a=d.proposed_activities,w=d.proposed_window_local;
+ if(!['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof a[k]==='boolean'))return null;
+ return {
+  format:'LIGHTUP_NON_AUTHORIZING_SCOPE_DRAFT_REVISION_V1',
+  proposal_name:d.proposal_name,client_label:d.client_label,notes:d.notes,
+  requested_assets:assets,excluded_assets:excluded,
+  requested_mode:d.requested_mode,requested_risk:d.requested_risk,
+  proposed_activities:{passive_analysis:a.passive_analysis,configuration_review:a.configuration_review,private_lab_network_checks:a.private_lab_network_checks},
+  proposed_window_local:{start:w.start??null,end:w.end??null},
+  ...(d.proposed_window_utc ? {proposed_window_utc:{
+    status:d.proposed_window_utc.status,timezone:d.proposed_window_utc.timezone,
+    start:d.proposed_window_utc.start,end:d.proposed_window_utc.end,
+    ...(d.proposed_window_utc.status==='resolved' ? {start_offset_minutes:d.proposed_window_utc.start_offset_minutes,end_offset_minutes:d.proposed_window_utc.end_offset_minutes} : {})
+  }} : {})
+ };
+}
+async function fingerprint(d){
+ const obj=canonicalObject(d);
+ if(!obj || !global.crypto || !global.crypto.subtle || !global.TextEncoder)return null;
+ const bytes=new TextEncoder().encode(JSON.stringify(obj));
+ const buffer=await global.crypto.subtle.digest('SHA-256',bytes);
+ return [...new Uint8Array(buffer)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+global.LightUpScopeDigest=Object.freeze({canonicalObject,fingerprint});
+})(window);
+</script>\n<script>/* Local browser planning-time normalization only. No scheduling or authorization. */
+(function(global){
+'use strict';
+const DATE=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/;
+function localTimestamp(value){
+ if(typeof value!=='string'||!DATE.test(value))return {valid:false,reason:'invalid'};
+ const [,y,m,d,h,min]=DATE.exec(value).map(Number);
+ if(y<2020||y>2100||m<1||m>12||d<1||d>31||h>23||min>59)return {valid:false,reason:'invalid'};
+ const dt=new Date(y,m-1,d,h,min,0,0);
+ if(!Number.isFinite(dt.valueOf())||dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d||
+    dt.getHours()!==h||dt.getMinutes()!==min)return {valid:false,reason:'nonexistent_local_time'};
+ // A falling DST clock can name two different UTC instants using the same wall time.
+ const target=Date.UTC(y,m-1,d,h,min),offset=dt.getTimezoneOffset();
+ for(const alt of [new Date(dt.getTime()-86400000).getTimezoneOffset(),new Date(dt.getTime()+86400000).getTimezoneOffset()]){
+  if(alt===offset)continue;
+  const candidate=new Date(target+alt*60000);
+  if(candidate.getTime()!==dt.getTime() && candidate.getFullYear()===y &&
+   candidate.getMonth()===m-1&&candidate.getDate()===d&&candidate.getHours()===h&&candidate.getMinutes()===min){
+    return {valid:false,reason:'ambiguous_dst_hour'};
+  }
+ }
+ return {valid:true,utc:dt.toISOString(),offset_minutes:offset};
+}
+function timezone(){
+ try {return Intl.DateTimeFormat().resolvedOptions().timeZone||'Browser local (unknown IANA ID)';}
+ catch(_){return 'Browser local (unknown IANA ID)';}
+}
+function resolve(start,end){
+ const zone=timezone();
+ if(!start&&!end)return {status:'unscheduled',timezone:zone,start:null,end:null};
+ if(!start||!end)return {status:'incomplete',timezone:zone,start:null,end:null};
+ const a=localTimestamp(start),b=localTimestamp(end);
+ if(!a.valid||!b.valid)return {status:!a.valid?a.reason:b.reason,timezone:zone,start:null,end:null};
+ if(a.utc>=b.utc)return {status:'reverse_window',timezone:zone,start:null,end:null};
+ return {status:'resolved',timezone:zone,start:a.utc,end:b.utc,
+  start_offset_minutes:a.offset_minutes,end_offset_minutes:b.offset_minutes};
+}
+function validateStored(local,window){
+ if(window===undefined)return true; // legacy proposal: no absolute window evidence
+ if(!window||typeof window!=='object'||Array.isArray(window))return false;
+ const allowed=['status','timezone','start','end','start_offset_minutes','end_offset_minutes'];
+ if(Object.keys(window).some(k=>!allowed.includes(k)))return false;
+ const hasNull=window.status==='unscheduled'||window.status==='incomplete';
+ if(hasNull){
+   const emptyStart=local&&local.start===null,emptyEnd=local&&local.end===null;
+   const correctState=window.status==='unscheduled'?(emptyStart&&emptyEnd):(emptyStart!==emptyEnd);
+   return !!correctState&&window.start===null&&window.end===null&&typeof window.timezone==='string'&&window.timezone.length<=100;
+ }
+ if(window.status!=='resolved'||typeof window.timezone!=='string'||window.timezone.length>100||
+    typeof window.start!=='string'||typeof window.end!=='string'||!Number.isInteger(window.start_offset_minutes)||
+    !Number.isInteger(window.end_offset_minutes))return false;
+ if(window.start_offset_minutes < -840||window.start_offset_minutes>840||
+    window.end_offset_minutes < -840||window.end_offset_minutes>840)return false;
+ const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\.000Z$/;
+ if(!ISO.test(window.start)||!ISO.test(window.end)||window.start>=window.end)return false;
+ if(Number.isNaN(Date.parse(window.start))||Number.isNaN(Date.parse(window.end)))return false;
+ // Bind imported UTC instants to source-local wall times and recorded offsets.
+ // This is a consistency check, not proof of the named timezone's authenticity.
+ if(!local||typeof local!=='object'||typeof local.start!=='string'||typeof local.end!=='string')return false;
+ const a=DATE.exec(local.start),b=DATE.exec(local.end);
+ if(!a||!b)return false;
+ const toUTC=(match,minutes)=>{
+  const [,year,month,day,hour,minute]=match.map(Number);
+  return new Date(Date.UTC(year,month-1,day,hour,minute)+minutes*60000).toISOString();
+ };
+ try {
+  return toUTC(a,window.start_offset_minutes)===window.start &&
+         toUTC(b,window.end_offset_minutes)===window.end;
+ }catch(_){return false;}
+}
+function overlaps(a,b){
+ if(!a||!b||a.status!=='resolved'||b.status!=='resolved')return null;
+ // The import boundary validated wall time/UTC consistency. Compare only bounded ISO instants here.
+ const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\.000Z$/;
+ if(!ISO.test(a.start)||!ISO.test(a.end)||!ISO.test(b.start)||!ISO.test(b.end))return null;
+ return a.start<b.end&&b.start<a.end;
+}
+global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStored,overlaps,timezone});
+})(window);
+</script>\n<script>/* Non-authorizing local coordination agenda. Pure metadata transformation, no network or identities. */
+(function(global){
+"use strict";
+const TASKS=new Set(["owner","assets","risk","schedule","stops","privacy","client","operator"]);
+const PAIR_STATES=new Set(["open","discussion_started","needs_followup","discussion_recorded"]);
+const ACTION_ROLES=Object.freeze({
+ owner:"joint",assets:"joint",risk:"operator",schedule:"joint",
+ stops:"joint",privacy:"joint",client:"client",operator:"operator"
+});
+const PAIR_ROLE="joint";
+const LIMIT=16,MAX=700;
+const isSHA=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
+function build(input,pairs) {
+ if(!Array.isArray(input)||input.length>LIMIT||!Array.isArray(pairs)||pairs.length>120)
+   throw Error("Unsafe coordination input");
+ const rows=[],known=new Map();
+ const references=new Map(input.map(r=>[r.sha,r]));
+ const ancestral=(child,parent)=>{
+   const seen=new Set();let cursor=child.replaces;
+   while(cursor&&!seen.has(cursor)){
+     if(cursor===parent.sha)return true;
+     seen.add(cursor);cursor=references.get(cursor)?.replaces??null;
+   }
+   return false;
+ };
+ const related=(a,b)=>ancestral(a,b)||ancestral(b,a);
+ for(let i=0;i<input.length;i++){
+   const r=input[i];
+   if(!r||!isSHA(r.sha)||known.has(r.sha)||typeof r.reference!=="string")
+     throw Error("Duplicate or invalid dossier input");
+   const dossier="D"+String(i+1).padStart(2,"0");
+   known.set(r.sha,dossier);
+   const risk=r.source.risk;
+   if(!Number.isInteger(risk)||risk<1||risk>4)throw Error("Invalid proposal risk");
+   if(!r.withdrawal) {
+     const stopLineage=input.filter(other=>other!==r&&other.withdrawal&&related(r,other));
+     if(stopLineage.length) rows.push({
+       dossier,source_sha256:r.sha,kind:"historical_withdrawal_context",
+       code:"related_revision_stop_request",role:"joint",
+       priority:stopLineage.some(x=>x.withdrawal.urgency==="urgent")?0:1,
+       reason:"Unverified STOP/scope change reported for self-linked source revision",
+       state:"needs_independent_review",action:"confirm_scope_version_with_authenticated_operator",
+       due_day:null,authority:"REVIEW_ONLY_HOLD"
+     });
+   }
+   if(r.withdrawal){
+     const w=r.withdrawal;
+     // Human step status 'requested_unverified' still needs independent confirmation.
+     const steps=["client_channel","operator_channel","active_work","grant_revoke",
+       "scope_schedule","evidence_privacy","human_ack","incident_log"];
+     for(const code of steps){
+       const status=w.statuses[code];
+       rows.push({dossier,source_sha256:r.sha,kind:"withdrawal_human_followup",code,
+         role:code==="client_channel"?"client":code==="grant_revoke"||code==="active_work"||code==="operator_channel"?"operator":"joint",
+         priority:w.urgency==="urgent"?0:1,reason:"Self-reported "+w.intent,
+         state:status,action:status==="requested_unverified"?"independently_verify_stop_receipt":"contact_authenticated_channel",
+         due_day:null,authority:"REVIEW_ONLY_HOLD"});
+     }
+   }
+   if(r.permission){
+     for(const q of r.permission.questions){
+       if(q.status==="answered_unverified"||q.status==="question_sent"||q.status==="unanswered"||q.status==="not_reported")
+         rows.push({dossier,source_sha256:r.sha,kind:"permission_question",code:q.code,role:q.role,
+           priority:r.withdrawal?.urgency==="urgent"?1:2,reason:"Unverified role-labelled reply",
+           state:q.status,action:q.status==="answered_unverified"?"independently_verify_identity_and_scope":
+             q.status==="question_sent"?"follow_up_authenticated_channel":
+             q.status==="unanswered"?"ask_authenticated_channel":"await_authenticated_reply",
+           due_day:null,authority:"REVIEW_ONLY_HOLD"});
+     }
+   }
+   for(const code of TASKS) {
+     const status=r.tasks[code];
+     if(status==="prepared")continue;
+     const due=r.dueDates[code]||null;
+     rows.push({dossier,source_sha256:r.sha,kind:"local_preparation",code,
+       role:ACTION_ROLES[code],
+       priority:r.withdrawal?.urgency==="urgent"?0:status==="needs_revision"?1:risk===4?2:3,
+       reason:status==="needs_revision"?"Earlier local preparation requires human reassessment":"Local human preparation",
+       state:status,action:status==="needs_revision"?"reassess_revised_proposal":"prepare_offline_handoff",
+       due_day:due,authority:"REVIEW_ONLY_HOLD"});
+   }
+ }
+ const seen=new Set();
+ for(const p of pairs) {
+   if(!known.has(p.left)||!known.has(p.right)||p.left===p.right||
+     !PAIR_STATES.has(p.human_status))throw Error("Invalid source-bound pair");
+   const key=[p.left,p.right].sort().join(":");
+   if(seen.has(key))throw Error("Duplicate review pair");seen.add(key);
+   if(p.human_status==="discussion_recorded")continue;
+   rows.push({dossier:known.get(p.left)+"-"+known.get(p.right),
+     source_sha256:p.left+";"+p.right,kind:"cross_proposal_discussion",
+     code:p.revision_related?"historical_revision":p.scope_overlap&&p.utc_overlap?"scope_and_schedule_overlap":
+       p.scope_overlap?"effective_scope_overlap":"utc_window_overlap",
+     role:PAIR_ROLE,priority:p.revision_related?3:p.scope_overlap&&p.utc_overlap?1:2,
+     reason:p.revision_related?"Self-reported revision, not a separate client":"Independent human review of potential collision",
+     state:p.human_status,action:"independent_human_coordination",due_day:null,authority:"REVIEW_ONLY_HOLD"});
+ }
+ if(rows.length>MAX)throw Error("Agenda too large");
+ const day=new Date(),today=[day.getFullYear(),String(day.getMonth()+1).padStart(2,"0"),String(day.getDate()).padStart(2,"0")].join("-");
+ rows.sort((a,b)=>a.priority-b.priority ||
+   ((a.due_day&&a.due_day<today)?0:1)-((b.due_day&&b.due_day<today)?0:1) ||
+   (a.due_day||"9999").localeCompare(b.due_day||"9999") ||
+   a.dossier.localeCompare(b.dossier) || a.code.localeCompare(b.code));
+ return {
+   kind:"lightup.scope_handoff_coordination_agenda",schema_version:1,
+   disposition:"REVIEW_ONLY_HOLD",authority:{
+     authenticated:false,consent:false,authorized:false,grant:false,execution:false,
+     scan:false,dispatch:false,deploy:false,release:false
+   },
+   warning:"Every status is a local unverified human preparation state. No execution rights or real revocation.",
+   entries:rows
+ };
+}
+global.LightUpHumanCoordination=Object.freeze({build});
+})(window);
+</script>\n<script>/* Strict, offline-only import of Permission Brief reconciliation exports. Never consent or identity proof. */
+(function(global){
+"use strict";
+const FLAGS=["authenticated","client_consent","operator_consent","scope_approved","risk_approved",
+"authorization","grant","revocation_checked","execution","scan","deploy","release"];
+const QUESTIONS={
+client:["client_identity","asset_ownership","purpose_limits","client_consent","safety_context","network_activity","revision_client"],
+operator:["operator_independence","enforceable_scope","risk_approval","stop_revocation","mandatory_gates","high_risk","lab_provenance","no_exclusions","open_window","revision_operator"]
+};
+const STATES=["not_reported","unanswered","question_sent","answered_unverified"];
+const NEXT={
+not_reported:r=>"await_"+r+"_response",
+unanswered:r=>"ask_"+r,
+question_sent:r=>"follow_up_"+r,
+answered_unverified:()=>"independently_verify"
+};
+function exact(value,fields) {
+ return value!==null && typeof value==="object" && !Array.isArray(value) &&
+  Object.getPrototypeOf(value)===Object.prototype &&
+  Object.keys(value).length===fields.length && fields.every(k=>Object.hasOwn(value,k));
+}
+function check(ok,description){if(!ok)throw Error("Permission Brief HOLD: "+description);}
+function expectedQuestions(source) {
+ const codes=["client_identity","asset_ownership","purpose_limits","client_consent",
+   "operator_independence","enforceable_scope","risk_approval","stop_revocation","mandatory_gates"];
+ if(source.risk===4)codes.push("high_risk");
+ if(source.wantsNetwork===true)codes.push("lab_provenance","network_activity");
+ if(source.excluded.length===0)codes.push("no_exclusions");
+ if(source.hasWindow!==true)codes.push("open_window");
+ if(source.hasSafetyNotes!==true)codes.push("safety_context");
+ codes.push("revision_client","revision_operator");
+ return codes;
+}
+function verify(packet,sourceBySha){
+ const fields=["kind","schema_version","disposition","source_kind","source_sha256",
+  "client_note_present","operator_note_present","requested_mode","requested_risk",
+  "proposed_assets_count","excluded_assets_count","window_status","questions",
+  "attention_count","flags","notice"];
+ check(exact(packet,fields),"noncanonical envelope");
+ check(packet.kind==="lightup.scope_permission_reply_reconciliation" &&
+       packet.schema_version===1 && packet.disposition==="REVIEW_ONLY_HOLD" &&
+       packet.source_kind==="lightup.scope_proposal_draft" &&
+       typeof packet.source_sha256==="string" && /^[a-f0-9]{64}$/.test(packet.source_sha256),"kind or source");
+ check(sourceBySha instanceof Map && sourceBySha.has(packet.source_sha256),"original Studio draft bytes not loaded");
+ const source=sourceBySha.get(packet.source_sha256);
+ check(packet.requested_mode===source.mode && packet.requested_risk===source.risk &&
+   packet.proposed_assets_count===source.assets.length &&
+   packet.excluded_assets_count===source.excluded.length,"risk, mode or asset count mismatch");
+ check(typeof packet.window_status==="string" && packet.window_status.length<=64 &&
+   packet.window_status===(source.utcWindow?.status==="resolved"?"resolved_unapproved":
+     source.utcWindow?.status==="incomplete"?"incomplete":"unscheduled"),"window planning status mismatch");
+ check(exact(packet.flags,FLAGS)&&FLAGS.every(k=>packet.flags[k]===false),"authority flag not literally FALSE");
+ check(typeof packet.client_note_present==="boolean"&&typeof packet.operator_note_present==="boolean","note presences");
+ check(typeof packet.notice==="string" && packet.notice.length<=500 &&
+   /not verified identity|not verified|not verified|NOT verified/i.test(packet.notice),
+   "missing unverified disclaimer");
+ const expected=expectedQuestions(source);
+ check(Array.isArray(packet.questions)&&packet.questions.length===expected.length,
+   "conditional role question set does not match original Studio draft");
+ const seen=new Set(),items=[],roleCounts={client:0,operator:0},roleReplied={client:0,operator:0};
+ for(const [index,q] of packet.questions.entries()) {
+  check(exact(q,["code","assigned_role","reported_status","next_action"]),"question envelope");
+  check(["client","operator"].includes(q.assigned_role) &&
+    QUESTIONS[q.assigned_role].includes(q.code) && q.code===expected[index] && !seen.has(q.code),
+    "question role/order/conditional identity does not match original draft");
+  check(STATES.includes(q.reported_status) &&
+    q.next_action===NEXT[q.reported_status](q.assigned_role),"question progress or action inconsistent");
+  seen.add(q.code);roleCounts[q.assigned_role]++;
+  if(q.reported_status!=="not_reported")roleReplied[q.assigned_role]++;
+  items.push({code:q.code,role:q.assigned_role,status:q.reported_status});
+ }
+ for(const role of ["client","operator"]){
+  const required=["client_identity","asset_ownership","purpose_limits","client_consent",
+    "operator_independence","enforceable_scope","risk_approval","stop_revocation","mandatory_gates"];
+  check(required.filter(code=>QUESTIONS[role].includes(code)).every(code=>seen.has(code)),
+    "essential "+role+" questions missing");
+  check((role==="client"?packet.client_note_present:packet.operator_note_present)===
+    (roleReplied[role]>0),"role report presence inconsistent");
+ }
+ check(Number.isInteger(packet.attention_count) &&
+   packet.attention_count===items.filter(q=>q.status!=="answered_unverified").length,
+   "attention count inconsistent");
+ return {
+   sourceSha:packet.source_sha256,
+   clientNoted:packet.client_note_present,operatorNoted:packet.operator_note_present,
+   total:items.length,needsAttention:packet.attention_count,
+   questions:items,sourceKind:packet.source_kind
+ };
+}
+function saved(value,source){
+ if(!source || !Array.isArray(source.excluded) ||
+    !exact(value,["clientNoted","operatorNoted","total","needsAttention","questions","sourceKind"]) ||
+    value.sourceKind!=="lightup.scope_proposal_draft" ||
+    typeof value.clientNoted!=="boolean"||typeof value.operatorNoted!=="boolean" ||
+    !Number.isInteger(value.total)||value.total!==expectedQuestions(source).length ||
+    !Array.isArray(value.questions)||value.questions.length!==value.total)return false;
+ const seen=new Set(),counts={client:0,operator:0};
+ for(const [idx,q] of value.questions.entries()){
+   if(!exact(q,["code","role","status"])||!QUESTIONS[q.role]?.includes(q.code)||
+      q.code!==expectedQuestions(source)[idx] ||
+      !STATES.includes(q.status)||seen.has(q.code))return false;
+   seen.add(q.code);if(q.status!=="not_reported")counts[q.role]++;
+ }
+ const required=["client_identity","asset_ownership","purpose_limits","client_consent",
+   "operator_independence","enforceable_scope","risk_approval","stop_revocation","mandatory_gates"];
+ return required.every(x=>seen.has(x)) &&
+   value.clientNoted===(counts.client>0) && value.operatorNoted===(counts.operator>0) &&
+   value.needsAttention===value.questions.filter(q=>q.status!=="answered_unverified").length;
+}
+global.LightUpPermissionReplyImport=Object.freeze({verify,saved});
+})(window);
+</script>\n<script>/* Import only source-bound, review-only Withdrawal Desk exports. Never a revocation, consent or stop actuator. */
+(function(global){
+"use strict";
+const DENIAL_KEYS=["authenticated_client","authenticated_operator","approved","consent",
+  "authorization","grant","revoked","handler_stopped","dispatch","scan","deploy","release"];
+const INTENTS=["stop_all","narrow_scope","postpone","withdraw_share"];
+const URGENCY=["urgent","normal"];
+const ACTIONS=["client_channel","operator_channel","active_work","grant_revoke",
+  "scope_schedule","evidence_privacy","human_ack","incident_log"];
+const STATES=["todo","drafted_local","requested_unverified"];
+const validSHA=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
+function exact(o,keys){
+  return o!==null&&typeof o==="object"&&!Array.isArray(o)&&Object.getPrototypeOf(o)===Object.prototype &&
+    Object.keys(o).length===keys.length&&keys.every(k=>Object.hasOwn(o,k));
+}
+function deny(o){
+  return exact(o,DENIAL_KEYS)&&DENIAL_KEYS.every(k=>o[k]===false);
+}
+function demand(ok,why){if(!ok)throw Error("HOLD · withdrawal-import: "+why);}
+function parse(packet,knownSources){
+  demand(exact(packet,["kind","schema_version","disposition","flags","generated_at_utc","cases"]),
+    "unexpected envelope shape");
+  demand(packet.kind==="lightup.scope_withdrawal_review_only" && packet.schema_version===1 &&
+    packet.disposition==="REVIEW_ONLY" && deny(packet.flags),"not a literal non-authorizing withdrawal export");
+  demand(typeof packet.generated_at_utc==="string"&&packet.generated_at_utc.length<=40 &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(packet.generated_at_utc) &&
+    Number.isFinite(Date.parse(packet.generated_at_utc)),"invalid generated UTC timestamp");
+  demand(knownSources instanceof Map && Array.isArray(packet.cases) &&
+    packet.cases.length>=1 && packet.cases.length<=16,"case count");
+  const base=["source_sha256","risk","intent","urgency","requested_effective_utc",
+    "proposed_asset_count","proposed_exclusion_count","paperwork_prepared","human_work_items"];
+  const all=[...base,...DENIAL_KEYS];
+  const seen=new Set(),accepted=[];
+  for(const item of packet.cases){
+    demand(exact(item,all)&&DENIAL_KEYS.every(k=>item[k]===false),"case has an unexpected or elevated field");
+    demand(validSHA(item.source_sha256)&&!seen.has(item.source_sha256),"duplicate or invalid source hash");
+    const source=knownSources.get(item.source_sha256);
+    demand(source!==undefined,"source bytes have not been re-imported locally");
+    demand(item.risk===source.risk &&
+      item.proposed_asset_count===source.assets.length &&
+      item.proposed_exclusion_count===source.excluded.length,"source metadata mismatch");
+    demand(INTENTS.includes(item.intent)&&URGENCY.includes(item.urgency),"unknown intent or urgency");
+    demand(typeof item.paperwork_prepared==="boolean","invalid preparation label");
+    const effective=item.requested_effective_utc;
+    demand(effective===null||(
+      typeof effective==="string"&& /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(effective)&&
+      Number.isFinite(Date.parse(effective))
+    ),"invalid self-reported effective time");
+    demand(Array.isArray(item.human_work_items)&&item.human_work_items.length===ACTIONS.length,"incomplete human work items");
+    const states={};
+    for(const action of item.human_work_items){
+      demand(exact(action,["code","status"])&&ACTIONS.includes(action.code)&&
+        !Object.hasOwn(states,action.code)&&STATES.includes(action.status),"invalid or repeated human action");
+      states[action.code]=action.status;
+    }
+    demand(ACTIONS.every(k=>Object.hasOwn(states,k)),"missing human action");
+    accepted.push(Object.freeze({
+      sha:item.source_sha256,intent:item.intent,urgency:item.urgency,effective,
+      paperwork:item.paperwork_prepared,
+      outstanding:ACTIONS.filter(k=>states[k]!=="requested_unverified").length,
+      // Only non-authorizing statuses, never a proof of revocation/acknowledgment.
+      statuses:Object.freeze(states)
+    }));
+    seen.add(item.source_sha256);
+  }
+  return accepted;
+}
+function safeSaved(o,source) {
+  if(!exact(o,["intent","urgency","effective","paperwork","outstanding","statuses"]) ||
+    !INTENTS.includes(o.intent)||!URGENCY.includes(o.urgency)||
+    typeof o.paperwork!=="boolean" || !Number.isInteger(o.outstanding) ||
+    o.outstanding<0||o.outstanding>ACTIONS.length)return false;
+  if(o.effective!==null && (typeof o.effective!=="string" ||
+     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(o.effective) ||
+     !Number.isFinite(Date.parse(o.effective))))return false;
+  if(!exact(o.statuses,ACTIONS)||!ACTIONS.every(k=>STATES.includes(o.statuses[k])))return false;
+  return ACTIONS.filter(k=>o.statuses[k]!=="requested_unverified").length===o.outstanding &&
+    !!source;
+}
+global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
+})(window);
+</script>\n<script>"use strict";
+(() => {
+  // Offline preparation only: no fetch, storage, authentication or authorization surface.
+  const KIND = "lightup.scope_proposal_draft";
+  const MAX = 16, SIZE = 65536, RESTORE_SIZE = 131072;
+  const DENIAL = Object.freeze({
+    authenticated: false, consent: false, authorized: false, grant: false,
+    execution: false, scan: false, dispatch: false, deploy: false, release: false
+  });
+  const TASKS = Object.freeze([
+    ["owner", "Ownership/contact route", "Identify who must independently prove authority over each asset."],
+    ["assets", "Asset and exclusion boundaries", "Review identities, explicit exclusions, CIDR and DNS ambiguities."],
+    ["risk", "Risk and permitted activities", "Discuss the requested mode and risk with the authorized operator."],
+    ["schedule", "Time zone and maintenance window", "Resolve UTC, DST and actual appointment independently."],
+    ["stops", "Emergency stop and incident route", "Agree on who can stop work and how incidents are reported."],
+    ["privacy", "Evidence retention and privacy", "Agree on minimization, access and deletion routes."],
+    ["client", "Authenticated client request path", "Plan separate, actual client sign-in and request submission."],
+    ["operator", "Independent operator review path", "Plan actual operator authentication, review and revocation checks."]
+  ]);
+  const TASK_ROLES = Object.freeze({
+    owner:"joint",assets:"joint",risk:"operator",schedule:"joint",
+    stops:"joint",privacy:"joint",client:"client",operator:"operator"
+  });
+  const ROLE_LABELS = Object.freeze({client:"Cliënt",operator:"Operator",joint:"Samen"});
+  const validDay = value => value===null || (
+    typeof value==="string" && /^(20\d{2}|2100)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(value) &&
+    !Number.isNaN(Date.parse(value)) && new Date(value+"T00:00:00.000Z").toISOString().slice(0,10)===value
+  );
+  const localDay = () => {
+    const d=new Date();
+    return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
+  };
+  const STATUSES = Object.freeze(["open", "working", "prepared", "needs_revision"]);
+  const STATUS_TEXT = Object.freeze({open:"Open",working:"In gesprek",prepared:"Voor overdracht voorbereid",needs_revision:"Herziening nodig"});
+  const records = [];
+  const pairReviews = new Map();
+  const WITHDRAWAL_ACTION_TEXT = Object.freeze({
+    client_channel:"Contact cliënt via onafhankelijk geauthenticeerd kanaal; verifieer verzoek en scope.",
+    operator_channel:"Waarschuw bevoegde operator via afgesproken onafhankelijke urgente route.",
+    active_work:"Vraag operator om lopend werk te pauzeren of te stoppen en status onafhankelijk te controleren.",
+    grant_revoke:"Vraag echte grant-eigenaar om betrokken rechten werkelijk in te trekken en controleer bij gebruik.",
+    scope_schedule:"Laat verantwoordelijken werkelijke goedgekeurde scope en planning opnieuw afstemmen.",
+    evidence_privacy:"Laat data-eigenaar toegang, bewaartermijn en delen van bewijsmateriaal opnieuw beoordelen.",
+    human_ack:"Vraag onafhankelijke geauthenticeerde ontvangstbevestiging; app biedt die zelf niet.",
+    incident_log:"Leg het besluit vast in het echte operationele audit-/incidentregister."
+  });
+  const WITHDRAWAL_STATUS_TEXT=Object.freeze({
+    todo:"Nog niet lokaal voorbereid",drafted_local:"Alleen lokaal concept opgesteld",
+    requested_unverified:"Zelfgerapporteerd verzoek, ontvangst NIET geverifieerd"
+  });
+  const PAIR_STATES = Object.freeze(["open","discussion_started","needs_followup","discussion_recorded"]);
+  const PAIR_LABELS = Object.freeze({
+    open:"Open voor overleg",discussion_started:"Bespreking gestart",
+    needs_followup:"Vervolgactie nodig",discussion_recorded:"Bespreking vastgelegd (geen goedkeuring)"
+  });
+  const pairKey=(a,b)=>[a,b].sort().join(":");
+  let active = null;
+  const $ = id => document.getElementById(id);
+  const show = (message, error=false) => {
+    $("notice").textContent = message;
+    $("notice").classList.toggle("error", error);
+  };
+  const node = (tag, className, value) => {
+    const n = document.createElement(tag);
+    if (className) n.className=className;
+    if (value !== undefined) n.textContent=String(value);
+    return n;
+  };
+  const isPlain = value => value !== null && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
+  const assert = (ok, message) => { if (!ok) throw new Error(message); };
+  const digestBytes = async original => {
+    assert(original instanceof Uint8Array && globalThis.crypto && crypto.subtle && crypto.subtle.digest,
+      "Originele SHA-256 bronbytes niet beschikbaar in deze browsercontext.");
+    const array = new Uint8Array(await crypto.subtle.digest("SHA-256",original));
+    return Array.from(array,b=>b.toString(16).padStart(2,"0")).join("");
+  };
+  // Do not use file.text(): lossy UTF-8 replacement corrupts source-byte identity.
+  async function readOriginalBytes(file,max) {
+    assert(file instanceof File && file.size>0 && file.size<=max,"Bestand leeg of boven de toegestane bytegrens.");
+    const sourceBytes=new Uint8Array(await file.arrayBuffer());
+    assert(sourceBytes.byteLength===file.size && sourceBytes.byteLength<=max,"Originele bronbytegrootte komt niet overeen.");
+    assert(!(sourceBytes[0]===0xef && sourceBytes[1]===0xbb && sourceBytes[2]===0xbf),
+      "UTF-8 BOM niet ondersteund: gebruik het originele Studio JSON.");
+    let raw;
+    try {raw=new TextDecoder("utf-8",{fatal:true}).decode(sourceBytes);}
+    catch(_) {throw new Error("Ongeldige UTF-8-bronbytes; geen verliesgevende vervangingsdecodering.");}
+    return {raw,sha:await digestBytes(sourceBytes)};
+  }
+  // JSON.parse alone silently accepts duplicate object keys. Enforce unique decoded names first.
+  function parseUnique(s) {
+    const value = JSON.parse(s);
+    let i=0;
+    const ws = () => { while (i<s.length && /\s/.test(s[i])) i++; };
+    function readString() {
+      assert(s[i]==='"',"JSON-string verwacht.");
+      const begin=i++;
+      while (i<s.length) {
+        if (s[i]==="\\") { i+=2; continue; }
+        if (s[i++]==='"') return JSON.parse(s.slice(begin,i));
+      }
+      throw new Error("Onafgesloten JSON-string.");
+    }
+    function walk(depth) {
+      assert(depth<=24,"JSON te diep genest.");
+      ws();
+      if (s[i]==="{") {
+        i++; ws();
+        const keys = new Set();
+        if (s[i]==="}") {i++; return;}
+        while (true) {
+          ws(); const k=readString();
+          assert(!keys.has(k),"Dubbele JSON-sleutel geweigerd.");
+          keys.add(k); ws(); assert(s[i++]===":","JSON-structuur.");
+          walk(depth+1); ws();
+          if (s[i]==="}") {i++; return;}
+          assert(s[i++]===",","JSON-structuur.");
+        }
+      }
+      if (s[i]==="[") {
+        i++; ws(); if (s[i]==="]") {i++;return;}
+        while (true) {
+          walk(depth+1); ws();
+          if (s[i]==="]") {i++;return;}
+          assert(s[i++]===",","JSON-structuur.");
+        }
+      }
+      if (s[i]==='"') {readString();return;}
+      const begin=i;
+      while (i<s.length && !/[\s,}\]]/.test(s[i])) i++;
+      assert(i>begin,"JSON-waarde verwacht.");
+    }
+    walk(0); ws(); assert(i===s.length,"Onverwachte data na JSON.");
+    return value;
+  }
+  function strictArray(value,name,limit,length=255) {
+    assert(Array.isArray(value)&&value.length<=limit,name+" ongeldig of te groot.");
+    for (const item of value) assert(typeof item==="string" && item.length>0 && item.length<=length,name+" heeft ongeldige tekst.");
+  }
+  function validateDraft(o) {
+    assert(isPlain(o),"Studio-v1 object verwacht.");
+    assert(o.kind===KIND && o.schema_version===1 && o.state==="DRAFT_ONLY","Alleen ongewijzigde Studio-v1 DRAFT_ONLY concepten.");
+    assert(o.requested_mode==="analysis_only"||o.requested_mode==="authorized_assessment","Ongeldige conceptmodus.");
+    assert(Number.isInteger(o.requested_risk)&&o.requested_risk>=1&&o.requested_risk<=4,"Ongeldig risiconiveau.");
+    strictArray(o.requested_assets,"Assets",80,253);
+    strictArray(o.excluded_assets,"Exclusions",80,253);
+    const canonicalAssets=o.requested_assets.map(v=>LightUpScopeNetwork.parse(v));
+    const canonicalExclusions=o.excluded_assets.map(v=>LightUpScopeNetwork.parse(v));
+    assert(canonicalAssets.every(Boolean) && canonicalExclusions.every(Boolean),
+      "Asset of uitsluiting voldoet niet aan het Studio-v1 hostname/IP/CIDR-contract.");
+    assert(new Set(canonicalAssets.map(v=>v.canonical)).size===canonicalAssets.length &&
+      new Set(canonicalExclusions.map(v=>v.canonical)).size===canonicalExclusions.length,
+      "Dubbel canoniek asset-/uitsluitingsrecord.");
+    const utcValid=LightUpPlanningWindow.validateStored(o.proposed_window_local,o.proposed_window_utc);
+    assert(utcValid,"Planning en UTC-offset komen niet overeen met de bron.");
+    assert(o.requested_assets.length>0,"Een concept zonder voorgestelde assets kan niet worden geregistreerd.");
+    assert(isPlain(o.proposed_activities) &&
+      Object.keys(o.proposed_activities).length===3 &&
+      ["passive_analysis","configuration_review","private_lab_network_checks"].every(k=>typeof o.proposed_activities[k]==="boolean"),
+      "Ongeldig Studio-v1 activiteitenobject.");
+    const immutableDenials=["authorization","client_consent","operator_consent","grant","execution","revocation_checked"];
+    assert(immutableDenials.every(k=>Object.hasOwn(o,k) && o[k]===false),
+      "Studio-concept met ontbrekende of afwijkende autorisatie-/consentstatus geweigerd.");
+    assert(isPlain(o.proposed_window_local)&&
+      ["start","end"].every(k=>o.proposed_window_local[k]===null || typeof o.proposed_window_local[k]==="string"),
+      "Ongeldige lokale planning.");
+    const forbidden = ["grant_id","access_token","password","session_token","approved","authorized","consent","signature","execution_permit"];
+    const scan = (x,depth=0) => {
+      assert(depth<=24,"Concept te diep genest.");
+      if (Array.isArray(x)) {x.forEach(y=>scan(y,depth+1));return;}
+      if (isPlain(x)) for (const [k,v] of Object.entries(x)) {
+        assert(!forbidden.includes(k.toLowerCase()),"Autorisatie-/geheimveld niet toegestaan in het concept.");
+        scan(v,depth+1);
+      }
+    };
+    scan(o);
+    return {
+      assets:o.requested_assets.slice(),
+      excluded:o.excluded_assets.slice(),
+      risk:o.requested_risk, mode:o.requested_mode,
+      wantsNetwork:o.proposed_activities.private_lab_network_checks,
+      hasSafetyNotes:typeof o.notes==="string" && o.notes.trim().length>0,
+      utcWindow:o.proposed_window_utc || null,
+      hasWindow:!!o.proposed_window_utc && o.proposed_window_utc.status==="resolved",
+      studioDigest:null
+    };
+  }
+  function newRecord(sha,source) {
+    return {sha,source,reference:"Dossier "+String(records.length+1),replaces:null,
+      tasks:Object.fromEntries(TASKS.map(([id])=>[id,"open"])),
+      dueDates:Object.fromEntries(TASKS.map(([id])=>[id,null])),withdrawal:null,permission:null};
+  }
+  function localCoverage(r) {
+    return LightUpScopeNetwork.effectiveCoverage(r.source.assets,r.source.excluded);
+  }
+  function isRevisionOf(a,b) {
+    const seen=new Set();
+    let cursor=a.replaces;
+    while(cursor && !seen.has(cursor)) {
+      if(cursor===b.sha)return true;
+      seen.add(cursor);
+      cursor=records.find(x=>x.sha===cursor)?.replaces??null;
+    }
+    return false;
+  }
+  function sameRevisionHistory(a,b) {
+    return isRevisionOf(a,b)||isRevisionOf(b,a);
+  }
+  function relatedWithdrawalRequests(r) {
+    return records.filter(x=>x!==r && x.withdrawal && sameRevisionHistory(r,x));
+  }
+  function sharedHints(r) {
+    const current=localCoverage(r), spatial=[],clock=[];
+    for(const other of records) {
+      if(other===r || sameRevisionHistory(r,other)) continue;
+      if(LightUpScopeNetwork.coverageOverlap(current,localCoverage(other))) spatial.push(other.sha);
+      if(LightUpPlanningWindow.overlaps(r.source.utcWindow,other.source.utcWindow)===true) clock.push(other.sha);
+    }
+    return {spatial_count:spatial.length,utc_window_count:clock.length};
+  }
+  function meetingPairs() {
+    const pairs=[];
+    const effective=records.map(localCoverage);
+    for(let i=0;i<records.length;i++)for(let j=i+1;j<records.length;j++){
+      const a=records[i],b=records[j];
+      const scope_overlap=LightUpScopeNetwork.coverageOverlap(effective[i],effective[j]);
+      const utc_overlap=LightUpPlanningWindow.overlaps(a.source.utcWindow,b.source.utcWindow)===true;
+      if(!scope_overlap&&!utc_overlap) continue;
+      const revision_related=sameRevisionHistory(a,b);
+      pairs.push({left:a.sha,right:b.sha,scope_overlap,utc_overlap,revision_related,
+        human_status:pairReviews.get(pairKey(a.sha,b.sha))||"open",
+        priority:revision_related?"revision":scope_overlap&&utc_overlap?"combined":scope_overlap?"scope":"schedule"});
+    }
+    const weight={combined:0,scope:1,schedule:2,revision:3};
+    return pairs.sort((a,b)=>weight[a.priority]-weight[b.priority] ||
+      Math.max(records.find(x=>x.sha===b.left).source.risk,records.find(x=>x.sha===b.right).source.risk)-
+      Math.max(records.find(x=>x.sha===a.left).source.risk,records.find(x=>x.sha===a.right).source.risk));
+  }
+  const PERMISSION_QUESTIONS=Object.freeze({
+    client_identity:"Identiteit van aanvrager",asset_ownership:"Eigendom en bevoegdheid per asset",
+    purpose_limits:"Doel, verboden acties en bewaartermijnen",client_consent:"Echte cliënttoestemming langs beschermd kanaal",
+    operator_independence:"Onafhankelijke operatorreview",enforceable_scope:"Handhaafbare host-/IP-/CIDR-scope",
+    risk_approval:"Risico en beperkingen",stop_revocation:"STOP en intrekking bij gebruik",
+    mandatory_gates:"Verplichte security- en vrijgavegates",high_risk:"Afzonderlijke hoogrisico-escalatie",
+    lab_provenance:"Herkomst en eigendom privélab",no_exclusions:"Expliciete uitsluitingen",
+    open_window:"UTC-planning en tijdvenster",safety_context:"Stopinstructies en veiligheid",
+    network_activity:"Voorwaarden netwerkinteractie",revision_client:"Nieuwe cliëntscope herbeoordelen",
+    revision_operator:"Nieuwe operatorscope herbeoordelen"
+  });
+  function coordination() {
+    return LightUpHumanCoordination.build(records,meetingPairs());
+  }
+  function renderCoordination(){
+    const board=$("coordBoard"),metrics=$("coordStats");board.replaceChildren();metrics.replaceChildren();
+    const entries=records.length?coordination().entries:[],today=localDay();
+    const kind=$("coordKind").value,p=$("coordPriority").value;
+    const filtered=entries.filter(e=>(kind==="all"||kind===e.kind)&&(p==="all"||Number(p)===e.priority));
+    const metric=(name,value)=>{const m=node("span","metric");m.append(node("strong","",value),node("span","",name));metrics.append(m);};
+    metric("Open menselijke vervolgitems",entries.length);
+    metric("Dringend",entries.filter(e=>e.priority===0).length);
+    metric("Open vragen",entries.filter(e=>e.kind==="permission_question").length);
+    metric("Open STOP-acties",entries.filter(e=>e.kind==="withdrawal_human_followup").length);
+    if(!filtered.length){board.append(node("p","small","Geen lokale items in deze selectie. Dit is geen bewijs van veiligheid, consent of goedkeuring."));return;}
+    for(const e of filtered.slice(0,75)){
+      const item=node("article","action-row"+(e.priority===0?" urgent-row":""));
+      const desc=node("div","action-main");
+      desc.append(node("strong","",e.kind.replaceAll("_"," ")+" · "+e.code.replaceAll("_"," ")),
+        node("span","small",e.dossier+" · "+e.role+" · "+e.action.replaceAll("_"," ")));
+      const badge=node("span","chip"+(e.priority<=1?" alert":""),["DRINGEND","HOOG","NORMAAL","VOORBEREIDEND"][e.priority]);
+      const meta=node("span","meta",e.state.replaceAll("_"," ")+(e.due_day?" · "+e.due_day+(e.due_day<today?" · ACHTERSTALLIG":""):""));
+      const open=node("button","","Open dossier");open.type="button";
+      open.addEventListener("click",()=>{
+        const first=e.source_sha256.split(";")[0];active=first;
+        render();$("detail").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      item.append(desc,badge,meta,open);board.append(item);
+    }
+    if(filtered.length>75)board.append(node("p","notice",(filtered.length-75)+
+      " extra acties niet getoond; download de complete agenda of beperk de filters."));
+  }
+  function coordinationCsv(){
+    const rows=[["dossier","source_sha256","kind","code","role","priority","reported_state","next_human_action","local_due_day","authority"]];
+    for(const x of coordination().entries)rows.push([
+      x.dossier,x.source_sha256,x.kind,x.code,x.role,String(x.priority),x.state,x.action,x.due_day||"","REVIEW_ONLY_HOLD"
+    ]);
+    const cell=v=>'"'+String(v).replaceAll('"','""')+'"';
+    return "\ufeff"+rows.map(r=>r.map(cell).join(",")).join("\r\n")+"\r\n";
+  }
+  function coordinationIcs(){
+    const dated=coordination().entries.filter(x=>x.kind==="local_preparation" && x.due_day);
+    if(!dated.length) return null;
+    const now=new Date().toISOString().replaceAll("-","").replaceAll(":","").replace(/\.\d{3}Z$/,"Z");
+    const fold=value=>{
+      const pieces=[];for(let i=0;i<value.length;i+=72)pieces.push((i>0?" ":"")+value.slice(i,i+72));
+      return pieces.join("\r\n");
+    };
+    const ics=["BEGIN:VCALENDAR","VERSION:2.0","CALSCALE:GREGORIAN",
+      "PRODID:-//LightUp//Offline Review Tasks//EN"];
+    for(const t of dated){
+      const day=t.due_day.replaceAll("-","");
+      const next=new Date(Date.parse(t.due_day+"T00:00:00.000Z")+86400000).toISOString().slice(0,10).replaceAll("-","");
+      ics.push("BEGIN:VEVENT",
+        "UID:lightup-human-"+t.source_sha256+"-"+t.code+"@offline.invalid",
+        "DTSTAMP:"+now,"DTSTART;VALUE=DATE:"+day,"DTEND;VALUE=DATE:"+next,
+        "STATUS:TENTATIVE","TRANSP:TRANSPARENT","CLASS:PRIVATE",
+        "SUMMARY:LightUp human scope review (REVIEW ONLY)",
+        "DESCRIPTION:Human follow-up "+t.code+". No asset scan, authorization, client consent, grant or actual appointment.",
+        "END:VEVENT");
+    }
+    ics.push("END:VCALENDAR");
+    return ics.map(fold).join("\r\n")+"\r\n";
+  }
+  function renderPermission(){
+    const area=$("permissionBoard");area.replaceChildren();
+    const attached=records.filter(r=>r.permission);
+    $("permissionFeedback").textContent=attached.length?
+      attached.length+" gecombineerde, brongebonden maar NIET-GEAUTHENTICEERDE vragenoverzichten gekoppeld.":
+      "Geen gecombineerd vragenoverzicht geladen. Open eerst het originele Studio-concept en importeer dan een Permission Brief-reconciliation export.";
+    for(const r of attached){
+      const p=r.permission,card=node("article","permission-card");
+      card.append(node("h3","",r.reference+" · cliënt/operatoroverdracht"),
+        node("p","small",p.needsAttention+" van "+p.total+
+          " vragen vragen nog menselijke aandacht. Cliëntnotitie: "+(p.clientNoted?"zelfgerapporteerd":"ontbreekt")+
+          "; operatornotitie: "+(p.operatorNoted?"zelfgerapporteerd":"ontbreekt")+
+          ". Een antwoord is geen geverifieerde identiteit of toestemming."));
+      const counts=node("div","chips");
+      for(const role of ["client","operator"]){
+        const items=p.questions.filter(x=>x.role===role);
+        counts.append(node("span","chip",role==="client"?"Cliënt":"Operator"),node("span","chip alert",
+          items.filter(x=>x.status!=="answered_unverified").length+"/"+items.length+" open"));
+      }
+      card.append(counts);
+      const list=node("div","permission-questions");
+      for(const q of p.questions){
+        const row=node("div","permission-question");
+        row.append(node("strong","",PERMISSION_QUESTIONS[q.code]||q.code),
+          node("small","",q.role==="client"?"Cliëntvraag":"Operatorvraag"),
+          node("span","chip"+(q.status==="answered_unverified"?"":" alert"),
+            q.status==="answered_unverified"?"Antwoord ONGEVERIFIEERD":
+            q.status==="question_sent"?"Vraag verstuurd, ontvangst niet geverifieerd":
+            q.status==="unanswered"?"Niet beantwoord":"Geen antwoord ontvangen"));
+        list.append(row);
+      }
+      card.append(list);
+      const nav=node("div","actions"),open=node("button","","Open gekoppeld dossier");
+      open.type="button";open.addEventListener("click",()=>{active=r.sha;render();$("detail").scrollIntoView({block:"start",behavior:"smooth"});});
+      const clear=node("button","","Vergeet alleen deze lokale notitie");clear.type="button";
+      clear.addEventListener("click",()=>{
+        if(!confirm("Alleen de NIET-GEAUTHENTICEERDE Permission Brief-kopie wissen? Echte toestemming wordt niet gewijzigd."))return;
+        r.permission=null;show("Lokale beantwoording vergeten. Herbeoordelingsstatussen blijven intact.");render();
+      });
+      nav.append(open,clear);card.append(nav);area.append(card);
+    }
+    if(!attached.length)area.append(node("p","small","Gebruik de gecombineerde reconciliation-JSON uit de afzonderlijke Permission Brief. Alleen overeenkomende exacte Studio-bronbytes worden geaccepteerd."));
+  }
+  async function importPermission(file){
+    const raw=await readBounded(file,65536);
+    const accepted=LightUpPermissionReplyImport.verify(raw,new Map(records.map(r=>[r.sha,r.source])));
+    const r=records.find(x=>x.sha===accepted.sourceSha);
+    if(r.permission && !confirm("Er is al een lokale Permission Brief-kopie voor deze bronversie. Overschrijven en herbeoordelen?"))return;
+    const {sourceSha,...safe}=accepted;
+    r.permission={...safe,questions:safe.questions.map(x=>({...x}))};
+    for(const id of ["client","operator","owner","risk","assets"])
+      if(r.tasks[id]==="prepared")r.tasks[id]="needs_revision";
+    for(const key of pairReviews.keys())if(key.split(":").includes(r.sha))pairReviews.delete(key);
+    show("Nieuwe brongebonden, NIET-GEAUTHENTICEERDE cliënt-/operatorvragen ontvangen. Betrokken lokaal voorbereide acties heropend. Geen consent, grant of toegang veranderd.");
+    render();
+  }
+  function renderWithdrawals() {
+    const area=$("withdrawalBoard");area.replaceChildren();
+    const cases=records.filter(r=>r.withdrawal);
+    $("withdrawalFeedback").textContent=cases.length?
+      cases.length+" brongebonden ONGEVERIFIEERDE reviewverzoeken lokaal ingelezen. Er is geen daadwerkelijk stop- of herroepingscommando verstuurd.":
+      "Er is nog geen externe review-only melding gekoppeld.";
+    for(const r of cases){
+      const x=r.withdrawal,card=node("article","withdrawal-card");
+      card.append(node("h3","",r.reference+" · "+(x.urgency==="urgent"?"DRINGEND":"normaal")+
+        " · "+x.intent.replaceAll("_"," ")),
+        node("p","small","Bronbytes "+r.sha.slice(0,16)+"… · "+x.outstanding+
+          " van 8 externe menselijke stop-/wijzigingsacties nog zonder zelfs een ongeverifieerd verzoek. "+
+          (x.effective?"Voorgesteld UTC-moment: "+x.effective+". ":"")+
+          "Geen geauthenticeerde cliënt, echte grant-intrekking, dispatchstop of toestemming vastgesteld."));
+      const checklist=node("div","withdrawal-checklist");
+      for(const [id,description] of Object.entries(WITHDRAWAL_ACTION_TEXT)){
+        const row=node("div","withdrawal-step");
+        row.append(node("strong","",id.replaceAll("_"," ")),
+          node("span","small",description),
+          node("span","meta",WITHDRAWAL_STATUS_TEXT[x.statuses[id]]));
+        checklist.append(row);
+      }
+      card.append(checklist);
+      const actions=node("div","actions");
+      const open=node("button","","Dossier / stopacties bekijken");open.type="button";
+      open.addEventListener("click",()=>{active=r.sha;render();$("detail").scrollIntoView({block:"start",behavior:"smooth"});});
+      const remove=node("button","","Alleen lokale kopie wissen");remove.type="button";
+      remove.addEventListener("click",()=>{
+        if(!confirm("Alleen deze ongeverifieerde offline reviewkopie wissen? Dit heft GEEN echt stopverzoek of revocation op."))return;
+        r.withdrawal=null;show("Alleen lokale reviewkopie gewist; status 'Herziening nodig' blijft waar van toepassing.");render();
+      });
+      const handoff=node("button","","Download anonieme STOP-overdracht");handoff.type="button";
+      handoff.addEventListener("click",()=>{
+        const lines=[
+          "LIGHTUP — SELF-REPORTED HUMAN STOP/SCOPE-CHANGE REQUEST — REVIEW_ONLY_HOLD",
+          "NO VERIFIED CLIENT/OPERATOR IDENTITY, ACTUAL REVOCATION, HANDLER STOP OR PERMISSION.",
+          "Source bytes SHA-256: "+r.sha,
+          "Self-reported urgency: "+x.urgency,
+          "Self-reported intent: "+x.intent,
+          "Proposed UTC effective moment: "+(x.effective||"not supplied"),
+          "Next actions (must use real authenticated channels):",
+          ...Object.entries(WITHDRAWAL_ACTION_TEXT).map(([id,description])=>
+            "- "+id+" ["+x.statuses[id]+"] "+description),
+          "This note does not stop a service or revoke any grant. Confirm status independently."
+        ];
+        download(lines.join("\n")+"\n","lightup-offline-stop-handoff.txt","text/plain;charset=utf-8");
+      });
+      actions.append(open,handoff,remove);card.append(actions);area.append(card);
+    }
+    if(!cases.length)area.append(node("p","small","Importeer een REVIEW_ONLY-export vanuit de zelfstandige Withdrawal Desk, na openen van dezelfde exacte Studio-bronbytes. Dit register kan geen echte operatie stoppen."));
+  }
+  async function importWithdrawal(file) {
+    const obj=await readBounded(file,131072);
+    const items=LightUpWithdrawalImport.parse(obj,new Map(records.map(r=>[r.sha,r.source])));
+    if(items.some(x=>records.find(r=>r.sha===x.sha).withdrawal) &&
+      !confirm("Een bron heeft al een lokaal stop-/wijzigingsverzoek. Alleen de ongeverifieerde reviewnotities vervangen?"))return;
+    for(const item of items){
+      const r=records.find(x=>x.sha===item.sha);
+      const {sha,...safe}=item;
+      r.withdrawal={...safe,statuses:{...safe.statuses}};
+      const touched=safe.intent==="stop_all" ?
+        new Set(TASKS.map(([id])=>id)) : new Set(["client","operator","stops","owner"]);
+      if(safe.intent==="narrow_scope"){touched.add("assets");touched.add("risk");}
+      if(safe.intent==="postpone")touched.add("schedule");
+      if(safe.intent==="withdraw_share")touched.add("privacy");
+      for(const id of touched)if(r.tasks[id]==="prepared")r.tasks[id]="needs_revision";
+      for(const key of pairReviews.keys())if(key.split(":").includes(r.sha))pairReviews.delete(key);
+    }
+    // A self-declared revision never inherits revocation authority, but cannot silently
+    // retain a 'prepared' human review after a related version reports STOP.
+    for(const r of records)if(relatedWithdrawalRequests(r).length){
+      for(const id of ["client","operator","owner","stops","assets","risk","schedule"])
+        if(r.tasks[id]==="prepared")r.tasks[id]="needs_revision";
+      for(const key of pairReviews.keys())if(key.split(":").includes(r.sha))pairReviews.delete(key);
+    }
+    show(items.length+" echte brongebonden, maar NIET geauthenticeerde Withdrawal Desk-melding(en) ingelezen. Relevante menselijke voorbereiding heropend. Geen operaties geraakt.");
+    render();
+  }
+  function actionRows() {
+    const all=[];
+    for(const r of records)for(const [id,title] of TASKS){
+      if(r.tasks[id]==="prepared")continue;
+      all.push({r,id,title,status:r.tasks[id],role:TASK_ROLES[id],due:r.dueDates[id]});
+    }
+    const priority={needs_revision:0,working:1,open:2};
+    return all.sort((a,b)=>{
+      const urgentA=a.r.withdrawal?.urgency==="urgent"?1:0,urgentB=b.r.withdrawal?.urgency==="urgent"?1:0;
+      if(urgentA!==urgentB)return urgentB-urgentA;
+      if(a.due!==b.due)return a.due===null?1:b.due===null?-1:a.due.localeCompare(b.due);
+      if(a.status!==b.status)return priority[a.status]-priority[b.status];
+      return b.r.source.risk-a.r.source.risk;
+    });
+  }
+  function renderActionQueue(){
+    const area=$("actionQueue"),counts=$("actionStats");area.replaceChildren();counts.replaceChildren();
+    const role=$("taskRoleFilter").value,dueFilter=$("taskDueFilter").value,today=localDay();
+    const week=new Date(today+"T12:00:00Z");
+    week.setUTCDate(week.getUTCDate()+7);
+    const weekEnd=week.toISOString().slice(0,10);
+    const all=actionRows();
+    const filtered=all.filter(t=>{
+      if(role!=="all"&&t.role!==role)return false;
+      if(dueFilter==="overdue")return t.due!==null&&t.due<today;
+      if(dueFilter==="week")return t.due!==null&&t.due>=today&&t.due<=weekEnd;
+      if(dueFilter==="undated")return t.due===null;
+      if(dueFilter==="revision")return t.status==="needs_revision";
+      if(dueFilter==="withdrawal")return t.r.withdrawal!==null;
+      return true;
+    });
+    const metric=(label,value)=>{
+      const m=node("span","metric");m.append(node("strong","",value),node("span","",label));counts.append(m);
+    };
+    metric("Nog te bespreken",all.length);
+    metric("Doeldatum verstreken",all.filter(x=>x.due&&x.due<today).length);
+    metric("Herziening nodig",all.filter(x=>x.status==="needs_revision").length);
+    metric("Zichtbaar na filters",filtered.length);
+    if(!filtered.length){area.append(node("p","small","Geen open actiepunten voor deze selectie; dit bewijst geen machtiging of afgeronde securityreview."));return;}
+    for(const t of filtered.slice(0,64)){
+      const card=node("article","action-row");
+      const meta=node("div","action-main");
+      meta.append(node("strong","",t.title),node("span","small",t.r.reference+" · "+ROLE_LABELS[t.role]+" · risico "+t.r.source.risk));
+      const status=node("span","chip"+(t.status==="needs_revision"?" alert":""),STATUS_TEXT[t.status]);
+      const day=node("span","meta",t.due?("Doeldatum "+t.due+(t.due<today?" · VERSTREKEN":"")):"Geen doeldatum");
+      const open=node("button","","Open dossier");
+      open.type="button";open.addEventListener("click",()=>{active=t.r.sha;render();$("detail").scrollIntoView({behavior:"smooth",block:"start"});});
+      card.append(meta,status,day,open);area.append(card);
+    }
+    if(filtered.length>64) area.append(node("p","notice",(filtered.length-64)+" overige acties niet in deze lijst getoond. Gebruik rol-/datumfilters om ze te tonen of exporteer de volledige actielijst."));
+  }
+  function renderMeetingAgenda() {
+    const area=$("conflicts"),counts=$("conflictStats");area.replaceChildren();counts.replaceChildren();
+    const pairs=meetingPairs();
+    const count=(caption,n)=>{
+      const m=node("span","metric");m.append(node("strong","",n),node("span","",caption));counts.append(m);
+    };
+    count("Voorstellenparen met overlegpunt",pairs.length);
+    count("Onafhankelijke scope-overlap",pairs.filter(x=>x.scope_overlap&&!x.revision_related).length);
+    count("Onafhankelijke UTC-overlap",pairs.filter(x=>x.utc_overlap&&!x.revision_related).length);
+    count("Revisieparen (niet gelijktijdig veronderstellen)",pairs.filter(x=>x.revision_related).length);
+    count("Overleg nog niet vastgelegd",pairs.filter(x=>x.human_status!=="discussion_recorded").length);
+    if(!pairs.length){area.append(node("p","small","Geen berekende paren. Dit bewijst geen geldige toestemming, veilig netwerk of conflictvrije planning."));return;}
+    for(const p of pairs){
+      const left=records.find(x=>x.sha===p.left),right=records.find(x=>x.sha===p.right);
+      const card=node("article","conflict-card");
+      const title=node("h3","",left.reference+" ↔ "+right.reference);
+      const meta=node("p","small","Bronnen "+p.left.slice(0,12)+"… / "+p.right.slice(0,12)+"… · max. voorgesteld risico "+Math.max(left.source.risk,right.source.risk));
+      const codes=node("div","chips");
+      if(p.revision_related) codes.append(node("span","chip","Historische revisierelatie (zelfverklaard)"));
+      if(p.scope_overlap)codes.append(node("span","chip"+(p.revision_related?"":" alert"),"Numerieke/literale scope-overlap na uitsluitingen"));
+      if(p.utc_overlap)codes.append(node("span","chip"+(p.revision_related?"":" alert"),"Overlappende voorgestelde UTC-vensters"));
+      card.append(title,meta,codes,node("p","small",p.revision_related ?
+        "Dit paar behoort volgens de lokaal opgegeven revisielijn tot hetzelfde voorstel. Vergelijk wijzigingen en heropen relevante voorbereidingsacties; leid er geen gemeenschappelijk eigendom of actuele toestemming uit af." :
+        "Menselijke actie: controleer onafhankelijk eigendom, uitzonderingen, tenant-scheiding, werkelijk gereserveerde tijden en noodstop. Geen claim dat dit dezelfde klant is."));
+      const statusLabel=node("label","pair-status","Lokale overlegstatus (geen goedkeuring)");
+      const selector=node("select");
+      for(const status of PAIR_STATES){const option=node("option","",PAIR_LABELS[status]);option.value=status;selector.append(option);}
+      selector.value=p.human_status;
+      selector.addEventListener("change",()=>{
+        const key=pairKey(p.left,p.right);
+        if(selector.value==="open")pairReviews.delete(key);
+        else pairReviews.set(key,selector.value);
+        show("Zelfgerapporteerde overlegstatus bijgewerkt; geen scopebesluit, consent, grant of autorisatie.");
+        render();
+      });
+      statusLabel.append(selector);card.append(statusLabel);
+      const jump=node("div","actions");
+      for(const r of [left,right]){
+        const btn=node("button","",r.reference+" openen");
+        btn.type="button";btn.addEventListener("click",()=>{
+          active=r.sha;render();$("detail").scrollIntoView({block:"start",behavior:"smooth"});
+        });jump.append(btn);
+      }
+      card.append(jump);area.append(card);
+    }
+  }
+  // Explicit human-declared revision lineage. Shared file contents never prove shared client identity.
+  function revisionDelta(r) {
+    const old=records.find(x=>x.sha===r.replaces);
+    if(!old)return null;
+    const count=(from,to)=>({added:[...new Set(to)].filter(x=>!new Set(from).has(x)).length,
+      removed:[...new Set(from)].filter(x=>!new Set(to).has(x)).length});
+    const coverageDiff=LightUpScopeNetwork.coverageDifference(localCoverage(old),localCoverage(r));
+    const changedTime=JSON.stringify(old.source.utcWindow)!==JSON.stringify(r.source.utcWindow);
+    return {assets:count(old.source.assets,r.source.assets),
+      exclusions:count(old.source.excluded,r.source.excluded),
+      effective_added_segments:coverageDiff?.added.length ?? null,
+      effective_removed_segments:coverageDiff?.removed.length ?? null,
+      effective_truncated:coverageDiff?.truncated ?? true,
+      risk_changed:old.source.risk!==r.source.risk,
+      risk_increased:r.source.risk>old.source.risk,
+      mode_changed:old.source.mode!==r.source.mode,
+      time_window_presence_changed:old.source.hasWindow!==r.source.hasWindow,
+      time_window_changed:changedTime,
+      possible_expansion:(coverageDiff?.added.length ?? 0)>0 || (coverageDiff?.truncated ?? true) ||
+        r.source.risk>old.source.risk ||
+        (old.source.mode==="analysis_only" && r.source.mode==="authorized_assessment")};
+  }
+  function revisionTaskRechecks(delta) {
+    if(!delta)return [];
+    const keys=new Set(["owner","client","operator","privacy"]);
+    if(delta.effective_added_segments || delta.effective_removed_segments ||
+       delta.effective_truncated || delta.assets.added || delta.assets.removed ||
+       delta.exclusions.added || delta.exclusions.removed) {
+      keys.add("assets");keys.add("stops");
+    }
+    if(delta.risk_changed || delta.mode_changed){keys.add("risk");keys.add("stops");}
+    if(delta.time_window_changed || delta.time_window_presence_changed){keys.add("schedule");keys.add("stops");}
+    return [...keys];
+  }
+  function setRevision(r,priorSha) {
+    if((priorSha||null)===r.replaces)return [];
+    if(priorSha) {
+      assert(priorSha!==r.sha && records.some(x=>x.sha===priorSha),"Ongeldige revisierelatie.");
+      assert(!records.some(x=>x!==r&&x.replaces===priorSha),"De voorganger is al gekoppeld aan een andere opvolger.");
+      let cursor=priorSha;
+      const visited=new Set();
+      while(cursor) {
+        assert(cursor!==r.sha && !visited.has(cursor),"Cyclische revisiehistorie geweigerd.");
+        visited.add(cursor); cursor=records.find(x=>x.sha===cursor)?.replaces??null;
+      }
+    }
+    const prevPairs=new Map(meetingPairs().map(p=>[pairKey(p.left,p.right),p.revision_related]));
+    r.replaces=priorSha||null;
+    const nextPairs=new Map(meetingPairs().map(p=>[pairKey(p.left,p.right),p.revision_related]));
+    for(const key of pairReviews.keys())
+      if(!nextPairs.has(key)||prevPairs.get(key)!==nextPairs.get(key)||key.split(":").includes(r.sha))
+        pairReviews.delete(key);
+    const delta=revisionDelta(r),changed=[];
+    if(relatedWithdrawalRequests(r).length){
+      for(const id of ["client","operator","owner","stops","assets","risk","schedule"])
+        if(r.tasks[id]==="prepared"){r.tasks[id]="needs_revision";changed.push(id);}
+    }
+    if(delta){
+      for(const key of revisionTaskRechecks(delta)){
+        if(r.tasks[key]==="prepared"){r.tasks[key]="needs_revision";changed.push(key);}
+      }
+    }
+    return changed;
+  }
+  function warnings(r) {
+    const w=[];
+    const rev=revisionDelta(r);
+    if (rev?.possible_expansion) w.push("revisie_mogelijke_scopeuitbreiding");
+    if (rev?.mode_changed) w.push("revisie_modusgewijzigd");
+    if (rev?.time_window_changed) w.push("revisie_planning_gewijzigd");
+    if (rev && revisionTaskRechecks(rev).some(id=>r.tasks[id]==="needs_revision"))
+      w.push("revisie_menselijke_herbeoordeling_nodig");
+    if(relatedWithdrawalRequests(r).length)w.push("stopverzoek_bij_zelfgekoppelde_scopeversie_onafhankelijk_beoordelen");
+    if(r.permission && r.permission.needsAttention>0)w.push("vragen_client_operator_onbevestigd");
+    if(r.permission && (!r.permission.clientNoted||!r.permission.operatorNoted))w.push("rolantwoord_ontbreekt");
+    if(r.withdrawal){
+      w.push(r.withdrawal.urgency==="urgent"?"dringend_niet_geauthenticeerd_stopverzoek":"onbevestigd_stop_of_scopewijzigingsverzoek");
+    }
+    if (r.source.risk===4) w.push("hoog_risico");
+    if (r.source.mode==="authorized_assessment") w.push("actieve_modus_voorgesteld");
+    if (!r.source.excluded.length) w.push("geen_exclusies_opgegeven");
+    if (!r.source.hasWindow) w.push("tijdvenster_te_bespreken");
+    for(const issue of LightUpScopeNetwork.inspect(r.source.assets,r.source.excluded))
+      if(["included_overlap","exclusion_overlap","global_range","ipv6"].includes(issue.code))
+        if(!w.includes("scope_"+issue.code))w.push("scope_"+issue.code);
+    const related=sharedHints(r);
+    if(related.spatial_count>0)w.push("effectieve_numerieke_of_host_scope_overlap");
+    if(related.utc_window_count>0)w.push("utc_planningsoverlap");
+    return w;
+  }
+  const prepared = r => TASKS.filter(([id])=>r.tasks[id]==="prepared").length;
+  function visibleRecords() {
+    const query=$("search").value.trim().toLowerCase();
+    const filter=$("filter").value;
+    return records.filter(r=>{
+      if(filter==="attention" && prepared(r)===TASKS.length)return false;
+      if(filter==="ready" && prepared(r)!==TASKS.length)return false;
+      if(filter==="high-risk" && r.source.risk!==4)return false;
+      if(filter==="revision" && !r.replaces)return false;
+      const searchable=(r.reference+" risk "+r.source.risk+" "+TASKS.filter(([id])=>r.tasks[id]!=="prepared").map(x=>x[1]).join(" ")).toLowerCase();
+      return searchable.includes(query);
+    }).sort((a,b)=>{
+      const mode=$("sort").value;
+      if(mode==="risk")return b.source.risk-a.source.risk || warnings(b).length-warnings(a).length;
+      if(mode==="progress")return prepared(a)-prepared(b);
+      return records.indexOf(a)-records.indexOf(b);
+    });
+  }
+  function render() {
+    $("stats").replaceChildren();
+    const stats=[["Concepten",records.length],["Acties voorbereid",records.reduce((n,r)=>n+prepared(r),0)],["Open/vervolg",records.reduce((n,r)=>n+TASKS.length-prepared(r),0)],["Discussiepunten",records.reduce((n,r)=>n+warnings(r).length,0)]];
+    for (const [label,val] of stats) {
+      const m=node("div","metric");
+      m.append(node("strong","",val),node("span","",label));$("stats").append(m);
+    }
+    const boards=$("boards");boards.replaceChildren();
+    for (const r of visibleRecords()) {
+      const card=node("button","card"+(active===r.sha?" selected":""));
+      card.type="button";card.setAttribute("aria-pressed",String(active===r.sha));
+      card.append(node("span","card-title",r.reference),node("span","meta","SHA-256 "+r.sha.slice(0,16)+"…"),node("span","meta","Risico "+r.source.risk+" · "+(r.source.mode==="analysis_only"?"Analysevoorstel":"Actieve modus voorgesteld")+" · "+r.source.assets.length+" assetregels"));
+      const chips=node("span","chips");
+      chips.append(node("span","chip",prepared(r)+"/"+TASKS.length+" voorbereidingen"));
+      if(r.replaces) chips.append(node("span","chip","Revisie van "+r.replaces.slice(0,10)+"…"));
+      for (const warning of warnings(r)) chips.append(node("span","chip alert",warning.replaceAll("_"," ")));
+      card.append(chips);
+      card.addEventListener("click",()=>{active=r.sha;render();});
+      boards.append(card);
+    }
+    if (!boards.children.length) boards.append(node("p","small","Geen concepten gevonden voor deze selectie."));
+    renderDetail();
+    renderCoordination();
+    renderPermission();
+    renderWithdrawals();
+    renderActionQueue();
+    renderMeetingAgenda();
+  }
+  function renderDetail() {
+    const detail=$("detail");detail.replaceChildren();
+    const r=records.find(x=>x.sha===active);
+    if (!r) {detail.append(node("p","","Selecteer een concept om voorbereidingsacties te bekijken."));return;}
+    detail.append(node("h3","",r.reference+" — voorbereidingsroute"));
+    const relatedStops=relatedWithdrawalRequests(r);
+    if(relatedStops.length)detail.append(node("p","warning",
+      "Er is een ONGEVERIFIEERD STOP-/wijzigingsverzoek bij "+relatedStops.length+
+      " zelfgekoppelde historische scopeversie(s). Vraag via het echte geauthenticeerde proces of dit verzoek ook deze exacte versie betreft. Geen daadwerkelijke intrekking is vastgesteld."));
+    detail.append(node("p","small","Dit betreft uitsluitend zelf bijgehouden voorbereiding. Een vinkje is geen verificatie en wordt nooit een autorisatieverklaring."));
+    const controls=node("div","controls"), lab=node("label","","Interne referentie (alleen lokaal)");
+    const input=node("input");input.maxLength=32;input.value=r.reference;
+    input.addEventListener("change",()=>{r.reference=input.value.trim().slice(0,32)||"Naamloos dossier";render();});
+    lab.append(input);controls.append(lab);
+    const del=node("button","","Verwijder alleen dit concept");del.type="button";
+    del.addEventListener("click",()=>{if(!confirm("Dit concept en de lokale voorbereidingsantwoorden verwijderen?"))return;records.splice(records.indexOf(r),1);for(const x of records)if(x.replaces===r.sha)x.replaces=null;for(const key of pairReviews.keys())if(key.split(":").includes(r.sha))pairReviews.delete(key);active=records[0]?.sha??null;show("Concept en afhankelijke revisiekoppeling(en) uit deze browsersessie verwijderd; andere taakstatussen behouden.");render();});
+    controls.append(del);detail.append(controls);
+    const relation=node("div","controls");
+    const revLabel=node("label","","Voorganger koppelen (handmatig, geen eigendomsbewijs)");
+    const revSelect=node("select");
+    const none=node("option","","Geen voorganger");none.value="";revSelect.append(none);
+    for(const other of records) if(other.sha!==r.sha) {
+      const opt=node("option","",other.reference+" · "+other.sha.slice(0,10)+"…");
+      opt.value=other.sha;revSelect.append(opt);
+    }
+    revSelect.value=r.replaces||"";
+    revSelect.addEventListener("change",()=>{
+      if(revSelect.value && !confirm("Koppelen als zelfverklaarde nieuwe scopeversie? Eerder 'voorbereide' relevante acties worden dan automatisch HERZIENING NODIG; getroffen overlegnotities worden gereset. Geen toestemming/claims worden overgenomen.")) {revSelect.value=r.replaces||"";return;}
+      try{const changed=setRevision(r,revSelect.value);show("Revisielijn bijgewerkt; "+changed.length+" voorbereide actie(s) op 'Herziening nodig' gezet. Betrokken overlegstatussen zijn heropend. Geen echte consent of autorisatie overgenomen.");render();}
+      catch(err){show("Revisiekoppeling geweigerd: "+err.message,true);revSelect.value=r.replaces||"";}
+    });
+    revLabel.append(revSelect);relation.append(revLabel);detail.append(relation);
+    const rev=revisionDelta(r);
+    if(rev) detail.append(node("p","summary","Letterlijke revisieverschillen (geen eigendom of CIDR-dekking): assets +"+rev.assets.added+"/−"+rev.assets.removed+
+      ", exclusies +"+rev.exclusions.added+"/−"+rev.exclusions.removed+
+      ", risicotoename: "+(rev.risk_increased?"ja":"nee")+", modus gewijzigd: "+(rev.mode_changed?"ja":"nee")+
+      ". Effectieve netwerk-/hostnameverschillen na exclusies (max 160 segmenten): +"+rev.effective_added_segments+"/−"+rev.effective_removed_segments+
+      (rev.effective_truncated?" (afgekapt)":"")+
+      ". UTC-venster gewijzigd: "+(rev.time_window_changed?"ja":"nee")+
+      ". Mogelijke uitbreiding: "+(rev.possible_expansion?"JA — onafhankelijke herbeoordeling nodig":"niet uit deze signalen gebleken")+
+      ". Voorbereidingsacties blijven apart; eerder afgeronde toepasselijke acties krijgen 'Herziening nodig' na koppeling. Geen DNS of autorisatiecontrole."));
+    const hint=node("p","summary","Reviewpunten: "+(warnings(r).length?warnings(r).join(", ").replaceAll("_"," "):"Geen automatisch aangemerkte signalen. Dat bewijst geen veilige scope.")+". Exacte asset-overlap betekent niet gedeeld eigendom of geldige toestemming.");
+    detail.append(hint);
+    for (const [id,title,description] of TASKS) {
+      const row=node("div","checkrow");const info=node("div"),titleEl=node("label","",title);
+      titleEl.htmlFor="task-"+id;info.append(titleEl,node("small","",description));
+      const select=node("select");select.id="task-"+id;
+      for (const state of STATUSES) {const option=node("option","",STATUS_TEXT[state]);option.value=state;select.append(option);}
+      select.value=r.tasks[id];select.addEventListener("change",()=>{r.tasks[id]=select.value;render();});
+      const controls=node("div","task-controls");
+      const dueLabel=node("label","small","Lokale doeldatum");
+      const due=node("input");due.type="date";due.min="2020-01-01";due.max="2100-12-31";
+      due.value=r.dueDates[id]||"";due.setAttribute("aria-label","Doeldatum "+title);
+      due.addEventListener("change",()=>{
+        const val=due.value||null;
+        if(!validDay(val)){show("Ongeldige lokale datum; datum niet overgenomen.",true);due.value=r.dueDates[id]||"";return;}
+        r.dueDates[id]=val;render();
+      });
+      dueLabel.append(due);controls.append(select,dueLabel);
+      info.append(node("small","","Menselijke rol: "+ROLE_LABELS[TASK_ROLES[id]]));
+      row.append(info,controls);detail.append(row);
+    }
+    detail.append(node("p","small","Status: "+prepared(r)+" van "+TASKS.length+" voorbereid. Zelfs bij 8/8 blijft dit REVIEW_ONLY_HOLD. Gebruik het originele geauthenticeerde proces voor toestemming en directe herroepingscontrole."));
+  }
+  async function readBounded(file,max) {
+    const source=await readOriginalBytes(file,max);
+    return parseUnique(source.raw);
+  }
+  async function importDrafts(files) {
+    assert(files.length>0&&files.length<=MAX,"Selecteer maximaal 16 bestanden.");
+    const incoming=[];const seen=new Set(records.map(x=>x.sha));
+    const seenSemantic=new Set(records.map(x=>x.source.studioDigest));
+    let formatOnlyDuplicates=0;
+    // Validate every document before changing the live view.
+    for (const file of files) {
+      const fileSource=await readOriginalBytes(file,SIZE);
+      const parsed=parseUnique(fileSource.raw);
+      const source=validateDraft(parsed);
+      const studioDigest=await LightUpScopeDigest.fingerprint(parsed);
+      assert(studioDigest && /^[a-f0-9]{64}$/.test(studioDigest),
+        "Studio-v1 scope-identiteit niet canoniek te berekenen.");
+      if (Object.hasOwn(parsed,"scope_fingerprint_sha256"))
+        assert(parsed.scope_fingerprint_sha256===studioDigest,
+          "Studio-v1 scope-fingerprint komt niet overeen met het oorspronkelijke concept.");
+      source.studioDigest=studioDigest;
+      const sha=fileSource.sha;
+      if (seen.has(sha)) continue;
+      if (seenSemantic.has(studioDigest)) {
+        formatOnlyDuplicates++;
+        continue; // Edited export time/format is not a new scope revision.
+      }
+      seen.add(sha);seenSemantic.add(studioDigest);incoming.push({sha,source});
+    }
+    assert(records.length+incoming.length<=MAX,"Het register bevat maximaal 16 verschillende conceptversies.");
+    incoming.forEach(x=>records.push(newRecord(x.sha,x.source)));
+    if (!active && records.length) active=records[0].sha;
+    show(incoming.length+" nieuwe Studio-scopeversie(s) geladen; "+formatOnlyDuplicates+" herexport(s) met identieke semantische scope genegeerd. Exacte bronbytes blijven nodig voor herstel van bestaande taakstatussen.");
+    render();
+  }
+  function download(data,name,type) {
+    const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),link=document.createElement("a");
+    link.href=url;link.download=name;document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }
+  const json=(data,name)=>download(JSON.stringify(data,null,2)+"\n",name,"application/json;charset=utf-8");
+  const authority=()=>({...DENIAL});
+  function snapshot() {
+    return {kind:"lightup.scope_handoff_local_progress",schema_version:5,state:"REVIEW_ONLY_HOLD",authority:authority(),
+      entries:records.map(r=>({sha256:r.sha,reference:r.reference,replaces:r.replaces,tasks:{...r.tasks},
+        due_dates:{...r.dueDates},withdrawal:r.withdrawal?{...r.withdrawal,statuses:{...r.withdrawal.statuses}}:null,
+        permission:r.permission?{...r.permission,questions:r.permission.questions.map(q=>({...q}))}:null})),
+      pair_reviews:meetingPairs().map(p=>({sources:[p.left,p.right].sort(),status:p.human_status}))};
+  }
+  function report() {
+    return {kind:"lightup.scope_handoff_review_register",schema_version:3,state:"REVIEW_ONLY_HOLD",authority:authority(),
+      notice:"Unverified local human preparation; no authorization, consent, identity or ownership assertion.",
+      review_agenda:meetingPairs().map(p=>({
+        dossier_a:"D"+String(records.findIndex(x=>x.sha===p.left)+1).padStart(2,"0"),
+        dossier_b:"D"+String(records.findIndex(x=>x.sha===p.right)+1).padStart(2,"0"),
+        numeric_or_literal_scope_overlap:p.scope_overlap,
+        proposed_utc_overlap:p.utc_overlap,
+        relation:p.revision_related?"self_reported_revision":"independent_review",
+        self_reported_discussion_status:p.human_status,
+        review_only:true
+      })),
+      entries:records.map((r,i)=>({
+        dossier:"D"+String(i+1).padStart(2,"0"),source_sha256:r.sha,
+        studio_revision_sha256:r.source.studioDigest,
+        replaces_source_sha256:r.replaces,revision:revisionDelta(r),offline_shared_review_hints:sharedHints(r),
+        proposed_risk:r.source.risk,proposed_mode:r.source.mode,
+        asset_count:r.source.assets.length,excluded_count:r.source.excluded.length,
+        review_codes:warnings(r),tasks:Object.fromEntries(TASKS.map(([id])=>[id,r.tasks[id]])),
+        task_roles:{...TASK_ROLES},task_due_dates:{...r.dueDates},
+        permission_questions_review_only:r.permission?{
+          client_response_reported:r.permission.clientNoted,
+          operator_response_reported:r.permission.operatorNoted,
+          outstanding_unverified_questions:r.permission.needsAttention,
+          question_count:r.permission.total,
+          question_statuses:r.permission.questions.map(q=>({code:q.code,role:q.role,status:q.status}))
+        }:null,
+        external_withdrawal_review_only:r.withdrawal?{
+          intent:r.withdrawal.intent,urgency:r.withdrawal.urgency,
+          suggested_utc:r.withdrawal.effective,paperwork_prepared:r.withdrawal.paperwork,
+          outstanding_unverified_human_actions:r.withdrawal.outstanding
+        }:null,
+        preparation_only:prepared(r)===TASKS.length
+      }))};
+  }
+  function restore(o) {
+    assert(isPlain(o)&&o.kind==="lightup.scope_handoff_local_progress"&&[1,2,3,4,5].includes(o.schema_version)&&o.state==="REVIEW_ONLY_HOLD","Geen compatibele lokale voortgang.");
+    assert(isPlain(o.authority)&&Object.keys(DENIAL).length===Object.keys(o.authority).length && Object.entries(DENIAL).every(([k,v])=>o.authority[k]===v),"Autorisatievlaggen mogen nooit waar zijn.");
+    assert(Array.isArray(o.entries) && o.entries.length===records.length && records.length>0 && o.entries.length<=MAX,"Open eerst precies de oorspronkelijke conceptversies.");
+    const shaMap=new Map(records.map(x=>[x.sha,x])),found=new Set(),updates=[];
+    for (const entry of o.entries) {
+      assert(isPlain(entry)&&typeof entry.sha256==="string" && /^[a-f0-9]{64}$/.test(entry.sha256) && shaMap.has(entry.sha256) && !found.has(entry.sha256),"Bron-SHA mist, is dubbel of niet gelijk.");
+      assert(typeof entry.reference==="string"&&entry.reference.length>0&&entry.reference.length<=32 && isPlain(entry.tasks),"Ongeldige lokale label-/takenstructuur.");
+      const expectedKeys=["sha256","reference","replaces","tasks",...(o.schema_version>=3?["due_dates"]:[]),...(o.schema_version>=4?["withdrawal"]:[]),...(o.schema_version===5?["permission"]:[])];
+      assert(Object.keys(entry).length===expectedKeys.length && expectedKeys.every(k=>Object.hasOwn(entry,k)),"Onbekende of ontbrekende status-/doeldatumvelden.");
+      if(o.schema_version>=3){
+        assert(isPlain(entry.due_dates)&&Object.keys(entry.due_dates).length===TASKS.length &&
+          TASKS.every(([id])=>Object.hasOwn(entry.due_dates,id)&&validDay(entry.due_dates[id])),
+          "Onjuiste doeldatumset; import wordt geheel geweigerd.");
+      }
+      if(o.schema_version>=4 && entry.withdrawal!==null)
+        assert(LightUpWithdrawalImport.safeSaved(entry.withdrawal,shaMap.get(entry.sha256)?.source),
+          "Ongeldige, bronloze of verhoogde externe stopnotitie.");
+      if(o.schema_version===5 && entry.permission!==null)
+        assert(LightUpPermissionReplyImport.saved(entry.permission,shaMap.get(entry.sha256)?.source),
+          "Ongeldige of verhoogde Permission Brief-notitie; alles blijft ongewijzigd.");
+      assert(Object.keys(entry.tasks).length===TASKS.length && TASKS.every(([id])=>STATUSES.includes(entry.tasks[id])),"Taakset of status is vervormd.");
+      assert(entry.replaces===null || (typeof entry.replaces==="string" && shaMap.has(entry.replaces)),"Vreemde revisievoorganger.");
+      found.add(entry.sha256);updates.push([shaMap.get(entry.sha256),entry]);
+    }
+    // Validate the entire proposed revision graph before applying any local updates.
+    const simulated=new Map(updates.map(([r,e])=>[r.sha,e.replaces]));
+    for(const [sha] of simulated){const visited=new Set([sha]);let cursor=simulated.get(sha);while(cursor){assert(!visited.has(cursor),"Cyclische revisielijn.");visited.add(cursor);cursor=simulated.get(cursor)||null;}}
+    const targets=updates.map(([,e])=>e.replaces).filter(Boolean);
+    assert(new Set(targets).size===targets.length,"Dubbele voorganger kan niet twee opvolgers hebben.");
+    const nextPairs=new Map();
+    if(o.schema_version>=2) {
+      const expected=new Set(meetingPairs().map(p=>pairKey(p.left,p.right)));
+      assert(Array.isArray(o.pair_reviews)&&o.pair_reviews.length===expected.size,
+        "Overlegpaarset komt niet overeen met de geopende bronbestanden.");
+      for(const pair of o.pair_reviews) {
+        assert(isPlain(pair) && Object.keys(pair).length===2 &&
+          Array.isArray(pair.sources)&&pair.sources.length===2&&pair.sources.every(x=>typeof x==="string") &&
+          PAIR_STATES.includes(pair.status),"Ongeldige brongebonden overlegstatus.");
+        const key=pairKey(pair.sources[0],pair.sources[1]);
+        assert(expected.has(key)&&!nextPairs.has(key),"Onbekend of dubbel overlegpaar.");
+        nextPairs.set(key,pair.status);
+      }
+    }
+    if (!confirm("De huidige lokale voorbereidings- en overlegstatussen vervangen voor exact deze bronbestanden?"))return;
+    updates.forEach(([r,e])=>{r.reference=e.reference;r.replaces=e.replaces;r.tasks={...e.tasks};
+      r.dueDates=o.schema_version>=3?{...e.due_dates}:Object.fromEntries(TASKS.map(([id])=>[id,null]));
+      r.withdrawal=o.schema_version>=4&&e.withdrawal?{...e.withdrawal,statuses:{...e.withdrawal.statuses}}:null;
+      r.permission=o.schema_version===5&&e.permission?{...e.permission,questions:e.permission.questions.map(q=>({...q}))}:null;
+    });
+    pairReviews.clear();
+    for(const [key,status] of nextPairs)if(status!=="open")pairReviews.set(key,status);
+    show("Dossier- en overlegstatussen atomisch hersteld voor identieke oorspronkelijke bronbytes.");
+    render();
+  }
+  function fullHtmlPacket() {
+    const data=report();
+    const esc = value => String(value).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+    const parts=[
+      "<!doctype html><html lang=\"nl\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; connect-src 'none'; form-action 'none'\">",
+      "<title>LightUp · lokale reviewoverdracht</title><style>",
+      "body{font-family:system-ui,sans-serif;color:#142238;max-width:940px;margin:25px auto;padding:16px}article{border:1px solid #bcc7d7;border-radius:8px;margin:15px 0;padding:17px;break-inside:avoid}p{line-height:1.45}th,td{text-align:left;border-bottom:1px solid #bfc8d7;padding:8px}table{border-collapse:collapse;width:100%}.alert{color:#8e450e}.hold{padding:12px;border:2px solid #8e450e}@media print{body{max-width:100%;margin:0}article{break-inside:avoid}}",
+      "</style></head><body><h1>LightUp · voorbereidingsregister</h1>",
+      "<p class=\"hold\"><strong>REVIEW_ONLY_HOLD — GEEN toestemming, identiteit, asset-eigendom, grant, scan, handler, deploy of vrijgave.</strong> Dit is uitsluitend een lokale menselijke planning. Controleer cliënt en operator onafhankelijk via het echte geauthenticeerde proces en controleer herroeping op het moment van gebruik.</p>",
+      "<p>Persoonsgegevens, bestandsnamen, vrije tekst en originele asset-identiteiten zijn niet opgenomen. Deze handoff heeft geen handtekening, actuele geldigheid of onafhankelijk herkomstbewijs.</p>",
+      "<p>Conceptdossiers: "+data.entries.length+". De SHA-256 is een byte-identificatie, géén autorisatie- of identiteitshandtekening.</p>"
+    ];
+    const follow=coordination().entries;
+    if(follow.length) {
+      parts.push("<h2>Geprioriteerde menselijke opvolgagenda</h2>",
+        "<p>Open lokale acties "+esc(follow.length)+". Eerste 40 prioriteitsitems hieronder; de volledige agenda is afzonderlijk als JSON/CSV beschikbaar.</p>",
+        "<table><thead><tr><th>Dossier</th><th>Menselijke actie (geen uitvoermachtiging)</th><th>Prioriteit</th></tr></thead><tbody>");
+      for(const x of follow.slice(0,40))parts.push("<tr><td>"+esc(x.dossier)+"</td><td>"+
+        esc(x.kind+" / "+x.code+" / "+x.role+" / "+x.action)+(x.due_day?"<br>Doeldatum "+esc(x.due_day):"")+
+        "</td><td>"+esc(x.priority)+"</td></tr>");
+      parts.push("</tbody></table>");
+    }
+    if(data.review_agenda.length){
+      parts.push("<h2>Gedeelde menselijke review-agenda</h2><table><thead><tr><th>Voorstellen</th><th>Lokale overlapindicatoren</th></tr></thead><tbody>");
+      for(const x of data.review_agenda)parts.push("<tr><td>"+esc(x.dossier_a)+" / "+esc(x.dossier_b)+
+        "</td><td>"+esc([x.numeric_or_literal_scope_overlap?"Netwerk/hostname na exclusies":null,x.proposed_utc_overlap?"UTC-venster":null].filter(Boolean).join("; "))+
+        "<br>Relatie: "+esc(x.relation==="self_reported_revision"?"Zelfverklaarde revisie":"Apart te beoordelen voorstellen")+
+        "<br>Menselijk overleg: "+esc(PAIR_LABELS[x.self_reported_discussion_status])+"</td></tr>");
+      parts.push("</tbody></table><p>Deze paren bewijzen geen gedeeld eigendom, klant, toestemming of geboekt tijdslot; escaleer onafhankelijk.</p>");
+    }
+    for(const e of data.entries) {
+      parts.push("<article><h2>"+esc(e.dossier)+" · voorgesteld risico "+esc(e.proposed_risk)+"</h2>");
+      parts.push("<p>Bronbytes SHA-256: <code>"+esc(e.source_sha256)+"</code><br>Studio semantische revisie SHA-256: <code>"+esc(e.studio_revision_sha256)+"</code><br>Voorgestelde modus: "+esc(e.proposed_mode)+"<br>Inclusies: "+esc(e.asset_count)+", exclusies: "+esc(e.excluded_count)+
+        "<br>Andere voorstellen met mogelijke effectieve scope-overlap: "+esc(e.offline_shared_review_hints.spatial_count)+
+        "<br>Andere voorstellen met voorgestelde UTC-tijdoverlap: "+esc(e.offline_shared_review_hints.utc_window_count)+"</p>");
+      if(e.replaces_source_sha256) {
+        parts.push("<p>Zelfverklaarde revisie van <code>"+esc(e.replaces_source_sha256)+"</code>. Statussen van oudere concepten zijn niet overgenomen.</p>");
+        if(e.revision) parts.push("<p>Letterlijke revisietellingen: assets toegevoegd "+esc(e.revision.assets.added)+", verwijderd "+esc(e.revision.assets.removed)+
+          "; exclusies toegevoegd "+esc(e.revision.exclusions.added)+", verwijderd "+esc(e.revision.exclusions.removed)+
+          ". Mogelijke uitbreiding: <strong>"+(e.revision.possible_expansion?"JA":"niet uit deze ruwe vergelijking vastgesteld")+"</strong>. Geen CIDR/DNS-verificatie.</p>");
+      }
+      parts.push("<p class=\"alert\">Lokale signalen: "+esc(e.review_codes.length?e.review_codes.join(", "):"geen automatisch signaal; geen veiligheidsbewijs")+"</p>");
+      if(e.permission_questions_review_only){
+        const p=e.permission_questions_review_only;
+        parts.push("<p class=\"hold\">ONGEVERIFIEERDE CLIËNT-/OPERATORVRAGEN: "+esc(p.outstanding_unverified_questions)+
+          "/"+esc(p.question_count)+" vragen vragen nog aandacht. Cliëntnotitie "+(p.client_response_reported?"zelfgerapporteerd":"ontbreekt")+
+          "; operatornotitie "+(p.operator_response_reported?"zelfgerapporteerd":"ontbreekt")+
+          ". Geen identiteit, toestemming of operator-goedkeuring vastgesteld.</p>");
+      }
+      if(e.external_withdrawal_review_only)parts.push("<p class=\"hold\">EXTERNE, ONGEVERIFIEERDE STOP-/WIJZIGINGSMELDING: "+
+        esc(e.external_withdrawal_review_only.intent)+", urgentie "+esc(e.external_withdrawal_review_only.urgency)+
+        ", open externe menselijke stappen "+esc(e.external_withdrawal_review_only.outstanding_unverified_human_actions)+
+        ". Geen daadwerkelijke intrekking, uitvoeringstop of geauthenticeerd oordeel.</p>");
+      parts.push("<table><thead><tr><th>Menselijke voorbereidingsactie</th><th>Zelfgerapporteerde status</th></tr></thead><tbody>");
+      for(const [id,title] of TASKS) parts.push("<tr><td>"+esc(title)+" · "+esc(ROLE_LABELS[e.task_roles[id]])+
+        "</td><td>"+esc(STATUS_TEXT[e.tasks[id]])+
+        (e.task_due_dates[id]?" · lokale doeldatum "+esc(e.task_due_dates[id]):"")+"</td></tr>");
+      parts.push("</tbody></table></article>");
+    }
+    parts.push("<p class=\"hold\">Elk veld authenticated, consent, authorized, grant, execution, scan, dispatch, deploy en release staat letterlijk FALSE. Ook 8/8 voorbereide acties hebben geen juridische of technische autoriteit.</p></body></html>");
+    return parts.join("");
+  }
+  function csv() {
+    const rows=[["dossier","scope_sha256","task","role","status","local_target_day","unverified_withdrawal_urgency","unverified_permission_questions_open","authority"]];
+    report().entries.forEach(e=>TASKS.forEach(([id])=>rows.push([e.dossier,e.source_sha256,id,
+      e.task_roles[id],e.tasks[id],e.task_due_dates[id]||"",e.external_withdrawal_review_only?.urgency||"",e.permission_questions_review_only?.outstanding_unverified_questions??"","REVIEW_ONLY_HOLD"])));
+    const escape=x=>'"'+String(x).replaceAll('"','""')+'"';
+    return "\ufeff"+rows.map(row=>row.map(escape).join(",")).join("\r\n")+"\r\n";
+  }
+  function agendaCsv() {
+    const rows=[["dossier_a","dossier_b","effective_scope_overlap","proposed_utc_overlap","human_discussion_status","authority"]];
+    for(const p of report().review_agenda)
+      rows.push([p.dossier_a,p.dossier_b,String(p.numeric_or_literal_scope_overlap),
+        String(p.proposed_utc_overlap),p.self_reported_discussion_status,"REVIEW_ONLY_HOLD"]);
+    const cell=x=>'"'+String(x).replaceAll('"','""')+'"';
+    return "\ufeff"+rows.map(row=>row.map(cell).join(",")).join("\r\n")+"\r\n";
+  }
+  $("imports").addEventListener("change",async e=>{
+    try{await importDrafts(Array.from(e.target.files));}catch(err){show("Import geweigerd; bestaande concepten behouden: "+err.message,true);}
+    e.target.value="";
+  });
+  $("permissionFile").addEventListener("change",async e=>{
+    try{await importPermission(e.target.files[0]);}
+    catch(err){show("Permission Brief-overdracht geweigerd zonder wijzigingen: "+err.message,true);}
+    e.target.value="";
+  });
+  $("withdrawalFile").addEventListener("change",async e=>{
+    try{await importWithdrawal(e.target.files[0]);}
+    catch(err){show("Stopverzoekimport VOLLEDIG geweigerd zonder dossierwijziging: "+err.message,true);}
+    e.target.value="";
+  });
+  $("restore").addEventListener("change",async e=>{
+    try{restore(await readBounded(e.target.files[0],RESTORE_SIZE));}catch(err){show("Herstel geweigerd zonder wijzigingen: "+err.message,true);}
+    e.target.value="";
+  });
+  $("search").addEventListener("input",render);$("filter").addEventListener("change",render);$("sort").addEventListener("change",render);
+  $("coordKind").addEventListener("change",render);$("coordPriority").addEventListener("change",render);
+  $("taskRoleFilter").addEventListener("change",render);$("taskDueFilter").addEventListener("change",render);
+  $("bulkStart").addEventListener("click",()=>{
+    const task=$("bulkTask").value;
+    assert(TASKS.some(([id])=>id===task),"Geen erkende actie.");
+    const targets=visibleRecords().filter(r=>r.tasks[task]==="open");
+    if(!targets.length){show("Geen zichtbare dossiers met een open status voor dit actiepunt.");return;}
+    if(!confirm("Alleen actie '"+TASKS.find(([id])=>id===task)[1]+"' voor "+targets.length+" zichtbare dossiers op ‘In gesprek’ zetten? Dit verleent geen toestemming."))return;
+    targets.forEach(r=>{r.tasks[task]="working";});
+    show("Voorbereidingsoverleg gestart voor "+targets.length+" lokale dossiers; geen enkele actie op ‘voorbereid’ gezet.");
+    render();
+  });
+  $("clear").addEventListener("click",()=>{
+    if(!records.length || !confirm("Alle in-memory concepten en taakstatussen definitief vergeten?"))return;
+    records.splice(0);pairReviews.clear();active=null;show("Alle lokale concept- en overleggegevens uit deze browserpagina gewist.");render();
+  });
+  $("coordJson").addEventListener("click",()=>records.length?json(coordination(),"lightup-review-only-coordination.json"):show("Laad eerst concepten.",true));
+  $("coordCsv").addEventListener("click",()=>records.length?download(coordinationCsv(),"lightup-review-only-coordination.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
+  $("coordIcs").addEventListener("click",()=>{
+    if(!records.length){show("Laad eerst concepten.",true);return;}
+    const body=coordinationIcs();
+    if(!body){show("Er zijn geen open lokale taken met een doeldatum om als agenda te exporteren.");return;}
+    if(!confirm("Dit exporteert uitsluitend ALLE-DAAGSE menselijke opvolgacties, geen scanmomenten. Kalenders kunnen bron-SHA's naar cloudaccounts synchroniseren. Dit bevestigt geen toestemming. Exporteren?"))return;
+    download(body,"lightup-offline-human-followups.ics","text/calendar;charset=utf-8");
+  });
+  $("save").addEventListener("click",()=>records.length?json(snapshot(),"lightup-local-progress.json"):show("Laad eerst concepten.",true));
+  $("export").addEventListener("click",()=>records.length?json(report(),"lightup-review-only-handoff.json"):show("Laad eerst concepten.",true));
+  $("csv").addEventListener("click",()=>records.length?download(csv(),"lightup-handoff-actions.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
+  $("agendaCsv").addEventListener("click",()=>records.length?download(agendaCsv(),"lightup-review-meeting-agenda.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
+  $("printPack").addEventListener("click",()=>records.length?download(fullHtmlPacket(),"lightup-review-only-handoff.html","text/html;charset=utf-8"):show("Laad eerst concepten.",true));
+  $("print").addEventListener("click",()=>records.length?window.print():show("Laad eerst concepten.",true));
+  render();
+})();
+</script>\n</body>
+</html>

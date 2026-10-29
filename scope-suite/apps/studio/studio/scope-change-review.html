@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>LightUp · Scope Change Review</title>
+<style>
+:root{font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e9f4fc;background:#0b1120;--muted:#acc0d5;--line:#33465f;--mint:#7de5cb}*{box-sizing:border-box}body{margin:0}header{padding:28px max(22px,calc((100vw - 1120px)/2));border-bottom:1px solid #304158;background:#101e32}.brand{font-weight:800;color:var(--mint);font-size:.8rem;letter-spacing:.12em}h1{font-size:clamp(24px,3vw,36px);letter-spacing:-.04em;margin:5px 0}p{color:var(--muted)}header p{margin:0;max-width:870px}main{max-width:1150px;margin:0 auto;padding:24px 18px 60px}.inputs{display:grid;grid-template-columns:1fr 1fr;gap:16px}.card{background:#111e32;border:1px solid var(--line);border-radius:15px;padding:20px;min-width:0}.card h2{font-size:1.15rem;margin:0 0 9px}input{display:block;width:100%;border-radius:8px;background:#071424;color:#fff;border:1px solid #657990;padding:12px;margin:10px 0}button{border:1px solid var(--line);background:#293d55;color:#fff;padding:12px 16px;border-radius:8px;cursor:pointer;font:inherit;font-weight:750}button:disabled{opacity:.45;cursor:not-allowed}button.primary{background:var(--mint);color:#061e20}button:hover:not(:disabled){filter:brightness(1.1)}.alert{padding:16px;background:#31271c;color:#ffe2ba;border:1px solid #947849;border-radius:12px;margin:18px 0}.results{margin:18px 0;display:grid;gap:16px}.row{padding:10px;border-left:4px solid var(--mint);background:#192c3d;border-radius:5px;margin:8px 0;overflow-wrap:anywhere}.row.warn{border-color:#e9b764;background:#30271d}.row.break{border-color:#ff9292;background:#34222e}strong{color:#f5fbff}.pill{display:inline-block;border:1px solid #6f8aa0;padding:4px 10px;border-radius:30px;font-weight:700;font-size:.76rem}.metric{font-size:1.65rem;font-weight:800;color:var(--mint)}pre{overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #354760;border-radius:9px;background:#0a1526;padding:15px;max-height:370px;font:12px/1.5 Consolas,monospace}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.muted{color:var(--muted)}.hidden{display:none}@media(max-width:710px){.inputs{grid-template-columns:1fr}header{padding:22px}.card{padding:15px}}@media print{body{color:#000;background:#fff}.inputs,.buttons,header{display:none}.card{background:#fff;color:#000;border:none}.row{color:#000;background:#f2f2f2}.row strong{color:#000}pre{color:#000;background:#fff;max-height:none}.alert{color:#000;background:#eee}}
+</style></head><body>
+<header><span class="brand">LIGHTUP / OFFLINE REVIEW</span><h1>Scope Change Review</h1><p>Compare two proposal-draft exports before human approval. Highlights possible scope expansion and narrowing. No identity verification, ownership proof, authorization, grant, risk approval or scanning.</p></header>
+<main>
+<div class="inputs">
+<section class="card"><h2>1. Baseline proposal</h2><label for="before">Load the earlier LightUp scope draft</label><input type="file" id="before" accept=".json,application/json"><p id="beforeName" role="status">Not loaded.</p></section>
+<section class="card"><h2>2. Updated proposal</h2><label for="after">Load the proposed replacement</label><input type="file" id="after" accept=".json,application/json"><p id="afterName" role="status">Not loaded.</p></section>
+</div>
+<div class="alert"><strong>Decision boundary:</strong> This viewer performs literal and numerical IP/CIDR overlap comparisons only; it cannot resolve DNS, prove asset ownership, canonicalize CIDRs, verify exclusions, authenticate either party or authorize any activity. Every proposed change requires normal authenticated operator review, separate client consent and current revocation controls.</div>
+<section class="card">
+<h2>Human review summary <span class="pill">REVIEW_ONLY</span></h2>
+<p id="status" role="status" aria-live="polite">Load two drafts to compare.</p>
+<div class="buttons"><button class="primary" id="export" disabled>Export review notes</button><button id="print" disabled>Print comparison</button><button id="swap" disabled>Swap baseline / update</button></div>
+<p id="checksums" class="muted" style="overflow-wrap:anywhere">Unsigned revision fingerprints will appear after both drafts are loaded.</p>
+<div id="results" class="results" aria-live="polite"></div>
+<h3>Structured review (non-authorizing)</h3><pre id="json">No review yet.</pre>
+</section>
+<p class="muted">Everything happens in this browser tab. Files are parsed in memory (64 KiB per file), never uploaded or stored. No remote scripts, telemetry, endpoints or network access are used.</p>
+</main>
+<script src="./scope-network.js"></script>
+<script src="./scope-fingerprint.js"></script>
+<script src="./planning-window.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id), MAX=65536;
+let baseline=null, proposed=null, review=null, revision=0;
+function valid(d){
+ return d && !Array.isArray(d) && d.schema_version===1 && d.kind==='lightup.scope_proposal_draft' &&
+  d.state==='DRAFT_ONLY' && d.authorization===false && d.client_consent===false &&
+  d.operator_consent===false && d.grant===false && d.execution===false &&
+  typeof d.proposal_name==='string' && d.proposal_name.length<=120 &&
+  typeof d.client_label==='string' && d.client_label.length<=100 &&
+  typeof d.notes==='string' && d.notes.length<=3000 &&
+  (d.requested_mode==='authorized_assessment'||d.requested_mode==='analysis_only') &&
+  Number.isInteger(d.requested_risk) && d.requested_risk>=1 && d.requested_risk<=4 &&
+  Array.isArray(d.requested_assets) && d.requested_assets.length<=80 &&
+  Array.isArray(d.excluded_assets) && d.excluded_assets.length<=80 &&
+  [...d.requested_assets,...d.excluded_assets].every(v=>typeof v==='string' && v.length<=253 && v.trim()===v && v.length>0) &&
+  d.proposed_window_local && typeof d.proposed_window_local==='object' &&
+  [d.proposed_window_local.start,d.proposed_window_local.end].every(v=>v===null||(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v))) &&
+  d.proposed_activities && typeof d.proposed_activities==='object' &&
+  ['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof d.proposed_activities[k]==='boolean');
+}
+function read(file){
+ return new Promise(async(resolve,reject)=>{
+  if(!file || file.size>MAX){reject(new Error('File missing or too large'));return;}
+  try{
+   const t=await file.text(), d=JSON.parse(t,(k,v)=>['__proto__','constructor','prototype'].includes(k)?undefined:v);
+   if(!valid(d)||!LightUpPlanningWindow.validateStored(d.proposed_window_local,d.proposed_window_utc))throw new Error('Unsupported/unsafe draft schema');
+   if(d.scope_fingerprint_sha256!==undefined){
+     const computed=await LightUpScopeDigest.fingerprint(d);
+     if(!computed || d.scope_fingerprint_sha256!==computed)throw new Error('scope revision mismatch');
+   }
+   resolve(d);
+  }catch(e){reject(e);}
+ });
+}
+function unique(list){return new Map(list.map(item=>[item.toLowerCase(),item]));}
+function diff(a,b){
+ const records=[];
+ const add=(level,category,detail)=>records.push({level,category,detail});
+ const exact=(oldList,newList,kind)=>{
+  const old=unique(oldList), now=unique(newList);
+  for(const [id,value] of now)if(!old.has(id))add(kind==='scope'?'review-expansion':'review-restriction',kind,'Added: '+value);
+  for(const [id,value] of old)if(!now.has(id))add(kind==='exclusion'?'review-expansion':'review-restriction',kind,'Removed: '+value);
+ };
+ exact(a.requested_assets,b.requested_assets,'scope');
+ exact(a.excluded_assets,b.excluded_assets,'exclusion');
+ const beforeCoverage=LightUpScopeNetwork.effectiveCoverage(a.requested_assets,a.excluded_assets);
+ const afterCoverage=LightUpScopeNetwork.effectiveCoverage(b.requested_assets,b.excluded_assets);
+ const ranges=LightUpScopeNetwork.coverageDifference(beforeCoverage,afterCoverage);
+ if(ranges){
+  for(const item of ranges.added)
+   add('review-expansion','effective_scope','Effective proposed scope gains '+(item.asset||item.family+' integer interval '+item.start+' → '+item.end)+' after exclusions (manual review required).');
+  for(const item of ranges.removed)
+   add('review-restriction','effective_scope','Effective proposed scope loses '+(item.asset||item.family+' integer interval '+item.start+' → '+item.end)+' after exclusions.');
+  if(ranges.truncated)add('needs-context','truncated','Full effective-scope difference exceeds preview limit; review separately.');
+ }else add('needs-context','scope_identity','Invalid assets prevent effective-scope interval comparison.');
+ for(const item of LightUpScopeNetwork.inspect(b.requested_assets,b.excluded_assets))
+   if(item.code==='exclusion_overlap'||item.code==='included_overlap'||item.code==='global_range'||item.level==='error')
+      add('needs-context','asset_boundary',item.message);
+
+ if(b.requested_risk>a.requested_risk)add('review-expansion','risk','Risk increase '+a.requested_risk+' → '+b.requested_risk);
+ if(b.requested_risk<a.requested_risk)add('review-restriction','risk','Risk decrease '+a.requested_risk+' → '+b.requested_risk);
+ if(a.requested_mode!==b.requested_mode)add('review-expansion','mode','Mode change: '+a.requested_mode+' → '+b.requested_mode+' (manual review needed)');
+ const starts=[a.proposed_window_local.start,b.proposed_window_local.start], ends=[a.proposed_window_local.end,b.proposed_window_local.end];
+ if(starts[0]!==starts[1] || ends[0]!==ends[1]){
+  add('review-expansion','window','Requested local planning window changed: '+(starts[0]||'?')+' → '+(ends[0]||'?')+' becomes '+(starts[1]||'?')+' → '+(ends[1]||'?'));
+ }
+ const leftUtc=a.proposed_window_utc,rightUtc=b.proposed_window_utc;
+ if(leftUtc?.status==='resolved'&&rightUtc?.status==='resolved'){
+  if(leftUtc.start!==rightUtc.start||leftUtc.end!==rightUtc.end){
+    add('needs-context','utc_window','Proposed UTC window changed: '+leftUtc.start+' → '+leftUtc.end+' becomes '+rightUtc.start+' → '+rightUtc.end+'. Independent operator approval required.');
+  }
+ }else add('needs-context','utc_window','At least one draft has no resolved UTC interval; timeline changes cannot be compared reliably across timezones.');
+ const names=['passive_analysis','configuration_review','private_lab_network_checks'];
+ for(const k of names) if(a.proposed_activities[k]!==b.proposed_activities[k]) add(b.proposed_activities[k]?'review-expansion':'review-restriction','activity',k.replaceAll('_',' ')+(b.proposed_activities[k]?' proposed':' withdrawn'));
+ if(a.notes!==b.notes)add('needs-context','notes','Purpose and safety conditions changed: both versions must be reviewed; free text is deliberately not copied into the notes export.');
+ if(a.client_label!==b.client_label)add('needs-context','client','Client label changed: labels do not authenticate identities.');
+ if(a.proposal_name!==b.proposal_name)add('needs-context','title','Proposal name changed.');
+ if(a.requested_assets.some(s=>s.includes('/'))||b.requested_assets.some(s=>s.includes('/'))||a.excluded_assets.some(s=>s.includes('/'))||b.excluded_assets.some(s=>s.includes('/')))add('needs-context','cidr','CIDR membership, overlaps and exclusions require independent manual or authoritative policy review.');
+ if(a.requested_assets.some(s=>s.includes(':'))||b.requested_assets.some(s=>s.includes(':')))add('needs-context','ipv6','IPv6 ranges are normalized numerically for review but require independent authoritative scope checks.');
+ if(b.requested_risk===4)add('needs-context','risk','Risk 4 requires separate explicit risk approval.');
+ if(a.requested_assets.length!==unique(a.requested_assets).size||b.requested_assets.length!==unique(b.requested_assets).size)add('needs-context','duplicates','An input draft has duplicate asset labels.');
+ const expanded=records.filter(r=>r.level==='review-expansion').length;
+ const restricted=records.filter(r=>r.level==='review-restriction').length;
+ return {
+   kind:'lightup.scope_comparison_notes', schema_version:1, disposition:'REVIEW_ONLY',
+   authenticated:false, authorization:false, client_consent:false, operator_consent:false,
+   risk_approved:false, grant:false, execution:false, scan:false, release:false,
+   summary:{expansion_flags:expanded, restriction_flags:restricted, context_flags:records.filter(r=>r.level==='needs-context').length, changed:records.length>0},
+   warnings:records.map(r=>({category:r.category,level:r.level,detail:r.detail})),
+   instructions:'Human operator and real client must independently review canonical asset membership, consents, approved request and live revocation before any separate authenticated authorization process.'
+ };
+}
+function addRow(container,level,title,content){
+ const div=document.createElement('div');div.className='row '+(level==='review-expansion'?'break':level==='needs-context'?'warn':'');
+ const b=document.createElement('strong');b.textContent=title;div.append(b,document.createTextNode(' · '+content));container.append(div);
+}
+function show(){
+ $('results').replaceChildren();review=null;
+ const current=++revision;
+ $('swap').disabled=!(baseline&&proposed);$('print').disabled=true;$('export').disabled=true;
+ if(!baseline||!proposed){$('status').textContent='Load two drafts to compare.';$('checksums').textContent='Unsigned revision fingerprints will appear after both drafts are loaded.';$('json').textContent='No review yet.';return;}
+ review=diff(baseline,proposed);
+ Promise.all([LightUpScopeDigest.fingerprint(baseline),LightUpScopeDigest.fingerprint(proposed)]).then(([before,after])=>{
+   if(current!==revision||!review)return;
+   review.baseline_scope_sha256=before;review.proposed_scope_sha256=after;
+   $('checksums').textContent='Unsigned baseline: '+(before||'unavailable')+' · proposed: '+(after||'unavailable')+'. Digests show draft revision identity only, never consent.';
+   $('json').textContent=JSON.stringify(review,null,2);
+ }).catch(()=>{if(current===revision)$('checksums').textContent='Revision fingerprints unavailable in this browser.';});
+ const s=review.summary;
+ $('status').textContent='Found '+s.expansion_flags+' possible expansion(s), '+s.restriction_flags+' restriction(s) and '+s.context_flags+' manual-context item(s). No permission is implied.';
+ const results=$('results');
+ if(!review.warnings.length)addRow(results,'review-restriction','No literal changes','Identical scope draft fields; this does not establish approval or valid ownership.');
+ for(const item of review.warnings)addRow(results,item.level,item.category.replaceAll('_',' ').toUpperCase(),item.detail);
+ $('json').textContent=JSON.stringify(review,null,2);
+ $('print').disabled=false;$('export').disabled=false;
+}
+for(const [input,key] of [['before','baseline'],['after','proposed']]){
+ $(input).addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{
+   const result=await read(f);
+   if(key==='baseline')baseline=result;else proposed=result;
+   $(input+'Name').textContent='Loaded locally: '+f.name+' (untrusted, not authorized).';
+  }catch(_){
+   if(key==='baseline')baseline=null;else proposed=null;
+   $(input+'Name').textContent='Rejected: invalid LightUp draft schema or file exceeds 64 KiB.';
+  }
+  e.target.value='';show();
+ });
+}
+$('swap').addEventListener('click',()=>{
+ [baseline,proposed]=[proposed,baseline];
+ $('beforeName').textContent='Swapped draft loaded';$('afterName').textContent='Swapped draft loaded';show();
+});
+$('print').addEventListener('click',()=>{if(review)window.print();});
+$('export').addEventListener('click',async()=>{
+ if(!review||!baseline||!proposed)return;
+ try {const [before,after]=await Promise.all([LightUpScopeDigest.fingerprint(baseline),LightUpScopeDigest.fingerprint(proposed)]);
+   review.baseline_scope_sha256=before;review.proposed_scope_sha256=after;}catch(_){}
+ const blob=new Blob([JSON.stringify(review,null,2)+'\n'],{type:'application/json'});
+ const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='lightup-scope-change-review.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500);
+});
+})();
+</script></body></html>

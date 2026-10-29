@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8elNw3Lp9qvu0F7HUThR6uv+QIoR6jAxJMCXtpWe4I0='; style-src 'sha256-3ZC8nW9VCth7Zq6BQLs3WTU4XcXEP2cWZUbJoXcJy7c='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp — Scope Briefing</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1b2737;background:#f2f5f7;font-size:16px}*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer;border:0;border-radius:12px;padding:12px 18px;background:#143e5b;color:white;font-weight:650}button:hover{background:#295c79}button:focus-visible,input:focus-visible{outline:3px solid #b87915;outline-offset:3px}button.secondary{background:#e5e9ed;color:#23384b}.topbar{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:18px clamp(18px,5vw,65px);background:#0e2b40;color:white}.brand{font-weight:800;font-size:1.16rem;letter-spacing:.02em}.brand span{font-weight:500;color:#c1d6e6;margin-left:12px}.status{border:1px solid #7692a6;border-radius:100px;padding:8px 14px;font-size:.75rem;letter-spacing:.04em;font-weight:750}main{max-width:1220px;margin:auto;padding:24px clamp(16px,4vw,42px)}.hero{background:#102c42;color:white;padding:clamp(24px,5vw,52px);border-radius:22px;margin-bottom:22px}.hero h1{font-size:clamp(1.65rem,3.4vw,2.7rem);line-height:1.16;max-width:850px;margin:10px 0}.hero p{max-width:820px;color:#c7d8e5;line-height:1.55}.eyebrow{font-size:.69rem;letter-spacing:.12em;font-weight:850;text-transform:uppercase;color:#35809f!important}.hero .eyebrow{color:#9dd6ea!important}.upload{display:flex;flex-direction:column;gap:12px;background:white;color:#163349;padding:20px;border-radius:12px;max-width:580px;margin:25px 0;font-weight:650}.upload input{width:100%}.banner{padding:14px;border-radius:10px}.banner.danger{background:#fff0df;color:#663d0a}.banner.ok{background:#d7ece8;color:#15493f}.grid{display:grid;gap:19px}.cards{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:19px}.two{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:19px}.three{grid-template-columns:repeat(3,minmax(0,1fr))}article,.panel{background:white;padding:24px;border:1px solid #d9e3e9;border-radius:16px;min-width:0}.metric-title{color:#48627a;font-size:.85rem;margin:0 0 12px}article strong{display:block;font-size:2rem;color:#173b54;word-wrap:break-word}small,.muted{display:block;color:#627487;line-height:1.52;font-size:.83rem;margin-top:12px}.panel{margin-bottom:19px}.panel h2{font-size:1.25rem;margin:3px 0 19px}.panel h3{font-size:1rem}.panel-head{display:flex;justify-content:space-between;gap:20px;align-items:center;flex-wrap:wrap}dl{display:grid;grid-template-columns:max-content 1fr;gap:12px 20px;font-size:.88rem}dt{color:#5d7486}dd{margin:0;overflow-wrap:anywhere;font-weight:600}.mono{font-family:ui-monospace,monospace;font-size:.8rem}.question{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid #e6eef1;line-height:1.4}.question input{accent-color:#1d647c;width:19px;height:19px;flex-shrink:0}.activity{padding:16px;border-radius:12px;background:#f1f6f8}.activity strong{display:block}.activity span{font-size:.8rem;color:#526a7f}.activity.no{background:#faf3eb}.notice{padding:25px;border:1px dashed #9cabb5;border-radius:12px;background:#f5f7f8;color:#526275}ol{padding-left:25px;max-height:340px;overflow:auto}li{overflow-wrap:anywhere;margin-bottom:8px;border-bottom:1px solid #eef1f3;padding-bottom:6px;font-family:ui-monospace,monospace;font-size:.86rem}.warnings{display:grid;gap:8px}.warning{border-left:4px solid #ba7c25;background:#fff7e9;padding:12px;line-height:1.45;font-size:.9rem}.warning.info{border-left-color:#47819a;background:#f0f8fb}.actions{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}footer{font-size:.81rem;color:#667a8a;margin:30px 0 12px;line-height:1.55}@media(max-width:880px){.cards{grid-template-columns:repeat(2,1fr)}.two,.three{grid-template-columns:1fr}dl{grid-template-columns:1fr;gap:6px}dd{margin-bottom:9px}}@media(max-width:460px){.cards{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}.actions button{width:100%}}@media print{body{background:white}.topbar{background:white;color:black;padding:8px}.status{color:#7e350a;border-color:#a87d4b}main{max-width:100%;padding:0}.hero{background:white;color:black;padding:5px}.hero p{color:#333}.upload,button,.actions,#raw{display:none!important}.panel,article{break-inside:avoid;border:1px solid #ddd}.cards{grid-template-columns:repeat(4,1fr)}.two{grid-template-columns:repeat(2,1fr)}.notice{display:block!important}.eyebrow{color:#444!important}}
+.revision-panel{margin-top:20px;padding:22px;background:#fff8e9;color:#4c3419;border:2px solid #e8b65c;border-radius:15px}.revision-panel h2{font-size:1.25rem;margin:6px 0}.revision-panel p{color:#53432b}.revision-deltas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:15px}.revision-delta{background:#fff;border:1px solid #e8cf99;border-radius:9px;padding:13px;font-size:.85rem}.revision-delta strong{display:block;color:#423323;margin-bottom:6px}.revision-delta.attention{border-left:4px solid #ac5a28}.revision-panel .muted{color:#725d42}@media(max-width:750px){.revision-deltas{grid-template-columns:1fr}}@media print{.revision-panel{display:none!important}}
+
+</style>
+
+</head>
+<body>
+<header class="topbar"><div class="brand">◈ LightUp <span>Scope Briefing</span></div><div class="status">INCUBATE · DRAFT / HOLD · GEEN TOESTEMMING</div></header>
+<main>
+<section class="hero"><p class="eyebrow">LOKAAL • OFFLINE • ALLEEN MENSELIJKE BESPREKING</p><h1>Bespreek een scopevoorstel zonder autorisatie te verwarren met voorbereiding.</h1><p>Lees een oorspronkelijk Scope Planning Studio v1-concept. Controleer wat iemand wil opnemen, uitsluiten en plannen. Deze pagina kent geen gebruikersaccounts, geen toestemmingsknop en geen verbinding met targets.</p>
+<label class="upload"><span>Open een Studio v1 JSON-concept (max. 64 KiB)</span><input type="file" id="file" accept=".json,application/json"></label>
+<div class="banner danger" role="status" id="status">Geen bron geladen. Geen enkel onderdeel is goedgekeurd.</div>
+<div class="revision-panel" id="revision-panel" hidden aria-live="polite">
+  <p class="eyebrow">WIJZIGING TER BESPREKING • NOG NIET OVERGENOMEN</p>
+  <h2>Er is een ander scopeconcept gekozen</h2>
+  <p>Het huidige bespreekdocument en alle lokale vraagvinkjes blijven ongewijzigd totdat je de vervanging uitdrukkelijk bevestigt.</p>
+  <div id="revision-summary" class="revision-deltas"></div>
+  <div class="actions">
+    <button type="button" id="revision-apply">Gebruik nieuwe versie voor dit gesprek</button>
+    <button type="button" id="revision-discard" class="secondary">Behoud huidig concept</button>
+  </div>
+  <p class="muted">Geen automatische overname van gesprekstatus of toestemming. Letterlijke verschillen zeggen niets over CIDR-, DNS- of eigendomsidentiteit.</p>
+</div>
+</section>
+<section id="workspace" hidden>
+<div class="grid cards">
+<article><p class="metric-title">Opgenomen vermeldingen</p><strong id="count-assets">0</strong><small>Dit is géén bewezen assetbezit of netwerkdekking.</small></article>
+<article><p class="metric-title">Uitgesloten vermeldingen</p><strong id="count-excluded">0</strong><small>Uitsluitingen blijven expliciet afzonderlijk zichtbaar.</small></article>
+<article><p class="metric-title">Voorgesteld risico</p><strong id="risk">—</strong><small id="risk-desc"></small></article>
+<article><p class="metric-title">Activiteitsmodus</p><strong id="mode">—</strong><small>Voorgestelde modus; nooit automatisch toegelaten.</small></article>
+</div>
+<div class="grid two">
+<section class="panel"><div class="panel-head"><div><p class="eyebrow">BRON EN HERKOMST</p><h2>Vaste bronbinding</h2></div></div><dl><dt>Exacte bestands-SHA-256</dt><dd class="mono" id="fingerprint">—</dd><dt>Lokale planning</dt><dd id="window">Niet gecontroleerd</dd><dt>Bronstatus</dt><dd>DRAFT_ONLY — geen authentieke identiteit of handtekening</dd></dl><p class="muted">De SHA maakt versies vergelijkbaar. Hij bewijst niet wie toestemming heeft gegeven.</p></section>
+<section class="panel"><p class="eyebrow">BESPREKINGSVRAGEN</p><h2>Wat moet een mens bevestigen?</h2><div id="questions"></div><p class="muted">Aangevinkt = onderwerp besproken in deze tijdelijke browserweergave, nooit geverifieerd of goedgekeurd. Bij herladen verdwijnen alle vinkjes.</p></section>
+</div>
+<section class="panel"><p class="eyebrow">EXPLICIETE ACTIVITEITEN</p><h2>Welke handelingen zijn voorgesteld?</h2><div id="activities" class="grid three"></div><p class="muted">Zelfs een 'ja' in dit concept is geen uitvoeringsrecht. Actieve acties blijven verboden zonder afzonderlijke echte toestemming en runtimecontroles.</p></section>
+<section class="panel">
+<div class="panel-head"><div><p class="eyebrow">VERTROUWELIJKE DETAILS — STANDAARD AFGESCHERMD</p><h2>Opgenomen en uitgesloten assets</h2></div><button type="button" id="reveal" aria-pressed="false">Toon tijdelijk exacte vermeldingen</button></div>
+<div id="coverage" class="notice">Exacte assets afgeschermd. Alleen aantallen en opvallende letterlijke overlap verschijnen in de veilige samenvatting.</div>
+<div id="raw" hidden class="grid two"><section><h3>Opgenomen (letterlijke invoer)</h3><ol id="assets"></ol></section><section><h3>Uitgesloten (letterlijke invoer)</h3><ol id="excluded"></ol></section></div>
+<p class="muted">Een naam of CIDR-notatie is hier uitsluitend tekst. Dit scherm resolveert geen DNS, bewijst geen IP-eigendom en rekent geen CIDR-netwerksets uit. Letterlijke overlap moet door een bronhouder worden opgelost.</p>
+</section>
+<section class="panel"><p class="eyebrow">MENSELIJKE OVERDRACHT</p><h2>Privé overzicht voor gesprek</h2><div id="warnings" class="warnings" aria-live="polite"></div><div class="actions"><button type="button" id="export">Download afgeschermd reviewverslag (JSON)</button><button type="button" id="print">Print afgeschermde briefing</button><button type="button" id="clear" class="secondary">Vergeet lokaal concept</button></div><p class="muted">Export en standaard afdruk bevatten geen assetnamen, hostnamen, IP-adressen, vrije tekst, bestandsnamen of persoonlijke gegevens. Lokale planning wordt uitsluitend als aanwezig/onbekend weergegeven. Er worden geen antwoorden, contacts of cookies opgeslagen.</p></section>
+</section>
+<footer><strong>Niet-autoriseren­d hulpmiddel.</strong> De echte goedkeuring vereist onafhankelijk geauthenticeerde cliënt én operator, geldige aanvraag, tenantgebonden grant, herroepingscontrole bij gebruik, verplichte CI/security/privacy-review en uitdrukkelijke menselijke GO. Niets in dit bestand voldoet daaraan.</footer>
+</main>
+<script>
+/* Local-only, non-authorizing Studio v1 briefing; never evaluate target scope or grant rights. */
+"use strict";
+(() => {
+  const $ = id => document.getElementById(id);
+  const MAX_BYTES = 65536;
+  const LIMIT = 128;
+  const DENIAL_FLAGS = ["authorization","client_consent","operator_consent","grant","execution","revocation_checked"];
+  const REPORT_DENIALS = ["authenticated_client","authenticated_operator","consent_verified","grant_issued","authorized","scan_allowed","dispatch_allowed","deploy_allowed","release_allowed"];
+  const ACTIVITIES = {
+    passive_analysis: "Passieve analyse",
+    configuration_review: "Configuratiebespreking",
+    private_lab_network_checks: "Private-lab netwerkvoorstel"
+  };
+  let current = null;
+  let staged = null;
+  let detailsVisible = false;
+
+  // Unlike JSON.parse(), this limited parser refuses duplicate object keys at every level.
+  function strictJson(src) {
+    let i = 0;
+    const spaces = () => { while (i < src.length && /\s/.test(src[i])) i++; };
+    function quoted() {
+      if (src[i] !== '"') throw Error("Ongeldige JSON-tekst.");
+      const start = i++;
+      while (i < src.length) {
+        if (src[i] === '"') { i++; return JSON.parse(src.slice(start, i)); }
+        if (src.charCodeAt(i) < 32) throw Error("Controlecode in JSON-tekst.");
+        if (src[i] === "\\") i += 2;
+        else i++;
+      }
+      throw Error("Onvoltooide JSON-tekst.");
+    }
+    function parse(depth) {
+      if (depth > 16) throw Error("Te diepe JSON-structuur.");
+      spaces();
+      const ch = src[i];
+      if (ch === '"') return quoted();
+      if (ch === "{") {
+        i++; spaces();
+        const out = Object.create(null);
+        if (src[i] === "}") { i++; return out; }
+        let count = 0;
+        while (i < src.length) {
+          spaces();
+          const key = quoted();
+          if (Object.prototype.hasOwnProperty.call(out, key)) throw Error("Dubbele JSON-sleutel afgewezen.");
+          if (++count > 128) throw Error("Te veel JSON-velden.");
+          spaces();
+          if (src[i++] !== ":") throw Error("Ongeldige JSON-sleutelscheiding.");
+          out[key] = parse(depth + 1);
+          spaces();
+          const next = src[i++];
+          if (next === "}") return out;
+          if (next !== ",") throw Error("Ongeldige JSON-objectscheiding.");
+        }
+      }
+      if (ch === "[") {
+        i++; spaces();
+        const out = [];
+        if (src[i] === "]") { i++; return out; }
+        while (i < src.length) {
+          if (out.length >= LIMIT) throw Error("Te veel lijstitems.");
+          out.push(parse(depth + 1));
+          spaces();
+          const next = src[i++];
+          if (next === "]") return out;
+          if (next !== ",") throw Error("Ongeldige JSON-lijstscheiding.");
+        }
+      }
+      const rest = src.slice(i);
+      const token = /^(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/.exec(rest);
+      if (!token) throw Error("Ongeldige JSON-waarde.");
+      i += token[0].length;
+      return JSON.parse(token[0]);
+    }
+    const parsed = parse(0);
+    spaces();
+    if (i !== src.length) throw Error("Extra JSON-bytes na het document.");
+    return parsed;
+  }
+  const obj = v => v !== null && typeof v === "object" && !Array.isArray(v);
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o,k);
+  function proposal(raw) {
+    if (!obj(raw) || raw.kind !== "lightup.scope_proposal_draft" ||
+        raw.schema_version !== 1 || raw.state !== "DRAFT_ONLY")
+      throw Error("Alleen oorspronkelijke Studio v1 DRAFT_ONLY-documenten zijn toegestaan.");
+    if (raw.requested_mode !== "analysis_only" && raw.requested_mode !== "authorized_assessment")
+      throw Error("Onbekende voorgestelde modus.");
+    if (!Number.isInteger(raw.requested_risk) || raw.requested_risk < 1 || raw.requested_risk > 4)
+      throw Error("Ongeldig risiconiveau (alleen 1–4).");
+    const lists = ["requested_assets","excluded_assets"];
+    for (const key of lists) {
+      const a = raw[key];
+      if (!Array.isArray(a) || a.length > LIMIT ||
+          a.some(x => typeof x !== "string" || x.length > 512 || !x.trim() || /[\u0000-\u001f\u007f]/.test(x)))
+        throw Error("Onveilige of onvolledige assetlijst.");
+    }
+    if (!obj(raw.proposed_activities) ||
+        Object.keys(raw.proposed_activities).length !== 3 ||
+        Object.keys(ACTIVITIES).some(k => !own(raw.proposed_activities,k) ||
+          typeof raw.proposed_activities[k] !== "boolean"))
+      throw Error("Activiteitenobject voldoet niet aan Studio v1.");
+    for (const key of DENIAL_FLAGS) if (!own(raw,key) || raw[key] !== false)
+      throw Error("Autoriteitsveld ontbreekt of is niet letterlijk false: HOLD.");
+    if (!own(raw,"proposed_window_local") ||
+        !(raw.proposed_window_local === null || obj(raw.proposed_window_local)))
+      throw Error("Lokaal tijdvenster heeft een onverwacht type.");
+    return raw;
+  }
+  function comparisons(p) {
+    const norm = x => x.trim().toLowerCase();
+    const a = p.requested_assets.map(norm);
+    const e = p.excluded_assets.map(norm);
+    const dup = x => new Set(x).size !== x.length;
+    const overlap = a.filter(x => e.includes(x)).length;
+    return {
+      has_overlap: overlap > 0,
+      overlap_count: overlap,
+      duplicates_included: dup(a),
+      duplicates_excluded: dup(e),
+      missing_window: p.proposed_window_local === null ||
+        Object.keys(p.proposed_window_local).length === 0,
+      network_activity: p.proposed_activities.private_lab_network_checks
+    };
+  }
+  const sha256 = async bytes => {
+    if (!globalThis.crypto || !crypto.subtle) throw Error("Browser ondersteunt geen lokale SHA-256 in deze context. Gebruik een moderne browser met veilige lokale bestandscontext.");
+    const buf = await crypto.subtle.digest("SHA-256", bytes);
+    return [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,"0")).join("");
+  };
+  function setStatus(message,good=false) {
+    $("status").textContent=message;
+    $("status").className="banner " + (good?"ok":"danger");
+  }
+  function showList(element,items) {
+    element.replaceChildren();
+    for (const name of items) {
+      const li = document.createElement("li");
+      li.textContent=name;
+      element.append(li);
+    }
+  }
+  function hideDetails() {
+    detailsVisible=false;
+    $("raw").hidden=true;
+    $("reveal").textContent="Toon tijdelijk exacte vermeldingen";
+    $("reveal").setAttribute("aria-pressed","false");
+  }
+  function questionList(p,facts) {
+    const questions = [
+      "Is de identiteit van de cliënt onafhankelijk geverifieerd?",
+      "Is het eigendom of het recht op álle genoemde assets separaat bewezen?",
+      "Zijn alle uitsluitingen daadwerkelijk beoordeeld met de cliënt?",
+      "Is het risiconiveau met de operator besproken?",
+      "Is een echt noodstop- en herroepingskanaal afgesproken?",
+      "Zijn privacy, bewijsverwerking en bewaartermijnen beoordeeld?"
+    ];
+    if (p.requested_mode === "authorized_assessment")
+      questions.push("Is een echte geauthenticeerde aanvraag apart ingediend, gevolgd door een afzonderlijke operatorbeslissing?");
+    if (facts.missing_window)
+      questions.push("Moet een concreet tijdvenster met juiste tijdzone nog menselijk worden vastgesteld?");
+    if (facts.has_overlap) questions.push("Moet de letterlijke overlap van opgenomen en uitgesloten vermeldingen worden opgelost?");
+    if (facts.network_activity) questions.push("Zijn de privéscope van het lab en grens van elk voorgesteld netwerkcontact expliciet besproken?");
+    $("questions").replaceChildren();
+    questions.forEach((txt,n)=>{
+      const label=document.createElement("label");label.className="question";
+      const cb=document.createElement("input");cb.type="checkbox";cb.id="talk-"+n;
+      const span=document.createElement("span");span.textContent=txt;label.append(cb,span);$("questions").append(label);
+    });
+  }
+  function warn(code,text,info=false) {
+    const el=document.createElement("div");el.className="warning"+(info?" info":"");
+    el.textContent=text;el.dataset.code=code;$("warnings").append(el);
+  }
+  function refresh() {
+    if (!current) return;
+    const {data:p,hash,facts}=current;
+    $("workspace").hidden=false;
+    $("count-assets").textContent=String(p.requested_assets.length);
+    $("count-excluded").textContent=String(p.excluded_assets.length);
+    $("risk").textContent=String(p.requested_risk)+" / 4";
+    $("risk-desc").textContent=p.requested_risk===4?"Hoog: expliciete onafhankelijke beoordeling vereist.":"Alle risico's vragen aparte beoordeling.";
+    $("mode").textContent=p.requested_mode==="analysis_only"?"Analyse":"Assessment";
+    $("fingerprint").textContent=hash;
+    $("window").textContent=facts.missing_window?"Niet volledig opgegeven; menselijke verduidelijking nodig.":"Lokaal tijdvoorstel aanwezig; UTC/offset is hier NIET geverifieerd.";
+    $("activities").replaceChildren();
+    for (const [key,title] of Object.entries(ACTIVITIES)) {
+      const el=document.createElement("div");const planned=p.proposed_activities[key];
+      el.className="activity"+(planned?"":" no");
+      const s=document.createElement("strong");s.textContent=title;
+      const span=document.createElement("span");span.textContent=planned?"Voorgesteld — niet toegestaan":"Niet voorgesteld";
+      el.append(s,span);$("activities").append(el);
+    }
+    hideDetails();
+    $("coverage").textContent="Exacte assets afgeschermd. Letterlijk gelijke opgenomen/uitgesloten vermeldingen: "+facts.overlap_count+". Dit is geen CIDR-, DNS- of eigendomscontrole.";
+    showList($("assets"),p.requested_assets);
+    showList($("excluded"),p.excluded_assets);
+    $("warnings").replaceChildren();
+    if (facts.has_overlap) warn("LITERAL_OVERLAP","Let op: één of meer vermeldingen staan zowel bij opgenomen als uitgesloten assets. Los dit op vóór enige autorisatie.");
+    if (facts.duplicates_included || facts.duplicates_excluded)
+      warn("DUPLICATE_LABELS","Herhaalde letterlijke assetvermeldingen vragen om controle; tellingen zijn geen aantallen unieke targets.");
+    if (facts.missing_window) warn("WINDOW_UNRESOLVED","Geen bruikbaar lokaal planningstijdvenster aangetroffen. Er is geen goedgekeurd uitvoeringsvenster.");
+    if (facts.network_activity) warn("LAB_CONTACT","Er wordt een private-lab netwerkactiviteit voorgesteld. Dit is geen bewijs dat hosts tot een veilig lab behoren.");
+    if (p.requested_risk === 4) warn("RISK_FOUR","Risico 4 vereist uitdrukkelijke onafhankelijke risicobeoordeling en menselijke goedkeuring.");
+    if (p.requested_mode === "authorized_assessment")
+      warn("AUTH_REQUESTED","Het woord 'authorized' in de voorgestelde modus verleent geen toestemming of grant.");
+    warn("UNVERIFIED_SOURCE","Bronidentiteit, toestemming, bezit, handtekening en actuele herroeping zijn allemaal ONGEVERIFIEERD.",true);
+    questionList(p,facts);
+    setStatus("Lokaal DRAFT-concept gelezen. Alle autorisatie-, consent- en uitvoeringsvelden zijn letterlijk false. Geen rechten verleend.",true);
+  }
+  function revisionDelta(oldDraft, newDraft) {
+    const literals = values => new Set(values.map(x => x.trim().toLowerCase()));
+    const before = literals(oldDraft.requested_assets);
+    const after = literals(newDraft.requested_assets);
+    const previousExclusions = literals(oldDraft.excluded_assets);
+    const nextExclusions = literals(newDraft.excluded_assets);
+    const countMissing = (left, right) => [...left].filter(x => !right.has(x)).length;
+    return [
+      ["Opgenomen erbij (letterlijk)", countMissing(after,before), countMissing(after,before)>0],
+      ["Opgenomen verwijderd (letterlijk)", countMissing(before,after), false],
+      ["Uitsluitingen toegevoegd", countMissing(nextExclusions,previousExclusions), false],
+      ["Uitsluitingen verwijderd", countMissing(previousExclusions,nextExclusions), countMissing(previousExclusions,nextExclusions)>0],
+      ["Risico", String(oldDraft.requested_risk) + " → " + String(newDraft.requested_risk), newDraft.requested_risk>oldDraft.requested_risk],
+      ["Modus veranderd", oldDraft.requested_mode === newDraft.requested_mode ? "nee" : "ja", oldDraft.requested_mode !== newDraft.requested_mode],
+      ["Activiteiten veranderd", Object.keys(ACTIVITIES).some(k => oldDraft.proposed_activities[k]!==newDraft.proposed_activities[k])?"ja":"nee",
+       Object.keys(ACTIVITIES).some(k => !oldDraft.proposed_activities[k] && newDraft.proposed_activities[k])],
+      ["Tijdvoorstel veranderd (letterlijk)", JSON.stringify(oldDraft.proposed_window_local)!==JSON.stringify(newDraft.proposed_window_local)?"ja":"nee",
+       JSON.stringify(oldDraft.proposed_window_local)!==JSON.stringify(newDraft.proposed_window_local)]
+    ];
+  }
+  function renderRevision() {
+    $("revision-summary").replaceChildren();
+    if (!current || !staged) { $("revision-panel").hidden=true; return; }
+    $("revision-panel").hidden=false;
+    const from=document.createElement("div");
+    from.className="revision-delta";
+    const old=document.createElement("strong");old.textContent="Huidige bron-SHA";
+    const oldDigest=document.createElement("span");oldDigest.textContent=current.hash.slice(0,16)+"…";
+    from.append(old,oldDigest);$("revision-summary").append(from);
+    const to=document.createElement("div");to.className="revision-delta";
+    const next=document.createElement("strong");next.textContent="Voorgestelde bron-SHA";
+    const nextDigest=document.createElement("span");nextDigest.textContent=staged.hash.slice(0,16)+"…";
+    to.append(next,nextDigest);$("revision-summary").append(to);
+    for (const [title,value,attention] of revisionDelta(current.data,staged.data)) {
+      const item=document.createElement("div");
+      item.className="revision-delta"+(attention?" attention":"");
+      const label=document.createElement("strong");label.textContent=title;
+      const info=document.createElement("span");info.textContent=String(value);
+      item.append(label,info);$("revision-summary").append(item);
+    }
+  }
+  async function load(file) {
+    if (!file || file.size > MAX_BYTES || file.size === 0) throw Error("Ongeldig bestand of groter dan 64 KiB.");
+    const bytes=await file.arrayBuffer();
+    const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+    const candidate=proposal(strictJson(raw));
+    const hash=await sha256(bytes);
+    const facts=comparisons(candidate);
+    const incoming={data:candidate,hash,facts};
+    if (current && current.hash === hash) {
+      staged=null;
+      renderRevision();
+      setStatus("Identieke bronbytes: bestaand gesprek blijft ongewijzigd. Geen toestemming verleend.",true);
+      return;
+    }
+    if (current) {
+      staged=incoming;
+      renderRevision();
+      setStatus("Nieuwe bron ter menselijke beoordeling klaargezet; huidige briefing is nog steeds actief.",true);
+      return;
+    }
+    current=incoming;
+    refresh();
+  }
+  function report() {
+    if (!current) throw Error("Geen concept.");
+    const {data:p,hash,facts}=current;
+    return {
+      kind:"lightup.scope_briefing_handoff",version:1,state:"REVIEW_ONLY_HOLD",
+      source_sha256:hash,source_kind:"lightup.scope_proposal_draft",source_schema_version:1,
+      included_count:p.requested_assets.length,excluded_count:p.excluded_assets.length,
+      proposed_risk:p.requested_risk,proposed_mode:p.requested_mode,
+      proposed_activities:{...p.proposed_activities},
+      window_declared:!facts.missing_window,
+      literal_overlap_count:facts.overlap_count,
+      duplicate_literal_labels:facts.duplicates_included||facts.duplicates_excluded,
+      attention_codes:[...$("warnings").children].map(x=>x.dataset.code),
+      human_conversation_only:true,
+      ...Object.fromEntries(REPORT_DENIALS.map(k=>[k,false]))
+    };
+  }
+  function download(name,content) {
+    const url=URL.createObjectURL(new Blob([content],{type:"application/json;charset=utf-8"}));
+    const anchor=document.createElement("a");anchor.href=url;anchor.download=name;
+    document.body.append(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  $("file").addEventListener("change",async e=>{
+    try { const file=e.target.files?.[0]; if(file) await load(file); }
+    catch(err){ staged=null;renderRevision();setStatus("HOLD — bestand afgewezen: "+String(err?.message||"onbekende fout"));}
+    finally {e.target.value="";}
+  });
+  $("revision-discard").addEventListener("click",()=>{
+    staged=null;renderRevision();
+    setStatus("Voorgestelde wijziging verworpen. Het huidige gesprek is behouden.",true);
+  });
+  $("revision-apply").addEventListener("click",()=>{
+    if(!staged || !current)return;
+    if(!window.confirm("Vervang het huidige bespreekdocument en wis alle huidige vraagvinkjes? Dit verleent nooit toestemming."))return;
+    current=staged;staged=null;renderRevision();refresh();
+    setStatus("Nieuwe conceptversie lokaal geopend. Eerdere bespreekstatus is gewist. Geen rechten verleend.",true);
+  });
+  $("reveal").addEventListener("click",()=>{
+    if (!current) return;
+    detailsVisible=!detailsVisible;
+    $("raw").hidden=!detailsVisible;
+    $("reveal").setAttribute("aria-pressed",String(detailsVisible));
+    $("reveal").textContent=detailsVisible?"Scherm exacte vermeldingen af":"Toon tijdelijk exacte vermeldingen";
+  });
+  $("export").addEventListener("click",()=>{
+    if(!current)return;
+    download("lightup-scope-review-"+current.hash.slice(0,12)+".json",JSON.stringify(report(),null,2)+"\n");
+  });
+  $("print").addEventListener("click",()=>{
+    if(!current)return;
+    hideDetails();window.print();
+  });
+  $("clear").addEventListener("click",()=>{
+    current=null;staged=null;renderRevision();$("workspace").hidden=true;hideDetails();
+    $("assets").replaceChildren();$("excluded").replaceChildren();$("questions").replaceChildren();
+    $("fingerprint").textContent="—";
+    setStatus("Concept verwijderd uit deze tijdelijke pagina. Geen rechten verleend.");
+  });
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)hideDetails();});
+  window.addEventListener("beforeprint",hideDetails);
+})();
+</script>
+</body>
+</html>

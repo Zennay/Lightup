@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp — Scope Briefing</title>
+<link rel="stylesheet" href="./style.css">
+<script defer src="./app.js"></script>
+</head>
+<body>
+<header class="topbar"><div class="brand">◈ LightUp <span>Scope Briefing</span></div><div class="status">INCUBATE · DRAFT / HOLD · GEEN TOESTEMMING</div></header>
+<main>
+<section class="hero"><p class="eyebrow">LOKAAL • OFFLINE • ALLEEN MENSELIJKE BESPREKING</p><h1>Bespreek een scopevoorstel zonder autorisatie te verwarren met voorbereiding.</h1><p>Lees een oorspronkelijk Scope Planning Studio v1-concept. Controleer wat iemand wil opnemen, uitsluiten en plannen. Deze pagina kent geen gebruikersaccounts, geen toestemmingsknop en geen verbinding met targets.</p>
+<label class="upload"><span>Open een Studio v1 JSON-concept (max. 64 KiB)</span><input type="file" id="file" accept=".json,application/json"></label>
+<div class="banner danger" role="status" id="status">Geen bron geladen. Geen enkel onderdeel is goedgekeurd.</div>
+<div class="revision-panel" id="revision-panel" hidden aria-live="polite">
+  <p class="eyebrow">WIJZIGING TER BESPREKING • NOG NIET OVERGENOMEN</p>
+  <h2>Er is een ander scopeconcept gekozen</h2>
+  <p>Het huidige bespreekdocument en alle lokale vraagvinkjes blijven ongewijzigd totdat je de vervanging uitdrukkelijk bevestigt.</p>
+  <div id="revision-summary" class="revision-deltas"></div>
+  <div class="actions">
+    <button type="button" id="revision-apply">Gebruik nieuwe versie voor dit gesprek</button>
+    <button type="button" id="revision-discard" class="secondary">Behoud huidig concept</button>
+  </div>
+  <p class="muted">Geen automatische overname van gesprekstatus of toestemming. Letterlijke verschillen zeggen niets over CIDR-, DNS- of eigendomsidentiteit.</p>
+</div>
+</section>
+<section id="workspace" hidden>
+<div class="grid cards">
+<article><p class="metric-title">Opgenomen vermeldingen</p><strong id="count-assets">0</strong><small>Dit is géén bewezen assetbezit of netwerkdekking.</small></article>
+<article><p class="metric-title">Uitgesloten vermeldingen</p><strong id="count-excluded">0</strong><small>Uitsluitingen blijven expliciet afzonderlijk zichtbaar.</small></article>
+<article><p class="metric-title">Voorgesteld risico</p><strong id="risk">—</strong><small id="risk-desc"></small></article>
+<article><p class="metric-title">Activiteitsmodus</p><strong id="mode">—</strong><small>Voorgestelde modus; nooit automatisch toegelaten.</small></article>
+</div>
+<div class="grid two">
+<section class="panel"><div class="panel-head"><div><p class="eyebrow">BRON EN HERKOMST</p><h2>Vaste bronbinding</h2></div></div><dl><dt>Exacte bestands-SHA-256</dt><dd class="mono" id="fingerprint">—</dd><dt>Lokale planning</dt><dd id="window">Niet gecontroleerd</dd><dt>Bronstatus</dt><dd>DRAFT_ONLY — geen authentieke identiteit of handtekening</dd></dl><p class="muted">De SHA maakt versies vergelijkbaar. Hij bewijst niet wie toestemming heeft gegeven.</p></section>
+<section class="panel"><p class="eyebrow">BESPREKINGSVRAGEN</p><h2>Wat moet een mens bevestigen?</h2><div id="questions"></div><p class="muted">Aangevinkt = onderwerp besproken in deze tijdelijke browserweergave, nooit geverifieerd of goedgekeurd. Bij herladen verdwijnen alle vinkjes.</p></section>
+</div>
+<section class="panel"><p class="eyebrow">EXPLICIETE ACTIVITEITEN</p><h2>Welke handelingen zijn voorgesteld?</h2><div id="activities" class="grid three"></div><p class="muted">Zelfs een 'ja' in dit concept is geen uitvoeringsrecht. Actieve acties blijven verboden zonder afzonderlijke echte toestemming en runtimecontroles.</p></section>
+<section class="panel">
+<div class="panel-head"><div><p class="eyebrow">VERTROUWELIJKE DETAILS — STANDAARD AFGESCHERMD</p><h2>Opgenomen en uitgesloten assets</h2></div><button type="button" id="reveal" aria-pressed="false">Toon tijdelijk exacte vermeldingen</button></div>
+<div id="coverage" class="notice">Exacte assets afgeschermd. Alleen aantallen en opvallende letterlijke overlap verschijnen in de veilige samenvatting.</div>
+<div id="raw" hidden class="grid two"><section><h3>Opgenomen (letterlijke invoer)</h3><ol id="assets"></ol></section><section><h3>Uitgesloten (letterlijke invoer)</h3><ol id="excluded"></ol></section></div>
+<p class="muted">Een naam of CIDR-notatie is hier uitsluitend tekst. Dit scherm resolveert geen DNS, bewijst geen IP-eigendom en rekent geen CIDR-netwerksets uit. Letterlijke overlap moet door een bronhouder worden opgelost.</p>
+</section>
+<section class="panel"><p class="eyebrow">MENSELIJKE OVERDRACHT</p><h2>Privé overzicht voor gesprek</h2><div id="warnings" class="warnings" aria-live="polite"></div><div class="actions"><button type="button" id="export">Download afgeschermd reviewverslag (JSON)</button><button type="button" id="print">Print afgeschermde briefing</button><button type="button" id="clear" class="secondary">Vergeet lokaal concept</button></div><p class="muted">Export en standaard afdruk bevatten geen assetnamen, hostnamen, IP-adressen, vrije tekst, bestandsnamen of persoonlijke gegevens. Lokale planning wordt uitsluitend als aanwezig/onbekend weergegeven. Er worden geen antwoorden, contacts of cookies opgeslagen.</p></section>
+</section>
+<footer><strong>Niet-autoriseren­d hulpmiddel.</strong> De echte goedkeuring vereist onafhankelijk geauthenticeerde cliënt én operator, geldige aanvraag, tenantgebonden grant, herroepingscontrole bij gebruik, verplichte CI/security/privacy-review en uitdrukkelijke menselijke GO. Niets in dit bestand voldoet daaraan.</footer>
+</main>
+</body>
+</html>
