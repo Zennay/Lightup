@@ -166,6 +166,17 @@ def run() -> None:
         os.symlink(first_path, symlink_path)
         assert_anonymous_single(receipt.inspect(str(symlink_path), first_digest))
 
+        unsafe_dir = root / "unsafe-ancestor"
+        unsafe_dir.mkdir()
+        os.chmod(unsafe_dir, 0o777)
+        unsafe_source_path = unsafe_dir / "source.json"
+        write_private(unsafe_source_path, first)
+        assert_anonymous_single(receipt.inspect(str(unsafe_source_path), first_digest))
+
+        fifo_path = root / "source.fifo"
+        os.mkfifo(fifo_path, 0o600)
+        assert_anonymous_single(receipt.inspect(str(fifo_path), first_digest))
+
         manifest = {
             "format": batch.FORMAT,
             "sources": [
@@ -177,6 +188,7 @@ def run() -> None:
         manifest_path = root / "manifest.json"
         write_private(manifest_path, manifest_data)
         manifest_digest = digest(manifest_data)
+        assert_anonymous_batch(batch.inspect_batch(os.path.relpath(manifest_path), manifest_digest))
 
         admitted = batch.inspect_batch(str(manifest_path), manifest_digest)
         assert_hold_authority(admitted, batch_result=True)
