@@ -158,6 +158,13 @@ label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0
   .decision-grid { grid-template-columns:minmax(0,1fr); }
 }
 
+.safety-gates { border-left:4px solid var(--lock); background:#fffaf7; }
+.safety-gates summary { color:var(--ink); font-weight:650; min-height:44px;
+                        display:flex; align-items:center; }
+.safety-gates ol { margin:8px 0 0; padding-left:24px; }
+.safety-gates li { padding:7px 0; overflow-wrap:anywhere; }
+.safety-gates li p { margin:4px 0; }
+
 main { padding:28px 0 64px; }
 h1 { font-size:1.35rem; margin:0 0 4px; }
 h2 { font-size:1.05rem; margin:28px 0 10px; }
@@ -2522,6 +2529,29 @@ class LightUpWebApp:
             f'<p><a href="{action_url}">{_e(action_label)}</a></p>'
             '</section>'
         )
+        # Explain the independent safety gates without implying any gate passed.
+        # This is static guidance, not a live authorization/progress indicator.
+        safety_gates = (
+            '<details id="assessment-safety-gates" class="card safety-gates">'
+            '<summary>Why a request does not start testing</summary>'
+            '<p>A request asks for a review; it is not permission to test.</p>'
+            '<ol>'
+            '<li><strong>Request and operator review.</strong> '
+            'An operator must independently review the submitted assets, risk and context.</li>'
+            '<li><strong>Written authorization and exact scope.</strong> '
+            'The owner, assets and time window must be verified separately. '
+            'A request or recorded grant alone is not proof of consent.</li>'
+            '<li><strong>Separate risk decision.</strong> '
+            'Risk approval is distinct from request acceptance and scope authorization; '
+            'one decision does not remove the other blockers.</li>'
+            '<li><strong>Action-time safety checks and HUMAN GO.</strong> '
+            'Current scope, consent and revocation must be checked again before any future action. '
+            'This portal does not start testing; execution remains OFF.</li>'
+            '</ol>'
+            '<p class="meta">These are distinct gates, not a progress indicator or proof '
+            'that any gate has passed.</p>'
+            '</details>'
+        )
         # Three existing client tasks stay visible without scrolling through
         # coverage, grants, and KPI cards. These are navigation only: every
         # engagement remains HOLD and findings are recorded observations.
@@ -2595,6 +2625,7 @@ class LightUpWebApp:
             "<p class=\"sub\">Check the next review step, scope limits and recorded evidence. "
             "Active testing is locked.</p>"
             + next_action
+            + safety_gates
             + task_links
             + (request_section if show_first_request else "")
             + follow_up_board

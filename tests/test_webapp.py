@@ -233,6 +233,29 @@ class WebAppTest(unittest.TestCase):
                                      token=self.op_token)
         self.assertNotIn("Secret-A-finding", body_op)
 
+    def test_portal_explains_separate_safety_gates(self):
+        status, _, body = self.request(
+            "GET", f"/portal/{self.client_a.client_id}", token=self.a_token,
+        )
+        self.assertEqual(status, "200 OK")
+        self.assertIn('id="assessment-safety-gates"', body)
+        self.assertIn("Why a request does not start testing", body)
+        self.assertIn("Request and operator review", body)
+        self.assertIn("Written authorization and exact scope", body)
+        self.assertIn("Separate risk decision", body)
+        self.assertIn("Action-time safety checks and HUMAN GO", body)
+        self.assertIn("This portal does not start testing; execution remains OFF.", body)
+        self.assertIn(
+            "These are distinct gates, not a progress indicator or proof that any gate has passed.",
+            body,
+        )
+        # Preserve the task-first hierarchy and keep the disclosure side-effect free.
+        self.assertLess(body.index('id="next-step-heading"'),
+                        body.index('id="assessment-safety-gates"'))
+        self.assertLess(body.index('id="assessment-safety-gates"'),
+                        body.index('aria-label="Client task shortcuts"'))
+        self.assertEqual(self.store.list_assessment_requests(self.operator), [])
+
     def test_portal_submits_assessment_request(self):
         status, headers, _ = self.request(
             "POST", f"/portal/{self.client_a.client_id}/requests",
