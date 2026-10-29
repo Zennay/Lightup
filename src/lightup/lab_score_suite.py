@@ -8,6 +8,7 @@ authorizes an external target or a production action.
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import os
 import stat
@@ -28,7 +29,12 @@ _EXPECTED_FINDINGS = {
 
 
 def _private_output_directory(value: str | Path) -> Path:
-    """Create a new owner-private output directory without following symlinks."""
+    """Create a private directory through pinned, no-follow parent descriptors.
+
+    Checking a path with lstat() before a later mkdir(path) is insufficient:
+    another process could substitute an ancestor between those operations.
+    Resolve each component relative to the already-open parent instead.
+    """
     raw = os.fspath(value)
     if not raw or "\x00" in raw:
         raise ValueError("output directory must be a non-empty path")
@@ -37,39 +43,51 @@ def _private_output_directory(value: str | Path) -> Path:
         raise ValueError("output directory must not contain parent traversal")
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate
+    parts = candidate.parts[1:]
+    if not parts:
+        raise ValueError("output directory must not be a filesystem root")
 
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    parent_fd = os.open(candidate.anchor, flags)
     current = Path(candidate.anchor)
-    for component in candidate.parts[1:]:
-        current = current / component
+    try:
+        for component in parts[:-1]:
+            current = current / component
+            try:
+                next_fd = os.open(component, flags, dir_fd=parent_fd)
+            except OSError as exc:
+                if exc.errno in (errno.ELOOP, errno.ENOTDIR):
+                    raise ValueError("output path must not contain symlinks") from None
+                raise
+            os.close(parent_fd)
+            parent_fd = next_fd
+            metadata = os.fstat(parent_fd)
+            mode = stat.S_IMODE(metadata.st_mode)
+            trusted_temporary = (
+                current in (Path("/tmp"), Path("/var/tmp"), Path("/dev/shm"))
+                and metadata.st_uid == 0
+                and bool(mode & stat.S_ISVTX)
+            )
+            if mode & 0o022 and not trusted_temporary:
+                raise PermissionError("output directory ancestor is writable by other users")
+
         try:
-            component_stat = current.lstat()
-        except FileNotFoundError:
-            continue
-        if stat.S_ISLNK(component_stat.st_mode):
-            raise ValueError("output path must not contain symlinks")
-
-    if candidate.exists() or candidate.is_symlink():
-        raise FileExistsError("output directory must not already exist")
-    if not candidate.parent.is_dir():
-        raise NotADirectoryError("output directory parent must already exist")
-
-    parent_stat = candidate.parent.stat()
-    parent_mode = stat.S_IMODE(parent_stat.st_mode)
-    sticky_root_temp = (
-        parent_stat.st_uid == 0 and bool(parent_mode & stat.S_ISVTX)
-    )
-    if parent_mode & 0o022 and not sticky_root_temp:
-        raise PermissionError("output directory parent is writable by other users")
-
-    candidate.mkdir(mode=0o700)
-    created = candidate.lstat()
-    effective_uid = getattr(os, "geteuid", None)
-    if (
-        not stat.S_ISDIR(created.st_mode)
-        or (effective_uid is not None and created.st_uid != effective_uid())
-        or stat.S_IMODE(created.st_mode) & 0o077
-    ):
-        raise PermissionError("could not establish owner-private output directory")
+            os.mkdir(parts[-1], mode=0o700, dir_fd=parent_fd)
+        except FileExistsError:
+            existing = os.stat(parts[-1], dir_fd=parent_fd, follow_symlinks=False)
+            if stat.S_ISLNK(existing.st_mode):
+                raise ValueError("output path must not contain symlinks") from None
+            raise
+        created = os.stat(parts[-1], dir_fd=parent_fd, follow_symlinks=False)
+        effective_uid = getattr(os, "geteuid", None)
+        if (
+            not stat.S_ISDIR(created.st_mode)
+            or (effective_uid is not None and created.st_uid != effective_uid())
+            or stat.S_IMODE(created.st_mode) & 0o077
+        ):
+            raise PermissionError("could not establish owner-private output directory")
+    finally:
+        os.close(parent_fd)
     return candidate
 
 
