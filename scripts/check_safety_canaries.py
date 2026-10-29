@@ -1,7 +1,8 @@
 """Offline activation/authentication canaries with per-invocation state.
 
 Safe to repeat or run concurrently on a persistent self-hosted runner.
-Requires PYTHONPATH=src. Does not open a listening socket or contact a target.
+Requires PYTHONPATH=src. The labeval smoke owns temporary IPv4-loopback HTTP
+fixtures only; no non-loopback target is contacted.
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ import sys
 import tempfile
 
 from lightup.domain import DomainStore
+from lightup.lab_web_score import run_lab_web_baseline_score
 from lightup.webapp import create_app
 from lightup.webapp.__main__ import _loopback
 
@@ -64,11 +66,29 @@ def main() -> None:
         else:
             raise AssertionError("web shell accepted a non-loopback bind")
 
+        score = run_lab_web_baseline_score(Path(directory) / "web-labeval.db")
+        assert score["passed"], score
+        score_metrics = score["evaluation"]["metrics"]
+        assert (
+            score_metrics["valid_findings"],
+            score_metrics["invalid_findings"],
+            score_metrics["missed_findings"],
+            score_metrics["reproducibility"],
+            score_metrics["evidence_quality"],
+        ) == (5, 0, 0, 1.0, 1.0), score_metrics
+
     assert not Path(directory).exists(), "canary state was not cleaned up"
     print(json.dumps({
         "public_target_denied": True, "execution_enabled": False,
         "authentication_required": True, "activation_locked": True,
-        "non_loopback_refused": True, "temporary_state_removed": True,
+        "non_loopback_refused": True,
+        "temporary_state_removed": True,
+        "web_baseline_labeval_passed": score["passed"],
+        "web_baseline_valid_findings": score_metrics["valid_findings"],
+        "web_baseline_invalid_findings": score_metrics["invalid_findings"],
+        "web_baseline_missed_findings": score_metrics["missed_findings"],
+        "web_baseline_reproducibility": score_metrics["reproducibility"],
+        "web_baseline_evidence_quality": score_metrics["evidence_quality"],
     }, sort_keys=True))
 
 
