@@ -21,7 +21,9 @@ authorization, approve risk, schedule workers, perform retests, or deploy.
    whole return and applies no notes.
 If a newer source/return selection or **Clear source and notes** supersedes an in-flight file read, the older completion is ignored instead of replacing the current workspace.
 5. Explicitly download either a human-only review return or a privacy-minimal
-   summary. The source is never uploaded or written by the desk.
+   summary. Review-return exports over 1 MiB are refused so every exported return
+   remains within the import/resume limit; shorten follow-up questions if needed.
+   The source is never uploaded or written by the desk.
 
 The Python standard-library companion emits only aggregate counts:
 
