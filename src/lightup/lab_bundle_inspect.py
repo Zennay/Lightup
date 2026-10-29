@@ -223,6 +223,7 @@ def _verify_receipt(receipt: dict[str, Any], digest: str, bundle_name: str) -> N
         or receipt["schema_version"] != lab_replay.SCHEMA_VERSION
         or receipt["engine_version"] != lab_replay.ENGINE_VERSION
         or not _is_sha(receipt["fixture_catalog_sha256"])
+        or receipt["fixture_catalog_sha256"] != lab_replay._catalog_sha()
         or bundle_name != digest
     ):
         raise ValueError("receipt identity mismatch")
@@ -263,6 +264,12 @@ def _verify_receipt(receipt: dict[str, Any], digest: str, bundle_name: str) -> N
             )
         ):
             raise ValueError("fixture profile receipt is invalid")
+        known_profile = lab_replay.PROFILES[item["profile_id"]]
+        if (
+            item["fixture_sha256"] != lab_replay._profile_sha(known_profile)
+            or item["expected_check_ids"] != list(known_profile.expected_check_ids)
+        ):
+            raise ValueError("fixture ground truth identity mismatch")
         expected_profile_outcome = (
             "MATCH"
             if item["expected_check_ids"] == item["engine_check_ids"] == item["observed_check_ids"]
@@ -372,7 +379,10 @@ def _verify_databases(
             _decode_canonical_object(payload_bytes)
             if not _is_sha(evidence_sha) or _sha(payload_bytes) != evidence_sha:
                 raise ValueError("evidence payload digest mismatch")
-            evidence.add((evidence_sha, kind, profile_id))
+            evidence_row = (evidence_sha, kind, profile_id)
+            if evidence_row in evidence:
+                raise ValueError("duplicate evidence ledger row")
+            evidence.add(evidence_row)
 
     profiles = receipt["profiles"]
     retests = receipt["retests"]
