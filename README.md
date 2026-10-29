@@ -88,7 +88,10 @@ python lab/vuln_fixture.py --profile exposed --port 18081 &
 PYTHONPATH=src python -m lightup.cli lab-assess http://127.0.0.1:18081/ \
   --profile exposed
 PYTHONPATH=src python -m lightup.cli lab-evaluations --db lightup-lab.db --limit 20
+PYTHONPATH=src python -m lightup.lab_tls_score --db /tmp/lightup-tls-score.db
 ```
+
+The TLS scorer evaluates the real worker against an ephemeral self-signed loopback fixture. See docs/lab-tls-scoring.md for the ground-truth contract and safety limits.
 
 The `plan` command is intentionally non-invasive: it only emits a structured plan.
 
