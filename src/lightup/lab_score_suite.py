@@ -23,6 +23,22 @@ from .lab_tls_score import run_lab_tls_baseline_score
 from .lab_web_score import run_lab_web_baseline_score
 
 SCHEMA = "lightup.lab-score-suite.v1"
+# Source-defined fixed-fixture contracts shared with saved-run inspection.
+_SCENARIOS = {
+    "service_inventory": "lab-service-inventory-loopback",
+    "tls_baseline": "lab-tls-baseline-self-signed-loopback",
+    "http_baseline": "lab-web-baseline-security-headers-loopback",
+}
+_ENGINE_VERSIONS = {
+    "service_inventory": "m1-service-inventory",
+    "tls_baseline": "m1-tls-baseline",
+    "http_baseline": "m1-web-baseline",
+}
+_EXPECTED_EVIDENCE = {
+    "service_inventory": 2,
+    "tls_baseline": 2,
+    "http_baseline": 4,
+}
 _PUBLIC_IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}\Z")
 _EXPECTED_FINDINGS = {
     "service_inventory": 1,
@@ -192,11 +208,11 @@ def _summarize_result(
         checks = {}
         failures.append("missing_checks")
     else:
+        if set(checks) != _PUBLIC_CHECKS[name]:
+            failures.append("first_party_check_set_mismatch")
         for key, value in checks.items():
             # Source-provided keys must never become diagnostic text.
-            if type(key) is not str or (
-                key not in _PUBLIC_CHECKS[name] and key != "ground_truth_verified"
-            ):
+            if type(key) is not str or key not in _PUBLIC_CHECKS[name]:
                 failures.append("unexpected_check_field")
             elif value is not True:
                 failures.append(f"check_failed:{key}")
@@ -303,8 +319,22 @@ def _summarize_result(
         failures.append("evaluation_record_id_mismatch")
     if public_run_id is None or evaluation.get("run_id") != run_id:
         failures.append("evaluation_run_id_mismatch")
-    if public_scenario_id is None:
-        failures.append("invalid_scenario_id")
+    if (public_scenario_id != _SCENARIOS[name]
+            or evaluation.get("scenario_id") != public_scenario_id):
+        failures.append("scenario_identity_mismatch")
+
+    # Enforce the same fixed-local provenance as the persisted inspector.
+    if (evaluation.get("engine_version") != _ENGINE_VERSIONS[name]
+            or evaluation.get("model_bindings") != []):
+        failures.append("lab_engine_or_model_binding_mismatch")
+    if (type(metrics.get("tool_calls")) is not int
+            or metrics["tool_calls"] != _EXPECTED_EVIDENCE[name]):
+        failures.append("lab_tool_call_count_mismatch")
+    if (type(metrics.get("human_interventions")) is not int
+            or metrics["human_interventions"] != 0
+            or type(metrics.get("compute_cost_usd")) not in (int, float)
+            or metrics["compute_cost_usd"] != 0):
+        failures.append("lab_human_or_cost_mismatch")
 
     evidence_ids = evaluation.get("evidence_ids")
     # A successful persisted lab run needs multiple bounded, nonempty distinct
@@ -312,7 +342,7 @@ def _summarize_result(
     # building a set or exporting a misleading evidence count.
     valid_evidence_ids = (
         type(evidence_ids) is list
-        and 2 <= len(evidence_ids) <= 1024
+        and len(evidence_ids) == _EXPECTED_EVIDENCE[name]
         and all(_public_identifier(item) is not None for item in evidence_ids)
     )
     if not valid_evidence_ids or len(set(evidence_ids)) != len(evidence_ids):
