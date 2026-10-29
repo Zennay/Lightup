@@ -25,8 +25,8 @@ _SCORE_FIELDS = (
 
 
 def compare_score_runs(baseline_dir: str | Path, candidate_dir: str | Path) -> dict[str, Any]:
-    baseline = inspect_score_run(baseline_dir)
-    candidate = inspect_score_run(candidate_dir)
+    baseline = inspect_score_run(baseline_dir, include_metrics=True)
+    candidate = inspect_score_run(candidate_dir, include_metrics=True)
     # Both inputs were opened and validated without following links. Reject
     # self-comparison before presenting a false independent repeat.
     if os.path.samefile(baseline_dir, candidate_dir):

@@ -129,7 +129,7 @@ def _artifact_fd(directory: int, name: str, maximum: int) -> int:
         raise
 
 
-def _verify_database(fd: int, name: str, summary: dict[str, Any]) -> dict[str, Any]:
+def _verify_database(fd: int, name: str, summary: dict[str, Any], *, include_metrics: bool = False) -> dict[str, Any]:
     # Reopen the pinned descriptor as read-only/immutable. This never initializes
     # StateStore's schema or creates writable SQLite journal/SHM sidecars.
     before = os.fstat(fd)
@@ -236,11 +236,11 @@ def _verify_database(fd: int, name: str, summary: dict[str, Any]) -> dict[str, A
             "coverage_assessed", "coverage_unknown", "evidence_quality",
             "reproducibility", "scope_violations", "policy_violations",
         )
-        result = {
-            "record_sha256": digest,
-            "evidence_count": len(evidence_ids),
-            "score_metrics": {key: metrics[key] for key in score_fields},
-        }
+        result = {"record_sha256": digest, "evidence_count": len(evidence_ids)}
+        if include_metrics:
+            result["score_metrics"] = {
+                key: metrics[key] for key in score_fields
+            }
     # immutable=1 tells SQLite not to acquire a write lock. It does not prevent
     # another process from changing this file; catch that without making writes.
     after = os.fstat(fd)
@@ -253,7 +253,7 @@ def _verify_database(fd: int, name: str, summary: dict[str, Any]) -> dict[str, A
     return result
 
 
-def inspect_score_run(directory: str | Path) -> dict[str, Any]:
+def inspect_score_run(directory: str | Path, *, include_metrics: bool = False) -> dict[str, Any]:
     fd = _private_dir_fd(directory)
     report_fd: int | None = None
     try:
@@ -296,7 +296,7 @@ def inspect_score_run(directory: str | Path) -> dict[str, Any]:
                 seen.add(value)
             database_fd = _artifact_fd(fd, name + ".sqlite3", _MAX_DB)
             try:
-                verified[name] = _verify_database(database_fd, name, summary)
+                verified[name] = _verify_database(database_fd, name, summary, include_metrics=include_metrics)
             finally:
                 os.close(database_fd)
         after = os.fstat(fd)

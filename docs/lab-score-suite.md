@@ -107,7 +107,7 @@ exit 2; clean independent repeats exit 0. Outputs contain no run IDs,
 evidence payloads or user-supplied paths. Successful comparison establishes
 only local storage consistency and stable synthetic calibrations, **not**
 authenticated provenance, current vulnerabilities or permission to scan.
-The read-only inspector now exposes those validated score metrics.
+The comparator requests validated numeric metrics internally; the established inspector v1 CLI JSON shape remains unchanged.
 
 ## Safety boundary
 

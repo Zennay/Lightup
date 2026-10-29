@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from lightup.lab_score_compare import compare_score_runs, main
+from lightup.lab_score_inspect import inspect_score_run
 from lightup.lab_score_suite import run_lab_score_suite
 
 class SavedLabScoreCompareTests(unittest.TestCase):
@@ -14,6 +15,11 @@ class SavedLabScoreCompareTests(unittest.TestCase):
             a, b = Path(temporary)/"baseline", Path(temporary)/"candidate"
             self.assertTrue(run_lab_score_suite(a)["passed"])
             self.assertTrue(run_lab_score_suite(b)["passed"])
+            public_inspection=inspect_score_run(a)
+            self.assertEqual(
+                set(public_inspection["capabilities"]["tls_baseline"]),
+                {"record_sha256", "evidence_count"},
+            )
             result=compare_score_runs(a,b)
             self.assertTrue(result["passed"],result)
             self.assertTrue(result["independent_evaluations"])
