@@ -50,6 +50,9 @@ jobs:
       - name: Compile
         run: python -m compileall -q src tests
 
+      - name: Offline receipt custody smoke (synthetic fixtures only)
+        run: python assessment-runtime-receipt/check_contract.py
+
       - name: Unit tests
         env:
           PYTHONPATH: src
