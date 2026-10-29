@@ -257,6 +257,13 @@ def _verify_receipt(receipt: dict[str, Any], digest: str, bundle_name: str) -> N
             )
         ):
             raise ValueError("fixture profile receipt is invalid")
+        expected_profile_outcome = (
+            "MATCH"
+            if item["expected_check_ids"] == item["engine_check_ids"] == item["observed_check_ids"]
+            else "MISMATCH"
+        )
+        if item["outcome"] != expected_profile_outcome:
+            raise ValueError("fixture profile outcome mismatch")
 
     remediation = receipt["remediation"]
     if (
@@ -265,8 +272,15 @@ def _verify_receipt(receipt: dict[str, Any], digest: str, bundle_name: str) -> N
         or remediation.get("from_profile") != "exposed"
         or remediation.get("to_profile") != "hardened"
         or remediation.get("state") != "SIMULATED_APPLIED"
-        or not _is_sha(remediation.get("event_id"))
+        or set(remediation) != {"kind", "from_profile", "to_profile", "state", "scope", "check_ids", "finding_keys", "event_id"}
+        or not isinstance(remediation.get("scope"), str)
+        or not remediation["scope"]
+        or not isinstance(remediation.get("check_ids"), list)
+        or any(not isinstance(value, str) for value in remediation["check_ids"])
         or not isinstance(remediation.get("finding_keys"), list)
+        or any(not _is_sha(value) for value in remediation["finding_keys"])
+        or len(remediation["finding_keys"]) != len(set(remediation["finding_keys"]))
+        or not _is_sha(remediation.get("event_id"))
     ):
         raise ValueError("synthetic remediation receipt is invalid")
 
@@ -282,15 +296,35 @@ def _verify_receipt(receipt: dict[str, Any], digest: str, bundle_name: str) -> N
             or not _is_sha(item.get("retest_evidence_sha256"))
             or not isinstance(item.get("check_id"), str)
             or not isinstance(item.get("stored_retest_status"), str)
+            or not isinstance(item.get("observed_check_ids"), list)
+            or any(not isinstance(value, str) for value in item["observed_check_ids"])
             or item.get("outcome") not in {"PASS", "FAIL"}
         ):
             raise ValueError("retest receipt is invalid")
 
     exposed = profiles[0]
-    if any(item["baseline_evidence_sha256"] != exposed["evidence_sha256"] for item in retests):
-        raise ValueError("retest baseline binding mismatch")
-    if set(remediation["finding_keys"]) != {item["finding_key"] for item in retests}:
-        raise ValueError("remediation finding set mismatch")
+    retest_check_ids = [item["check_id"] for item in retests]
+    if (
+        any(item["baseline_evidence_sha256"] != exposed["evidence_sha256"] for item in retests)
+        or len(retest_check_ids) != len(set(retest_check_ids))
+        or set(retest_check_ids) != set(exposed["expected_check_ids"])
+        or set(remediation["check_ids"]) != set(retest_check_ids)
+        or set(remediation["finding_keys"]) != {item["finding_key"] for item in retests}
+    ):
+        raise ValueError("remediation and retest lineage mismatch")
+    for item in retests:
+        expected_key = _sha(_canonical({
+            "profile_id": "exposed",
+            "fixture_sha256": exposed["fixture_sha256"],
+            "check_id": item["check_id"],
+        }))
+        expected_retest_outcome = (
+            "PASS"
+            if item["stored_retest_status"] == "fixed" and not item["observed_check_ids"]
+            else "FAIL"
+        )
+        if item["finding_key"] != expected_key or item["outcome"] != expected_retest_outcome:
+            raise ValueError("retest outcome or finding identity mismatch")
     expected_outcome = (
         "PASS"
         if all(item["outcome"] == "MATCH" for item in profiles)
