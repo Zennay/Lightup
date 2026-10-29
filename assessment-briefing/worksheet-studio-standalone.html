@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-J9RPE+b5tRyWmjJf29rBk5XORBzyKhXU1FYB4kIhkqQ='; style-src 'sha256-zuFEs9JIqZFwm+SiIAr2kSiSUV9u/6dCVv9tngXrWUE='; img-src 'none'; connect-src 'none'; font-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+  <title>LightUp · PRIVATE HUMAN Follow-up Studio</title>
+  <style>:root{color-scheme:dark;--bg:#070e19;--surface:#101b2a;--surface2:#132438;--line:#26374c;--muted:#a9bfd4;--white:#f3f8ff;--cyan:#79e5ef;--teal:#1fbdab;--red:#ff9b9d;--blue:#99b9fa;--focus:#99e6ff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{background:radial-gradient(ellipse 60% 35% at 80% 2%,#153b4a 0%,transparent 85%),var(--bg);color:var(--white);margin:0;min-height:100vh}
+.shell{width:min(1440px,calc(100% - 48px));margin:0 auto;padding-bottom:38px}
+.top{min-height:84px;display:flex;justify-content:space-between;align-items:center;gap:22px;border-bottom:1px solid var(--line)}
+.brand{font-weight:900;letter-spacing:.15em;font-size:1rem}.brand span:first-child{color:var(--cyan);font-size:1.4rem;margin-right:9px}.muted{color:var(--muted)}.phase,.tag,.eyebrow{letter-spacing:.13em;text-transform:uppercase;font-weight:750;font-size:.71rem}.phase{border:1px solid #3c7083;padding:10px 15px;border-radius:7px;color:#c7f9f0}
+.hero{padding:69px 0 34px;max-width:1090px}.eyebrow{color:var(--cyan);margin-bottom:12px}.hero h1{font-size:clamp(2.5rem,5.6vw,5.3rem);font-weight:850;letter-spacing:-.059em;line-height:1.045;margin:0 0 26px}.hero h1 em{font-style:normal;color:var(--cyan)}
+.hero>p{max-width:900px;color:#cbd8e9;font-size:1.13rem;line-height:1.64}.notice{max-width:1020px;border-left:4px solid var(--cyan);background:#102b36;padding:18px 23px;border-radius:3px 10px 10px 3px;line-height:1.65;color:#d2edf0}
+.panel{margin:24px 0;padding:26px 29px 30px;border-radius:15px;background:linear-gradient(140deg,rgba(19,35,53,.98),rgba(12,24,39,.98));border:1px solid #263d54;box-shadow:0 10px 38px rgba(0,0,0,.12)}
+.panel.compact{padding-bottom:22px}.panelHeading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px}.panelHeading h2,.finish h2{font-size:1.7rem;margin:0 0 6px;letter-spacing:-.025em}.panel p{line-height:1.58;color:#c9d9e8;max-width:1100px}
+.tag{border:1px solid #3c5266;border-radius:7px;padding:9px 11px;line-height:1.4;color:#c8e2f4;text-align:center}
+.fileRow,.actions,.batchControls,.filters,.pager{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}.fileRow{align-items:center;margin-top:20px}
+button,input,select,textarea{font:inherit}button{color:var(--white);background:#203249;border:1px solid #4c6883;padding:12px 18px;border-radius:8px;cursor:pointer;transition:background .15s,border .15s;min-height:43px}
+button:hover:not(:disabled){background:#2b4562;border-color:var(--cyan)}button.primary{background:var(--cyan);color:#051a26;font-weight:850;border-color:var(--cyan)}
+button.primary:hover:not(:disabled){background:#a4f4f6}button.danger{color:var(--red);border-color:#925a63}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+input,textarea,select{color:var(--white);background:#091524;border:1px solid #42607e;padding:10px 11px;border-radius:7px;max-width:100%;min-height:42px}input[type=file]{width:min(530px,100%);padding:10px}
+input[type=file]::file-selector-button{color:#042d37;background:var(--cyan);border:0;border-radius:5px;padding:8px 12px;margin-right:10px;font-weight:750;cursor:pointer}
+input[type=search]{width:100%}
+label{display:flex;flex-direction:column;gap:8px;font-size:.85rem;color:#c3d8e9;font-weight:650}
+.filters{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:13px;margin:20px 0}
+.filters input,.filters select{width:100%}.batchControls{margin:20px 0}.batchControls label{flex:1 1 210px}.batchControls input,.batchControls select{width:100%}
+.message{border:1px solid #365b65;border-radius:9px;margin-top:19px;padding:13px 15px;color:#bbf4e6;background:#11323a;font-size:.94rem}
+.message[data-error=true]{background:#362329;border-color:#af7070;color:#ffccce}
+.small{font-size:.83rem}.stats{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:12px;margin:19px 0 18px}
+.stat{min-width:0;background:#0b1929;border:1px solid #304b64;border-radius:11px;padding:17px 14px;display:flex;gap:8px;flex-direction:column}
+.stat small{font-size:.77rem;color:#a8bfd4;line-height:1.4}.stat strong{font-size:clamp(1.4rem,2vw,2.25rem);letter-spacing:-.045em;color:#e0f8ff}
+.progress{height:8px;width:100%;background:#21384b;border-radius:20px;overflow:hidden}.progress>div{height:100%;background:linear-gradient(90deg,var(--teal),var(--cyan));border-radius:20px;transition:width .2s}
+.tableOverflow{width:100%;overflow-x:auto;border:1px solid #35516d;border-radius:10px;background:#0b1929}
+table{border-collapse:collapse;width:100%;min-width:1070px;table-layout:fixed}th,td{padding:12px;border-bottom:1px solid #253b51;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+thead th{background:#1d3249;color:#dcf6fc;font-size:.73rem;letter-spacing:.04em;text-transform:uppercase}
+thead th:nth-child(1){width:75px}thead th:nth-child(2){width:125px}thead th:nth-child(3){width:100px}thead th:nth-child(4){width:146px}thead th:nth-child(5){width:160px}
+tbody th{color:var(--cyan)}tbody td{font-size:.85rem;color:#d3e3f0}
+tbody tr:hover{background:#182d40}
+td textarea{min-width:180px;width:100%;resize:vertical;min-height:65px;line-height:1.45}
+td input,td select{width:100%}.pager{margin-top:18px;justify-content:center;align-items:center}.pager span{padding:0 12px}
+.finish{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,310px);gap:22px}
+.finish .actions{display:flex;flex-direction:column;align-items:stretch;justify-content:center}
+.finish>.small{grid-column:1/-1}.actions button{width:100%}
+code{color:#c7fbf3;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#092a32;padding:2px 6px;border-radius:4px}
+footer{padding:25px 0 10px;border-top:1px solid var(--line);color:var(--muted);font-size:.8rem;line-height:1.6}
+[hidden]{display:none!important}.srOnly{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+@media(max-width:1150px){.stats{grid-template-columns:repeat(3,minmax(130px,1fr))}.filters{grid-template-columns:repeat(2,minmax(150px,1fr))}}
+@media(max-width:700px){.shell{width:min(100% - 24px,650px)}.top{padding:18px 0;flex-direction:column;align-items:flex-start}.phase{font-size:.62rem}.hero{padding-top:40px}.panel{padding:19px 16px}.panelHeading{flex-wrap:wrap}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.filters{grid-template-columns:1fr}.finish{display:block}.finish .actions{margin:22px 0}.fileRow{flex-direction:column;align-items:stretch}.fileRow input{width:100%}.pager{justify-content:space-between}.pager span{padding:0}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+@media print{body{background:#fff;color:#000}.shell{width:100%}header.top,.hero,.fileRow,.panel.import,.batchControls,.actions,.pager,footer,.filters{display:none!important}.panel{background:#fff;color:#000;box-shadow:none;border:1px solid #aaa}.panel p,.muted,.stat small{color:#222}td,th{color:#000}.tableOverflow{overflow:visible}table{min-width:0}.stat{background:#fff;color:#000}.stat strong{color:#000}}
+
+
+/* Incoming HUMAN proposal review only: source-ordinal fields never editable. */
+.replyTable{min-width:950px;table-layout:fixed}
+.replyTable th:nth-child(1){width:95px}.replyTable th:nth-child(2){width:120px}
+.replyTable th:nth-child(3){width:145px}.replyTable th:nth-child(4){width:290px}
+.replyTable th:nth-child(5){width:290px}
+.peerValue{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+.peerAfter{background:rgba(121,229,239,.06);color:#cbf7f1}
+.replyTable input[type=checkbox]{height:21px;width:21px;min-height:0;accent-color:#79e5ef}
+.actionsRow{display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin:18px 0 6px}
+.actionsRow button{flex:0 1 auto}
+@media(max-width:700px){.actionsRow button{flex:1 1 160px}}
+
+
+/* Optional encrypted, PRIVATE HUMAN-only offline handoff controls. */
+.vaultPanel{border:1px solid #3b5e73;background:#091e2c;border-radius:10px;padding:15px 18px;margin-top:18px}
+.vaultPanel summary{color:#b3f3ed;font-weight:750;cursor:pointer;line-height:1.6}
+.vaultPanel[open] summary{margin-bottom:12px}
+.vaultPanel .small{max-width:960px;line-height:1.6}
+.vaultForm{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
+.vaultForm label{flex:1 1 220px;min-width:0}
+.vaultForm input{width:100%}.vaultForm button{flex:0 1 auto;max-width:100%}
+.vaultExport{grid-column:1/-1;margin-top:0}
+.vaultPanel input[type=password]{letter-spacing:.08em}
+@media(max-width:700px){.vaultForm button{width:100%}}
+</style>
+  
+</head>
+<body>
+<main class="shell">
+  <header class="top">
+    <div class="brand"><span aria-hidden="true">◈</span> LIGHTUP <span class="muted">/ ASSESSMENT-RUNTIME</span></div>
+    <div class="phase">PRIVATE · LAB/PLAN ONLY · NO AUTHORITY</div>
+  </header>
+
+  <section class="hero" aria-labelledby="title">
+    <div class="eyebrow">HUMAN FOLLOW-UP WORKSPACE / 01</div>
+    <h1 id="title">Turn an ordinal worksheet<br><em>into an actionable review.</em></h1>
+    <p>Edit follow-up stages, groups, next steps and uncertainties without opening original target URLs, finding titles or evidence in this browser. Every decision remains a HUMAN-only proposal.</p>
+    <div class="notice"><strong>REVIEW ONLY.</strong> No credential, authorization, consent, actual remediation, verified finding, active scan, target contact or production release is created here. Input CSV comes from <code>briefing.py</code>.</div>
+  </section>
+
+  <section class="panel import" aria-labelledby="importTitle">
+    <div class="panelHeading">
+      <div><div class="eyebrow">01 / LOCAL SOURCE</div><h2 id="importTitle">Open original PRIVATE worksheet</h2></div>
+      <span class="tag">NO NETWORK · NO STORAGE</span>
+    </div>
+    <p>Choose the existing seven-column <code>human-followup.csv</code> generated from an independently obtained original lab report. Only ordinals, declared severities, source evidence-reference counts and HUMAN fields enter this editor. No original report is required here.</p>
+    <div class="fileRow"><input id="fileInput" type="file" accept=".csv,text/csv" aria-label="PRIVATE original human-followup CSV"><button id="load" type="button" class="primary">Open PRIVATE worksheet</button></div>
+    <p class="small muted">Maximum 1 MiB / 2,048 rows · strict UTF-8 and CSV · no browser storage, no uploads. Existing in-memory edits are not replaced without confirmation.</p>
+    <details class="vaultPanel">
+      <summary>Open optional encrypted PRIVATE HUMAN worksheet (.luhw)</summary>
+      <p class="small">This is a separate locally encrypted file containing the HUMAN CSV only—not original lab evidence or consent. WebCrypto must be available; an incorrect password, altered envelope or changed data fails closed.</p>
+      <div class="vaultForm">
+        <label>PRIVATE encrypted file<input id="encryptedInput" type="file" accept=".luhw,application/json"></label>
+        <label>Decryption passphrase<input id="decryptPass" type="password" minlength="12" maxlength="256" autocomplete="off" placeholder="Never stored or transmitted"></label>
+        <button id="loadEncrypted" type="button">Open ENCRYPTED PRIVATE CSV</button>
+      </div>
+    </details>
+    <div id="message" class="message" role="status" aria-live="polite">Select a PRIVATE file to begin.</div>
+  </section>
+
+  <div id="workroom" hidden>
+    <section class="panel compact">
+      <div class="panelHeading"><div><div class="eyebrow">02 / CURRENT IN-MEMORY SOURCE</div><h2 id="sourceName">PRIVATE worksheet</h2></div><span id="dirtyStatus" class="tag"></span></div>
+      <p id="sourceStatus" class="muted small"></p>
+      <div id="summary" class="stats" aria-live="polite"></div>
+      <div class="progress"><div id="completionFill"></div></div>
+      <p class="small muted">Progress is derived from HUMAN labels, not original evidence or verified remediation.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panelHeading"><div><div class="eyebrow">03 / PRIVATE HUMAN QUEUE</div><h2>Edit follow-up proposals</h2></div><span id="displayCount" class="tag"></span></div>
+      <div class="filters">
+        <label>Declared severity<select id="severityFilter"><option value="all">All severity levels</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
+        <label>HUMAN stage<select id="stageFilter"><option value="all">All HUMAN stages</option><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="blocked">Blocked</option><option value="documented">Documented</option></select></label>
+        <label>HUMAN group<select id="groupFilter"><option value="all">All groups</option><option value="unassigned">Unassigned</option></select></label>
+        <label>Search local HUMAN fields<input id="query" type="search" placeholder="Ordinal / group / proposed action"></label>
+      </div>
+      <div class="tableOverflow">
+        <table>
+          <caption class="srOnly">PRIVATE source ordinal and editable HUMAN follow-up values</caption>
+          <thead><tr><th scope="col">Ordinal</th><th scope="col">Source severity</th><th scope="col">Evidence refs</th><th scope="col">HUMAN stage</th><th scope="col">HUMAN group</th><th scope="col">Next action</th><th scope="col">Blocker / uncertainty</th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="pager"><button id="prev" type="button">← Previous</button><span id="pageLabel" class="muted"></span><button id="next" type="button">Next →</button></div>
+    </section>
+
+    <section class="panel">
+      <div class="panelHeading"><div><div class="eyebrow">04 / PROPOSED BATCH CHANGE</div><h2>Apply to filtered rows only</h2></div><span class="tag">HUMAN LABELS ONLY</span></div>
+      <p class="small muted">This adjusts only local HUMAN stage/group proposals on currently filtered original ordinals. Original immutable ordinal, severity, evidence-reference count, action, blocker and source file are untouched.</p>
+      <div class="batchControls">
+        <label>HUMAN stage<select id="bulkStage"><option value="unchanged">Do not change stage</option><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="blocked">Blocked</option><option value="documented">Documented</option></select></label>
+        <label>HUMAN group<input id="bulkGroup" maxlength="120" placeholder="Blank = unchanged; __CLEAR__ = clear"></label>
+        <button id="applyBulk" type="button" class="primary">Apply to visible rows</button>
+        <button id="undoBulk" type="button" disabled>Undo last batch</button>
+      </div>
+      <p class="muted small">Leave the group field blank to preserve the current group, enter <code>__CLEAR__</code> to explicitly clear it, or type a new HUMAN-only group name. A row-level edit invalidates bulk Undo to avoid rolling back later individual work.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="replyTitle">
+      <div class="panelHeading"><div><div class="eyebrow">05 / PRIVATE PEER PROPOSALS</div><h2 id="replyTitle">Reconcile another HUMAN worksheet</h2></div><span class="tag">MANUAL CHOICE · NO IDENTITY CLAIM</span></div>
+      <p>Open a second seven-column original-format PRIVATE CSV returned by another human. Every original ordinal, declared severity and evidence-reference count must match this already loaded worksheet in exactly the same order. Only HUMAN fields are eligible for review; original source identity, consent and reviewer identity remain unauthenticated here.</p>
+      <div class="fileRow"><input id="replyInput" type="file" accept=".csv,text/csv" aria-label="PRIVATE incoming human worksheet CSV"><button id="previewReply" type="button">Preview incoming HUMAN proposals</button></div>
+      <div id="replyStatus" class="message">No incoming HUMAN proposal loaded.</div>
+      <div id="replyBoard" hidden>
+        <p class="small muted">Nothing is imported automatically. Select individual proposed HUMAN fields, then explicitly accept only those proposals. Any intervening local edit cancels the pending comparison; re-open the incoming file to compare it to your latest worksheet.</p>
+        <div class="tableOverflow">
+          <table class="replyTable">
+            <caption class="srOnly">Unverified incoming PRIVATE HUMAN proposals: choose each field explicitly</caption>
+            <thead><tr><th scope="col">Accept?</th><th scope="col">Original ordinal</th><th scope="col">HUMAN field</th><th scope="col">Your current value</th><th scope="col">Incoming proposed value</th></tr></thead>
+            <tbody id="replyRows"></tbody>
+          </table>
+        </div>
+        <div class="pager"><button id="replyPrev" type="button">← Previous</button><span id="replyPage" class="muted"></span><button id="replyNext" type="button">Next →</button></div>
+        <div class="actionsRow">
+          <button id="selectVisibleReply" type="button">Select visible proposal fields</button>
+          <button id="clearReplySelections" type="button">Clear selections</button>
+          <button id="acceptReply" type="button" class="primary">Apply selected HUMAN proposals</button>
+          <button id="discardReply" type="button">Discard incoming proposal</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel finish">
+      <div><div class="eyebrow">06 / PRIVATE FILE HANDOFF</div><h2>Save an immutable-source worksheet</h2><p>Download the updated PRIVATE seven-column CSV, preserving all original ordinal/severity/evidence-count cells. To produce a source-verified-by-digest PRIVATE report, run the existing local <code>human_return.py</code> with the actual unchanged original lab JSON and its original manifest. This editor cannot authenticate either.</p></div>
+      <div class="actions"><button id="saveCsv" type="button" class="primary">Download PRIVATE human CSV</button><button id="saveCounts" type="button">Download counts-only JSON</button><button id="forget" type="button" class="danger">Forget local workroom</button></div>
+      <details class="vaultPanel vaultExport">
+        <summary>Optional ENCRYPTED PRIVATE worksheet for offline handoff</summary>
+        <p class="small">Encrypt only your current original-format HUMAN CSV locally with a fresh PBKDF2/AES-GCM password. The passphrase and HUMAN notes are not uploaded or stored by this app. Cryptographic protection is not producer authenticity, identity, source consent or release approval. This feature has not received independent cryptographic review.</p>
+        <div class="vaultForm">
+          <label>Private passphrase (12–256 characters)<input id="encryptPass" type="password" minlength="12" maxlength="256" autocomplete="new-password"></label>
+          <label>Repeat the passphrase<input id="encryptPassConfirm" type="password" minlength="12" maxlength="256" autocomplete="new-password"></label>
+          <button id="saveEncrypted" type="button" class="primary">Download ENCRYPTED PRIVATE CSV (.luhw)</button>
+        </div>
+      </details>
+      <div class="small muted">The CSV includes private HUMAN notes. The anonymous-count JSON omits notes and targets but can still be sensitive. No data is saved to a server, localStorage or browser cache by this app. Browser process memory and downloaded files are separate responsibilities.</div>
+    </section>
+  </div>
+
+  <footer>LIGHTUP / ASSESSMENT-RUNTIME · Incubate M3/M7 · DRAFT/HOLD · Never interpret HUMAN stage or a hash as authorization, a security verdict or an operational release.</footer>
+</main>
+<script>"use strict";
+/* PRIVATE offline LightUp HUMAN ordinal worksheet editor.
+ * No source finding details, target calls, network or browser persistence.
+ * Outputs remain non-authorizing, PRIVATE, source-bound only by original CLI.
+ */
+(() => {
+  const HEAD = ["original_ordinal","source_reported_severity","evidence_reference_count",
+                "human_stage","human_owner_group","human_next_action","human_blocker"];
+  const SEVERITIES = ["critical","high","medium","low","info"];
+  const STAGES = ["","needs_review","discussing","blocked","documented"];
+  const MAX_BYTES = 1024*1024, MAX_ROWS = 2048, PAGE = 40;
+  const $ = (id) => document.getElementById(id);
+  const txt = (v) => String(v ?? "");
+  let rows = [], originalName = "", sourceSize = 0, page = 0, dirty = false;
+  let sourceFileSha = "", selectionFilter = "", lastBulk = null;
+  let incoming = null;
+  const headById = Object.fromEntries(HEAD.map((x,i)=>[x,i]));
+  const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+
+  function need(valid) {
+    if (!valid) throw Error("PRIVATE source/worksheet format not admitted (HOLD).");
+  }
+  function message(s, bad=false) {
+    $("message").textContent = s; $("message").dataset.error = String(bad);
+  }
+  function quote(s) {
+    s = txt(s);
+    return /[",\r\n]/.test(s) ? '"' + s.replaceAll('"','""') + '"' : s;
+  }
+  function parseCSV(raw) {
+    need(raw.length < 1100000 && !raw.includes("\0"));
+    const result = [];
+    let current = [], value = "", quoted = false, closed = false, start = true;
+    let tokens = 0, cells = 0;
+    function pushValue(){
+      need(++cells <= 15000);
+      current.push(value); value = ""; start = true; closed = false;
+      need(current.length <= HEAD.length);
+    }
+    function pushRow(){
+      pushValue();
+      need(current.length === HEAD.length);
+      result.push(current);
+      need(result.length <= MAX_ROWS+1);
+      current = [];
+    }
+    for (let i=0; i<raw.length; i++) {
+      const ch=raw[i];
+      need(++tokens < 1100000 && value.length <= 5000);
+      if (quoted) {
+        if (ch === '"') {
+          if (raw[i+1] === '"') {value+='"'; i++;}
+          else {quoted=false; closed=true;}
+        } else value+=ch;
+      } else if (ch === ',' ) pushValue();
+      else if (ch === '\r' || ch === '\n') {
+        if (ch==='\r') {need(raw[i+1]==='\n'); i++;}
+        pushRow();
+      } else if (ch === '"' && start) {quoted=true; start=false;}
+      else {need(ch!=='"' && !closed); value += ch; start=false;}
+    }
+    need(!quoted);
+    if (current.length || value || closed || !start) pushRow();
+    need(result.length >= 1);
+    return result;
+  }
+  function safeHuman(s) {
+    const norm = s.normalize("NFKC")
+      .replace(/^[\u0009\u0020\u00a0\u2000-\u200f\u202a-\u202e\u2060-\u206f\ufeff]+/gu,"");
+    // Reject formula-shaped cells before spreadsheets interpret them.
+    // This is deliberately strict rather than silently changing HUMAN text.
+    return !/^[=+\-@\t\r\n]/u.test(norm);
+  }
+  function admit(parsed) {
+    need(parsed.length>=1 && JSON.stringify(parsed[0])===JSON.stringify(HEAD));
+    const next=[];
+    let prior=0;
+    for (const row of parsed.slice(1)) {
+      need(row.length===7);
+      const ordinal=Number(row[0]), evidence=Number(row[2]);
+      need(Number.isSafeInteger(ordinal) && ordinal===prior+1 && ordinal<=MAX_ROWS);
+      need(SEVERITIES.includes(row[1]));
+      need(/^(0|[1-9][0-9]?)$/.test(row[2]) && evidence <=64);
+      need(STAGES.includes(row[3]));
+      need(row[4].length<=120 && row[5].length<=600 && row[6].length<=600);
+      need(row.every(field=>!control.test(field)));
+      need(row.slice(3).every(safeHuman));
+      next.push({ordinal, severity:row[1], evidence,
+                 stage:row[3],group:row[4],action:row[5],blocker:row[6]});
+      prior=ordinal;
+    }
+    need(next.length<=MAX_ROWS);
+    return next;
+  }
+  async function importFile(file) {
+    need(file && file.size>0 && file.size<=MAX_BYTES);
+    const decode = new TextDecoder("utf-8", {fatal:true});
+    const raw = decode.decode(await file.arrayBuffer()).replace(/^\uFEFF/,"");
+    const admitted=admit(parseCSV(raw));
+    if (dirty && !confirm("Replace your unsaved PRIVATE HUMAN edits? Download before replacing.")) return;
+    discardReply("Incoming HUMAN proposals cleared for new original worksheet.");
+    rows=admitted;originalName=file.name;sourceSize=file.size;
+    page=0;dirty=false;lastBulk=null;sourceFileSha="";
+    $("severityFilter").value="all";$("stageFilter").value="all";
+    $("query").value="";$("groupFilter").value="all";
+    $("workroom").hidden=false;
+    $("sourceName").textContent=file.name;
+    $("sourceStatus").textContent=rows.length+" anonymous original ordinals. Original target, title, run, evidence and authentication are NOT supplied to this editor.";
+    render();
+    message("PRIVATE worksheet admitted in memory only. No source authenticity or HUMAN identity proved.");
+  }
+  function visibleRows() {
+    const sev=$("severityFilter").value, stage=$("stageFilter").value;
+    const group=$("groupFilter").value;
+    const query=$("query").value.trim().toLocaleLowerCase();
+    return rows.filter(x=>(sev==="all" || x.severity===sev) &&
+      (stage==="all" || (x.stage||"needs_review")===stage) &&
+      (group==="all" || (group==="unassigned"?x.group==="":x.group===group)) &&
+      (!query || [String(x.ordinal),x.group,x.action,x.blocker].some(v=>v.toLocaleLowerCase().includes(query))));
+  }
+  function counts() {
+    const severity=Object.fromEntries(SEVERITIES.map(s=>[s,0]));
+    const stage=Object.fromEntries(STAGES.slice(1).map(s=>[s,0]));
+    const group=Object.create(null);
+    let blockers=0, actions=0, ownerMissing=0;
+    rows.forEach(r=>{
+      severity[r.severity]++;
+      stage[r.stage||"needs_review"]++;
+      group[r.group||"unassigned"]=(group[r.group||"unassigned"]||0)+1;
+      blockers+=Number(!!r.blocker.trim());actions+=Number(!!r.action.trim());
+      ownerMissing+=Number(!r.group.trim());
+    });
+    return {severity,stage,group,blockers,actions,ownerMissing};
+  }
+  function drawSummary() {
+    const data=counts();
+    const pct = rows.length?Math.round(100*(rows.length-data.stage.needs_review)/rows.length):0;
+    $("summary").replaceChildren();
+    const cards=[
+      ["Original ordinals",rows.length],["Human stages progressed",pct+"%"],
+      ["Source high / critical",data.severity.high+data.severity.critical],
+      ["Human blockers",data.blockers],["Owner/group missing",data.ownerMissing],
+      ["Actions proposed",data.actions]
+    ];
+    cards.forEach(([label,value])=>{
+      const item=document.createElement("div");item.className="stat";
+      const l=document.createElement("small");l.textContent=label;
+      const v=document.createElement("strong");v.textContent=String(value);
+      item.append(l,v);$("summary").append(item);
+    });
+    $("completionFill").style.width=pct+"%";
+    const groups=Object.keys(data.group).sort();
+    const old=$("groupFilter").value;
+    $("groupFilter").replaceChildren();
+    [["all","All groups"],["unassigned","Unassigned"],...groups
+      .filter(s=>s!=="unassigned").map(s=>[s,s])].forEach(([v,label])=>{
+      const opt=new Option(label,v);$("groupFilter").add(opt);
+    });
+    $("groupFilter").value=groups.includes(old)||old==="all"||old==="unassigned"?old:"all";
+    $("dirtyStatus").textContent=dirty?"Unsaved HUMAN changes · PRIVATE":"In-memory PRIVATE worksheet · no pending edits";
+  }
+  function td(text,tag="td") {
+    const c=document.createElement(tag);c.textContent=txt(text);return c;
+  }
+  function changeRow(row,key,value,field) {
+    value=txt(value);
+    if ((key==="group"&&value.length>120) ||
+        ((key==="action"||key==="blocker")&&value.length>600) ||
+        control.test(value) || !safeHuman(value) ||
+        (key==="stage"&&!STAGES.includes(value))) {
+      field.value=row[key];message("Unsafe or overlong PRIVATE HUMAN field rejected. No export mutation.",true);return;
+    }
+    discardReply("Incoming HUMAN proposals invalidated by local edit. Re-open to compare.");
+    row[key]=value;lastBulk=null;dirty=true;render();
+    message("Edited local HUMAN proposal only. Download PRIVATE CSV to retain this change.");
+  }
+  function inputCell(row,key,textarea=false) {
+    const c=document.createElement("td"), field=document.createElement(textarea?"textarea":"input");
+    if (key==="stage") {
+      const select=document.createElement("select");
+      STAGES.forEach(s=>select.add(new Option(s||"needs_review (blank)",s)));
+      select.value=row.stage;select.setAttribute("aria-label","Stage for ordinal "+row.ordinal);
+      select.addEventListener("change",()=>changeRow(row,"stage",select.value,select));
+      c.append(select);return c;
+    }
+    field.value=row[key];
+    field.maxLength=key==="group"?120:600;
+    field.setAttribute("aria-label",key+" for ordinal "+row.ordinal);
+    if (!textarea) field.placeholder="group (human only)";
+    else {field.rows=2;field.placeholder=key==="action"?"Human next action":"Human uncertainty / blocker";}
+    field.addEventListener("change",()=>changeRow(row,key,field.value,field));
+    c.append(field);return c;
+  }
+  function render() {
+    drawSummary();
+    const visible=visibleRows(), pages=Math.max(1,Math.ceil(visible.length/PAGE));
+    page=Math.min(Math.max(0,page),pages-1);
+    $("displayCount").textContent=visible.length+" of "+rows.length+" original anonymous ordinals";
+    $("pageLabel").textContent="Page "+(page+1)+" / "+pages;
+    const body=$("tableBody");body.replaceChildren();
+    visible.slice(page*PAGE,(page+1)*PAGE).forEach(row=>{
+      const tr=document.createElement("tr");tr.id="original-"+row.ordinal;
+      tr.append(td("#"+row.ordinal,"th"),td(row.severity),td(row.evidence),
+                inputCell(row,"stage"),inputCell(row,"group"),
+                inputCell(row,"action",true),inputCell(row,"blocker",true));
+      body.append(tr);
+    });
+    if (!visible.length) {
+      const tr=document.createElement("tr"),cell=td("No matching PRIVATE HUMAN rows. Adjust local filters.");
+      cell.colSpan=7;tr.append(cell);body.append(tr);
+    }
+    $("prev").disabled=page===0;$("next").disabled=page>=pages-1;
+    $("undoBulk").disabled=!lastBulk;
+    $("saveCsv").disabled=rows.length===0;
+    $("saveCounts").disabled=rows.length===0;
+  }
+  function batch() {
+    const stage=$("bulkStage").value, group=$("bulkGroup").value;
+    const selected=visibleRows();
+    if (!selected.length) {message("No filtered rows to update.",true);return;}
+    if (stage==="unchanged"&&group==="") {message("Select a HUMAN change first.",true);return;}
+    if (group!==""&&group!=="__CLEAR__"&&(group.length>120||control.test(group)||!safeHuman(group))) {
+      message("Unsafe HUMAN group name (HOLD).",true);return;
+    }
+    if (!confirm("Apply HUMAN-only proposals to "+selected.length+" visible rows? Original source, evidence and permissions remain untouched."))return;
+    const snapshot=selected.map(r=>({ordinal:r.ordinal,stage:r.stage,group:r.group}));
+    selected.forEach(r=>{
+      if (stage!=="unchanged")r.stage=stage;
+      if (group!=="")r.group=group==="__CLEAR__"?"":group;
+    });
+    discardReply("Incoming HUMAN proposals invalidated by local batch edit. Re-open to compare.");
+    lastBulk=snapshot;dirty=true;page=0;render();
+    message("Batch HUMAN change applied locally to "+selected.length+" filtered original ordinals. Single-step Undo available.");
+  }
+  function undoBulk() {
+    if (!lastBulk) return;
+    const index=new Map(rows.map(r=>[r.ordinal,r]));
+    lastBulk.forEach(old=>{
+      const row=index.get(old.ordinal);
+      if (row){row.stage=old.stage;row.group=old.group;}
+    });
+    discardReply("Incoming HUMAN proposals invalidated by local Undo. Re-open to compare.");
+    lastBulk=null;dirty=true;render();message("Last HUMAN batch edit reverted in memory.");
+  }
+  function download(name,content,type) {
+    const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=name;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2500);
+  }
+  function csvOut() {
+    return HEAD.join(",")+"\r\n"+rows.map(r=>[
+      String(r.ordinal),r.severity,String(r.evidence),r.stage,r.group,r.action,r.blocker
+    ].map(quote).join(",")).join("\r\n")+(rows.length?"\r\n":"");
+  }
+  function exportCsv() {
+    if (!rows.length)return;
+    const serial=csvOut();
+    if (new TextEncoder().encode(serial).length>MAX_BYTES) {
+      message("Export exceeds original PRIVATE 1 MiB human CSV limit (HOLD).",true);return;
+    }
+    if (!confirm("Save PRIVATE human notes + immutable original row ordinals? Do not share publicly; this is NOT authorization."))return;
+    download("lightup-private-human-followup.csv",serial,"text/csv;charset=utf-8");
+    dirty=false;render();message("PRIVATE HUMAN CSV prepared. Re-import through original human_return.py with unchanged original source + manifest.");
+  }
+  function exportCounts() {
+    const data=counts();
+    const summary={schema:"lightup.private_human_ordinal_counts.v1",
+      status:"REVIEW_ONLY",scope:"unverified_original_ordinal_worksheet",
+      declared_original_ordinal_count:rows.length,
+      source_reported_severity_counts:data.severity,
+      human_self_reported_stage_counts:data.stage,
+      human_self_reported_group_counts:Object.values(data.group).reduce((a,v)=>a+v,0),
+      human_blocker_count:data.blockers, human_next_action_count:data.actions,
+      human_group_missing_count:data.ownerMissing,
+      original_source_verified:false,human_identity_authenticated:false,
+      client_consent_verified:false,operator_consent_verified:false,
+      authorization_granted:false,dispatch_allowed:false,release_allowed:false};
+    if (!confirm("Export numeric-only HUMAN totals? Aggregates may still be sensitive."))return;
+    download("lightup-private-human-counts.json",JSON.stringify(summary,null,2)+"\n","application/json");
+    message("PRIVATE numeric-only HUMAN counts exported; no original names/targets/notes/hashes included.");
+  }
+  function forget() {
+    if ((dirty||rows.length) && !confirm("Forget all local PRIVATE worksheet data? Downloaded files are unaffected.")) return;
+    discardReply("Incoming HUMAN proposal cleared.");
+    rows=[];dirty=false;lastBulk=null;sourceSize=0;originalName="";sourceFileSha="";
+    // Forget must clear staged file handles and typed passphrases too, even if
+    // a user typed credentials but never started the encrypt/decrypt action.
+    ["fileInput","encryptedInput","encryptPass","encryptPassConfirm","decryptPass"].forEach(id=>{
+      $(id).value="";
+    });
+    $("workroom").hidden=true;
+    $("tableBody").replaceChildren();
+    $("summary").replaceChildren();
+    $("completionFill").style.width="0%";
+    $("sourceName").textContent="PRIVATE worksheet";
+    $("sourceStatus").textContent="";
+    $("displayCount").textContent="";
+    $("pageLabel").textContent="";
+    $("dirtyStatus").textContent="";
+    $("replyPage").textContent="";
+    message("Private workroom, staged file handles and passphrase fields cleared from application memory (best effort). Downloaded files remain on disk.");
+  }
+  /* Independent HUMAN peer worksheet inbox (not producer or reviewer authentication). */
+  function discardReply(reason="Incoming HUMAN proposals discarded.") {
+    incoming=null;
+    $("replyBoard").hidden=true;
+    $("replyRows").replaceChildren();
+    $("replyInput").value="";
+    $("replyStatus").textContent=reason;
+    $("replyStatus").dataset.error="false";
+  }
+  function replyVisible() {
+    if (!incoming)return [];
+    return incoming.changes.slice(incoming.page*PAGE,(incoming.page+1)*PAGE);
+  }
+  function renderReply() {
+    if (!incoming) return;
+    const list=incoming.changes,selected=list.filter(c=>c.checked).length;
+    $("replyBoard").hidden=list.length===0;
+    $("replyRows").replaceChildren();
+    replyVisible().forEach(item=>{
+      const tr=document.createElement("tr");
+      const tdCheckbox=document.createElement("td"),box=document.createElement("input");
+      box.type="checkbox";box.checked=item.checked;
+      box.setAttribute("aria-label","Select incoming human "+item.field+
+        " for original ordinal "+item.ordinal);
+      box.addEventListener("change",()=>{item.checked=box.checked;renderReply();});
+      tdCheckbox.append(box);tr.append(tdCheckbox);
+      tr.append(td("#"+item.ordinal),td(item.field));
+      const before=td(item.before||"(empty)"),after=td(item.after||"(empty)");
+      before.className="peerValue";after.className="peerValue peerAfter";
+      tr.append(before,after);$("replyRows").append(tr);
+    });
+    const pages=Math.max(1,Math.ceil(list.length/PAGE));
+    $("replyPage").textContent="Page "+(incoming.page+1)+"/"+pages+" · "+selected+
+      " of "+list.length+" human fields selected";
+    $("replyPrev").disabled=incoming.page===0;
+    $("replyNext").disabled=incoming.page>=pages-1;
+    $("acceptReply").disabled=selected===0;
+    $("replyStatus").textContent=list.length
+      ? list.length+" changed HUMAN fields in PRIVATE incoming worksheet; "+
+        selected+" selected. No source or permission records modified."
+      : "Incoming PRIVATE HUMAN worksheet is identical in allowed fields. No changes to import.";
+    $("replyStatus").dataset.error="false";
+  }
+  async function previewReply() {
+    const file=$("replyInput").files[0];
+    need(rows.length>0 && file && file.size>0 && file.size<=MAX_BYTES);
+    const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer())
+      .replace(/^\uFEFF/,"");
+    const proposed=admit(parseCSV(raw));
+    need(proposed.length===rows.length);
+    const changed=[];
+    rows.forEach((row,i)=>{
+      const other=proposed[i];
+      need(row.ordinal===other.ordinal && row.severity===other.severity &&
+        row.evidence===other.evidence);
+      for (const field of ["stage","group","action","blocker"]) {
+        const before=row[field],after=other[field];
+        if(before!==after)changed.push({ordinal:row.ordinal,idx:i,field,
+                                      before,after,checked:false});
+      }
+    });
+    need(changed.length<=MAX_ROWS*4);
+    incoming={filename:file.name,changes:changed,page:0,
+      baseline:rows.map(r=>({stage:r.stage,group:r.group,
+                            action:r.action,blocker:r.blocker}))};
+    renderReply();
+    message("PRIVATE peer proposal compared with matching original ordinal metadata. Human identity NOT authenticated.");
+  }
+  function applyReply() {
+    if (!incoming) return;
+    const selected=incoming.changes.filter(c=>c.checked);
+    if (!selected.length){message("No incoming HUMAN fields selected.",true);return;}
+    // Every baseline HUMAN field must be unchanged, even if not selected:
+    // never silently reconcile incoming values against a mutated snapshot.
+    for(let i=0;i<rows.length;i++){
+      const row=rows[i],baseline=incoming.baseline[i];
+      if(!baseline||["stage","group","action","blocker"].some(k=>row[k]!==baseline[k])){
+        discardReply("HOLD: local HUMAN worksheet changed since incoming preview.");
+        message("Source changed since incoming preview; re-open incoming CSV before accepting.",true);
+        return;
+      }
+    }
+    if(!confirm("Accept exactly "+selected.length+" selected HUMAN field proposals? Peer identity, source producer, current consent and security outcomes are NOT authenticated."))return;
+    selected.forEach(c=>{rows[c.idx][c.field]=c.after;});
+    discardReply("Selected HUMAN fields applied in memory. Download PRIVATE original-format CSV to retain.");
+    lastBulk=null;dirty=true;page=0;render();
+    message("Selected HUMAN proposals applied locally only. No original source, grant or evidence changed.");
+  }
+  /* Optional PRIVATE local encrypted HUMAN-only CSV. No source/auth/consent claims. */
+  const VAULT_SCHEMA="lightup.private_human_ordinal_csv_v1";
+  const VAULT_CONTEXT=new TextEncoder().encode("LIGHTUP PRIVATE HUMAN ORDINAL CSV v1 / REVIEW ONLY");
+  const VAULT_FIELDS=["schema","status","kdf","iterations","cipher","salt_b64",
+    "nonce_b64","encrypted_csv_b64","source_authenticated","human_identity_authenticated",
+    "consent_verified","authorization_granted","dispatch_allowed","release_allowed"];
+  function cryptoReady() {
+    need(!!(globalThis.crypto&&crypto.subtle&&crypto.getRandomValues));
+  }
+  function toB64(bytes) {
+    let str="";
+    for(let i=0;i<bytes.length;i+=8192)
+      str+=String.fromCharCode(...bytes.subarray(i,i+8192));
+    return btoa(str);
+  }
+  function fromB64(text,max) {
+    need(typeof text==="string" && text.length<=Math.ceil(max/3)*4+4 &&
+      /^[A-Za-z0-9+/]*={0,2}$/.test(text) && text.length%4===0);
+    let raw;
+    try{raw=atob(text);}catch(_){need(false);}
+    need(raw.length<=max);
+    const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+    need(toB64(bytes)===text);
+    return bytes;
+  }
+  async function deriveKey(password,salt) {
+    cryptoReady();
+    need(typeof password==="string" && password.length>=12&&password.length<=256);
+    const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),
+      "PBKDF2",false,["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},
+      base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  }
+  async function saveEncrypted() {
+    if (!rows.length) {message("Open a PRIVATE human worksheet first.",true);return;}
+    const pass=$("encryptPass").value,repeated=$("encryptPassConfirm").value;
+    try {
+      cryptoReady();
+      need(pass===repeated && pass.length>=12 && pass.length<=256);
+      const originalBytes=new TextEncoder().encode(csvOut());
+      need(originalBytes.byteLength<=MAX_BYTES);
+      if (!confirm("Encrypt the current PRIVATE HUMAN worksheet locally? Password loss means permanent loss of access. This encryption does NOT authenticate original findings or grant authority.")) return;
+      const salt=crypto.getRandomValues(new Uint8Array(16));
+      const nonce=crypto.getRandomValues(new Uint8Array(12));
+      const key=await deriveKey(pass,salt);
+      const encrypted=new Uint8Array(await crypto.subtle.encrypt(
+        {name:"AES-GCM",iv:nonce,additionalData:VAULT_CONTEXT,tagLength:128},
+        key,originalBytes));
+      const packet={schema:VAULT_SCHEMA,status:"REVIEW_ONLY",kdf:"PBKDF2-HMAC-SHA256",
+        iterations:310000,cipher:"AES-256-GCM",salt_b64:toB64(salt),
+        nonce_b64:toB64(nonce),encrypted_csv_b64:toB64(encrypted),
+        source_authenticated:false,human_identity_authenticated:false,
+        consent_verified:false,authorization_granted:false,
+        dispatch_allowed:false,release_allowed:false};
+      download("lightup-private-human-worksheet.luhw",JSON.stringify(packet,null,2)+"\n",
+        "application/json");
+      dirty=false;render();
+      message("Encrypted HUMAN-only CSV downloaded. PRIVATE passphrase is not recoverable. Original lab source is NOT included.");
+    } catch(_){message("Encrypted export unavailable or refused (HOLD). No output published.",true);}
+    finally {$("encryptPass").value="";$("encryptPassConfirm").value="";}
+  }
+  async function loadEncrypted() {
+    const input=$("encryptedInput"),file=input.files[0],pass=$("decryptPass").value;
+    try{
+      cryptoReady();
+      need(file&&file.size>0&&file.size<=2*1024*1024);
+      need(pass.length>=12&&pass.length<=256);
+      const outer=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(await file.arrayBuffer());
+      need(outer.charCodeAt(0)!==0xfeff);
+      const envelope=JSON.parse(outer);
+      need(envelope&&typeof envelope==="object"&&!Array.isArray(envelope) &&
+        Object.keys(envelope).sort().join(",")===VAULT_FIELDS.slice().sort().join(","));
+      // Strict canonical serializer also rejects duplicate top-level keys and
+      // all unrecognized/alternate JSON representations before cryptography.
+      need(outer===JSON.stringify(envelope,null,2)+"\n");
+      need(envelope.schema===VAULT_SCHEMA&&envelope.status==="REVIEW_ONLY"&&
+        envelope.kdf==="PBKDF2-HMAC-SHA256"&&envelope.iterations===310000&&
+        envelope.cipher==="AES-256-GCM");
+      need(["source_authenticated","human_identity_authenticated","consent_verified",
+        "authorization_granted","dispatch_allowed","release_allowed"]
+        .every(flag=>envelope[flag]===false));
+      const salt=fromB64(envelope.salt_b64,16),
+            nonce=fromB64(envelope.nonce_b64,12),
+            encrypted=fromB64(envelope.encrypted_csv_b64,MAX_BYTES+16);
+      need(salt.length===16&&nonce.length===12&&encrypted.length>=16);
+      const key=await deriveKey(pass,salt);
+      const raw=await crypto.subtle.decrypt(
+        {name:"AES-GCM",iv:nonce,additionalData:VAULT_CONTEXT,tagLength:128},
+        key,encrypted);
+      need(raw.byteLength>0&&raw.byteLength<=MAX_BYTES);
+      const plaintext=new TextDecoder("utf-8",{fatal:true}).decode(raw);
+      const admitted=admit(parseCSV(plaintext));
+      if (dirty && !confirm("Replace unsaved PRIVATE HUMAN edits with decrypted worksheet?"))return;
+      discardReply("Incoming proposal cleared for newly opened encrypted original HUMAN worksheet.");
+      rows=admitted;originalName=file.name;sourceSize=file.size;dirty=false;lastBulk=null;page=0;
+      $("severityFilter").value="all";$("stageFilter").value="all";
+      $("query").value="";$("groupFilter").value="all";
+      $("workroom").hidden=false;
+      $("sourceName").textContent=file.name;
+      $("sourceStatus").textContent=rows.length+
+        " ordinal HUMAN entries decrypted in browser memory. Original targets/evidence not included. Producer and consent not authenticated.";
+      render();message("PRIVATE encrypted HUMAN worksheet admitted in memory. No source, client or operator authority proved.");
+    }catch(_){message("Encrypted file refused (HOLD): wrong password, unsupported envelope, invalid original format or crypto unavailable. Existing local data retained.",true);}
+    finally{$("decryptPass").value="";input.value="";}
+  }
+  $("load").addEventListener("click",async()=>{
+    try{await importFile($("fileInput").files[0]);}
+    catch(_){message("PRIVATE worksheet rejected (HOLD); existing in-memory work retained.",true);}
+  });
+  ["severityFilter","stageFilter","groupFilter","query"].forEach(id=>{
+    $(id).addEventListener(id==="query"?"input":"change",()=>{page=0;render();});
+  });
+  $("prev").addEventListener("click",()=>{page--;render();});
+  $("next").addEventListener("click",()=>{page++;render();});
+  $("applyBulk").addEventListener("click",batch);
+  $("undoBulk").addEventListener("click",undoBulk);
+  $("saveCsv").addEventListener("click",exportCsv);
+  $("saveCounts").addEventListener("click",exportCounts);
+  $("forget").addEventListener("click",forget);
+  $("previewReply").addEventListener("click",async()=>{
+    try{await previewReply();}
+    catch(_){
+      $("replyStatus").dataset.error="true";
+      $("replyStatus").textContent="HOLD: PRIVATE incoming worksheet is invalid or has different original row membership. Existing local HUMAN work and any prior preview remain unchanged.";
+    }
+  });
+  $("replyPrev").addEventListener("click",()=>{if(incoming){incoming.page--;renderReply();}});
+  $("replyNext").addEventListener("click",()=>{if(incoming){incoming.page++;renderReply();}});
+  $("selectVisibleReply").addEventListener("click",()=>{
+    if(!incoming)return;
+    const list=replyVisible();
+    if(list.length&&confirm("Select "+list.length+" currently visible HUMAN fields for explicit acceptance? No source authority is inferred.")){
+      list.forEach(c=>c.checked=true);renderReply();
+    }
+  });
+  $("clearReplySelections").addEventListener("click",()=>{
+    if(incoming){incoming.changes.forEach(c=>c.checked=false);renderReply();}
+  });
+  $("acceptReply").addEventListener("click",applyReply);
+  $("discardReply").addEventListener("click",()=>discardReply());
+  $("saveEncrypted").addEventListener("click",saveEncrypted);
+  $("loadEncrypted").addEventListener("click",loadEncrypted);
+  addEventListener("beforeunload",e=>{if (dirty){e.preventDefault();e.returnValue="";}});
+  message("Load an existing PRIVATE original ordinal worksheet. Nothing is uploaded or stored by this application.");
+})();</script></body>
+</html>
