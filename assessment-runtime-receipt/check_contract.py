@@ -137,6 +137,12 @@ def run() -> None:
         wrong_digest = "0" * 64 if first_digest != "0" * 64 else "1" * 64
         mismatch = receipt.inspect(str(first_path), wrong_digest)
         assert_anonymous_single(mismatch, mismatch=True)
+        assert_anonymous_single(receipt.inspect(str(first_path), "not-a-digest"))
+        assert_anonymous_single(receipt.inspect(os.fsencode(first_path), first_digest))
+        assert_anonymous_single(receipt.inspect(str(first_path) + chr(0), first_digest))
+        assert_anonymous_single(receipt.inspect(str(first_path) + r"\\x00", first_digest))
+        assert_anonymous_single(receipt.inspect(f"{root}/../{root.name}/first.json", first_digest))
+        assert_anonymous_single(receipt.inspect(str(first_path) + "x" * 4096, first_digest))
 
         duplicate_key_path = root / "duplicate-key.json"
         duplicate_key = (
