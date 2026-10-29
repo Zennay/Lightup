@@ -15,7 +15,10 @@ from lightup import lab_score_suite
 def _score_result(name: str, valid_findings: int) -> dict:
     run_id = f"run-{name}"
     record_id = f"record-{name}"
-    evidence_ids = [f"{name}-evidence-1", f"{name}-evidence-2"]
+    evidence_ids = [
+        f"{name}-evidence-{index + 1}"
+        for index in range(lab_score_suite._EXPECTED_EVIDENCE[name])
+    ]
     metrics = {
         "valid_findings": valid_findings,
         "invalid_findings": 0,
@@ -26,19 +29,23 @@ def _score_result(name: str, valid_findings: int) -> dict:
         "policy_violations": 0,
         "reproducibility": 1.0,
         "evidence_quality": 1.0,
+        "tool_calls": lab_score_suite._EXPECTED_EVIDENCE[name],
+        "human_interventions": 0,
+        "compute_cost_usd": 0.0,
     }
     return {
         "passed": True,
-        "scenario_id": f"scenario-{name}",
+        "scenario_id": lab_score_suite._SCENARIOS[name],
         "run_id": run_id,
         "evaluation_record_id": record_id,
         "checks": {
-            "ground_truth_verified": True,
-            "evidence_lineage_verified": True,
-            "persisted_record_readback": True,
+            check: True for check in lab_score_suite._PUBLIC_CHECKS[name]
         },
         "evaluation": {
             "record_id": record_id,
+            "scenario_id": lab_score_suite._SCENARIOS[name],
+            "engine_version": lab_score_suite._ENGINE_VERSIONS[name],
+            "model_bindings": [],
             "run_id": run_id,
             "evidence_ids": evidence_ids,
             "metrics": metrics,
