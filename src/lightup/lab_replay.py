@@ -300,25 +300,37 @@ def _require_private_artifact(path: Path, *, directory: bool) -> os.stat_result:
     return info
 
 
+def _require_safe_store_path(path: Path) -> None:
+    """Reject symlink and writable-parent redirection of the private store."""
+    temporary_directories = {Path(tempfile.gettempdir()), Path("/tmp"), Path("/var/tmp")}
+    for candidate in (*reversed(path.parents), path):
+        try:
+            info = os.lstat(candidate)
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode):
+            raise PermissionError("store path must not contain symlink components")
+        if candidate == path:
+            continue
+        if not stat.S_ISDIR(info.st_mode):
+            raise PermissionError("store path ancestors must be directories")
+        mode = stat.S_IMODE(info.st_mode)
+        if mode & 0o022:
+            safe_sticky_temporary = (
+                candidate in temporary_directories
+                and info.st_uid == 0
+                and bool(mode & stat.S_ISVTX)
+            )
+            if not safe_sticky_temporary:
+                raise PermissionError("store path ancestor must not be group/other writable")
+
+
 def _prepare_store_dir(raw_path: str) -> Path:
     path = Path(os.path.abspath(Path(raw_path).expanduser()))
-    # Do not let a symlinked parent silently redirect a supposedly private store.
-    for candidate in (*reversed(path.parents), path):
-        try:
-            info = os.lstat(candidate)
-        except FileNotFoundError:
-            continue
-        if stat.S_ISLNK(info.st_mode):
-            raise PermissionError("store path must not contain symlink components")
+    _require_safe_store_path(path)
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    for candidate in (*reversed(path.parents), path):
-        try:
-            info = os.lstat(candidate)
-        except FileNotFoundError:
-            continue
-        if stat.S_ISLNK(info.st_mode):
-            raise PermissionError("store path must not contain symlink components")
-    info = _require_private_artifact(path, directory=True)
+    _require_safe_store_path(path)
+    _require_private_artifact(path, directory=True)
     return path.resolve()
 
 
