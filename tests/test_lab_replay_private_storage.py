@@ -153,6 +153,30 @@ class PrivateReplayStorageContract(unittest.TestCase):
                 _verify_database_lineage(bundle, receipt)
 
 
+    def test_state_store_rejects_non_loopback_producer_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary)
+            receipt, _receipt_bytes, _digest = _build_replay(bundle)
+            state_path = bundle / "state.sqlite3"
+            with sqlite3.connect(state_path) as state:
+                row = state.execute(
+                    "SELECT evidence_id,metadata_json FROM evidence "
+                    "WHERE source='lab-http-baseline' LIMIT 1"
+                ).fetchone()
+            self.assertIsNotNone(row)
+            evidence_id, raw_metadata = row
+            metadata = json.loads(raw_metadata)
+            metadata["asset"] = "http://example.com/"
+            with sqlite3.connect(state_path) as state:
+                state.execute(
+                    "UPDATE evidence SET metadata_json=? WHERE evidence_id=?",
+                    (_canonical(metadata).decode("utf-8"), evidence_id),
+                )
+            with self.assertRaisesRegex(
+                RuntimeError, "producer evidence target is not the loopback fixture"
+            ):
+                _verify_database_lineage(bundle, receipt)
+
     def test_state_store_rejects_unreferenced_foreign_source_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             bundle = Path(temporary)
