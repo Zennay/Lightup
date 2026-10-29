@@ -30,6 +30,15 @@ _SCENARIOS = {
     "tls_baseline": "lab-tls-baseline-self-signed-loopback",
     "http_baseline": "lab-web-baseline-security-headers-loopback",
 }
+# Source-defined capability/kind/tool triplets, never inferred from report claims.
+_EVIDENCE_PROVENANCE = {
+    "service_inventory": ("network-services", "service-inventory-observation",
+                          "lab-service-inventory", 2),
+    "tls_baseline": ("cryptography", "tls-baseline-observation",
+                     "lab-tls-baseline", 2),
+    "http_baseline": ("web-baseline", "http-baseline-observation",
+                      "lab-http-baseline", 4),
+}
 _FILES = {"report.json", *(name + ".sqlite3" for name in _EXPECTED_FINDINGS)}
 _TEMP_ROOTS = {"/tmp", "/var/tmp", "/dev/shm"}
 _MAX_REPORT = 1024 * 1024
@@ -114,7 +123,7 @@ def _artifact_fd(directory: int, name: str, maximum: int) -> int:
                 or info.st_uid != os.geteuid()
                 or info.st_nlink != 1
                 or info.st_size < 1 or info.st_size > maximum
-                or stat.S_IMODE(info.st_mode) & 0o022):
+                or stat.S_IMODE(info.st_mode) & 0o077):
             raise PermissionError("unsafe private artifact")
         return fd
     except BaseException:
@@ -130,6 +139,7 @@ def _verify_database(fd: int, name: str, summary: dict[str, Any]) -> dict[str, A
     with closing(sqlite3.connect(database_uri, uri=True, timeout=2)) as con:
         con.row_factory = sqlite3.Row
         con.execute("PRAGMA query_only=ON")
+        con.execute("PRAGMA trusted_schema=OFF")
         integrity = con.execute("PRAGMA integrity_check(1)").fetchone()
         if not integrity or integrity[0] != "ok":
             raise ValueError("SQLite integrity failed")
@@ -157,26 +167,40 @@ def _verify_database(fd: int, name: str, summary: dict[str, Any]) -> dict[str, A
                 or record.get("scenario_id") != _SCENARIOS[name]):
             raise ValueError("persisted evaluation identity mismatch")
         evidence_ids = record.get("evidence_ids")
-        if not isinstance(evidence_ids, list):
-            raise ValueError("invalid evidence references")
-        if con.execute("SELECT COUNT(*) FROM evidence").fetchone()[0] != len(evidence_ids):
+        capability, kind, source, expected_count = _EVIDENCE_PROVENANCE[name]
+        if (type(evidence_ids) is not list
+                or len(evidence_ids) != expected_count
+                or len(set(evidence_ids)) != expected_count):
+            raise ValueError("invalid source-defined evidence references")
+        if con.execute("SELECT COUNT(*) FROM evidence").fetchone()[0] != expected_count:
             raise ValueError("unexpected persisted evidence rows")
         for evidence_id in evidence_ids:
             if _public_identifier(evidence_id) is None:
                 raise ValueError("unsafe evidence identifier")
             evidence = con.execute(
-                "SELECT run_id,sha256,metadata_json FROM evidence WHERE evidence_id=?",
+                "SELECT run_id,capability_id,kind,source,sha256,metadata_json "
+                "FROM evidence WHERE evidence_id=?",
                 (evidence_id,),
             ).fetchone()
             if (evidence is None or evidence["run_id"] != row["run_id"]
+                    or evidence["capability_id"] != capability
+                    or evidence["kind"] != kind or evidence["source"] != source
                     or not isinstance(evidence["sha256"], str)
                     or len(evidence["sha256"]) != 64
                     or any(c not in "0123456789abcdef" for c in evidence["sha256"])):
-                raise ValueError("broken persisted evidence lineage")
+                raise ValueError("broken persisted evidence provenance")
             metadata = evidence["metadata_json"].encode("utf-8")
             if len(metadata) > 65536:
                 raise ValueError("oversized evidence metadata")
-            _json_object(metadata, canonical="compact")
+            source_metadata = _json_object(metadata, canonical="compact")
+            if any(source_metadata.get(key) != expected for key, expected in {
+                "is_lab": "true",
+                "asset": "127.0.0.1",
+                "client_id": "lab",
+                "engagement_id": _SCENARIOS[name],
+                "mode": "lab_autonomous",
+            }.items()):
+                raise ValueError("evidence is not from the original loopback lab")
         recomputed = _summarize_result(
             name,
             name + ".sqlite3",
