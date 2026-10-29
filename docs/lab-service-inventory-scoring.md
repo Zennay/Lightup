@@ -27,4 +27,4 @@ The record is written to the SQLite database through `StateStore.add_lab_evaluat
 
 The fixture binds only to IPv4 loopback. The target is hard-coded and not accepted from CLI arguments. The worker is registered in a fresh `ToolRegistry` and invoked through `ToolExecutor` in a `LabScenario`/lab `RunContext`, so the ordinary policy gate and worker-side lab-target validation both remain in force. No model provider, external network, real target, authorization grant, scan, or deployment is involved.
 
-The closed-port control is checked immediately before the scan, but another local process could still claim that port in the small interval before observation; if so, the command reports an invalid finding rather than silently accepting the result.
+The closed-port control is checked during fixture setup, but another local process could still claim that port before or during either observation; if so, the command reports an invalid finding rather than silently accepting the result.
