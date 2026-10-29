@@ -15,6 +15,7 @@ import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlsplit
 from typing import Any
 
 from .domain import AccessContext, DomainStore, Role
@@ -421,6 +422,7 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
     exposed_evidence_ids: list[str] = []
     baseline_run_ids: dict[str, str] = {}
     retest_run_ids: set[str] = set()
+    producer_run_ids: set[str] = set()
     exposed_sha = next(
         item["evidence_sha256"] for item in receipt["profiles"]
         if item["profile_id"] == "exposed"
@@ -431,7 +433,7 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
             "FROM evidence"
         ).fetchall()
         for evidence_id, run_id, capability_id, kind, source, sha, raw_meta in rows:
-            if source != "lightup.lab_replay":
+            if source not in {"lightup.lab_replay", "lab-http-baseline"}:
                 raise RuntimeError("StateStore contains unexpected evidence source")
             if capability_id != http_baseline.CAPABILITY_ID:
                 raise RuntimeError("StateStore evidence capability does not match fixture catalog")
@@ -439,6 +441,31 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
             if (not isinstance(meta, dict)
                     or _canonical(meta).decode("utf-8") != raw_meta):
                 raise RuntimeError("StateStore evidence metadata is invalid or non-canonical")
+            if source == "lab-http-baseline":
+                if kind != "http-baseline-observation" or meta.get("is_lab") != "true":
+                    raise RuntimeError("StateStore producer evidence is invalid")
+                asset = meta.get("asset")
+                try:
+                    parsed_asset = urlsplit(asset) if isinstance(asset, str) else None
+                    valid_loopback_asset = (
+                        parsed_asset is not None
+                        and parsed_asset.scheme == "http"
+                        and parsed_asset.hostname == "127.0.0.1"
+                        and parsed_asset.port is not None
+                        and parsed_asset.path == "/"
+                        and not parsed_asset.query
+                        and not parsed_asset.fragment
+                        and parsed_asset.username is None
+                        and parsed_asset.password is None
+                    )
+                except ValueError:
+                    valid_loopback_asset = False
+                if not valid_loopback_asset:
+                    raise RuntimeError("StateStore producer evidence target is not the loopback fixture")
+                if run_id in producer_run_ids:
+                    raise RuntimeError("StateStore producer evidence run is duplicated")
+                producer_run_ids.add(run_id)
+                continue
             if kind == "fixture-baseline-observation":
                 if set(meta) != {"profile_id", "fixture_sha256"}:
                     raise RuntimeError("baseline StateStore metadata is invalid")
@@ -463,6 +490,8 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
         raise RuntimeError("StateStore baseline run set does not match receipt")
     if len(set(baseline_run_ids.values())) != len(baseline_run_ids):
         raise RuntimeError("StateStore baseline profiles share a run identity")
+    if producer_run_ids != set(baseline_run_ids.values()):
+        raise RuntimeError("StateStore producer evidence run set does not match baseline receipt")
     if retest_run_ids != {baseline_run_ids["exposed"]}:
         raise RuntimeError("StateStore retest evidence is not bound to exposed baseline run")
     if (len(state_records) != len(expected_state_evidence)
