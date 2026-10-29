@@ -2356,9 +2356,9 @@ class LightUpWebApp:
             '<section class="card"><div class="row">'
             f'<strong>{_e(item.name)}</strong>'
             f'<span class="badge warn">{_e(item.scope_record_state.replace("_", " ").lower())}</span></div>'
-            f'<p class="meta">Risk reviews awaiting decision: {item.pending_elevations} · '
-            f'Separate blocking steps: {len(item.blockers)}</p>'
-            '<details><summary>Why this remains HOLD</summary>'
+            f'<p class="meta">Risk reviews awaiting a decision: {item.pending_elevations} · '
+            f'Steps still needed: {len(item.blockers)}</p>'
+            '<details><summary>Why testing is still locked</summary>'
             '<ul>' + "".join(
                 f'<li>{_e(reason)}</li>' for reason in item.blockers
             ) + '</ul></details>'
@@ -2369,12 +2369,14 @@ class LightUpWebApp:
         )
         scope_board = (
             '<section aria-labelledby="scope-board-heading">'
-            '<h2 id="scope-board-heading">Authorization is still on HOLD</h2>'
+            '<h2 id="scope-board-heading">Testing is not authorized yet</h2>'
             f'<p class="sub">{current_scope_count} of {len(scope_plan.engagements)} '
-            'engagements have a currently recorded request-bound scope grant; '
+            'engagements have a recorded scope grant; '
             f'{pending_risk_count} risk review(s) await a human decision. '
-            'A recorded grant is never independently verified client consent, '
-            'revocation-at-use or HUMAN GO. Execution stays OFF.</p>'
+            'A recorded grant alone does not prove that client consent is current ' 
+            'or that testing is allowed. Consent and revocation must be checked again ' 
+            'immediately before any action, and a human must give final approval. ' 
+            'Testing remains off.</p>'
             + (scope_rows or
                '<p class="empty">No engagements or scope grants recorded yet.</p>')
             + (f'<p><a href="/portal/{_e(client_id)}/authorization-plan">'
@@ -2432,7 +2434,7 @@ class LightUpWebApp:
         )
         follow_up_board = (
             '<section class="card" aria-labelledby="follow-up-heading">'
-            '<span class="badge warn">Recorded evidence · HUMAN action only</span>'
+            '<span class="badge warn">Recorded findings · human review only</span>'
             '<h2 id="follow-up-heading">First findings to review</h2>'
             f'<p>{len(human_followups)} unresolved recorded finding(s); '
             'regressions first, then severity. These records do not establish '
@@ -2488,8 +2490,8 @@ class LightUpWebApp:
             action_title = "Request reviewed — scope still locked"
             action_details = (
                 "An operator approved the request for scope review only. "
-                "Recorded scope, separate consent, revocation checks and HUMAN "
-                "GO are still required; no scan is available."
+                "The scope must still be validated. Current consent, a revocation "
+                "check immediately before any action, and separate human approval are also required. Testing is not available yet."
             )
             action_url = f"/portal/{_e(client_id)}/authorization-plan"
             action_label = "Check the read-only authorization plan"
@@ -2514,7 +2516,7 @@ class LightUpWebApp:
             action_label = "Prepare a security assessment request"
         next_action = (
             '<section class="card next-action" aria-labelledby="next-step-heading">'
-            '<span class="badge lock">PLAN ONLY · testing locked</span>'
+            '<span class="badge lock">Testing is not authorized</span>'
             f'<h2 id="next-step-heading">{_e(action_title)}</h2>'
             f'<p>{_e(action_details)}</p>'
             f'<p><a href="{action_url}">{_e(action_label)}</a></p>'
@@ -2528,7 +2530,7 @@ class LightUpWebApp:
             '<a href="#requests-history-heading"><strong>Requests</strong>'
             f'<span>{len(pending)} awaiting human review · {len(requests)} total</span></a>'
             '<a href="#scope-board-heading"><strong>Scope &amp; safety</strong>'
-            f'<span>{len(scope_plan.engagements)} engagement(s) · all HOLD</span></a>'
+            f'<span>{len(scope_plan.engagements)} engagement(s) · testing stays off</span></a>'
             '<a href="#findings-heading"><strong>Recorded findings</strong>'
             f'<span>{len(outstanding_findings)} need follow-up · '
             f'{urgent_outstanding} critical/high</span></a>'
@@ -2567,8 +2569,8 @@ class LightUpWebApp:
                 '<textarea id="request-notes" name="notes" rows="3"></textarea>'
                 '<button type="submit">Review before sending</button>'
                 '<p class="meta">An operator must separately review the request. '
-                'Testing stays locked until independent consent, scope validation, '
-                'action-time revocation checks and HUMAN GO.</p></form>'
+                'Testing stays off until scope is validated, consent is current, revocation '
+                'is checked immediately before any action, and a human gives final approval.</p></form>'
             )
             if not ordered_requests:
                 request_section = (
