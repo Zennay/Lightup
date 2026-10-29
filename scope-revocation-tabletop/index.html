@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>LightUp · Scope & intrekking | Offline oefenruimte</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="brand"><div class="mark" aria-hidden="true">L<span>U</span></div><div><div class="eyebrow">LIGHTUP / SCOPE LAB</div><h1>Autorisatie & intrekking</h1><p>Offline oefenruimte met fictieve scenario’s. Geen werkelijke toestemming of toegang.</p></div></div>
+      <div class="posture" role="status"><span class="dot"></span> INCUBATE · DRAFT / HOLD</div>
+    </header>
+    <section class="alert" aria-labelledby="guard-title">
+      <div><strong id="guard-title">Dit is een oefensimulatie, geen autorisatiesysteem.</strong><p>Alle deelnemers, gebeurtenissen en beslissingen zijn fictief. De echte LightUp-grants, client-/operatoridentiteit, risico- en revocatiestatus worden niet gelezen, gecontroleerd of aangepast. <b>Geen enkele uitkomst mag worden gebruikt om een scan, tool, release of deployment te starten.</b></p></div>
+    </section>
+    <section class="drill-deck" aria-labelledby="drill-title">
+      <div class="section-top"><div><p class="kicker">OPERATOR ACADEMY / GEEN ECHTE AUTORISATIE</p><h2 id="drill-title">Oefen met echte beslismomenten — fictieve gegevens</h2></div><span class="pill">6 BEGELEIDE OEFENKAARTEN</span></div>
+      <p class="muted">Kies een situatie, bekijk de fictieve voorgeschiedenis en bepaal welke menselijke stap nu passend is. Oefenkaartantwoorden zijn geen toestemming, testbewijs of toegang tot een systeem.</p>
+      <div class="drill-controls"><label for="drill-select">Oefenkaart <select id="drill-select"></select></label>
+        <button id="drill-start" class="button primary" type="button">Oefening laden in tijdlijn</button>
+        <button id="drill-clear" class="button minor" type="button">Oefenfeedback wissen</button><button id="drill-print-pack" class="button minor" type="button">Lespakket (.md)</button></div>
+      <div class="drill-content"><div><h3 id="drill-heading">Selecteer een oefening</h3><p id="drill-description" class="muted"></p><p id="drill-question" class="drill-question"></p>
+          <div id="drill-choices" class="drill-choices" role="group" aria-label="Oefenantwoorden"></div>
+        </div><div class="drill-result"><p class="eyebrow">UITSLUITEND DIDACTISCHE FEEDBACK</p><p id="drill-feedback" aria-live="polite">Start een fictieve oefenkaart en kies een antwoord om de gevolgen te bespreken.</p>
+          <p id="drill-progress" class="muted">Geen oefenantwoord gekozen.</p></div></div>
+    </section>
+    <main class="grid">
+      <section class="card builder" aria-labelledby="builder-title">
+        <div class="section-top"><div><p class="kicker">01 / SCENARIO</p><h2 id="builder-title">Bouw een beslisverloop</h2></div><span class="pill">MAX 64 stappen</span></div>
+        <label for="preset">Startscenario</label>
+        <div class="preset-group"><select id="preset"><option value="empty">Leeg scenario</option><option value="happy">Fictieve complete voorwaarden</option><option value="revoke">Toestemming wordt ingetrokken</option><option value="scope">Scope verandert na toestemming</option><option value="stop">Noodstop vóór uitvoerpoging</option></select><button type="button" class="button minor" id="load-preset">Laden</button></div>
+        <label for="event-type">Volgende gebeurtenis</label>
+        <div class="preset-group"><select id="event-type"><option value="CLIENT_CONSENT">Fictieve client verklaart toestemming</option><option value="OPERATOR_CONSENT">Fictieve operator verklaart toestemming</option><option value="SCOPE_CHANGED">Scope wijzigt (verklaringen vervallen)</option><option value="RISK_CHANGED">Risico stijgt (verklaringen vervallen)</option><option value="CLIENT_REVOKED">Client trekt verklaring in</option><option value="OPERATOR_REVOKED">Operator trekt verklaring in</option><option value="WINDOW_EXPIRED">Geldigheidsvenster verloopt</option><option value="NEW_WINDOW">Nieuw fictief venster (nieuwe verklaringen nodig)</option><option value="EMERGENCY_STOP">Noodstop blijft actief</option><option value="DISPATCH_ATTEMPT">Gesimuleerde poging tot uitvoering</option></select><button type="button" class="button primary" id="add-event">+ Voeg toe</button></div>
+        <div class="quick"><button type="button" id="undo" class="button minor">↶ Ongedaan maken</button><button type="button" id="redo" class="button minor">↷ Opnieuw</button><button type="button" id="clear" class="button danger">Scenario wissen</button></div><p class="muted" id="undo-hint">Wijzigingen in deze fictieve werkruimte kunnen lokaal ongedaan worden gemaakt; niets wordt automatisch opgeslagen.</p>
+        <section class="baseline-controls" aria-labelledby="baseline-title">
+          <h3 id="baseline-title">Wat-als vergelijking</h3>
+          <p class="muted">Leg de huidige fictieve situatie vast en verander daarna de gebeurtenissen. De nulmeting blijft alleen in dit browsergeheugen totdat je deze bewust wist of een opgeslagen scenario vervangt.</p>
+          <div class="buttons"><button type="button" id="set-baseline" class="button minor">Huidige situatie vastleggen</button><button type="button" id="clear-baseline" class="button minor">Nulmeting wissen</button></div>
+          <p class="muted" id="baseline-hint">Geen nulmeting vastgelegd.</p>
+        </section>
+        <section class="scenario-bank" aria-labelledby="bank-title">
+          <div class="section-top"><div><p class="kicker">WORKSHOP / 8 SLOTS</p><h3 id="bank-title">Scenarioverzameling</h3></div><span class="pill">ALLEEN LOKAAL GEHEUGEN</span></div>
+          <p class="muted">Bewaar acht fictieve beslisverlopen naast elkaar, vergelijk status en oefenblokkades, en herstel een scenario naar de editor. Opslaan of laden vervangt nooit echte LightUp-toestemming.</p>
+          <div class="bank-actions"><button id="save-board" type="button" class="button minor">Volledige verzameling opslaan (.json)</button><button id="save-board-brief" type="button" class="button minor">Groepsbrief (.md)</button></div>
+          <div class="bank-comparison" aria-labelledby="slot-compare-title">
+            <h4 id="slot-compare-title">Vergelijk twee opgeslagen oefenscenario’s</h4>
+            <div class="bank-choose"><label for="compare-a">Scenario A <select id="compare-a" aria-label="Scenario links"></select></label>
+            <label for="compare-b">Scenario B <select id="compare-b" aria-label="Scenario rechts"></select></label></div>
+            <p id="slot-compare-summary" class="muted">Bewaar minimaal twee fictieve scenario’s in de slots.</p>
+            <ul class="needs" id="slot-compare-details"></ul>
+          </div>
+          <div class="bank-scroll"><table class="bank-table"><caption class="sr-only">Acht uitsluitend fictieve scenario-slots</caption>
+            <thead><tr><th>Scenario</th><th>Fictieve toestand</th><th>Acties</th></tr></thead><tbody id="bank-rows"></tbody></table></div>
+          <section class="coverage-board" aria-labelledby="coverage-title">
+            <div class="section-top"><h4 id="coverage-title">Matrix van fictieve voorwaarden</h4><span class="pill">GEEN ECHTE MACHTIGING</span></div>
+            <p class="muted">Per opgeslagen scenario toont deze matrix uitsluitend de lokaal ingevoerde oefenstatus. Een groene oefencel is nooit geauthenticeerd bronbewijs.</p>
+            <div class="bank-scroll"><table class="coverage-table"><caption class="sr-only">Fictieve huidige voorwaarden en eerdere HOLD-pogingen per scenario</caption>
+              <thead><tr><th>Slot</th><th>Client</th><th>Operator</th><th>Venster</th><th>Noodstop</th><th>Eerdere HOLD</th></tr></thead>
+              <tbody id="coverage-rows"></tbody></table></div>
+            <p class="muted" id="coverage-summary">Alle scenario-slots zijn leeg.</p>
+            <section class="lesson-queue" aria-labelledby="lesson-queue-title">
+              <h4 id="lesson-queue-title">Begeleide bespreekagenda voor opgeslagen scenario's</h4>
+              <p class="muted">Oefenonderwerpen zijn gebaseerd op uitsluitend eigen fictieve gebeurteniscodes. De volgorde is didactisch, niet een oordeel over echte risico's, identiteit, toestemming of veiligheid.</p>
+              <p id="lesson-queue-summary" class="muted" role="status">Bewaar fictieve scenario's om bespreekonderwerpen te tonen.</p>
+              <ol id="lesson-queue-list" class="needs"></ol>
+              <button class="button minor" id="lesson-brief" type="button">PRIVATE begeleidersagenda (.md)</button>
+            </section>
+          </section>
+        </section>
+        <div class="section-top log-title"><h3>Gebeurtenissen</h3><span id="step-count" class="count">0 / 64</span></div>
+        <label for="timeline-filter">Tijdlijn filteren</label><select id="timeline-filter" class="timeline-filter">
+          <option value="all">Alle gebeurtenissen</option><option value="attempts">Alleen fictieve uitvoerpogingen</option>
+          <option value="holds">Alleen uitvoerpogingen met oefen-HOLD</option><option value="revisions">Alleen scope-, risico- en intrekkingswijzigingen</option>
+        </select>
+        <section class="replay-panel" aria-labelledby="replay-title">
+          <h3 id="replay-title">Tijdreis door het oefenscenario</h3>
+          <p class="muted">Bekijk de fictieve toestand na een gekozen gebeurtenis, zonder de bestaande stappen te veranderen. Maak vanaf dat moment een alternatieve vertakking in een vrij scenario-slot.</p>
+          <label for="replay-step">Bekijk tot en met stap <output id="replay-step-count" for="replay-step">0</output></label>
+          <input id="replay-step" type="range" min="0" max="0" step="1" value="0" aria-describedby="replay-description">
+          <div class="replay-buttons"><button type="button" id="replay-prev" class="button minor">← Vorige</button><button type="button" id="replay-next" class="button minor">Volgende →</button>
+            <button type="button" id="replay-end" class="button minor">Laatste toestand</button></div>
+          <p id="replay-description" class="muted">Geen scenario geladen.</p>
+          <dl class="replay-facts"><div><dt>Fictieve client</dt><dd id="replay-client">Ontbreekt</dd></div>
+            <div><dt>Fictieve operator</dt><dd id="replay-operator">Ontbreekt</dd></div>
+            <div><dt>Fictief venster</dt><dd id="replay-window">Open</dd></div>
+            <div><dt>Noodstop</dt><dd id="replay-stop">Niet actief</dd></div>
+            <div><dt>Scope / risico</dt><dd id="replay-version">v1 / v1</dd></div>
+            <div><dt>Oefen-HOLD-redenen</dt><dd id="replay-holds">2</dd></div></dl>
+          <div class="replay-buttons"><button type="button" id="replay-fork" class="button primary">Maak scenariovertakking</button>
+            <button type="button" id="replay-brief" class="button minor">Stapbeslisbrief (.md)</button></div>
+          <p id="replay-hint" class="muted">Vertakkingen worden alleen in een vrij lokaal geheugen-slot geplaatst. Geen toestemming, bronbewijs, grant of echte uitvoer.</p>
+        </section>
+        <section class="moment-comparison" aria-labelledby="moment-title">
+          <h4 id="moment-title">Vergelijk twee fictieve beslismomenten</h4>
+          <p class="muted">Kies twee punten binnen dezelfde oefentijdlijn. Vergelijk de oorspronkelijke verklaringen, scope-/risicorevisies, STOP en historische pogingen. Geen echte toestemming of controle.</p>
+          <div class="bank-choose"><label for="moment-from">Van stap <select id="moment-from"></select></label>
+          <label for="moment-to">Naar stap <select id="moment-to"></select></label></div>
+          <p id="moment-summary" class="muted" role="status">Nog geen oefenmomenten vergeleken.</p>
+          <ul id="moment-deltas" class="needs"></ul>
+          <button id="moment-brief" class="button minor" type="button">PRIVATE momentvergelijking (.md)</button>
+        </section>
+        <ol id="timeline" class="timeline" aria-live="polite"></ol>
+        <p class="muted" id="empty">Nog geen stappen. Kies een fictief startscenario of voeg een gebeurtenis toe.</p>
+      </section>
+      <section class="card output" aria-labelledby="output-title">
+        <div class="section-top"><div><p class="kicker">02 / INTERPRETATIE</p><h2 id="output-title">Wat verandert er?</h2></div><span class="pill">HUMAN REVIEW ONLY</span></div>
+        <div class="verdict"><span id="status-icon" class="status-icon">!</span><div><p class="eyebrow">FICTIEVE PRECONDITIES</p><h3 id="status-title">Wacht op scenario</h3><p id="status-reason">De simulatie beoordeelt alleen handmatig ingevoerde gebeurtenissen.</p></div></div>
+        <h3 class="subheading">Fictieve toestand</h3>
+        <dl class="facts"><div><dt>Clientverklaring</dt><dd id="client-state">Niet aanwezig</dd></div><div><dt>Operatorverklaring</dt><dd id="operator-state">Niet aanwezig</dd></div><div><dt>Scope & risico</dt><dd id="scope-state">Startversie</dd></div><div><dt>Geldigheidsvenster</dt><dd id="window-state">Open (fictief)</dd></div><div><dt>Noodstop</dt><dd id="stop-state">Niet gesimuleerd</dd></div><div><dt>Laatste uitvoerpoging</dt><dd id="attempt-state">Geen</dd></div></dl>
+        <section class="attempt-history" aria-labelledby="attempt-history-title">
+          <h3 id="attempt-history-title">Historische uitvoerpogingen — alleen oefening</h3>
+          <p id="attempt-history-summary" class="muted">Geen fictieve uitvoerpogingen.</p>
+          <ul id="attempt-history-details" class="needs"></ul>
+          <button id="next-hold" class="button minor" type="button" disabled>Volgende historische oefen-HOLD bekijken</button>
+          <p class="muted">Een gekozen HOLD opent de oorspronkelijke fictieve toestand bij die gebeurtenis en vergelijkt de stap ervoor en erna; latere wijzigingen veranderen het verleden niet.</p>
+        </section>
+        <h3 class="subheading">Human review: benodigde verificatie</h3>
+        <ul class="needs" id="needs"><li>Actueel onafhankelijk geauthenticeerd bewijs van beide echte partijen.</li><li>Exacte actuele assets, capability, risico en geldigheidsvenster.</li><li>Actuele brongebonden intrekkingscontrole vlak vóór uitvoering.</li><li>Onafhankelijke privacy/security-goedkeuring en expliciete HUMAN GO.</li></ul>
+        <section class="comparison" aria-labelledby="comparison-title"><h3 id="comparison-title">Fictieve wijzigingsimpact</h3><p id="compare-summary" class="muted">Leg links een nulmeting vast om veranderingen te vergelijken.</p><ul id="compare-deltas" class="needs"></ul></section>
+        <div class="export"><h3>PRIVATE lokaal bewaren</h3><p>Bestanden bevatten uitsluitend vaste fictieve gebeurteniscodes, geen echte klantgegevens, targets, credentials of geauthenticeerde claims.</p><div class="buttons"><button type="button" id="save-json" class="button primary">Scenario opslaan (.json)</button><button type="button" id="save-md" class="button minor">Beslisbrief (.md)</button><button type="button" id="import-btn" class="button minor">Scenario openen</button><input id="import-file" type="file" accept=".json,application/json" hidden><button type="button" id="print" class="button minor">Afdrukken</button></div><p class="muted" id="feedback" role="status" aria-live="polite"></p></div>
+      </section>
+    </main>
+    <footer>SCENARIO ≠ SCOPE · HASH ≠ AUTHENTICATIE · REVIEW ≠ TOESTEMMING · NO NETWORK / NO STORAGE / NO DISPATCH<br>Originele LightUp M3/M7-bronnen, autorisatie- en releasevoorwaarden blijven ongewijzigd.</footer>
+  </div>
+</body>
+</html>
