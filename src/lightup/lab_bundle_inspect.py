@@ -454,27 +454,34 @@ def _verify_databases(
         state_rows = state.execute(
             "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json FROM evidence"
         ).fetchall()
-    baseline_evidence_by_profile = verify_state_rows(state_rows, profiles, retests)
+    baseline_evidence_by_profile, exposed_asset = verify_state_rows(state_rows, profiles, retests)
 
     with closing(_connect_readonly(database_fds["domain.sqlite3"], "domain.sqlite3")) as domain:
         findings = domain.execute(
-            "SELECT title,evidence_ids_json,retest_status FROM findings"
+            "SELECT title,evidence_ids_json,retest_status,severity,asset,impact,remediation FROM findings"
         ).fetchall()
     if len(findings) != len(retests):
         raise ValueError("DomainStore finding count mismatch")
 
     title_to_check = {
-        title: check_id
-        for check_id, _header, title, *_ in http_baseline.BASELINE_CHECKS
+        title: (check_id, severity.value, impact, fix)
+        for check_id, _header, title, severity, impact, fix in http_baseline.BASELINE_CHECKS
     }
     retest_by_check = {item["check_id"]: item for item in retests}
     if len(retest_by_check) != len(retests):
         raise ValueError("duplicate DomainStore retest check")
     recorded_check_ids: set[str] = set()
-    for title, raw_ids, status in findings:
-        check_id = title_to_check.get(title)
+    for title, raw_ids, status, severity, asset, impact, remediation in findings:
+        catalog_row = title_to_check.get(title)
+        check_id = catalog_row[0] if catalog_row is not None else None
         retest = retest_by_check.get(check_id)
-        if not isinstance(title, str) or retest is None or check_id in recorded_check_ids:
+        if (
+            catalog_row is None
+            or (severity, impact, remediation) != catalog_row[1:]
+            or asset != exposed_asset
+            or retest is None
+            or check_id in recorded_check_ids
+        ):
             raise ValueError("DomainStore finding identity mismatch")
         evidence_ids = json.loads(raw_ids, object_pairs_hook=_unique_object)
         if (

@@ -109,6 +109,22 @@ class LabBundleInspectorTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "canonical replay schema"):
             lab_bundle_inspect.inspect_bundle(str(bundle))
 
+    def test_tampered_finding_asset_or_remediation_is_rejected(self) -> None:
+        for column, forged_value in (
+            ("asset", "https://untrusted.invalid/"),
+            ("remediation", "forged remediation advice"),
+        ):
+            with self.subTest(column=column):
+                bundle = self.copy_bundle()
+                with sqlite3.connect(bundle / "domain.sqlite3") as connection:
+                    connection.execute(
+                        f"UPDATE findings SET {column}=?", (forged_value,)
+                    )
+                    connection.commit()
+                    connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                with self.assertRaisesRegex(ValueError, "finding identity mismatch"):
+                    lab_bundle_inspect.inspect_bundle(str(bundle))
+
     def test_symlinked_bundle_path_is_rejected(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

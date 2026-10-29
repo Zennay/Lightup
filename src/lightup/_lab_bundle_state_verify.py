@@ -50,7 +50,7 @@ def verify_state_rows(
     state_rows: list[tuple[Any, ...]],
     profiles: list[dict[str, Any]],
     retests: list[dict[str, Any]],
-) -> dict[str, str]:
+) -> tuple[dict[str, str], str]:
     if len(state_rows) != len(profiles) * 2 + len(retests):
         raise ValueError("StateStore evidence count mismatch")
     profile_by_id = {item["profile_id"]: item for item in profiles}
@@ -62,6 +62,7 @@ def verify_state_rows(
     baseline_evidence_ids: dict[str, str] = {}
     baseline_runs: dict[str, str] = {}
     producer_runs: list[str] = []
+    producer_assets_by_run: dict[str, str] = {}
     retest_rows: list[tuple[str, str]] = []
     for evidence_id, run_id, capability_id, kind, source, digest, raw_meta in state_rows:
         if (
@@ -111,6 +112,7 @@ def verify_state_rows(
             ):
                 raise ValueError("built-in producer target is not literal loopback")
             producer_runs.append(run_id)
+            producer_assets_by_run[run_id] = meta["asset"]
         elif source != "lightup.lab_replay":
             raise ValueError("unexpected StateStore evidence source")
         elif kind == "fixture-baseline-observation":
@@ -160,4 +162,4 @@ def verify_state_rows(
         raise ValueError("retest run or finding binding mismatch")
     if len(state_ids) != len(state_rows):
         raise ValueError("duplicate StateStore evidence identity")
-    return baseline_evidence_ids
+    return baseline_evidence_ids, producer_assets_by_run[baseline_runs["exposed"]]
