@@ -54,7 +54,9 @@ def build_parser() -> argparse.ArgumentParser:
     evaluations = sub.add_parser("lab-evaluations",
                                  help="list persisted lab evaluation scores")
     evaluations.add_argument("--db", default="lightup-lab.db")
-    evaluations.add_argument("--scenario-id")
+    evaluation_selector = evaluations.add_mutually_exclusive_group()
+    evaluation_selector.add_argument("--scenario-id")
+    evaluation_selector.add_argument("--record-id")
     evaluations.add_argument("--limit", type=int, default=20)
 
     boot = sub.add_parser("create-operator",
@@ -124,9 +126,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "lab-evaluations":
         from .state import StateStore
 
-        records = StateStore(args.db).list_lab_evaluations(
-            scenario_id=args.scenario_id, limit=args.limit
-        )
+        store = StateStore(args.db)
+        try:
+            records = ([store.get_lab_evaluation(args.record_id)] if args.record_id
+                       else store.list_lab_evaluations(scenario_id=args.scenario_id,
+                                                       limit=args.limit))
+        except (KeyError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, indent=2))
+            return 2
         print(json.dumps({"count": len(records), "records": records}, indent=2))
         return 0
 

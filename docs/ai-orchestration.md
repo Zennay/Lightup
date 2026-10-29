@@ -113,7 +113,8 @@ was supplied and the finding counts are unscored.
   non-finite JSON numbers, and have their SHA-256 plus indexed identity rechecked on read;
 - score history remains available after the process exits via
   `lightup lab-evaluations --db lightup-lab.db --limit 20`, optionally filtered
-  with `--scenario-id lab-assess`, instead of living only in an in-memory list.
+  with `--scenario-id lab-assess` or retrieved by exact `--record-id`, instead
+  of living only in an in-memory list.
 
 A second worker, `lab-service-inventory` (`lightup.workers.service_inventory`,
 capability `network-services`), connect-checks a bounded, explicit list of TCP
