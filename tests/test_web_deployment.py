@@ -135,7 +135,7 @@ class ProductionAppTest(unittest.TestCase):
         self.assertEqual(headers["Strict-Transport-Security"], "max-age=31536000")
         token = cookie.split("=", 1)[1].split(";")[0]
         _, csrf = self.app.store.session_context(token)
-        status, headers, _ = self.request("/logout", {"csrf": csrf}, cookie)
+        status, headers, _ = self.request("/logout", {"csrf": csrf}, cookie.split(";", 1)[0])
         self.assertEqual(status, "303 See Other")
         self.assertIn("; Secure", headers["Set-Cookie"])
         self.assertIn("Max-Age=0", headers["Set-Cookie"])

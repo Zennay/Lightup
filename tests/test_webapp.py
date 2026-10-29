@@ -379,7 +379,7 @@ class WebAppTest(unittest.TestCase):
         self.assertFalse(grant.scope.allows_asset("legacy.acme.example"))
         _, _, body = self.request("GET", f"/clients/{self.client_a.client_id}",
                                   token=self.op_token)
-        self.assertIn("Authorization current", body)
+        self.assertIn("Current recorded grant · execution OFF", body)
 
         # Destructive risk cannot be granted through the UI.
         status, _, _ = self.request(
