@@ -19,6 +19,7 @@ authorization, approve risk, schedule workers, perform retests, or deploy.
    its SHA-256, byte length, source schema, finding count, indexes and check
    identifiers match the exact original input bytes. A mismatch rejects the
    whole return and applies no notes.
+If a newer source/return selection or **Clear source and notes** supersedes an in-flight file read, the older completion is ignored instead of replacing the current workspace.
 5. Explicitly download either a human-only review return or a privacy-minimal
    summary. The source is never uploaded or written by the desk.
 
