@@ -195,6 +195,22 @@ def _assert_file_stable(
         raise RuntimeError("bundle file identity changed during verification")
 
 
+def _assert_directory_stable(
+    directory_fd: int,
+    expected_entries: set[str],
+    original: os.stat_result,
+) -> None:
+    """Reject bundle entry or directory-metadata changes during verification."""
+    current = os.fstat(directory_fd)
+    if _fingerprint(current) != _fingerprint(original):
+        raise RuntimeError("bundle directory changed during verification")
+    # The metadata fingerprint catches add/remove cycles even when the final
+    # entry set is unchanged; the explicit snapshot comparison also documents
+    # and enforces the exact allowed-entry set at the verification boundary.
+    if set(os.listdir(directory_fd)) != expected_entries:
+        raise RuntimeError("bundle directory entries changed during verification")
+
+
 def _connect_readonly(fd: int) -> sqlite3.Connection:
     uri = f"file:/proc/self/fd/{fd}?mode=ro&immutable=1"
     connection = sqlite3.connect(uri, uri=True, timeout=5)
@@ -452,6 +468,7 @@ def _verify_databases(
 
 def inspect_bundle(raw_path: str) -> dict[str, Any]:
     directory_fd, bundle_name = _open_private_bundle(raw_path)
+    directory_original = os.fstat(directory_fd)
     file_fds: dict[str, int] = {}
     originals: dict[str, os.stat_result] = {}
     try:
@@ -493,6 +510,7 @@ def inspect_bundle(raw_path: str) -> dict[str, Any]:
 
         for name, fd in file_fds.items():
             _assert_file_stable(directory_fd, name, fd, originals[name])
+        _assert_directory_stable(directory_fd, entries, directory_original)
 
         return {
             "integrity": "PASS",
