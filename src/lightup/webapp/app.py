@@ -1647,8 +1647,7 @@ class LightUpWebApp:
                 if risk_reviews else ''
             )
             blockers = ("".join(f"<li>{_e(reason)}</li>" for reason in entry.blockers)
-                        or "<li>No additional engagement-specific blockers are recorded. "
-                           "Current client consent, revocation checks immediately before any action, and separate final human approval are still required.</li>")
+                        or "<li>No additional engagement-specific blockers are recorded.</li>")
             cards.append(
                 f'<section class="card scope-review" id="engagement-{_e(entry.engagement_id)}">'
                 '<div class="row">'
@@ -1659,7 +1658,11 @@ class LightUpWebApp:
                 f'Pending risk decisions: {entry.pending_elevations}</p>'
                 '<div class="scope-blockers">'
                 '<strong>Still required before testing can be authorized</strong>'
-                f'<ul>{blockers}</ul></div>'
+                f'<ul>{blockers}</ul>'
+                '<p class="meta">Regardless of these engagement-specific blockers, '
+                'current client consent remains separate. Revocation must be checked '
+                'immediately before any action, and separate final human approval is '
+                'still required.</p></div>'
                 f'{scope}{risk_history}</section>'
             )
         body = (
