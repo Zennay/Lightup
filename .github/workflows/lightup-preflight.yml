@@ -51,6 +51,23 @@ jobs:
         run: |
           python scripts/check_safety_canaries.py
           python scripts/check_safety_canaries.py
+      - name: Replay loopback fixtures and persist deterministic evidence
+        env:
+          PYTHONPATH: src
+        run: |
+          set -euo pipefail
+          store_dir="$RUNNER_TEMP/lightup-lab-fixtures-${{ github.run_id }}-${{ matrix.python }}"
+          python -m lightup.lab_replay --store-dir "$store_dir"
+          receipt="$(find "$store_dir" -mindepth 2 -maxdepth 2 -type f -name receipt.json -print -quit)"
+          test -n "$receipt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lightup-lab-fixture-receipt-${{ github.run_id }}-${{ matrix.python }}
+          path: |
+            ${{ runner.temp }}/lightup-lab-fixtures-${{ github.run_id }}-${{ matrix.python }}/*/receipt.json
+            ${{ runner.temp }}/lightup-lab-fixtures-${{ github.run_id }}-${{ matrix.python }}/*/receipt.sha256
+          if-no-files-found: error
+          retention-days: 7
   integration:
     # Non-authorizing offline diagnostics on the dedicated permanent LightUp VPS runner.
     name: Real producer integration Python ${{ matrix.python }} (not VPS proof)
