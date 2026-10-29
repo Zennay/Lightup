@@ -240,9 +240,12 @@ class WebAppTest(unittest.TestCase):
             token=self.a_token, csrf=self.a_csrf,
         )
         self.assertEqual(status, "303 See Other")
-        self.assertEqual(headers["Location"], f"/portal/{self.client_a.client_id}")
         requests = self.store.list_assessment_requests(self.operator)
         self.assertEqual(len(requests), 1)
+        self.assertEqual(
+            headers["Location"],
+            f"/portal/{self.client_a.client_id}/requests/{requests[0].request_id}",
+        )
         self.assertEqual(requests[0].requested_assets,
                          ("app.acme.example", "api.acme.example"))
         self.assertIs(requests[0].requested_mode, AssessmentMode.AUTHORIZED_ASSESSMENT)
@@ -322,6 +325,44 @@ class WebAppTest(unittest.TestCase):
     def test_no_active_execution_routes_exist(self):
         for _method, pattern, _handler, _access in self.app.routes:
             self.assertNotRegex(pattern.pattern, r"(scan|exploit|probe|execute|attack)")
+
+
+    def test_client_portal_uses_progressive_disclosure_for_secondary_panels(self):
+        self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Q4 UX review",
+        )
+        client_context = self.store.context_for_user(self.user_a.user_id)
+        recorded = self.store.submit_assessment_request(
+            client_context,
+            requested_assets=("app.acme.example",),
+            requested_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            requested_risk=RiskLevel.STANDARD,
+            notes="Review the owned staging application",
+        )
+
+        status, _, body = self.request(
+            "GET", f"/portal/{self.client_a.client_id}", token=self.a_token,
+        )
+        self.assertEqual(status, "200 OK")
+        primary = body.index('<section class="card next-action"')
+        shortcuts = body.index('<nav class="task-links"')
+        counts = body.index(
+            '<details class="secondary-panel"><summary>Assessment counts',
+        )
+        history = body.index(
+            '<details class="secondary-panel"><summary id="requests-history-heading">Recent requests',
+        )
+        coverage = body.index(
+            '<details class="secondary-panel"><summary id="coverage-details">Coverage by engagement',
+        )
+        self.assertLess(primary, shortcuts)
+        self.assertLess(shortcuts, counts)
+        self.assertLess(counts, history)
+        self.assertLess(history, coverage)
+        self.assertNotIn('<details class="secondary-panel" open', body)
+        self.assertIn("PLAN ONLY · testing locked", body)
+        self.assertIn(f"Request {recorded.request_id[:8]}", body)
+        self.assertIn("Coverage — Q4 UX review", body)
 
 
 if __name__ == "__main__":
