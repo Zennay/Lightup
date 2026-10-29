@@ -161,7 +161,9 @@ class PrivateReplayStorageContract(unittest.TestCase):
             with sqlite3.connect(state_path) as state:
                 row = state.execute(
                     "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json,created_at "
-                    "FROM evidence WHERE kind='fixture-baseline-observation' AND metadata_json LIKE '%\"profile_id\":\"exposed\"%' LIMIT 1"
+                    "FROM evidence WHERE source='lightup.lab_replay' "
+                    "AND kind='fixture-baseline-observation' "
+                    "AND metadata_json LIKE '%\"profile_id\":\"exposed\"%' LIMIT 1"
                 ).fetchone()
             self.assertIsNotNone(row)
             evidence_id, run_id, capability_id, kind, source, digest, raw_meta, created_at = row
@@ -171,15 +173,28 @@ class PrivateReplayStorageContract(unittest.TestCase):
                     "INSERT INTO evidence "
                     "(evidence_id,run_id,capability_id,kind,source,sha256,metadata_json,created_at) "
                     "VALUES(?,?,?,?,?,?,?,?)",
-                    ("injected-unexpected-source", run_id, capability_id, kind,
-                     "untrusted.injected", digest, raw_meta, created_at),
+                    ("injected-unreferenced-evidence", run_id, capability_id,
+                     "unexpected-fixture-kind", source, digest, raw_meta, created_at),
                 )
-            with self.assertRaisesRegex(RuntimeError, "unexpected evidence source"):
+            with self.assertRaisesRegex(RuntimeError, "unexpected fixture evidence"):
                 _verify_database_lineage(bundle, receipt)
             with sqlite3.connect(state_path) as state:
                 state.execute(
                     "DELETE FROM evidence WHERE evidence_id=?",
-                    ("injected-unexpected-source",),
+                    ("injected-unreferenced-evidence",),
+                )
+
+            with sqlite3.connect(state_path) as state:
+                state.execute(
+                    "UPDATE evidence SET source=? WHERE evidence_id=?",
+                    ("untrusted.injected", evidence_id),
+                )
+            with self.assertRaisesRegex(RuntimeError, "StateStore evidence set does not match receipt"):
+                _verify_database_lineage(bundle, receipt)
+            with sqlite3.connect(state_path) as state:
+                state.execute(
+                    "UPDATE evidence SET source=? WHERE evidence_id=?",
+                    (source, evidence_id),
                 )
 
             with sqlite3.connect(state_path) as state:
