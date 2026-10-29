@@ -107,7 +107,13 @@ was supplied and the finding counts are unscored.
   neither a mis-wired registry nor a direct call can point it at the internet;
 - evidence lands in the ledger, findings come out as Finding → Impact → Fix →
   Retest, and the run is scored into an `EvaluationRecord` (against the stock
-  fixture's ground truth with `--expect-fixture`).
+  fixture's ground truth with `--expect-fixture`);
+- every baseline and planner-driven lab run persists its canonical evaluation
+  record in the same SQLite `StateStore`; records are unique per run, reject
+  non-finite JSON numbers, and have their SHA-256 plus indexed identity rechecked on read;
+- score history remains available after the process exits via
+  `lightup lab-evaluations --db lightup-lab.db --limit 20`, optionally filtered
+  with `--scenario-id lab-assess`, instead of living only in an in-memory list.
 
 A second worker, `lab-service-inventory` (`lightup.workers.service_inventory`,
 capability `network-services`), connect-checks a bounded, explicit list of TCP
