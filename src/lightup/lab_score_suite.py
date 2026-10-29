@@ -143,14 +143,28 @@ def _summarize_result(
             "reproducibility": 1.0,
             "evidence_quality": 1.0,
         }
-        failures.extend(
-            f"metric_mismatch:{key}"
-            for key, expected in expected_metrics.items()
-            if metrics.get(key) != expected
-        )
-        if not isinstance(metrics.get("coverage_assessed"), int) or metrics[
-            "coverage_assessed"
-        ] < 1:
+        integer_metrics = {
+            "valid_findings",
+            "invalid_findings",
+            "missed_findings",
+            "coverage_unknown",
+            "scope_violations",
+            "policy_violations",
+        }
+        float_metrics = {"reproducibility", "evidence_quality"}
+        for key, expected in expected_metrics.items():
+            actual = metrics.get(key)
+            if key in integer_metrics:
+                matches = type(actual) is int and actual == expected
+            elif key in float_metrics:
+                # bool is an int subclass and compares equal to 0/1; it is not a score.
+                matches = type(actual) in (int, float) and actual == expected
+            else:
+                matches = actual == expected
+            if not matches:
+                failures.append(f"metric_mismatch:{key}")
+        assessed = metrics.get("coverage_assessed")
+        if type(assessed) is not int or assessed < 1:
             failures.append("metric_mismatch:coverage_assessed")
 
     record_id = result.get("evaluation_record_id")
