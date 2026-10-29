@@ -282,17 +282,44 @@ def _build_replay(stage: Path) -> tuple[dict[str, Any], bytes, str]:
     return receipt, receipt_bytes, receipt_sha
 
 
-def _prepare_store_dir(raw_path: str) -> Path:
-    path = Path(raw_path).expanduser()
-    if path.is_symlink():
-        raise PermissionError("store directory must not be a symlink")
-    path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    info = path.stat(follow_symlinks=False)
+def _require_private_artifact(path: Path, *, directory: bool) -> os.stat_result:
+    """Reject replaced, shared, non-private or wrongly-owned bundle artifacts."""
+    try:
+        info = os.lstat(path)
+    except OSError:
+        raise PermissionError("private evidence artifact is unavailable") from None
     mode = stat.S_IMODE(info.st_mode)
-    if not stat.S_ISDIR(info.st_mode) or mode & 0o077 or not mode & 0o200:
-        raise PermissionError("store directory must be owner-writable and private")
-    return path.resolve()
+    if stat.S_ISLNK(info.st_mode) or info.st_uid != os.geteuid() or mode & 0o077:
+        raise PermissionError("evidence artifact is not owner-private")
+    if directory:
+        if not stat.S_ISDIR(info.st_mode) or mode & 0o700 != 0o700:
+            raise PermissionError("evidence bundle directory permissions are unsafe")
+    elif (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+          or mode & 0o600 != 0o600):
+        raise PermissionError("evidence bundle file permissions are unsafe")
+    return info
 
+
+def _prepare_store_dir(raw_path: str) -> Path:
+    path = Path(os.path.abspath(Path(raw_path).expanduser()))
+    # Do not let a symlinked parent silently redirect a supposedly private store.
+    for candidate in (*reversed(path.parents), path):
+        try:
+            info = os.lstat(candidate)
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode):
+            raise PermissionError("store path must not contain symlink components")
+    path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    for candidate in (*reversed(path.parents), path):
+        try:
+            info = os.lstat(candidate)
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode):
+            raise PermissionError("store path must not contain symlink components")
+    info = _require_private_artifact(path, directory=True)
+    return path.resolve()
 
 
 def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
@@ -348,18 +375,19 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
 
 
 def _verify_existing_bundle(path: Path, receipt_bytes: bytes, digest: str) -> None:
-    if path.is_symlink() or not path.is_dir():
-        raise PermissionError("receipt-addressed store entry is not a regular directory")
+    # Idempotent reuse must not turn a formerly private receipt public after a
+    # chmod, replacement, or hard-link operation between invocations.
+    _require_private_artifact(path, directory=True)
     receipt_path = path / "receipt.json"
-    if receipt_path.is_symlink() or not receipt_path.is_file() or receipt_path.read_bytes() != receipt_bytes:
+    _require_private_artifact(receipt_path, directory=False)
+    if receipt_path.read_bytes() != receipt_bytes:
         raise RuntimeError("existing bundle does not match the canonical receipt")
     checksum = path / "receipt.sha256"
-    if checksum.is_symlink() or not checksum.is_file() or checksum.read_text(encoding="ascii") != f"{digest}  receipt.json\n":
+    _require_private_artifact(checksum, directory=False)
+    if checksum.read_text(encoding="ascii") != f"{digest}  receipt.json\n":
         raise RuntimeError("existing bundle checksum does not match")
     for name in ("state.sqlite3", "domain.sqlite3", "replay-ledger.sqlite3"):
-        artifact = path / name
-        if artifact.is_symlink() or not artifact.is_file():
-            raise RuntimeError("existing receipt-addressed bundle is incomplete")
+        _require_private_artifact(path / name, directory=False)
     _verify_database_lineage(path, json.loads(receipt_bytes))
 
 
