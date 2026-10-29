@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -73,6 +74,28 @@ class PrivateReplayStorageContract(unittest.TestCase):
             alias.symlink_to(real, target_is_directory=True)
             with self.assertRaises(PermissionError):
                 _prepare_store_dir(str(alias / "store"))
+
+    def test_store_path_rejects_group_writable_ancestor(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary) / "shared"
+            parent.mkdir(mode=0o700)
+            os.chmod(parent, 0o770)
+            store = parent / "store"
+            with self.assertRaises(PermissionError):
+                _prepare_store_dir(str(store))
+            self.assertFalse(store.exists())
+
+    def test_root_owned_sticky_tmp_ancestor_is_admitted(self) -> None:
+        temporary_root = Path("/tmp")
+        info = os.lstat(temporary_root)
+        mode = stat.S_IMODE(info.st_mode)
+        if info.st_uid != 0 or not (mode & stat.S_ISVTX):
+            self.skipTest("/tmp is not a root-owned sticky directory on this runner")
+        with tempfile.TemporaryDirectory(dir=temporary_root) as temporary:
+            store = Path(temporary) / "store"
+            result = _prepare_store_dir(str(store))
+            self.assertEqual(result, store.resolve())
+            self.assertEqual(stat.S_IMODE(os.lstat(store).st_mode), 0o700)
 
     def test_existing_bundle_rejects_public_receipt_before_reuse(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
