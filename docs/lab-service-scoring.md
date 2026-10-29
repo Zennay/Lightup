@@ -62,3 +62,12 @@ are rejected before executing the lab.
 
 Unknown CLI arguments are rejected with a generic error that does not echo
 user-supplied target or file-path values into shared operator logs.
+
+## Local operator session lifecycle
+
+The fixed WSGI canary also checks an actual synthetic operator session:
+a forged session cookie must redirect to login; a wrong-CSRF logout must
+return 403 **without** invalidating the valid session; a correct-CSRF logout
+must revoke the stored token, after which the same cookie must be denied.
+The output adds three privacy-minimal booleans. No client user, real grant,
+external target or production session is involved.

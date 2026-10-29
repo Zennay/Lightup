@@ -13,6 +13,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from urllib.parse import urlencode
 
 from lightup.domain import DomainStore
 from lightup.lab_service_score import run_lab_service_inventory_score
@@ -71,11 +72,14 @@ def _run_canary() -> int:
         store = DomainStore(Path(directory) / "web.db")
         app = create_app(store)
 
-        def get(path: str, cookie: str | None = None):
-            env = {
-                "REQUEST_METHOD": "GET", "PATH_INFO": path,
-                "wsgi.input": io.BytesIO(b""),
-            }
+        def request(method: str, path: str, cookie: str | None = None,
+                    form: dict[str, str] | None = None):
+            payload = urlencode(form or {}).encode() if method == "POST" else b""
+            env = {"REQUEST_METHOD": method, "PATH_INFO": path,
+                   "wsgi.input": io.BytesIO(payload)}
+            if method == "POST":
+                env.update(CONTENT_TYPE="application/x-www-form-urlencoded",
+                           CONTENT_LENGTH=str(len(payload)))
             if cookie is not None:
                 env["HTTP_COOKIE"] = cookie
             response = {}
@@ -85,6 +89,9 @@ def _run_canary() -> int:
                 )
             )).decode()
             return response["status"], response["headers"], body
+
+        def get(path: str, cookie: str | None = None):
+            return request("GET", path, cookie)
 
         status, headers, _ = get("/")
         if not (status == "303 See Other" and headers["Location"] == "/login"):
@@ -96,6 +103,21 @@ def _run_canary() -> int:
             raise RuntimeError("Offline safety gate denied: authenticated route")
         if not ("Locked" in body and "no real-target execution path" in body):
             raise RuntimeError("Offline safety gate denied: locked activation")
+
+        forged, headers, _ = get("/", "lightup_session=forged-lab-token")
+        if forged != "303 See Other" or headers.get("Location") != "/login":
+            raise RuntimeError("Offline safety gate denied: forged session accepted")
+        cookie = f"lightup_session={token}"
+        rejected, _, _ = request("POST", "/logout", cookie, {"csrf": "invalid-lab-csrf"})
+        if rejected != "403 Forbidden" or get("/", cookie)[0] != "200 OK":
+            raise RuntimeError("Offline safety gate denied: CSRF boundary")
+        logged_out, headers, _ = request("POST", "/logout", cookie, {"csrf": _csrf})
+        if logged_out != "303 See Other" or headers.get("Location") != "/login":
+            raise RuntimeError("Offline safety gate denied: logout")
+        expired, headers, _ = get("/", cookie)
+        if (expired != "303 See Other" or headers.get("Location") != "/login"
+                or store.session_context(token) is not None):
+            raise RuntimeError("Offline safety gate denied: revoked session")
 
         try:
             _loopback("0.0.0.0")
@@ -123,6 +145,8 @@ def _run_canary() -> int:
         "status": "PASS", "passed": True,
         "public_target_denied": True, "execution_enabled": False,
         "authentication_required": True, "activation_locked": True,
+        "forged_session_denied": True, "csrf_guard_enforced": True,
+        "session_revocation_verified": True,
         "non_loopback_refused": True,
         "temporary_state_removed": True,
         "lab_only": True,

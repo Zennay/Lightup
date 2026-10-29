@@ -90,6 +90,17 @@ class LabScorerEntrypointTests(unittest.TestCase):
         })
         self.assertNotIn("sensitive", out.getvalue())
 
+    def test_local_operator_session_lifecycle_is_checked_end_to_end(self) -> None:
+        with redirect_stdout(io.StringIO()) as receipt:
+            result = lab_canary.main([])
+        self.assertEqual(result, 0)
+        data = json.loads(receipt.getvalue())
+        self.assertIs(data["forged_session_denied"], True)
+        self.assertIs(data["csrf_guard_enforced"], True)
+        self.assertIs(data["session_revocation_verified"], True)
+        self.assertIs(data["external_target_authorized"], False)
+        self.assertIs(data["deployment_authorized"], False)
+
     def test_safety_gate_rejects_missing_checks_and_noncanonical_metrics(self) -> None:
         from copy import deepcopy
         metrics = {
