@@ -426,7 +426,7 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
     with sqlite3.connect(bundle / "state.sqlite3") as state:
         rows = state.execute(
             "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json "
-            "FROM evidence"
+            "FROM evidence WHERE source='lightup.lab_replay'"
         ).fetchall()
         for evidence_id, run_id, capability_id, kind, source, sha, raw_meta in rows:
             if source != "lightup.lab_replay":
