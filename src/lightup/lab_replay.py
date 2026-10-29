@@ -282,20 +282,45 @@ def _build_replay(stage: Path) -> tuple[dict[str, Any], bytes, str]:
     return receipt, receipt_bytes, receipt_sha
 
 
+def _require_private_directory(path: Path, label: str) -> None:
+    """Reject directory entries that could disclose a replay bundle."""
+    try:
+        info = path.lstat()
+    except OSError:
+        raise PermissionError(f"{label} must be an owner-private directory") from None
+    mode = stat.S_IMODE(info.st_mode)
+    if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid()
+            or mode & 0o077 or (mode & 0o700) != 0o700):
+        raise PermissionError(f"{label} must be an owner-private directory")
+
+
+def _require_private_file(path: Path, label: str) -> None:
+    """Require a private, single-link regular file before reading or opening it."""
+    try:
+        info = path.lstat()
+    except OSError:
+        raise PermissionError(f"{label} must be an owner-private regular file") from None
+    mode = stat.S_IMODE(info.st_mode)
+    if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
+            or info.st_nlink != 1 or mode & 0o077
+            or (mode & 0o600) != 0o600 or mode & 0o111):
+        raise PermissionError(f"{label} must be an owner-private regular file")
+
+
 def _prepare_store_dir(raw_path: str) -> Path:
     path = Path(raw_path).expanduser()
     if path.is_symlink():
         raise PermissionError("store directory must not be a symlink")
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    info = path.stat(follow_symlinks=False)
-    mode = stat.S_IMODE(info.st_mode)
-    if not stat.S_ISDIR(info.st_mode) or mode & 0o077 or not mode & 0o200:
-        raise PermissionError("store directory must be owner-writable and private")
+    _require_private_directory(path, "store directory")
     return path.resolve()
 
 
 
 def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
+    _require_private_directory(bundle, "bundle directory")
+    for name in ("state.sqlite3", "domain.sqlite3", "replay-ledger.sqlite3"):
+        _require_private_file(bundle / name, "bundle database")
     raw_receipt = _canonical(receipt)
     digest = _sha(raw_receipt)
     with sqlite3.connect(bundle / "replay-ledger.sqlite3") as ledger:
@@ -348,18 +373,17 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
 
 
 def _verify_existing_bundle(path: Path, receipt_bytes: bytes, digest: str) -> None:
-    if path.is_symlink() or not path.is_dir():
-        raise PermissionError("receipt-addressed store entry is not a regular directory")
+    _require_private_directory(path, "receipt-addressed bundle")
     receipt_path = path / "receipt.json"
-    if receipt_path.is_symlink() or not receipt_path.is_file() or receipt_path.read_bytes() != receipt_bytes:
+    _require_private_file(receipt_path, "bundle receipt")
+    if receipt_path.read_bytes() != receipt_bytes:
         raise RuntimeError("existing bundle does not match the canonical receipt")
     checksum = path / "receipt.sha256"
-    if checksum.is_symlink() or not checksum.is_file() or checksum.read_text(encoding="ascii") != f"{digest}  receipt.json\n":
+    _require_private_file(checksum, "bundle checksum")
+    if checksum.read_text(encoding="ascii") != f"{digest}  receipt.json\n":
         raise RuntimeError("existing bundle checksum does not match")
     for name in ("state.sqlite3", "domain.sqlite3", "replay-ledger.sqlite3"):
-        artifact = path / name
-        if artifact.is_symlink() or not artifact.is_file():
-            raise RuntimeError("existing receipt-addressed bundle is incomplete")
+        _require_private_file(path / name, "bundle database")
     _verify_database_lineage(path, json.loads(receipt_bytes))
 
 
