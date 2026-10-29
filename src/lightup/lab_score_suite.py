@@ -12,6 +12,7 @@ import errno
 import json
 import math
 import os
+import re
 import stat
 import sys
 from pathlib import Path
@@ -22,6 +23,7 @@ from .lab_tls_score import run_lab_tls_baseline_score
 from .lab_web_score import run_lab_web_baseline_score
 
 SCHEMA = "lightup.lab-score-suite.v1"
+_PUBLIC_IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}\Z")
 _EXPECTED_FINDINGS = {
     "service_inventory": 1,
     "tls_baseline": 1,
@@ -59,6 +61,13 @@ _PUBLIC_METRICS = frozenset({
     "compute_cost_usd", "remediation_quality", "retest_correctness",
     "false_positive_rate",
 })
+
+
+def _public_identifier(value: Any) -> str | None:
+    """Only expose bounded, printable local identifiers, never source paths."""
+    if type(value) is str and _PUBLIC_IDENTIFIER.fullmatch(value):
+        return value
+    return None
 
 
 def _private_output_directory(value: str | Path) -> Path:
@@ -171,11 +180,14 @@ def _summarize_result(
         checks = {}
         failures.append("missing_checks")
     else:
-        failures.extend(
-            f"check_failed:{key}"
-            for key, value in checks.items()
-            if value is not True
-        )
+        for key, value in checks.items():
+            # Source-provided keys must never become diagnostic text.
+            if type(key) is not str or (
+                key not in _PUBLIC_CHECKS[name] and key != "ground_truth_verified"
+            ):
+                failures.append("unexpected_check_field")
+            elif value is not True:
+                failures.append(f"check_failed:{key}")
 
     evaluation = result.get("evaluation")
     if not isinstance(evaluation, dict):
@@ -239,12 +251,16 @@ def _summarize_result(
 
     record_id = result.get("evaluation_record_id")
     run_id = result.get("run_id")
-    if not isinstance(record_id, str) or not record_id or evaluation.get(
-        "record_id"
-    ) != record_id:
+    scenario_id = result.get("scenario_id")
+    public_record_id = _public_identifier(record_id)
+    public_run_id = _public_identifier(run_id)
+    public_scenario_id = _public_identifier(scenario_id)
+    if public_record_id is None or evaluation.get("record_id") != record_id:
         failures.append("evaluation_record_id_mismatch")
-    if not isinstance(run_id, str) or not run_id or evaluation.get("run_id") != run_id:
+    if public_run_id is None or evaluation.get("run_id") != run_id:
         failures.append("evaluation_run_id_mismatch")
+    if public_scenario_id is None:
+        failures.append("invalid_scenario_id")
 
     evidence_ids = evaluation.get("evidence_ids")
     valid_evidence_ids = isinstance(evidence_ids, list) and all(
@@ -261,9 +277,9 @@ def _summarize_result(
         "passed": not failures,
         "reported_passed": reported_passed,
         "failure_reasons": sorted(set(failures)),
-        "scenario_id": result.get("scenario_id"),
-        "run_id": run_id if isinstance(run_id, str) else None,
-        "evaluation_record_id": record_id if isinstance(record_id, str) else None,
+        "scenario_id": public_scenario_id,
+        "run_id": public_run_id,
+        "evaluation_record_id": public_record_id,
         "evidence_count": len(evidence_ids) if valid_evidence_ids else 0,
         "database_file": database_file,
         "checks": safe_checks,
@@ -308,7 +324,8 @@ def run_lab_score_suite(output_dir: str | Path) -> dict[str, Any]:
         "schema": SCHEMA,
         "passed": all(item["passed"] for item in summaries.values())
         and len(summaries) == len(_EXPECTED_FINDINGS),
-        "artifact_directory": directory.name,
+        # A report already lives in this directory; never echo its user-set name.
+        "artifact_directory": ".",
         "scorers": summaries,
         "safety": {
             "fixture_scope": "fixed 127.0.0.1 loopback fixtures only",
