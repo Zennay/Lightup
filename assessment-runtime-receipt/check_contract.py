@@ -140,7 +140,7 @@ def run() -> None:
         assert_anonymous_single(receipt.inspect(str(first_path), "not-a-digest"))
         assert_anonymous_single(receipt.inspect(os.fsencode(first_path), first_digest))
         assert_anonymous_single(receipt.inspect(str(first_path) + chr(0), first_digest))
-        assert_anonymous_single(receipt.inspect(str(first_path) + r"\\x00", first_digest))
+        assert_anonymous_single(receipt.inspect(str(first_path) + r"\x00", first_digest))
         assert_anonymous_single(receipt.inspect(f"{root}/../{root.name}/first.json", first_digest))
         assert_anonymous_single(receipt.inspect(str(first_path) + "x" * 4096, first_digest))
 
