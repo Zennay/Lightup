@@ -61,6 +61,18 @@ _PUBLIC_METRICS = frozenset({
     "compute_cost_usd", "remediation_quality", "retest_correctness",
     "false_positive_rate",
 })
+# Mirror the source EvaluationMetrics types and ranges for *every* exported
+# field, not only the required scoring fields. A scorer's 'passed' is not
+# sufficient authority to copy a malformed optional metric into a PASS report.
+_INTEGER_METRICS = frozenset({
+    "valid_findings", "invalid_findings", "missed_findings",
+    "coverage_assessed", "coverage_unknown", "scope_violations",
+    "policy_violations", "human_interventions", "tool_calls",
+})
+_FRACTION_METRICS = frozenset({
+    "evidence_quality", "reproducibility", "remediation_quality",
+    "retest_correctness", "false_positive_rate",
+})
 
 
 def _public_identifier(value: Any) -> str | None:
@@ -242,12 +254,32 @@ def _summarize_result(
     }
     safe_metrics: dict[str, int | float] = {}
     for key, value in metrics.items():
-        if key not in _PUBLIC_METRICS:
+        if type(key) is not str or key not in _PUBLIC_METRICS:
             failures.append("unexpected_metric_field")
         elif type(value) not in (int, float) or not math.isfinite(value):
             failures.append("invalid_metric_field")
+        elif key in _INTEGER_METRICS and (type(value) is not int or value < 0):
+            failures.append("invalid_metric_field")
+        elif key in _FRACTION_METRICS and not 0 <= value <= 1:
+            failures.append("invalid_metric_field")
+        elif key not in _FRACTION_METRICS and value < 0:
+            failures.append("invalid_metric_field")
         else:
             safe_metrics[key] = value
+
+    # A false-positive rate cannot be an independent unchecked source claim:
+    # it is derived from the same valid/invalid finding counters we verify.
+    if "false_positive_rate" in safe_metrics:
+        valid = safe_metrics.get("valid_findings")
+        invalid = safe_metrics.get("invalid_findings")
+        if type(valid) is not int or type(invalid) is not int:
+            failures.append("false_positive_rate_mismatch")
+        else:
+            denominator = valid + invalid
+            computed_rate = invalid / denominator if denominator else 0.0
+            if not math.isclose(safe_metrics["false_positive_rate"], computed_rate,
+                                rel_tol=1e-12, abs_tol=1e-12):
+                failures.append("false_positive_rate_mismatch")
 
     record_id = result.get("evaluation_record_id")
     run_id = result.get("run_id")
