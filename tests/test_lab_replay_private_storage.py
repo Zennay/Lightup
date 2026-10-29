@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import sqlite3
 import stat
@@ -149,6 +150,76 @@ class PrivateReplayStorageContract(unittest.TestCase):
                     (extra_evidence_sha, "baseline", "exposed", extra_evidence_json),
                 )
             with self.assertRaisesRegex(RuntimeError, "evidence payload set does not match receipt"):
+                _verify_database_lineage(bundle, receipt)
+
+
+    def test_state_store_rejects_unexpected_source_and_broken_run_lineage(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary)
+            receipt, _receipt_bytes, _digest = _build_replay(bundle)
+            state_path = bundle / "state.sqlite3"
+            with sqlite3.connect(state_path) as state:
+                row = state.execute(
+                    "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json,created_at "
+                    "FROM evidence WHERE kind='fixture-baseline-observation' LIMIT 1"
+                ).fetchone()
+            self.assertIsNotNone(row)
+            evidence_id, run_id, capability_id, kind, source, digest, raw_meta, created_at = row
+
+            with sqlite3.connect(state_path) as state:
+                state.execute(
+                    "INSERT INTO evidence "
+                    "(evidence_id,run_id,capability_id,kind,source,sha256,metadata_json,created_at) "
+                    "VALUES(?,?,?,?,?,?,?,?)",
+                    ("injected-unexpected-source", run_id, capability_id, kind,
+                     "untrusted.injected", digest, raw_meta, created_at),
+                )
+            with self.assertRaisesRegex(RuntimeError, "unexpected evidence source"):
+                _verify_database_lineage(bundle, receipt)
+            with sqlite3.connect(state_path) as state:
+                state.execute(
+                    "DELETE FROM evidence WHERE evidence_id=?",
+                    ("injected-unexpected-source",),
+                )
+
+            with sqlite3.connect(state_path) as state:
+                state.execute(
+                    "UPDATE evidence SET capability_id=? WHERE evidence_id=?",
+                    ("untrusted.capability", evidence_id),
+                )
+            with self.assertRaisesRegex(RuntimeError, "capability does not match"):
+                _verify_database_lineage(bundle, receipt)
+            with sqlite3.connect(state_path) as state:
+                state.execute(
+                    "UPDATE evidence SET capability_id=? WHERE evidence_id=?",
+                    (capability_id, evidence_id),
+                )
+
+            with sqlite3.connect(state_path) as state:
+                state.execute(
+                    "UPDATE evidence SET run_id=? WHERE evidence_id=?",
+                    ("missing-run-id", evidence_id),
+                )
+            with self.assertRaisesRegex(RuntimeError, "references a missing run"):
+                _verify_database_lineage(bundle, receipt)
+            with sqlite3.connect(state_path) as state:
+                state.execute(
+                    "UPDATE evidence SET run_id=? WHERE evidence_id=?",
+                    (run_id, evidence_id),
+                )
+
+            metadata = json.loads(raw_meta)
+            duplicate_key_metadata = (
+                '{"fixture_sha256":' + json.dumps(metadata["fixture_sha256"])
+                + ',"profile_id":' + json.dumps(metadata["profile_id"])
+                + ',"profile_id":' + json.dumps(metadata["profile_id"]) + '}'
+            )
+            with sqlite3.connect(state_path) as state:
+                state.execute(
+                    "UPDATE evidence SET metadata_json=? WHERE evidence_id=?",
+                    (duplicate_key_metadata, evidence_id),
+                )
+            with self.assertRaisesRegex(RuntimeError, "metadata is invalid or non-canonical"):
                 _verify_database_lineage(bundle, receipt)
 
 
