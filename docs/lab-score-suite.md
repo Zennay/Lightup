@@ -87,6 +87,28 @@ paths, record contents or evidence payloads. Inspect only after the scorer
 process has finished; the command does not open a live writer or accept a
 target address.
 
+## Compare two saved fixed-loopback calibrations (offline)
+
+Use two **independently produced** score run directories:
+
+    PYTHONPATH=src python -m lightup.lab_score_compare --baseline-dir ./lab-score-run-001 --candidate-dir ./lab-score-run-002
+
+The installed equivalent is `lightup-lab-score-compare`. Each finished run is
+re-admitted through the same owner-private descriptor-pinned, no-follow SQLite
+and evidence verification as `lightup-lab-score-inspect`. The comparator
+does **not** start fixtures/workers, access network targets, write artifacts,
+or grant execution authority.
+
+The output compares nine bounded first-party scoring metrics for service,
+TLS and HTTP, excludes timing jitter, and flags exact evaluation-digest reuse.
+A copied bundle or same directory is not an independent repeat, so returns
+exit code 2. A drift in one of the fixed calibration metrics likewise returns
+exit 2; clean independent repeats exit 0. Outputs contain no run IDs,
+evidence payloads or user-supplied paths. Successful comparison establishes
+only local storage consistency and stable synthetic calibrations, **not**
+authenticated provenance, current vulnerabilities or permission to scan.
+The read-only inspector now exposes those validated score metrics.
+
 ## Safety boundary
 
 All targets are fixed by the individual scorers to loopback fixtures; the suite accepts no target argument and does not add any network, model-provider or authorization path. It does not issue grants, dispatch workers, run remediation/retests, authorize real assets or deploy. Exit status `0` means the three local calibration contracts passed. It is **not** proof of external authorization, trusted origin, production readiness or permission to contact a real target.

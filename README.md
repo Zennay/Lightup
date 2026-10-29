@@ -125,3 +125,5 @@ PYTHONPATH=src python -m lightup.lab_score_inspect --output-dir ./lab-score-run-
 ```
 
 The output directory must be new; saved runs can later be verified read-only with `lightup-lab-score-inspect` (installed entry point). See [the suite contract](docs/lab-score-suite.md) for its metrics, persisted-evidence checks, storage permissions and loopback-only safety boundary. Verification is lab-local storage integrity, not real-target permission or deployment approval.
+
+Compare two independently saved loopback lab score runs offline with `lightup-lab-score-compare --baseline-dir RUN_A --candidate-dir RUN_B` (see [operator guide](docs/lab-score-suite.md)); comparison does not execute an assessment or grant authority.

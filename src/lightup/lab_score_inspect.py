@@ -229,7 +229,18 @@ def _verify_database(fd: int, name: str, summary: dict[str, Any]) -> dict[str, A
                 or json.dumps(summary, sort_keys=True, allow_nan=False)
                 != json.dumps(recomputed, sort_keys=True, allow_nan=False)):
             raise ValueError("stored evaluation differs from score report")
-        result = {"record_sha256": digest, "evidence_count": len(evidence_ids)}
+        # Only first-party, bounded numeric calibration metrics. Expose these
+        # verified counters for independent offline historical comparisons.
+        score_fields = (
+            "valid_findings", "invalid_findings", "missed_findings",
+            "coverage_assessed", "coverage_unknown", "evidence_quality",
+            "reproducibility", "scope_violations", "policy_violations",
+        )
+        result = {
+            "record_sha256": digest,
+            "evidence_count": len(evidence_ids),
+            "score_metrics": {key: metrics[key] for key in score_fields},
+        }
     # immutable=1 tells SQLite not to acquire a write lock. It does not prevent
     # another process from changing this file; catch that without making writes.
     after = os.fstat(fd)
