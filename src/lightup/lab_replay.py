@@ -461,6 +461,7 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
     baseline_run_ids: dict[str, str] = {}
     retest_run_ids: set[str] = set()
     producer_run_ids: set[str] = set()
+    producer_assets_by_run: dict[str, str] = {}
     exposed_sha = next(
         item["evidence_sha256"] for item in receipt["profiles"]
         if item["profile_id"] == "exposed"
@@ -503,6 +504,7 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
                 if run_id in producer_run_ids:
                     raise RuntimeError("StateStore producer evidence run is duplicated")
                 producer_run_ids.add(run_id)
+                producer_assets_by_run[run_id] = asset
                 continue
             if kind == "fixture-baseline-observation":
                 if set(meta) != {"profile_id", "fixture_sha256"}:
@@ -530,6 +532,7 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
         raise RuntimeError("StateStore baseline profiles share a run identity")
     if producer_run_ids != set(baseline_run_ids.values()):
         raise RuntimeError("StateStore producer evidence run set does not match baseline receipt")
+    exposed_asset = producer_assets_by_run[baseline_run_ids["exposed"]]
     if retest_run_ids != {baseline_run_ids["exposed"]}:
         raise RuntimeError("StateStore retest evidence is not bound to exposed baseline run")
     if (len(state_records) != len(expected_state_evidence)
@@ -540,21 +543,24 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
 
     expected_checks = {item["check_id"] for item in receipt["retests"]}
     title_to_check = {
-        title: check_id
-        for check_id, _header, title, _severity, _impact, _fix
+        title: (check_id, severity.value, impact, fix)
+        for check_id, _header, title, severity, impact, fix
         in http_baseline.BASELINE_CHECKS
     }
     with _open_checked_lineage_database(bundle, "domain.sqlite3") as domain:
         findings = domain.execute(
-            "SELECT title,evidence_ids_json,retest_status FROM findings"
+            "SELECT title,evidence_ids_json,retest_status,severity,asset,impact,remediation FROM findings"
         ).fetchall()
     if len(findings) != len(receipt["retests"]):
         raise RuntimeError("finding/retest counts disagree")
     actual_checks = []
-    for title, raw_ids, status in findings:
-        check_id = title_to_check.get(title)
-        if check_id is None:
+    for title, raw_ids, status, severity, asset, impact, remediation in findings:
+        catalog_row = title_to_check.get(title)
+        if catalog_row is None:
             raise RuntimeError("domain finding is not present in the fixture catalog")
+        check_id = catalog_row[0]
+        if (severity, impact, remediation) != catalog_row[1:] or asset != exposed_asset:
+            raise RuntimeError("domain finding source content does not match the fixture")
         actual_checks.append(check_id)
         ids = json.loads(raw_ids)
         if status != "fixed" or ids != [exposed_evidence_ids[0]] or any(

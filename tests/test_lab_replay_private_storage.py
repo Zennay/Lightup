@@ -175,6 +175,20 @@ class PrivateReplayStorageContract(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "SQLite schema is not canonical"):
                 _verify_database_lineage(bundle, receipt)
 
+    def test_forged_finding_asset_or_remediation_fails_reuse(self) -> None:
+        for column, forged in (
+            ("asset", "https://untrusted.invalid/"),
+            ("remediation", "forged remediation action"),
+        ):
+            with self.subTest(column=column):
+                with tempfile.TemporaryDirectory() as temporary:
+                    bundle = Path(temporary)
+                    receipt, _raw, _digest = _build_replay(bundle)
+                    with sqlite3.connect(bundle / "domain.sqlite3") as domain:
+                        domain.execute(f"UPDATE findings SET {column}=?", (forged,))
+                    with self.assertRaisesRegex(RuntimeError, "source content does not match"):
+                        _verify_database_lineage(bundle, receipt)
+
     def test_state_store_rejects_non_loopback_producer_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             bundle = Path(temporary)
