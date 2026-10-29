@@ -566,10 +566,23 @@ class LightUpWebApp:
             return tuple(part.strip() for part in form.get(name, "").split(",")
                          if part.strip())
 
-        max_risk = RiskLevel(int(form.get("max_risk", "3")))
-        if max_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
+        raw_max_risk = form.get("max_risk")
+        if raw_max_risk is None or not raw_max_risk.strip():
+            raise ValueError("maximum risk is required")
+        if raw_max_risk == str(int(RiskLevel.DESTRUCTIVE_LAB_ONLY)):
             raise ValueError("destructive simulation cannot be granted for client assets")
-        valid_days = max(1, min(365, int(form.get("valid_days", "30"))))
+        if raw_max_risk not in {"1", "2", "3", "4"}:
+            raise ValueError("maximum risk must be one of 1, 2, 3, or 4")
+        max_risk = RiskLevel(int(raw_max_risk))
+
+        raw_valid_days = form.get("valid_days")
+        if raw_valid_days is None or not raw_valid_days.strip():
+            raise ValueError("grant validity is required")
+        if not raw_valid_days.isascii() or not raw_valid_days.isdigit():
+            raise ValueError("grant validity must be a whole number of days")
+        valid_days = int(raw_valid_days)
+        if not 1 <= valid_days <= 365:
+            raise ValueError("grant validity must be between 1 and 365 days")
         now = datetime.now(timezone.utc)
         scope = ScopeDefinition(
             assets=_csv("assets"),
@@ -651,14 +664,22 @@ class LightUpWebApp:
 
     def decide_request(self, auth: AuthState, form: dict[str, str],
                        request_id: str) -> Response:
-        approve = form.get("decision") == "approve"
-        self.store.review_assessment_request(auth.context, request_id, approve)
+        decision = form.get("decision")
+        if decision not in {"approve", "reject"}:
+            raise ValueError("assessment decision must be exactly approve or reject")
+        self.store.review_assessment_request(
+            auth.context, request_id, decision == "approve"
+        )
         return _redirect("/assessments")
 
     def decide_elevation(self, auth: AuthState, form: dict[str, str],
                          approval_id: str) -> Response:
-        approve = form.get("decision") == "approve"
-        self.store.decide_risk_elevation(auth.context, approval_id, approve)
+        decision = form.get("decision")
+        if decision not in {"approve", "deny"}:
+            raise ValueError("risk-elevation decision must be exactly approve or deny")
+        self.store.decide_risk_elevation(
+            auth.context, approval_id, decision == "approve"
+        )
         return _redirect("/assessments")
 
     # -- client portal --------------------------------------------------------
@@ -728,9 +749,14 @@ class LightUpWebApp:
                               client_id: str) -> Response:
         ctx = self._portal_context(auth, client_id)
         assets = tuple(part.strip() for part in form.get("assets", "").split(",") if part.strip())
-        risk = RiskLevel(int(form.get("risk", "3")))
-        if risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
+        raw_risk = form.get("risk")
+        if raw_risk is None or not raw_risk.strip():
+            raise ValueError("requested risk is required")
+        if raw_risk == str(int(RiskLevel.DESTRUCTIVE_LAB_ONLY)):
             raise ValueError("destructive simulation cannot be requested from the portal")
+        if raw_risk not in {"1", "2", "3", "4"}:
+            raise ValueError("requested risk must be one of 1, 2, 3, or 4")
+        risk = RiskLevel(int(raw_risk))
         self.store.submit_assessment_request(
             ctx,
             requested_assets=assets,
