@@ -192,6 +192,23 @@ class LabScoreSuiteTests(unittest.TestCase):
         ):
             self.assertIn(f"metric_mismatch:{metric}", failures)
 
+    def test_noncanonical_zero_and_derived_rate_cannot_pass(self) -> None:
+        forged_rate = _score_result("service_inventory", 1)
+        forged_rate["evaluation"]["metrics"]["false_positive_rate"] = 1e-13
+        result = lab_score_suite._summarize_result(
+            "service_inventory", "service_inventory.sqlite3", forged_rate
+        )
+        self.assertFalse(result["passed"])
+        self.assertIn("false_positive_rate_mismatch", result["failure_reasons"])
+
+        negative_zero = _score_result("service_inventory", 1)
+        negative_zero["evaluation"]["metrics"]["compute_cost_usd"] = -0.0
+        result = lab_score_suite._summarize_result(
+            "service_inventory", "service_inventory.sqlite3", negative_zero
+        )
+        self.assertFalse(result["passed"])
+        self.assertIn("negative_zero_metric", result["failure_reasons"])
+
     def test_scorer_exception_is_private_and_does_not_skip_later_scorers(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             with (

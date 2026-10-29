@@ -279,6 +279,10 @@ def _summarize_result(
             failures.append("unexpected_metric_field")
         elif type(value) not in (int, float) or not math.isfinite(value):
             failures.append("invalid_metric_field")
+        elif type(value) is float and value == 0.0 and math.copysign(1.0, value) < 0:
+            # Python compares negative zero equal to positive zero, but the
+            # source-defined canonical score must not conceal its sign.
+            failures.append("negative_zero_metric")
         elif key in _INTEGER_METRICS and (type(value) is not int or value < 0):
             failures.append("invalid_metric_field")
         elif key in _FRACTION_METRICS and not 0 <= value <= 1:
@@ -305,8 +309,9 @@ def _summarize_result(
         else:
             denominator = valid + invalid
             computed_rate = invalid / denominator if denominator else 0.0
-            if not math.isclose(safe_metrics["false_positive_rate"], computed_rate,
-                                rel_tol=1e-12, abs_tol=1e-12):
+            reported_rate = safe_metrics["false_positive_rate"]
+            if (type(reported_rate) is not float
+                    or reported_rate.hex() != computed_rate.hex()):
                 failures.append("false_positive_rate_mismatch")
 
     record_id = result.get("evaluation_record_id")
