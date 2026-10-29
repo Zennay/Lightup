@@ -50,7 +50,7 @@ def verify_state_rows(
     state_rows: list[tuple[Any, ...]],
     profiles: list[dict[str, Any]],
     retests: list[dict[str, Any]],
-) -> set[str]:
+) -> dict[str, str]:
     if len(state_rows) != len(profiles) * 2 + len(retests):
         raise ValueError("StateStore evidence count mismatch")
     profile_by_id = {item["profile_id"]: item for item in profiles}
@@ -59,7 +59,7 @@ def verify_state_rows(
         raise ValueError("duplicate retest finding key")
 
     state_ids: set[str] = set()
-    baseline_evidence_ids: set[str] = set()
+    baseline_evidence_ids: dict[str, str] = {}
     baseline_runs: dict[str, str] = {}
     producer_runs: list[str] = []
     retest_rows: list[tuple[str, str]] = []
@@ -125,7 +125,7 @@ def verify_state_rows(
             ):
                 raise ValueError("baseline StateStore lineage mismatch")
             baseline_runs[profile_id] = run_id
-            baseline_evidence_ids.add(evidence_id)
+            baseline_evidence_ids[profile_id] = evidence_id
         elif kind == "fixture-retest-observation":
             key = meta.get("finding_key")
             retest = retest_by_key.get(key)
