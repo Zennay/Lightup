@@ -37,6 +37,30 @@ def _finite_float(value):
     return number
 
 
+def _stat_identity(st):
+    return (st.st_dev, st.st_ino, st.st_size, st.st_mode, st.st_uid,
+            st.st_nlink, st.st_mtime_ns, st.st_ctime_ns)
+
+
+def _assert_safe_directory(fd):
+    st = os.fstat(fd)
+    if not stat.S_ISDIR(st.st_mode):
+        raise ValueError("path component is not a directory")
+    if st.st_mode & 0o022 and not (st.st_uid == 0 and st.st_mode & stat.S_ISVTX):
+        raise ValueError("directory writable by group/other")
+
+
+def _validate_private_file(st):
+    if not stat.S_ISREG(st.st_mode):
+        raise ValueError("not a regular file")
+    if st.st_uid != os.geteuid():
+        raise ValueError("file not owned by invoking account")
+    if st.st_mode & 0o077 or st.st_nlink != 1:
+        raise ValueError("not private")
+    if not 0 < st.st_size <= MAX_BYTES:
+        raise ValueError("invalid size")
+
+
 def _read_private_regular(path):
     """Pin every path component via dirfd; never follow any component symlink."""
     if not all(hasattr(os, name) for name in ("O_NOFOLLOW", "O_DIRECTORY")):
@@ -56,29 +80,30 @@ def _read_private_regular(path):
     directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
     directory_fd = os.open(root, directory_flags)
     try:
+        _assert_safe_directory(directory_fd)
         for component in components[:-1]:
             next_fd = os.open(component, directory_flags, dir_fd=directory_fd)
+            try:
+                _assert_safe_directory(next_fd)
+            except (OSError, ValueError):
+                os.close(next_fd)
+                raise
             os.close(directory_fd)
             directory_fd = next_fd
+        path_stat = os.stat(components[-1], dir_fd=directory_fd,
+                            follow_symlinks=False)
+        _validate_private_file(path_stat)
         flags = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW
         fd = os.open(components[-1], flags, dir_fd=directory_fd)
         try:
             before = os.fstat(fd)
-            if not stat.S_ISREG(before.st_mode):
-                raise ValueError("not a regular file")
-            if before.st_uid != os.geteuid():
-                raise ValueError("file not owned by invoking account")
-            if before.st_mode & 0o077 or before.st_nlink != 1:
-                raise ValueError("not private")
-            if not 0 < before.st_size <= MAX_BYTES:
-                raise ValueError("invalid size")
+            _validate_private_file(before)
+            if _stat_identity(path_stat) != _stat_identity(before):
+                raise ValueError("source changed before open")
             with os.fdopen(os.dup(fd), "rb", closefd=True) as stream:
                 data = stream.read(MAX_BYTES + 1)
             after = os.fstat(fd)
-            identity = lambda st: (st.st_dev, st.st_ino, st.st_size,
-                                   st.st_mode, st.st_uid, st.st_nlink,
-                                   st.st_mtime_ns, st.st_ctime_ns)
-            if len(data) != before.st_size or identity(before) != identity(after):
+            if len(data) != before.st_size or _stat_identity(before) != _stat_identity(after):
                 raise ValueError("source changed during read")
             return data
         finally:

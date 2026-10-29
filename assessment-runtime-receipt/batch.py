@@ -51,13 +51,17 @@ def inspect_batch(manifest_path, expected_manifest_sha256):
 
     Manifest expectations and the independently supplied manifest hash establish
     byte equality only. They do not authenticate the person holding either.
+    The manifest path and every source path must be canonical absolute paths.
     Reads are sequential, not an atomic snapshot of changing files.
     """
     result = _hold()
     try:
+        manifest_name = os.fspath(manifest_path)
+        if type(manifest_name) is not str or not os.path.isabs(manifest_name):
+            return result
         if not _digest_ok(expected_manifest_sha256):
             return result
-        data = _read_private_regular(manifest_path)
+        data = _read_private_regular(manifest_name)
         manifest_digest = hashlib.sha256(data).hexdigest()
         if not secrets.compare_digest(manifest_digest, expected_manifest_sha256):
             return result
