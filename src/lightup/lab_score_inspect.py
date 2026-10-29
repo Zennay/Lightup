@@ -19,17 +19,15 @@ from typing import Any
 from .lab_score_suite import (
     SCHEMA as SCORE_SCHEMA,
     _EXPECTED_FINDINGS,
+    _EXPECTED_EVIDENCE,
+    _ENGINE_VERSIONS,
+    _SCENARIOS,
     _PUBLIC_CHECKS,
     _public_identifier,
     _summarize_result,
 )
 
 INSPECT_SCHEMA = "lightup.lab-score-inspect.v1"
-_SCENARIOS = {
-    "service_inventory": "lab-service-inventory-loopback",
-    "tls_baseline": "lab-tls-baseline-self-signed-loopback",
-    "http_baseline": "lab-web-baseline-security-headers-loopback",
-}
 # Source-defined capability/kind/tool triplets, never inferred from report claims.
 _EVIDENCE_PROVENANCE = {
     "service_inventory": ("network-services", "service-inventory-observation",
@@ -38,11 +36,6 @@ _EVIDENCE_PROVENANCE = {
                      "lab-tls-baseline", 2),
     "http_baseline": ("web-baseline", "http-baseline-observation",
                       "lab-http-baseline", 4),
-}
-_ENGINE_VERSIONS = {
-    "service_inventory": "m1-service-inventory",
-    "tls_baseline": "m1-tls-baseline",
-    "http_baseline": "m1-web-baseline",
 }
 _FILES = {"report.json", *(name + ".sqlite3" for name in _EXPECTED_FINDINGS)}
 _TEMP_ROOTS = {"/tmp", "/var/tmp", "/dev/shm"}
@@ -175,6 +168,8 @@ def _verify_database(fd: int, name: str, summary: dict[str, Any]) -> dict[str, A
         # masquerade as another engine, or claim a different worker count.
         metrics = record.get("metrics")
         capability, kind, source, expected_count = _EVIDENCE_PROVENANCE[name]
+        if expected_count != _EXPECTED_EVIDENCE[name]:
+            raise ValueError("first-party evidence count contract drift")
         if (record.get("engine_version") != _ENGINE_VERSIONS[name]
                 or record.get("model_bindings") != []
                 or not isinstance(metrics, dict)
