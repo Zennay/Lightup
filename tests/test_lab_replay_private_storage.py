@@ -189,7 +189,7 @@ class PrivateReplayStorageContract(unittest.TestCase):
                     "UPDATE evidence SET source=? WHERE evidence_id=?",
                     ("untrusted.injected", evidence_id),
                 )
-            with self.assertRaisesRegex(RuntimeError, "StateStore evidence set does not match receipt"):
+            with self.assertRaisesRegex(RuntimeError, "StateStore baseline run set does not match receipt"):
                 _verify_database_lineage(bundle, receipt)
             with sqlite3.connect(state_path) as state:
                 state.execute(
