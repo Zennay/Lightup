@@ -134,6 +134,7 @@ class EvaluationRecord:
     metrics: EvaluationMetrics
     created_at: str
     notes: str = ""
+    evidence_ids: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         data = asdict(self)
@@ -176,6 +177,7 @@ class LabEvaluationHarness:
         metrics: EvaluationMetrics,
         model_bindings: tuple[tuple[str, str], ...] = (),
         notes: str = "",
+        evidence_ids: tuple[str, ...] = (),
     ) -> EvaluationRecord:
         if not context.is_lab:
             raise LabIsolationError("evaluation records are lab-only")
@@ -189,6 +191,7 @@ class LabEvaluationHarness:
             metrics=metrics,
             created_at=datetime.now(timezone.utc).isoformat(),
             notes=notes,
+            evidence_ids=evidence_ids,
         )
         self.records.append(record)
         return record

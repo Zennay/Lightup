@@ -208,7 +208,7 @@ class StateStore:
     def add_lab_evaluation(self, record: dict) -> str:
         """Persist one lab evaluation as canonical JSON for later comparison."""
         required = ("record_id", "scenario_id", "run_id", "engine_version",
-                    "model_bindings", "metrics", "created_at", "notes")
+                    "model_bindings", "evidence_ids", "metrics", "created_at", "notes")
         if not isinstance(record, dict) or any(key not in record for key in required):
             raise ValueError("lab evaluation record is incomplete")
         for key in ("record_id", "scenario_id", "run_id", "engine_version", "created_at"):
@@ -222,6 +222,11 @@ class StateStore:
             or any(not isinstance(value, str) for value in pair) for pair in bindings
         ):
             raise ValueError("lab evaluation model bindings must be string pairs")
+        evidence_ids = record["evidence_ids"]
+        if (not isinstance(evidence_ids, (tuple, list))
+                or any(not isinstance(item, str) or not item.strip() for item in evidence_ids)
+                or len(set(evidence_ids)) != len(evidence_ids)):
+            raise ValueError("lab evaluation evidence IDs must be unique non-empty strings")
         encoded = json.dumps(record, sort_keys=True, separators=(",", ":"), allow_nan=False)
         digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
         with self.connect() as con:
