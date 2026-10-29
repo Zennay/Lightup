@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>LightUp · Engagement Handoff</title>
+<style>
+:root{font:15px/1.5 system-ui,Segoe UI,sans-serif;color:#edf5ff;background:#0b1423;--ink:#eff8ff;--muted:#aec3d8;--line:#40546e;--mint:#80e8ce}*{box-sizing:border-box}body{margin:0}header{background:#132037;border-bottom:1px solid #354860;padding:23px max(22px,calc((100vw - 1240px)/2))}h1{margin:5px 0;font-size:clamp(27px,3vw,39px);letter-spacing:-.04em}.brand{font-size:.8rem;font-weight:800;color:var(--mint);letter-spacing:.1em}.container{max-width:1280px;margin:auto;padding:25px 20px 60px}.layout{display:grid;grid-template-columns:1.1fr 1fr;gap:18px}.card{background:#122138;border:1px solid var(--line);border-radius:16px;padding:21px;min-width:0;margin-bottom:18px}.card h2{font-size:1.2rem;margin:0 0 8px}p,small{color:var(--muted)}input,textarea,select{background:#0b1729;border:1px solid #556982;border-radius:9px;color:var(--ink);padding:11px 12px;width:100%;font:inherit;margin-top:4px}textarea{resize:vertical;min-height:84px}label{display:block;font-weight:700;margin:13px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid label{margin:0}.buttons{display:flex;gap:8px;flex-wrap:wrap;margin:17px 0}button{padding:10px 14px;border:1px solid #60738b;border-radius:9px;background:#263d55;color:#f9ffff;font:inherit;font-weight:750;cursor:pointer}button.primary{background:var(--mint);color:#092528;border-color:var(--mint)}button:disabled{opacity:.45;cursor:not-allowed}.banner{padding:13px;border:1px solid #a7894c;border-radius:10px;background:#32281e;color:#ffe6bf;margin:15px 0}.items{padding:0;list-style:none}.items li{margin:7px 0;padding:9px 12px;border-left:3px solid var(--mint);background:#1a2d42;overflow-wrap:anywhere}.items li.missing{border-color:#efaf75;background:#302820}.flag{font-size:.75rem;border:1px solid #647a92;border-radius:30px;padding:4px 9px;font-weight:750}pre{white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;max-height:480px;background:#081524;border:1px solid #31455c;padding:15px;border-radius:9px;font:12px/1.5 ui-monospace,Consolas,monospace}.source{background:#142e35;padding:10px;border-radius:8px;overflow-wrap:anywhere}.checklist label{font-weight:450;display:flex;align-items:start;gap:10px}.checklist input{width:auto;margin-top:4px}.help{font-size:.86rem}@media(max-width:800px){.layout{grid-template-columns:1fr}.grid{grid-template-columns:1fr}header{padding:22px}}@media print{body{color:#000;background:white}header,.input-pane,.buttons{display:none!important}.container{padding:0}.layout{display:block}.card{border:0;color:#000;background:white}.items li,.source{color:#000;background:#eee}pre{color:#000;background:white;max-height:none}}
+</style></head><body>
+<header><div class="brand">LIGHTUP / OFFLINE PRE-ASSESSMENT PLANNING</div><h1>Engagement handoff</h1><p>Convert a scope proposal into a structured, human-readable preparation dossier. Unverified information never becomes permission, consent or a grant.</p></header>
+<main class="container">
+<div class="banner"><strong>Discussion and preparation only:</strong> this page cannot authenticate users, inspect targets, accept consent, issue grants, check revocation, contact customers or start scans. An exported handoff is not an approved assessment request.</div>
+<div class="layout">
+<div class="input-pane">
+<section class="card">
+<h2>Step 1 · Bring in scope</h2>
+<label for="scopeFile">Import the JSON exported by Scope Proposal Studio</label>
+<input id="scopeFile" type="file" accept=".json,application/json">
+<p class="help" id="fileStatus" role="status">No draft loaded. Maximum file size 64 KiB; the source remains only in this browser tab.</p>
+<div class="buttons"><a href="./scope-proposal.html" style="color:#80e8ce">Create or edit a proposal →</a></div>
+</section>
+<section class="card">
+<h2>Step 2 · Operational contacts</h2>
+<div class="grid"><label for="clientContact">Client-side coordination contact<input id="clientContact" maxlength="180" placeholder="Role / agreed contact details"></label>
+<label for="operatorContact">Operator-side review contact<input id="operatorContact" maxlength="180" placeholder="Role / team alias"></label></div>
+<label for="stopContact">Emergency stop/revocation contact<input id="stopContact" maxlength="180" placeholder="Escalation number, channel or on-call role"></label>
+<label for="channel">Approved communication channel (proposed)<input id="channel" maxlength="180" placeholder="Secure messaging channel or ticket system"></label>
+<label for="stopProcedure">Stop conditions and escalation process<textarea id="stopProcedure" maxlength="1600" placeholder="When must work stop? Who should be called? How is pause confirmed?"></textarea></label>
+</section>
+<section class="card">
+<h2>Step 3 · Constraints and preparation</h2>
+<label for="sensitiveData">Data handling and privacy plan<textarea id="sensitiveData" maxlength="1400" placeholder="Which information must not be collected, how should evidence be stored, and who receives it?"></textarea></label>
+<label for="limitations">Environment constraints, exclusions and rate limits<textarea id="limitations" maxlength="1400" placeholder="Operational systems to avoid, fragile services, protected data, rate-limit expectations."></textarea></label>
+<label for="rollback">Escalation and rollback coordination<textarea id="rollback" maxlength="1000" placeholder="How is an incident reported or testing paused?"></textarea></label>
+<p class="help">These are proposed instructions, never proof of ownership or a substitute for independent scope enforcement.</p>
+</section>
+<section class="card checklist"><h2>Step 4 · Materials prepared for review</h2><p>These flags only mean someone marked a preparation item. They do not verify any evidence or represent approval.</p>
+<label><input type="checkbox" id="assetEvidence"> Claimed ownership/delegation evidence collected for human validation</label>
+<label><input type="checkbox" id="scopeReviewed"> Requested assets and exclusions listed for independent reconciliation</label>
+<label><input type="checkbox" id="riskBriefed"> Risk-specific safeguards and impact discussed</label>
+<label><input type="checkbox" id="windowProposed"> Requested planning window confirmed with coordination team</label>
+<label><input type="checkbox" id="privacyPrepared"> Privacy/evidence handling plan prepared</label>
+<div class="buttons"><button class="primary" id="export" type="button" disabled>Download preparation packet</button><button id="print" type="button" disabled>Print dossier</button><button id="clear" type="button">Clear all</button></div>
+<p class="help" id="actionStatus" role="status" aria-live="polite">Import a scope proposal first. No automatic saving.</p></section>
+</div>
+<aside>
+<section class="card"><h2>Preparation overview <span class="flag">NOT AUTHORIZED</span></h2>
+<p id="headline">Import a scope to build this dossier.</p>
+<div class="source" id="assets">No assets.</div>
+<h3>Review reminders</h3><ul id="reminders" class="items"></ul>
+</section>
+<section class="card"><h2>Handoff document</h2><pre id="brief">No source proposal imported.</pre></section>
+<section class="card"><h2>Packet JSON</h2><pre id="packet">No preparation data.</pre></section>
+</aside>
+</div>
+<p class="help">Private local page: no backend, browser storage, external dependencies, remote JavaScript, API calls or network requests. Treat file exports as potentially sensitive; use an approved authenticated transfer channel.</p>
+</main>
+<script src="./scope-network.js"></script>
+<script src="./scope-fingerprint.js"></script><script src="./planning-window.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const texts=['clientContact','operatorContact','stopContact','channel','stopProcedure','sensitiveData','limitations','rollback'];
+const checks=['assetEvidence','scopeReviewed','riskBriefed','windowProposed','privacyPrepared'];
+let draft=null,lastPacket=null,revisionFingerprint=null;
+function valid(d) {
+ return d && !Array.isArray(d) && d.schema_version===1 && d.kind==='lightup.scope_proposal_draft'&&d.state==='DRAFT_ONLY'&&
+ d.authorization===false&&d.client_consent===false&&d.operator_consent===false&&d.execution===false&&d.grant===false&&
+ typeof d.proposal_name==='string'&&d.proposal_name.length<=120&&typeof d.client_label==='string'&&d.client_label.length<=100&&
+ typeof d.notes==='string'&&d.notes.length<=3000&&
+ Array.isArray(d.requested_assets)&&d.requested_assets.length>0&&d.requested_assets.length<=80&&
+ Array.isArray(d.excluded_assets)&&d.excluded_assets.length<=80&&
+ [...d.requested_assets,...d.excluded_assets].every(s=>typeof s==='string'&&s.length<=253&&LightUpScopeNetwork.parse(s)!==null)&&
+ Number.isInteger(d.requested_risk)&&d.requested_risk>=1&&d.requested_risk<=4&&
+ ['authorized_assessment','analysis_only'].includes(d.requested_mode)&&
+ LightUpPlanningWindow.validateStored(d.proposed_window_local,d.proposed_window_utc) &&
+ d.proposed_window_local && typeof d.proposed_window_local==='object' &&
+ ['start','end'].every(k=>d.proposed_window_local[k]===null||(typeof d.proposed_window_local[k]==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d.proposed_window_local[k])))&&
+ d.proposed_activities && typeof d.proposed_activities==='object' &&
+ ['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof d.proposed_activities[k]==='boolean');
+}
+function readObject(){
+ const preparation={};
+ for(const id of texts)preparation[id]=$(''+id).value.trim();
+ const materials={};for(const id of checks)materials[id]=$(''+id).checked;
+ return {preparation,materials};
+}
+function details(){
+ if(!draft)return;
+ const {preparation,materials}=readObject();
+ const missing=[];
+ if(!preparation.clientContact)missing.push('Record a coordination contact on the client side.');
+ if(!preparation.operatorContact)missing.push('Record a responsible operator-side contact.');
+ if(!preparation.stopContact||!preparation.stopProcedure)missing.push('Specify an emergency stop contact and stop instructions.');
+ if(!preparation.channel)missing.push('Specify a secure communication channel.');
+ if(!preparation.sensitiveData)missing.push('Record the data-handling/privacy plan.');
+ if(!preparation.limitations)missing.push('Record exclusions, rate limits and environmental constraints.');
+ if(!preparation.rollback)missing.push('Record incident escalation/rollback coordination.');
+ const start=draft.proposed_window_local.start,end=draft.proposed_window_local.end;
+ if(!start||!end)missing.push('Propose start and end of the time window.');
+ if(start&&end&&end<=start)missing.push('Window end must be after its start.');
+ if(utc?.status!=='resolved')missing.push('Resolve an unambiguous UTC planning interval in the proposal composer before coordinating cross-timezone planning.');
+ if(draft.requested_risk===4)missing.push('High-risk scope needs independent risk approval.');
+ const overlap=LightUpScopeNetwork.inspect(draft.requested_assets,draft.excluded_assets);
+ for(const problem of overlap.filter(p=>p.code==='exclusion_overlap'||p.code==='global_range'||p.code==='invalid'))missing.push(problem.message);
+ for(const [id,done] of Object.entries(materials))if(!done)missing.push('Not marked prepared: '+id.replace(/([A-Z])/g,' $1').toLowerCase());
+ const readiness=missing.length?'PREPARATION_INCOMPLETE':'PREPARED_FOR_HUMAN_REVIEW';
+ const packet={
+  kind:'lightup.engagement_preparation_draft',schema_version:1,state:'DISCUSSION_ONLY',readiness,
+  authenticity_verified:false,asset_ownership_verified:false,client_consent:false,operator_consent:false,
+  authorization:false,grant:false,risk_approved:false,revocation_checked:false,execution:false,scan:false,release:false,
+  unsigned_proposal_scope_sha256:revisionFingerprint,
+  proposal:{
+   kind:'lightup.scope_proposal_draft',schema_version:1,state:'DRAFT_ONLY',proposal_name:draft.proposal_name,
+   client_label:draft.client_label,requested_assets:draft.requested_assets,
+   excluded_assets:draft.excluded_assets,requested_mode:draft.requested_mode,requested_risk:draft.requested_risk,
+   notes:draft.notes,proposed_activities:draft.proposed_activities,
+   proposed_window_local:draft.proposed_window_local,
+   proposed_window_utc:draft.proposed_window_utc||null
+  },
+  operational_contacts:{
+   client:preparation.clientContact,operator:preparation.operatorContact,emergency_stop:preparation.stopContact,
+   communication:preparation.channel
+  },
+  operational_limits:{
+   emergency_stop_procedure:preparation.stopProcedure,data_handling:preparation.sensitiveData,
+   environment_limits:preparation.limitations,incident_rollback:preparation.rollback
+  },
+  preparation_materials_self_reported:materials,
+  manual_followups:missing,
+  next_step:'Submit independently via genuine authenticated client session; operator must independently verify request provenance and scope. This packet never confers any assessment rights.'
+ };
+ const brief=[
+  'LIGHTUP ENGAGEMENT PREPARATION DOSSIER · DISCUSSION ONLY',
+  'Proposal: '+draft.proposal_name,
+  'Unsigned scope revision SHA-256: '+(revisionFingerprint||'unavailable'),
+  'Client label (NOT verified identity): '+(draft.client_label||'—'),
+  'Mode: '+draft.requested_mode+' · requested risk '+draft.requested_risk,
+  'Requested planning window, source-local: '+(start||'?')+' → '+(end||'?'),
+  'Proposed UTC interval: '+(utc?.start||'?')+' → '+(utc?.end||'?')+' (source: '+(utc?.timezone||'unknown')+')',
+  'PROPOSED assets:\n'+draft.requested_assets.map(s=>'  + '+s).join('\n'),
+  'EXCLUDED proposals:\n'+(draft.excluded_assets.map(s=>'  - '+s).join('\n')||'  —'),
+  'Purpose:\n'+(draft.notes||'—'),
+  'Client coordinator: '+(preparation.clientContact||'—'),
+  'Operator review contact: '+(preparation.operatorContact||'—'),
+  'Emergency stop contact: '+(preparation.stopContact||'—'),
+  'Communication channel: '+(preparation.channel||'—'),
+  'Stop/escalation conditions:\n'+(preparation.stopProcedure||'—'),
+  'Data and privacy handling:\n'+(preparation.sensitiveData||'—'),
+  'Environment/rate limits:\n'+(preparation.limitations||'—'),
+  'Incident/rollback coordination:\n'+(preparation.rollback||'—'),
+  'SELF-REPORTED MATERIALS: '+Object.entries(materials).map(([k,v])=>k+'='+String(v)).join(', '),
+  'OPEN FOLLOWUPS:\n'+(missing.map(s=>'  - '+s).join('\n')||'  All preparation fields filled; authentication and review still pending.'),
+  'STATE: '+readiness+' / NO AUTHORIZATION · NO GRANT · NO EXECUTION.'
+ ].join('\n\n');
+ $('headline').textContent=readiness==='PREPARATION_INCOMPLETE'
+  ? missing.length+' preparation item(s) still open. No permission.'
+  :'Preparation fields supplied. Real human authentication and consent remain outstanding.';
+ $('assets').textContent=draft.requested_assets.length+' proposed asset(s), '+draft.excluded_assets.length+' excluded. Risk '+draft.requested_risk+'.';
+ $('reminders').replaceChildren();
+ for(const str of missing){const li=document.createElement('li');li.className='missing';li.textContent=str;$('reminders').append(li);}
+ const li=document.createElement('li');li.textContent='Always require genuine client/operator identities, independently approved exact scope, current revocation and a separately issued domain-bound grant.';$('reminders').append(li);
+ $('brief').textContent=brief;
+ $('packet').textContent=JSON.stringify(packet,null,2);
+ $('export').disabled=false;$('print').disabled=false;lastPacket=packet;
+ return brief;
+}
+for(const id of [...texts,...checks]) $(id).addEventListener('input',details);
+$('scopeFile').addEventListener('change',async event=>{
+ const file=event.target.files[0];if(!file)return;
+ try{
+  if(file.size>65536)throw Error('too large');
+  const data=JSON.parse(await file.text(),(key,value)=>['__proto__','constructor','prototype'].includes(key)?undefined:value);
+  if(!valid(data))throw Error('invalid source');
+  const calculated=await LightUpScopeDigest.fingerprint(data);
+  if(data.scope_fingerprint_sha256!==undefined && (!calculated||data.scope_fingerprint_sha256!==calculated))throw Error('revision mismatch');
+  revisionFingerprint=calculated;
+  draft=data;
+  $('fileStatus').textContent='Scope draft imported for preparation: '+file.name+'. It is not authenticated or approved.';
+  $('actionStatus').textContent='All preparation fields are local and remain unsaved until export.';
+ }catch(_){draft=null;lastPacket=null;revisionFingerprint=null;$('fileStatus').textContent='File rejected. Only safe LightUp scope proposal draft v1 files, 64 KiB maximum, are accepted.';$('actionStatus').textContent='Import a valid draft first.';$('brief').textContent='No source proposal imported.';$('packet').textContent='No preparation data.';$('headline').textContent='Import a scope to build this dossier.';$('assets').textContent='No assets.';$('reminders').replaceChildren();$('export').disabled=true;$('print').disabled=true;}
+ event.target.value='';details();
+});
+$('export').addEventListener('click',()=>{
+ if(!draft||!lastPacket)return;
+ details();
+ const blob=new Blob([JSON.stringify(lastPacket,null,2)+'\n'],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='lightup-engagement-preparation.json';
+ document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500);
+ $('actionStatus').textContent='Preparation packet exported locally; no request or grant was submitted.';
+});
+$('print').addEventListener('click',()=>{if(draft){details();window.print();}});
+$('clear').addEventListener('click',()=>{
+ if(!window.confirm('Erase the imported proposal and all local preparation fields?'))return;
+ draft=null;lastPacket=null;revisionFingerprint=null;
+ for(const id of texts)$(id).value='';
+ for(const id of checks)$(id).checked=false;
+ $('fileStatus').textContent='No draft loaded.';
+ $('headline').textContent='Import a scope to build this dossier.';$('assets').textContent='No assets.';
+ $('reminders').replaceChildren();$('brief').textContent='No source proposal imported.';
+ $('packet').textContent='No preparation data.';$('export').disabled=true;$('print').disabled=true;
+ $('actionStatus').textContent='Cleared local fields. No data was saved.';
+});
+})();
+</script></body></html>

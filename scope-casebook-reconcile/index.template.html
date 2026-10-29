@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="__CSP__">
+<title>LightUp · PRIVATE HUMAN reconciliatie</title><style>__STYLE__</style></head>
+<body>
+<header><div class="mark">LIGHTUP <span>PRIVATE / OFFLINE</span></div>
+<h1>Casebook · samen beslissen</h1>
+<p class="lead">Vergelijk twee apart ingevulde HUMAN-opvolgwerkruimtes op <strong>precies dezelfde</strong> originele bron. Kies expliciet bij verschillen en maak één nieuwe versleutelde privéoverdracht.</p>
+<p class="warning"><strong>DRAFT/HOLD · INCUBATE M3/M7.</strong> Dit programma bewijst geen oorspronkelijke bron, identiteit, geauthenticeerde cliënt/operatortoestemming, revocation-at-use, grant, onderzoek of toestemming om te scannen. Houd originele validatie en veiligheidsbesluiten intact.</p>
+</header>
+<main>
+<section aria-labelledby="intake-title"><h2 id="intake-title">1 · Ontvang twee bestaande PRIVATE overdrachten</h2>
+<p>Selecteer twee originele .lupt-bundels uit de brongebonden scope Casebook-workroom. Wachtwoorden worden niet bewaard. Beide bundels moeten 1–12 exact dezelfde originele opeenvolgende casebook-NN.json-bronmomenten bevatten, plus ieder een apart opgeslagen workroom-current-template.csv.</p>
+<div class="grid">
+<div class="panel"><h3>Ontvanger A</h3><label for="file-a">Versleutelde overdracht</label><input id="file-a" type="file" accept=".lupt" autocomplete="off">
+<label for="password-a">Wachtwoord A</label><input id="password-a" type="password" autocomplete="off"></div>
+<div class="panel"><h3>Ontvanger B</h3><label for="file-b">Versleutelde overdracht</label><input id="file-b" type="file" accept=".lupt" autocomplete="off">
+<label for="password-b">Wachtwoord B</label><input id="password-b" type="password" autocomplete="off"></div>
+</div>
+<label class="consent"><input id="ack" type="checkbox"> Ik begrijp dat dit een PRIVATE, uitsluitend menselijke samenvoeging zonder autorisatie is en dat plaintext brongegevens lokaal zichtbaar kunnen zijn.</label>
+<button id="open" type="button">Open en vergelijk PRIVATE bronsets</button>
+<button id="clear-session" type="button" class="secondary">Wis huidige PRIVATE browsersessie (expliciet)</button>
+<p id="status" role="status" aria-live="polite">Geen oorspronkelijke brongegevens geladen.</p>
+</section>
+<section aria-labelledby="review-title">
+<h2 id="review-title">2 · Beslis HUMAN-verschillen per veld</h2>
+<p id="summary" aria-live="polite">Nog geen twee volledig ingelezen PRIVATE bronsets.</p>
+<div class="toolbar"><label for="search">Zoek lokaal op PRIVATE bron-ID of actie <input id="search" type="search" autocomplete="off" placeholder="Dossier of bronactie"></label>
+<label class="consent"><input id="conflicts" type="checkbox"> Alleen dossiers met verschillen</label>
+<label class="consent"><input id="unresolved-only" type="checkbox"> Alleen nog onbesliste HUMAN-conflicten</label>
+<button type="button" id="next-unresolved">Spring naar eerste onbesliste dossier</button></div>
+<div class="panel private-portfolio" aria-labelledby="portfolio-title">
+<h3 id="portfolio-title">PRIVATE HUMAN-triageportfolio (oorspronkelijke, ongeverifieerde brongroepen)</h3>
+<p>Bekijk de voortgang van alle ingelezen oorspronkelijke dossiers, met prioriteit voor bron-gemarkeerde HOLD-statussen en nog onbesliste menselijke velden. Dit zijn uitsluitend labels uit de geselecteerde originele gegevens: geen actuele bron-/grant-/consent-verificatie en geen definitieve securityverdicts.</p>
+<p id="portfolio-numbers" aria-live="polite">Geen oorspronkelijke PRIVATE bron geopend.</p>
+<label for="portfolio-progress">Voortgang in het menselijk beslissen (geen vrijgave)</label>
+<progress id="portfolio-progress" value="0" max="1">0</progress>
+<div id="portfolio-groups" class="portfolio-groups"></div>
+<div class="grid"><label for="portfolio-search">Zoek PRIVATE dossier of oorspronkelijke actie
+<input type="search" id="portfolio-search" autocomplete="off" placeholder="Zoek lokaal"></label>
+<label for="portfolio-group">Zelfverklaarde broncategorie
+<select id="portfolio-group"><option value="all">Alle oorspronkelijke labels</option><option value="source-hold">Bron-HOLD</option><option value="risk-pending">Bron: risicobesluit pending</option><option value="window-review">Bron: vervallen/toekomstige vensters</option><option value="other">Overige bronlabels</option></select></label>
+<label for="portfolio-stage">Menselijke besluitstatus
+<select id="portfolio-stage"><option value="all">Alle menselijke statussen</option><option value="unresolved">Nog geen keuze</option><option value="partial">Gedeeltelijk besloten</option><option value="resolved">Alle verschillen gekozen</option><option value="identical">Oorspronkelijk HUMAN gelijk</option></select></label></div>
+<div class="toolbar"><button id="portfolio-jump" type="button" disabled>Open eerste passende HUMAN-case</button>
+<button id="portfolio-export" type="button" class="secondary" disabled>Exporteer alleen bronvrije portfoliotellingen</button></div>
+<p id="portfolio-visible" class="muted"></p>
+<div id="portfolio-table" class="portfolio-table" aria-label="PRIVATE HUMAN-dossieroverzicht"></div>
+<p id="portfolio-status" role="status" aria-live="polite">Geen menselijke portfoliokeuze uitgevoerd.</p>
+</div>
+<div class="panel bulk-triage" aria-labelledby="bulk-title">
+<h3 id="bulk-title">Brongebonden bulkafhandeling — alleen onbesliste HUMAN-velden</h3>
+<p>Maak eerst een actuele voorvertoning. Bulk wijzigt geen reeds beoordeelde velden, originele Casebook-bronnen, grants of toestemming. Bevestiging is per actie verplicht; ongedaan maken en opnieuw toepassen werken alleen zolang dit tabblad en de oorspronkelijke bronnen open zijn.</p>
+<div class="grid"><label for="bulk-field">Soort HUMAN-veld
+<select id="bulk-field"><option value="0">Fase</option><option value="1">Opvolgroute</option><option value="2">Blokkade</option></select></label>
+<label for="bulk-value">Keuze voor alleen conflicterende, onbesliste velden
+<select id="bulk-value"><option value="A">Behoud van ontvanger A</option><option value="B">Behoud van ontvanger B</option><option value="reset">Heropen naar veilige HUMAN-standaardwaarde</option><option value="custom">Een andere canonieke HUMAN-waarde</option></select></label>
+<label for="bulk-custom">Alternatieve expliciete HUMAN-waarde
+<select id="bulk-custom" hidden></select></label>
+<label for="bulk-scope">Welke nog onbesliste dossiers?
+<select id="bulk-scope"><option value="visible-unresolved">Alleen momenteel zichtbare dossiers</option><option value="all-unresolved">Alle oorspronkelijke onbesliste dossiers</option></select></label></div>
+<div class="toolbar"><button id="bulk-plan" type="button">Bekijk getroffen HUMAN-velden</button>
+<button id="bulk-apply" type="button" disabled>Bevestig HUMAN-bulkkeuze</button>
+<button id="bulk-undo" type="button" class="secondary" disabled>Maak keuze ongedaan</button>
+<button id="bulk-redo" type="button" class="secondary" disabled>Pas keuze opnieuw toe</button></div>
+<p id="bulk-history" class="muted"></p><div id="bulk-preview" class="bulk-preview" aria-live="polite"></div>
+<p id="bulk-status" role="status" aria-live="polite">Nog geen bulkkeuze toegepast.</p>
+</div>
+<div class="panel note-bulk" aria-labelledby="note-bulk-title">
+<h3 id="note-bulk-title">PRIVATE menselijke opvolgredenen voor meerdere dossiers</h3>
+<p>Verdeel een oorspronkelijke, al bestaande HUMAN-conflictenlijst sneller naar een vaste menselijke opvolgredencategorie. Alleen dossiers zonder eerder gekozen reden worden bijgewerkt; vrije privénotitieteksten, oorspronkelijke brondossiers en beslissingen blijven ongemoeid. Ook deze actie vereist een voorvertoning en aparte bevestiging.</p>
+<div class="grid"><label for="note-bulk-reason">Canonieke HUMAN-opvolgreden
+<select id="note-bulk-reason"><option value="source-clarification">Oorspronkelijke bron verduidelijken</option><option value="client-question">Vraag aan oorspronkelijke cliënt</option><option value="independent-review">Onafhankelijke menselijke review</option><option value="consent-to-verify">Actuele toestemming onafhankelijk controleren</option><option value="revocation-followup">Intrekking menselijk opvolgen</option><option value="conflicting-human-interpretation">Tegenstrijdige HUMAN-interpretaties</option><option value="manual-followup">Overige menselijke opvolging</option></select></label>
+<label for="note-bulk-scope">Welke nog onbehandelde PRIVÉ-redenen?
+<select id="note-bulk-scope"><option value="visible">Alleen nu zichtbare oorspronkelijke HUMAN-conflictdossiers</option><option value="all">Alle brongebonden conflictdossiers zonder eerdere reden</option></select></label></div>
+<div class="toolbar"><button id="note-bulk-preview-btn" type="button">Bekijk menselijke opvolgredenen-batch</button>
+<button id="note-bulk-apply" type="button" disabled>Bevestig PRIVÉ-redenenbatch</button>
+<button id="note-bulk-undo" type="button" class="secondary" disabled>Redenenbatch ongedaan</button>
+<button id="note-bulk-redo" type="button" class="secondary" disabled>Redenenbatch herstellen</button></div>
+<p id="note-bulk-history" class="muted"></p><div id="note-bulk-plan" class="bulk-preview"></div>
+<p id="note-bulk-status" role="status" aria-live="polite">Nog geen PRIVATE opvolgredenenbatch gekozen.</p>
+</div>
+<p id="shown"></p><div id="cases" class="cases"></div>
+</section>
+<div class="panel original-output-preview" aria-labelledby="preview-title">
+<h3 id="preview-title">Voorvertoning van de EXACTE beoogde HUMAN-CSV-uitvoer (alleen lokaal)</h3>
+<p>Bekijk voor elk oorspronkelijk dossier welke HUMAN-waarden in een eventueel nieuw versleuteld pakket zouden komen. De bron A/B, de expliciet gekozen uitkomst en de keuzebasis staan naast elkaar. Bij onbesliste HUMAN-conflicten blijft de voorvertoning HOLD. Na volledige afhandeling berekent de app lokaal de SHA-256 van precies de door de oorspronkelijke bronhouder geserialiseerde HUMAN-CSV, zonder die CSV onversleuteld te downloaden.</p>
+<button id="preview-build" type="button">Bereken actuele HUMAN-resultaatvoorvertoning</button>
+<p id="preview-export-state" aria-live="polite">Geen actueel prospectief CSV-resultaat.</p>
+<p id="preview-sha" class="muted">Nog geen brongebonden SHA-256 voor deze keuze.</p>
+<div class="grid"><label for="preview-search">Zoek PRIVATE dossier of oorspronkelijke actie in voorvertoning
+<input id="preview-search" type="search" autocomplete="off" placeholder="Zoek lokaal"></label>
+<label class="consent"><input id="preview-different" type="checkbox" checked> Alleen broncases met HUMAN-verschillen</label></div>
+<p id="preview-visible" class="muted"></p>
+<div id="preview-result" class="preview-results" aria-label="PRIVATE HUMAN-uitvoer voorvertoning"></div>
+<p id="preview-status" role="status" aria-live="polite">Nog geen brongebonden HUMAN-resultaat berekend.</p>
+</div>
+<section aria-labelledby="draft-title"><h2 id="draft-title">3 · Versleuteld HUMAN-concept bewaren en hervatten</h2>
+<p>Bewaar tussentijds uitsluitend de HUMAN-keuzestanden en optionele privé-redenen/notities, beschermd met een nieuw wachtwoord. Het besloten concept bevat versleutelde SHA-256-bronverwijzingen en geen oorspronkelijke Casebook-JSON, maar wel PRIVATE menselijke keuzedata. Herstellen kan uitsluitend na het opnieuw openen van exact dezelfde twee bron+HUMAN-overdrachten in exact dezelfde A/B-volgorde.</p>
+<div class="grid"><div class="panel"><h3>Bewaar concept</h3>
+<label for="draft-new-pass">Apart conceptwachtwoord (min. 12 tekens)</label><input id="draft-new-pass" type="password" autocomplete="new-password">
+<button id="draft-save" type="button">Bewaar versleuteld HUMAN-concept (.lurd)</button></div>
+<div class="panel"><h3>Herstel concept</h3><label for="draft-file">Eerder PRIVATE conceptbestand</label>
+<input id="draft-file" type="file" accept=".lurd" autocomplete="off">
+<label for="draft-open-pass">Conceptwachtwoord</label><input id="draft-open-pass" type="password" autocomplete="off">
+<button id="draft-open" type="button">Herstel HUMAN-keuzes op exact dezelfde bron</button></div></div>
+<p id="draft-status" role="status" aria-live="polite">Nog geen concept opgeslagen of hersteld.</p>
+</section>
+<section aria-labelledby="export-title"><h2 id="export-title">4 · Nieuwe versleutelde PRIVATE overdracht</h2>
+<p>Bij identieke HUMAN-keuzes wordt die keuze behouden. Elk afwijkend veld vereist <strong>A, B, bewust opnieuw onbehandeld of een andere canonieke HUMAN-waarde</strong>; er is geen verborgen meerderheidsstem of automatische bronbeslissing. De originele bronbytes blijven exact gelijk. Heropen het resultaat via de oorspronkelijke Casebook-validator voordat iemand enige werkelijke handeling overweegt.</p>
+<label for="new-password">Nieuw zelfstandig overdrachtswachtwoord (minimaal 12 tekens)</label>
+<input id="new-password" type="password" autocomplete="new-password">
+<button id="publish" type="button" disabled>Maak versleuteld samengevoegd .lupt-bestand</button>
+<button id="aggregate" type="button" disabled>Exporteer bronvrij HUMAN-overzicht (JSON)</button>
+<p class="muted">Dit aggregaat bevat geen originele IDs of hashes, maar kleine aantallen kunnen nog gevoelig zijn. Beoordeel distributie menselijk.</p>
+<p class="muted">Alle input en keuzes leven alleen in dit browsertabblad. Geen opslag, netwerkverkeer, grant, scan, CI-wijziging of bronmutatie. Sluiten wist de lokale werkruimte waar de browser dit toestaat.</p>
+</section>
+<section aria-labelledby="receipt-title"><h2 id="receipt-title">5 · PRIVATE brongebonden HUMAN-reviewmemo</h2>
+<p>Na de versleutelde Casebook-overdracht kun je een <strong>afzonderlijk privé-versleuteld memo</strong> voor menselijke bespreking maken. Het bevat de oorspronkelijke privé-dossierverwijzingen, de twee HUMAN-interpretaties, gekozen menselijke beslissingen en privé-motiveringen. Het vermeldt de ongetekende SHA-256-bytehash van het daadwerkelijk aangeboden versleutelde .lupt-bestand. Geen toestemming, handtekening, producentbewijs of verified security verdict.</p>
+<div class="grid"><div class="panel"><h3>Maak nieuw versleuteld reviewmemo</h3>
+<label for="receipt-save-pass">Apart memo-wachtwoord (minimaal 12 tekens)</label>
+<input id="receipt-save-pass" type="password" autocomplete="new-password">
+<button id="receipt-save" type="button">Download PRIVATE versleuteld HUMAN-memo (.lurm)</button></div>
+<div class="panel"><h3>Lees bestaand PRIVATE reviewmemo</h3>
+<label for="receipt-file">Ontvangen .lurm-bestand</label><input id="receipt-file" type="file" accept=".lurm" autocomplete="off">
+<label for="receipt-open-pass">Memo-wachtwoord</label><input id="receipt-open-pass" type="password" autocomplete="off">
+<button id="receipt-open" type="button">Open memo lokaal, alleen lezen</button></div></div>
+<div class="panel"><h3>Versleutel ontvangen PRIVATE memo opnieuw voor menselijke ontvanger</h3>
+<label for="receipt-rekey-pass">Nieuw onafhankelijk memo-overdrachtswachtwoord (min. 12 tekens)</label>
+<input id="receipt-rekey-pass" type="password" autocomplete="new-password">
+<button id="receipt-rekey" type="button">Nieuwe AES-256-GCM PRIVATE memo-overdracht</button>
+<p class="muted">Behoudt exact dezelfde eerder geaccepteerde HUMAN-memo-inhoud in een nieuw lokaal versleuteld bestand. Geen bronvalidatie, nieuwe grant, toestemming of scan.</p></div>
+<div class="panel"><h3>Verifieer lokale resultaatbytehash (geen autorisatie)</h3>
+<label for="receipt-check-file">Ontvangen oorspronkelijke versleutelde .lupt-resultaat</label>
+<input id="receipt-check-file" type="file" accept=".lupt" autocomplete="off">
+<button id="receipt-verify" type="button">Vergelijk exact versleutelde resultaatbytes met memo</button></div>
+<p id="receipt-status" role="status" aria-live="polite">Nog geen PRIVATE memo aangemaakt of ingelezen.</p>
+<div id="receipt-view" class="receipt-view" aria-label="PRIVATE brongebonden memo-inhoud"></div>
+</section>
+<section aria-labelledby="revision-title"><h2 id="revision-title">6 · Twee PRIVATE reviewmemo-revisies vergelijken</h2>
+<p>Open eerst een PRIVATE memo A hierboven. Kies dan een tweede, afzonderlijk versleuteld memo B en vergelijk uitsluitend als de originele Casebook-bronhashes, oorspronkelijke HUMAN A/B-CSV hashes, dossiervolgorde en oorspronkelijke bronvelden **exact gelijk** zijn. Dit vergelijkt menselijke notities en keuzes, niet wijzigingen in de werkelijkheid of verleende toestemmingen.</p>
+<div class="panel"><label for="revision-file">Tweede PRIVATE memo B (.lurm)</label>
+<input id="revision-file" type="file" accept=".lurm" autocomplete="off">
+<label for="revision-password">Wachtwoord van memo B</label>
+<input id="revision-password" type="password" autocomplete="off">
+<button id="revision-compare" type="button">Vergelijk bronidentieke HUMAN-memo-revisies</button>
+<button id="revision-export" type="button" disabled>Download bronvrije revisietelling (JSON)</button></div>
+<p id="revision-status" role="status" aria-live="polite">Geen twee PRIVATE memos vergeleken.</p>
+<div id="revision-view" class="receipt-view"></div>
+</section>
+<section aria-labelledby="timeline-title"><h2 id="timeline-title">7 · Meerdere PRIVATE HUMAN-reviewmomenten (maximaal 12)</h2>
+<p>Open eerst een menselijk PRIVATE memo A, voeg daarna één voor één apart versleutelde vervolgmemobestanden toe. De oorspronkelijke Casebook-bronnen en beide oorspronkelijke HUMAN A/B-invoerhashes moeten identiek zijn. Bekijk menselijke verschillen per gekozen volgnummer ten opzichte van het vorige en eerste memo. **Deze reeksvolgorde is handmatig en niet gedateerd of geauthenticeerd**, dus géén bewijs van werkelijke tijd, bugfix, consent of securityverbetering.</p>
+<div class="panel"><label for="timeline-file">Vervolg PRIVATE memo (.lurm)</label>
+<input id="timeline-file" type="file" accept=".lurm" autocomplete="off">
+<label for="timeline-pass">Wachtwoord van dit memo</label>
+<input id="timeline-pass" type="password" autocomplete="off">
+<button id="timeline-add" type="button">Voeg bron-identiek HUMAN-memo toe</button>
+<button id="timeline-export" type="button" disabled>Download bronvrije reeks-aantallen</button>
+<button id="timeline-clear" type="button" class="secondary">Wis lokale memo-reeks</button></div>
+<p id="timeline-status" role="status" aria-live="polite">Geen PRIVATE menselijke memoreeks opgesteld.</p>
+<div id="timeline-view" class="receipt-view"></div>
+</section>
+</main><footer>LightUp · oorspronkelijke bronlabels en SHA-256 zijn géén onafhankelijke producentauthenticatie. Alleen menselijk brongebonden opvolgwerk.</footer>
+<script>__SCRIPT__</script></body></html>

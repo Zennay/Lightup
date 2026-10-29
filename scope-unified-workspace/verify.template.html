@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-CSP_STYLE_HASH'; script-src 'sha256-CSP_SCRIPT_HASH'">
+<meta name="color-scheme" content="dark">
+<title>LightUp — Controleer je offline ZIP</title>
+<!-- EMBED_STYLE -->
+</head>
+<body>
+<a class="skip" href="#main">Ga naar inhoud</a>
+<div class="shell">
+<header class="topbar"><span class="logo"><span class="logo-mark" aria-hidden="true">✦</span> LIGHTUP <span class="logo-muted">/ TRANSPORT</span></span><span class="toplabel">LOCAL · NO UPLOAD · NO GRANT</span></header>
+<main id="main">
+<section class="hero compact" aria-labelledby="title">
+<div class="kicker"><span class="dot" aria-hidden="true"></span> PRIVATE OFFLINE INTEGRITY · DRAFT / HOLD</div>
+<h1 id="title">Controleer de <em>bytes</em>, niet de toestemming.</h1>
+<p>Deze controle werkt geheel op dit apparaat. Kies de ontvangen LightUp-ZIP en plak desgewenst de SHA-256 van exact dat pakket uit een <strong>apart geauthenticeerd</strong> kanaal. Niets wordt geüpload of opgeslagen.</p>
+<div class="hold"><strong>TRANSPORT ≠ AUTORISATIE.</strong> Een overeenkomst met een losse hash is op zichzelf geen bewijs van maker, oorspronkelijke bron, cliëntidentiteit, operatoridentiteit, toestemming of veiligheid. Zelfs een identieke ZIP is nooit een grant, scanvergunning of release.</div>
+</section>
+<section class="section" aria-labelledby="form-title">
+<div class="section-heading"><div><p class="eyebrow">01 / LOKAAL CONTROLEREN</p><h2 id="form-title">Vergelijk SHA-256</h2></div><p>De browser berekent alleen een digest van de geselecteerde ZIP. Voor inhoudelijke ZIP-bestandsinventariscontrole gebruik je de offline Python-checker.</p></div>
+<div class="digest-panel">
+<form id="digest-form">
+<label for="bundle-file">Ontvangen pakket (ZIP, maximaal 8 MiB)</label>
+<input id="bundle-file" name="bundle-file" type="file" accept=".zip,application/zip" required>
+<label for="expected-digest">Verwachte SHA-256 uit apart betrouwbaar kanaal (optioneel)</label>
+<input id="expected-digest" name="expected-digest" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" maxlength="64" placeholder="64 hextekens, niet afkomstig uit hetzelfde ontvangen pakket">
+<p class="fine">Plak een verwachte hash niet automatisch uit de meegestuurde ZIP of eigen manifest: beide kunnen samen gewijzigd zijn.</p>
+<button class="action" type="submit">Bereken en vergelijk <span aria-hidden="true">↗</span></button>
+</form>
+<div class="digest-output">
+<p class="eyebrow">RESULTAAT · PRIVÉ</p>
+<p id="digest-status" role="status" aria-live="polite" data-state="hold">Nog geen lokaal ZIP-bestand gekozen.</p>
+<h3>SHA-256 van geselecteerd bestand</h3>
+<output id="actual-digest" aria-live="polite">—</output>
+<p class="fine">Een overeenkomende digest levert alleen REVIEW_ONLY op. Voor inhoudelijke correctheid, oorspronkelijke autorisaties, consent, security/privacy en actuele revocation blijven de echte bronhouder en onafhankelijke reviews vereist.</p>
+</div>
+</div>
+</section>
+<section class="section"><div class="section-heading"><div><p class="eyebrow">02 / VOLGENDE STAP</p><h2>Open daarna pas de werkruimte.</h2></div><p>Blijf volledig offline en gebruik alleen originele, onafhankelijk vertrouwde PRIVATE bronbestanden.</p></div><div class="nav-row"><a class="action muted" href="index.html">Terug naar scope-operator hub <span aria-hidden="true">↗</span></a><a class="action muted" href="../scope-intake-matrix/standalone.html">Open offline Scope Intake Matrix <span aria-hidden="true">↗</span></a></div></section>
+</main>
+<footer><span>LIGHTUP · SOURCE-FREE TRANSPORT REVIEW</span><span>DRAFT / HOLD · ALLE AUTHORITY FLAGS FALSE</span></footer>
+</div>
+<!-- EMBED_SCRIPT -->
+</body>
+</html>

@@ -1,0 +1,2319 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-Lwaow/3BsY8GbWV93H28dny6YUpdEH6lm95Yg6z7+jw='; script-src 'sha256-CIp9AsxZsBpIrgHs/w16t0qR7i998iXX6mTeZoHDj7Y='">
+<title>LightUp · PRIVATE HUMAN reconciliatie</title><style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#0b111c;color:#eaf1ff;font-size:15px}
+*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1180px;margin:auto;padding:28px 20px}
+header{padding-top:50px}.mark{letter-spacing:.16em;font-weight:900;color:#86bbff}.mark span{font-size:.7em;color:#b1c3d9;background:#25334b;padding:7px 12px;border-radius:30px;margin-left:10px}
+h1{font-size:clamp(2.2rem,5vw,4.3rem);letter-spacing:-.045em;line-height:1.1;margin:24px 0 12px}h2{font-size:1.5rem;margin:0 0 14px}h3{margin:6px 0 12px;font-size:1.05rem}
+p{line-height:1.6;color:#b8cce6}.lead{font-size:1.16rem;max-width:850px}
+.warning{border:1px solid #b38a45;background:#342719;padding:16px 20px;border-radius:12px;color:#ffe4a2}
+main{display:grid;gap:22px;padding-top:0}section{border:1px solid #31405a;background:#131f30;border-radius:19px;padding:25px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.panel{border:1px solid #394761;background:#1a2b40;padding:20px;border-radius:14px}
+label{display:block;color:#dce9fa;font-weight:650;margin:13px 0 6px}
+input[type=file],input[type=password],input[type=search],select{display:block;width:100%;min-width:0;padding:11px 13px;border:1px solid #657796;background:#0d1828;color:#fff;border-radius:9px;font:inherit}
+input:focus,select:focus,button:focus-visible{outline:3px solid #6cb8ff;outline-offset:2px}
+.consent{display:flex;gap:12px;align-items:flex-start;font-weight:500;line-height:1.5}
+.consent input{flex-shrink:0;margin-top:5px;width:19px;height:19px}
+button{border:0;border-radius:10px;padding:13px 18px;font-weight:700;background:#8abdff;color:#08131f;cursor:pointer;margin-top:14px}
+button:hover{background:#b3d5ff}button:disabled{cursor:not-allowed;opacity:.46}
+#status{padding:12px 14px;border-radius:9px;background:#263a52;word-break:break-word;color:#d9f3ff}
+#status.error{background:#40232a;color:#ffbdc3}.toolbar{display:flex;flex-wrap:wrap;align-items:end;gap:24px}.toolbar label{flex:1;min-width:230px}.toolbar .consent{flex:0 1 auto}
+.cases{display:grid;gap:15px}.case{border:1px solid #364863;border-radius:13px;background:#19283b;padding:18px}
+.case.differing{border-left:5px solid #e4ad60}.case>h3{overflow-wrap:anywhere;color:#f4fbff}.case>p{overflow-wrap:anywhere;margin:6px 0 15px;font-size:.9rem}
+table{border-collapse:collapse;width:100%;font-size:.9rem}td,th{text-align:left;padding:12px;border-bottom:1px solid #3a4b64;overflow-wrap:anywhere;vertical-align:middle}thead th{color:#90b3e3}tbody th{color:#fff}
+td select{min-width:170px}.muted,footer{font-size:.85rem;color:#9bb0cd}footer{padding-top:0;padding-bottom:55px}
+@media(max-width:750px){.grid{grid-template-columns:1fr}section{padding:18px}.case{overflow-x:auto}table{min-width:610px}.mark span{display:inline-block;margin:9px 0}}
+
+[hidden]{display:none!important}
+
+.human-notes{margin-top:16px;padding:17px;border-radius:10px;border:1px solid #455b78;background:#142235}
+.human-notes h4{font-size:1rem;margin:0 0 9px;color:#c7ddfa}
+.human-notes textarea{display:block;width:100%;min-height:92px;resize:vertical;
+  font:inherit;color:#f0f7ff;background:#0d1828;border:1px solid #657796;border-radius:9px;padding:11px}
+.human-notes textarea:focus-visible{outline:3px solid #6cb8ff;outline-offset:2px}
+.human-notes small{display:block;margin-top:8px}.human-notes small.error{color:#ffacb1}
+
+.receipt-view{overflow:auto;max-height:590px;margin-top:16px;border-top:1px solid #384960}
+.receipt-view td{white-space:pre-line;max-width:300px}
+.receipt-view p{overflow-wrap:anywhere}
+
+button.secondary{background:#334962;color:#eff7ff;border:1px solid #7a8da6;margin-left:12px}
+button.secondary:hover{background:#405a76}
+
+.bulk-triage{border:1px solid #6183ac;margin:20px 0;background:#1b2d43}
+.bulk-triage .grid{gap:10px 20px}
+.bulk-triage .grid label{font-size:.9rem}
+.bulk-triage .toolbar button{margin-top:2px}
+.bulk-preview{border:1px solid #536b89;background:#0d1a2a;padding:14px 18px;
+  margin:13px 0;border-radius:10px;overflow-wrap:anywhere}
+.bulk-preview p{margin:5px 0 9px}
+#bulk-status{color:#cce3fc;overflow-wrap:anywhere}
+#bulk-status.error{color:#ffbac1}
+
+.private-portfolio{background:#19293b;border:1px solid #52769e;margin-top:20px}
+.private-portfolio progress{width:100%;height:16px;accent-color:#80b5ef}
+.portfolio-groups,.portfolio-table{overflow-x:auto;max-height:480px;overflow-y:auto}
+.portfolio-table button{font-size:.83rem;padding:8px;margin:0}
+.portfolio-table td{min-width:105px;max-width:340px}
+#portfolio-status.error{color:#ffbac1}
+
+.original-output-preview{border:1px solid #6986a9;margin-top:18px;background:#1a2b40}
+#preview-sha{overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,monospace}
+.preview-results{max-height:620px;overflow-y:auto;display:grid;gap:8px}
+.preview-results details{background:#111e2d;border:1px solid #4c617e;border-radius:9px;padding:12px}
+.preview-results details summary{cursor:pointer;color:#e4f0ff;font-weight:650;overflow-wrap:anywhere}
+.preview-results details table{margin-top:12px}
+.preview-results tr.pending{background:#49321e}
+#preview-status.error{color:#ffbac1}
+
+.note-bulk{border:1px solid #6c89aa;background:#1b2e43;margin-top:18px}
+.note-bulk .toolbar button{margin-top:2px}
+#note-bulk-status.error{color:#ffbac1}
+</style></head>
+<body>
+<header><div class="mark">LIGHTUP <span>PRIVATE / OFFLINE</span></div>
+<h1>Casebook · samen beslissen</h1>
+<p class="lead">Vergelijk twee apart ingevulde HUMAN-opvolgwerkruimtes op <strong>precies dezelfde</strong> originele bron. Kies expliciet bij verschillen en maak één nieuwe versleutelde privéoverdracht.</p>
+<p class="warning"><strong>DRAFT/HOLD · INCUBATE M3/M7.</strong> Dit programma bewijst geen oorspronkelijke bron, identiteit, geauthenticeerde cliënt/operatortoestemming, revocation-at-use, grant, onderzoek of toestemming om te scannen. Houd originele validatie en veiligheidsbesluiten intact.</p>
+</header>
+<main>
+<section aria-labelledby="intake-title"><h2 id="intake-title">1 · Ontvang twee bestaande PRIVATE overdrachten</h2>
+<p>Selecteer twee originele .lupt-bundels uit de brongebonden scope Casebook-workroom. Wachtwoorden worden niet bewaard. Beide bundels moeten 1–12 exact dezelfde originele opeenvolgende casebook-NN.json-bronmomenten bevatten, plus ieder een apart opgeslagen workroom-current-template.csv.</p>
+<div class="grid">
+<div class="panel"><h3>Ontvanger A</h3><label for="file-a">Versleutelde overdracht</label><input id="file-a" type="file" accept=".lupt" autocomplete="off">
+<label for="password-a">Wachtwoord A</label><input id="password-a" type="password" autocomplete="off"></div>
+<div class="panel"><h3>Ontvanger B</h3><label for="file-b">Versleutelde overdracht</label><input id="file-b" type="file" accept=".lupt" autocomplete="off">
+<label for="password-b">Wachtwoord B</label><input id="password-b" type="password" autocomplete="off"></div>
+</div>
+<label class="consent"><input id="ack" type="checkbox"> Ik begrijp dat dit een PRIVATE, uitsluitend menselijke samenvoeging zonder autorisatie is en dat plaintext brongegevens lokaal zichtbaar kunnen zijn.</label>
+<button id="open" type="button">Open en vergelijk PRIVATE bronsets</button>
+<button id="clear-session" type="button" class="secondary">Wis huidige PRIVATE browsersessie (expliciet)</button>
+<p id="status" role="status" aria-live="polite">Geen oorspronkelijke brongegevens geladen.</p>
+</section>
+<section aria-labelledby="review-title">
+<h2 id="review-title">2 · Beslis HUMAN-verschillen per veld</h2>
+<p id="summary" aria-live="polite">Nog geen twee volledig ingelezen PRIVATE bronsets.</p>
+<div class="toolbar"><label for="search">Zoek lokaal op PRIVATE bron-ID of actie <input id="search" type="search" autocomplete="off" placeholder="Dossier of bronactie"></label>
+<label class="consent"><input id="conflicts" type="checkbox"> Alleen dossiers met verschillen</label>
+<label class="consent"><input id="unresolved-only" type="checkbox"> Alleen nog onbesliste HUMAN-conflicten</label>
+<button type="button" id="next-unresolved">Spring naar eerste onbesliste dossier</button></div>
+<div class="panel private-portfolio" aria-labelledby="portfolio-title">
+<h3 id="portfolio-title">PRIVATE HUMAN-triageportfolio (oorspronkelijke, ongeverifieerde brongroepen)</h3>
+<p>Bekijk de voortgang van alle ingelezen oorspronkelijke dossiers, met prioriteit voor bron-gemarkeerde HOLD-statussen en nog onbesliste menselijke velden. Dit zijn uitsluitend labels uit de geselecteerde originele gegevens: geen actuele bron-/grant-/consent-verificatie en geen definitieve securityverdicts.</p>
+<p id="portfolio-numbers" aria-live="polite">Geen oorspronkelijke PRIVATE bron geopend.</p>
+<label for="portfolio-progress">Voortgang in het menselijk beslissen (geen vrijgave)</label>
+<progress id="portfolio-progress" value="0" max="1">0</progress>
+<div id="portfolio-groups" class="portfolio-groups"></div>
+<div class="grid"><label for="portfolio-search">Zoek PRIVATE dossier of oorspronkelijke actie
+<input type="search" id="portfolio-search" autocomplete="off" placeholder="Zoek lokaal"></label>
+<label for="portfolio-group">Zelfverklaarde broncategorie
+<select id="portfolio-group"><option value="all">Alle oorspronkelijke labels</option><option value="source-hold">Bron-HOLD</option><option value="risk-pending">Bron: risicobesluit pending</option><option value="window-review">Bron: vervallen/toekomstige vensters</option><option value="other">Overige bronlabels</option></select></label>
+<label for="portfolio-stage">Menselijke besluitstatus
+<select id="portfolio-stage"><option value="all">Alle menselijke statussen</option><option value="unresolved">Nog geen keuze</option><option value="partial">Gedeeltelijk besloten</option><option value="resolved">Alle verschillen gekozen</option><option value="identical">Oorspronkelijk HUMAN gelijk</option></select></label></div>
+<div class="toolbar"><button id="portfolio-jump" type="button" disabled>Open eerste passende HUMAN-case</button>
+<button id="portfolio-export" type="button" class="secondary" disabled>Exporteer alleen bronvrije portfoliotellingen</button></div>
+<p id="portfolio-visible" class="muted"></p>
+<div id="portfolio-table" class="portfolio-table" aria-label="PRIVATE HUMAN-dossieroverzicht"></div>
+<p id="portfolio-status" role="status" aria-live="polite">Geen menselijke portfoliokeuze uitgevoerd.</p>
+</div>
+<div class="panel bulk-triage" aria-labelledby="bulk-title">
+<h3 id="bulk-title">Brongebonden bulkafhandeling — alleen onbesliste HUMAN-velden</h3>
+<p>Maak eerst een actuele voorvertoning. Bulk wijzigt geen reeds beoordeelde velden, originele Casebook-bronnen, grants of toestemming. Bevestiging is per actie verplicht; ongedaan maken en opnieuw toepassen werken alleen zolang dit tabblad en de oorspronkelijke bronnen open zijn.</p>
+<div class="grid"><label for="bulk-field">Soort HUMAN-veld
+<select id="bulk-field"><option value="0">Fase</option><option value="1">Opvolgroute</option><option value="2">Blokkade</option></select></label>
+<label for="bulk-value">Keuze voor alleen conflicterende, onbesliste velden
+<select id="bulk-value"><option value="A">Behoud van ontvanger A</option><option value="B">Behoud van ontvanger B</option><option value="reset">Heropen naar veilige HUMAN-standaardwaarde</option><option value="custom">Een andere canonieke HUMAN-waarde</option></select></label>
+<label for="bulk-custom">Alternatieve expliciete HUMAN-waarde
+<select id="bulk-custom" hidden></select></label>
+<label for="bulk-scope">Welke nog onbesliste dossiers?
+<select id="bulk-scope"><option value="visible-unresolved">Alleen momenteel zichtbare dossiers</option><option value="all-unresolved">Alle oorspronkelijke onbesliste dossiers</option></select></label></div>
+<div class="toolbar"><button id="bulk-plan" type="button">Bekijk getroffen HUMAN-velden</button>
+<button id="bulk-apply" type="button" disabled>Bevestig HUMAN-bulkkeuze</button>
+<button id="bulk-undo" type="button" class="secondary" disabled>Maak keuze ongedaan</button>
+<button id="bulk-redo" type="button" class="secondary" disabled>Pas keuze opnieuw toe</button></div>
+<p id="bulk-history" class="muted"></p><div id="bulk-preview" class="bulk-preview" aria-live="polite"></div>
+<p id="bulk-status" role="status" aria-live="polite">Nog geen bulkkeuze toegepast.</p>
+</div>
+<div class="panel note-bulk" aria-labelledby="note-bulk-title">
+<h3 id="note-bulk-title">PRIVATE menselijke opvolgredenen voor meerdere dossiers</h3>
+<p>Verdeel een oorspronkelijke, al bestaande HUMAN-conflictenlijst sneller naar een vaste menselijke opvolgredencategorie. Alleen dossiers zonder eerder gekozen reden worden bijgewerkt; vrije privénotitieteksten, oorspronkelijke brondossiers en beslissingen blijven ongemoeid. Ook deze actie vereist een voorvertoning en aparte bevestiging.</p>
+<div class="grid"><label for="note-bulk-reason">Canonieke HUMAN-opvolgreden
+<select id="note-bulk-reason"><option value="source-clarification">Oorspronkelijke bron verduidelijken</option><option value="client-question">Vraag aan oorspronkelijke cliënt</option><option value="independent-review">Onafhankelijke menselijke review</option><option value="consent-to-verify">Actuele toestemming onafhankelijk controleren</option><option value="revocation-followup">Intrekking menselijk opvolgen</option><option value="conflicting-human-interpretation">Tegenstrijdige HUMAN-interpretaties</option><option value="manual-followup">Overige menselijke opvolging</option></select></label>
+<label for="note-bulk-scope">Welke nog onbehandelde PRIVÉ-redenen?
+<select id="note-bulk-scope"><option value="visible">Alleen nu zichtbare oorspronkelijke HUMAN-conflictdossiers</option><option value="all">Alle brongebonden conflictdossiers zonder eerdere reden</option></select></label></div>
+<div class="toolbar"><button id="note-bulk-preview-btn" type="button">Bekijk menselijke opvolgredenen-batch</button>
+<button id="note-bulk-apply" type="button" disabled>Bevestig PRIVÉ-redenenbatch</button>
+<button id="note-bulk-undo" type="button" class="secondary" disabled>Redenenbatch ongedaan</button>
+<button id="note-bulk-redo" type="button" class="secondary" disabled>Redenenbatch herstellen</button></div>
+<p id="note-bulk-history" class="muted"></p><div id="note-bulk-plan" class="bulk-preview"></div>
+<p id="note-bulk-status" role="status" aria-live="polite">Nog geen PRIVATE opvolgredenenbatch gekozen.</p>
+</div>
+<p id="shown"></p><div id="cases" class="cases"></div>
+</section>
+<div class="panel original-output-preview" aria-labelledby="preview-title">
+<h3 id="preview-title">Voorvertoning van de EXACTE beoogde HUMAN-CSV-uitvoer (alleen lokaal)</h3>
+<p>Bekijk voor elk oorspronkelijk dossier welke HUMAN-waarden in een eventueel nieuw versleuteld pakket zouden komen. De bron A/B, de expliciet gekozen uitkomst en de keuzebasis staan naast elkaar. Bij onbesliste HUMAN-conflicten blijft de voorvertoning HOLD. Na volledige afhandeling berekent de app lokaal de SHA-256 van precies de door de oorspronkelijke bronhouder geserialiseerde HUMAN-CSV, zonder die CSV onversleuteld te downloaden.</p>
+<button id="preview-build" type="button">Bereken actuele HUMAN-resultaatvoorvertoning</button>
+<p id="preview-export-state" aria-live="polite">Geen actueel prospectief CSV-resultaat.</p>
+<p id="preview-sha" class="muted">Nog geen brongebonden SHA-256 voor deze keuze.</p>
+<div class="grid"><label for="preview-search">Zoek PRIVATE dossier of oorspronkelijke actie in voorvertoning
+<input id="preview-search" type="search" autocomplete="off" placeholder="Zoek lokaal"></label>
+<label class="consent"><input id="preview-different" type="checkbox" checked> Alleen broncases met HUMAN-verschillen</label></div>
+<p id="preview-visible" class="muted"></p>
+<div id="preview-result" class="preview-results" aria-label="PRIVATE HUMAN-uitvoer voorvertoning"></div>
+<p id="preview-status" role="status" aria-live="polite">Nog geen brongebonden HUMAN-resultaat berekend.</p>
+</div>
+<section aria-labelledby="draft-title"><h2 id="draft-title">3 · Versleuteld HUMAN-concept bewaren en hervatten</h2>
+<p>Bewaar tussentijds uitsluitend de HUMAN-keuzestanden en optionele privé-redenen/notities, beschermd met een nieuw wachtwoord. Het besloten concept bevat versleutelde SHA-256-bronverwijzingen en geen oorspronkelijke Casebook-JSON, maar wel PRIVATE menselijke keuzedata. Herstellen kan uitsluitend na het opnieuw openen van exact dezelfde twee bron+HUMAN-overdrachten in exact dezelfde A/B-volgorde.</p>
+<div class="grid"><div class="panel"><h3>Bewaar concept</h3>
+<label for="draft-new-pass">Apart conceptwachtwoord (min. 12 tekens)</label><input id="draft-new-pass" type="password" autocomplete="new-password">
+<button id="draft-save" type="button">Bewaar versleuteld HUMAN-concept (.lurd)</button></div>
+<div class="panel"><h3>Herstel concept</h3><label for="draft-file">Eerder PRIVATE conceptbestand</label>
+<input id="draft-file" type="file" accept=".lurd" autocomplete="off">
+<label for="draft-open-pass">Conceptwachtwoord</label><input id="draft-open-pass" type="password" autocomplete="off">
+<button id="draft-open" type="button">Herstel HUMAN-keuzes op exact dezelfde bron</button></div></div>
+<p id="draft-status" role="status" aria-live="polite">Nog geen concept opgeslagen of hersteld.</p>
+</section>
+<section aria-labelledby="export-title"><h2 id="export-title">4 · Nieuwe versleutelde PRIVATE overdracht</h2>
+<p>Bij identieke HUMAN-keuzes wordt die keuze behouden. Elk afwijkend veld vereist <strong>A, B, bewust opnieuw onbehandeld of een andere canonieke HUMAN-waarde</strong>; er is geen verborgen meerderheidsstem of automatische bronbeslissing. De originele bronbytes blijven exact gelijk. Heropen het resultaat via de oorspronkelijke Casebook-validator voordat iemand enige werkelijke handeling overweegt.</p>
+<label for="new-password">Nieuw zelfstandig overdrachtswachtwoord (minimaal 12 tekens)</label>
+<input id="new-password" type="password" autocomplete="new-password">
+<button id="publish" type="button" disabled>Maak versleuteld samengevoegd .lupt-bestand</button>
+<button id="aggregate" type="button" disabled>Exporteer bronvrij HUMAN-overzicht (JSON)</button>
+<p class="muted">Dit aggregaat bevat geen originele IDs of hashes, maar kleine aantallen kunnen nog gevoelig zijn. Beoordeel distributie menselijk.</p>
+<p class="muted">Alle input en keuzes leven alleen in dit browsertabblad. Geen opslag, netwerkverkeer, grant, scan, CI-wijziging of bronmutatie. Sluiten wist de lokale werkruimte waar de browser dit toestaat.</p>
+</section>
+<section aria-labelledby="receipt-title"><h2 id="receipt-title">5 · PRIVATE brongebonden HUMAN-reviewmemo</h2>
+<p>Na de versleutelde Casebook-overdracht kun je een <strong>afzonderlijk privé-versleuteld memo</strong> voor menselijke bespreking maken. Het bevat de oorspronkelijke privé-dossierverwijzingen, de twee HUMAN-interpretaties, gekozen menselijke beslissingen en privé-motiveringen. Het vermeldt de ongetekende SHA-256-bytehash van het daadwerkelijk aangeboden versleutelde .lupt-bestand. Geen toestemming, handtekening, producentbewijs of verified security verdict.</p>
+<div class="grid"><div class="panel"><h3>Maak nieuw versleuteld reviewmemo</h3>
+<label for="receipt-save-pass">Apart memo-wachtwoord (minimaal 12 tekens)</label>
+<input id="receipt-save-pass" type="password" autocomplete="new-password">
+<button id="receipt-save" type="button">Download PRIVATE versleuteld HUMAN-memo (.lurm)</button></div>
+<div class="panel"><h3>Lees bestaand PRIVATE reviewmemo</h3>
+<label for="receipt-file">Ontvangen .lurm-bestand</label><input id="receipt-file" type="file" accept=".lurm" autocomplete="off">
+<label for="receipt-open-pass">Memo-wachtwoord</label><input id="receipt-open-pass" type="password" autocomplete="off">
+<button id="receipt-open" type="button">Open memo lokaal, alleen lezen</button></div></div>
+<div class="panel"><h3>Versleutel ontvangen PRIVATE memo opnieuw voor menselijke ontvanger</h3>
+<label for="receipt-rekey-pass">Nieuw onafhankelijk memo-overdrachtswachtwoord (min. 12 tekens)</label>
+<input id="receipt-rekey-pass" type="password" autocomplete="new-password">
+<button id="receipt-rekey" type="button">Nieuwe AES-256-GCM PRIVATE memo-overdracht</button>
+<p class="muted">Behoudt exact dezelfde eerder geaccepteerde HUMAN-memo-inhoud in een nieuw lokaal versleuteld bestand. Geen bronvalidatie, nieuwe grant, toestemming of scan.</p></div>
+<div class="panel"><h3>Verifieer lokale resultaatbytehash (geen autorisatie)</h3>
+<label for="receipt-check-file">Ontvangen oorspronkelijke versleutelde .lupt-resultaat</label>
+<input id="receipt-check-file" type="file" accept=".lupt" autocomplete="off">
+<button id="receipt-verify" type="button">Vergelijk exact versleutelde resultaatbytes met memo</button></div>
+<p id="receipt-status" role="status" aria-live="polite">Nog geen PRIVATE memo aangemaakt of ingelezen.</p>
+<div id="receipt-view" class="receipt-view" aria-label="PRIVATE brongebonden memo-inhoud"></div>
+</section>
+<section aria-labelledby="revision-title"><h2 id="revision-title">6 · Twee PRIVATE reviewmemo-revisies vergelijken</h2>
+<p>Open eerst een PRIVATE memo A hierboven. Kies dan een tweede, afzonderlijk versleuteld memo B en vergelijk uitsluitend als de originele Casebook-bronhashes, oorspronkelijke HUMAN A/B-CSV hashes, dossiervolgorde en oorspronkelijke bronvelden **exact gelijk** zijn. Dit vergelijkt menselijke notities en keuzes, niet wijzigingen in de werkelijkheid of verleende toestemmingen.</p>
+<div class="panel"><label for="revision-file">Tweede PRIVATE memo B (.lurm)</label>
+<input id="revision-file" type="file" accept=".lurm" autocomplete="off">
+<label for="revision-password">Wachtwoord van memo B</label>
+<input id="revision-password" type="password" autocomplete="off">
+<button id="revision-compare" type="button">Vergelijk bronidentieke HUMAN-memo-revisies</button>
+<button id="revision-export" type="button" disabled>Download bronvrije revisietelling (JSON)</button></div>
+<p id="revision-status" role="status" aria-live="polite">Geen twee PRIVATE memos vergeleken.</p>
+<div id="revision-view" class="receipt-view"></div>
+</section>
+<section aria-labelledby="timeline-title"><h2 id="timeline-title">7 · Meerdere PRIVATE HUMAN-reviewmomenten (maximaal 12)</h2>
+<p>Open eerst een menselijk PRIVATE memo A, voeg daarna één voor één apart versleutelde vervolgmemobestanden toe. De oorspronkelijke Casebook-bronnen en beide oorspronkelijke HUMAN A/B-invoerhashes moeten identiek zijn. Bekijk menselijke verschillen per gekozen volgnummer ten opzichte van het vorige en eerste memo. **Deze reeksvolgorde is handmatig en niet gedateerd of geauthenticeerd**, dus géén bewijs van werkelijke tijd, bugfix, consent of securityverbetering.</p>
+<div class="panel"><label for="timeline-file">Vervolg PRIVATE memo (.lurm)</label>
+<input id="timeline-file" type="file" accept=".lurm" autocomplete="off">
+<label for="timeline-pass">Wachtwoord van dit memo</label>
+<input id="timeline-pass" type="password" autocomplete="off">
+<button id="timeline-add" type="button">Voeg bron-identiek HUMAN-memo toe</button>
+<button id="timeline-export" type="button" disabled>Download bronvrije reeks-aantallen</button>
+<button id="timeline-clear" type="button" class="secondary">Wis lokale memo-reeks</button></div>
+<p id="timeline-status" role="status" aria-live="polite">Geen PRIVATE menselijke memoreeks opgesteld.</p>
+<div id="timeline-view" class="receipt-view"></div>
+</section>
+</main><footer>LightUp · oorspronkelijke bronlabels en SHA-256 zijn géén onafhankelijke producentauthenticatie. Alleen menselijk brongebonden opvolgwerk.</footer>
+<script>/* Offline original Casebook v1 -> bound current HUMAN desk. No grants, no network. */
+(() => {
+  "use strict";
+  const FIELDS = ["original_engagement_id","original_next_action","original_attention",
+    "human_stage","human_followup_route","human_blocker"];
+  const STAGES = ["unreviewed","investigating","awaiting-owner","documented"];
+  const ROUTES = ["unassigned","original-scope-owner","client-clarification",
+    "independent-security-review","operator-followup"];
+  const BLOCKERS = ["none","missing-source","missing-owner","needs-independent-consent",
+    "requires-revocation-review","unresolved-tenant-lineage"];
+  const utf8 = new TextDecoder("utf-8",{fatal:true});
+  const MAX_HUMAN = 131072, MAX_ROWS = 200;
+  let unsavedHumanEdits = false;
+  const deny = message => {throw new Error(message);};
+  function sourceDocs(records) {
+    const source = records.filter(r => /^casebook-(?:0[1-9]|1[0-2])\.json$/.test(r.name));
+    if (!source.length || source.length > 12) deny("Geen volledige Casebook-bronvolgorde.");
+    return source.map(r => JSON.parse(utf8.decode(r.bytes)));
+  }
+  function sourceCurrent(docs) {
+    // Ported from pinned original scope-casebook-history/history.py case_queue;
+    // source-declared rows, ordering and counts are not security/authority proof.
+    const history = new Map();
+    docs.forEach((doc, index) => {
+      if (!Array.isArray(doc.case_overview) || doc.case_overview.length > MAX_ROWS)
+        deny("Oorspronkelijke bronlijst te groot.");
+      const present = new Set();
+      for (const c of doc.case_overview) {
+        if (!c || typeof c !== "object" || typeof c.engagement_id !== "string" ||
+            typeof c.attention !== "string" || typeof c.next_review_action !== "string" ||
+            !Number.isInteger(c.grant_count) || c.grant_count < 0 || c.grant_count > MAX_ROWS ||
+            present.has(c.engagement_id))
+          deny("Onvolledige of dubbele oorspronkelijke Casebook-dossiers.");
+        present.add(c.engagement_id);
+        const all = history.get(c.engagement_id) || [];
+        all.push({ordinal:index+1, value:c}); history.set(c.engagement_id,all);
+      }
+    });
+    if (history.size > 12 * MAX_ROWS) deny("Teveel verschillende oorspronkelijke dossiers.");
+    const last = docs.length;
+    const output = [];
+    for (const [id, snapshots] of history.entries()) {
+      const current = snapshots.at(-1);
+      if (current.ordinal !== last) continue;
+      const c = current.value;
+      const transitions = snapshots.slice(1).reduce((acc, entry, j) =>
+        acc + Number(entry.value.attention !== snapshots[j].value.attention ||
+          entry.value.next_review_action !== snapshots[j].value.next_review_action), 0);
+      const priority = c.attention.startsWith("HOLD_") ? 0 :
+        c.attention === "RISK_DECISION_PENDING_SOURCE_REVIEW" ? 1 :
+        ["EXPIRED_GRANT_SOURCE_REVIEW","FUTURE_GRANT_SOURCE_REVIEW"].includes(c.attention) ? 2 : 3;
+      const prior=snapshots.length>1 ? snapshots.at(-2).value : null;
+      const observation=prior===null ? (last===1 ? "EERSTE BRONMOMENT" : "NIEUW IN BRONREEKS") :
+        prior.attention !== c.attention || prior.next_review_action !== c.next_review_action ?
+        "BRONACTIE/AANDACHT GEWIJZIGD" : prior.status !== c.status ?
+        "BRONSTATUS GEWIJZIGD" : "GEEN LAATSTE BRONWIJZIGING";
+      output.push({id,action:c.next_review_action,attention:c.attention,
+        status:c.status,transitions,grantCount:c.grant_count,priority,observation});
+    }
+    output.sort((a,b) => a.priority - b.priority || b.transitions - a.transitions ||
+      b.grantCount - a.grantCount || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    return output;
+  }
+  function parseCSV(text) {
+    if (text.length > MAX_HUMAN) deny("PRIVATE HUMAN CSV groter dan 128 KiB.");
+    if (text.charCodeAt(0) === 65279) text = text.slice(1);
+    const rows = []; let row = [], part = "", state = 0;
+    for (let i=0; i<text.length; i++) {
+      const ch = text[i];
+      if (state === 1) {
+        if (ch === '"') {
+          if (text[i+1] === '"') {part += '"'; i++;}
+          else state = 2;
+        } else {part += ch;}
+      } else if (ch === '"' && state === 0 && part === "") {state = 1;}
+      else if (ch === "," && state !== 1) {row.push(part);part="";state=0;}
+      else if (ch === "\r" || ch === "\n") {
+        if (state === 2 || state === 0) {
+          if (ch === "\r" && text[i+1] === "\n") i++;
+          row.push(part); rows.push(row); row=[];part="";state=0;
+        } else deny("CSV sluit een citaat niet correct.");
+      } else {
+        if (state === 2 || ch === '"') deny("HUMAN CSV heeft ambigue CSV-framing.");
+        part += ch;
+      }
+      if (rows.length > MAX_ROWS + 1) deny("Teveel HUMAN-dossierregels.");
+    }
+    if (state === 1) deny("Niet-gesloten HUMAN CSV citaat.");
+    if (row.length || part) {row.push(part);rows.push(row);}
+    return rows;
+  }
+  function checkCSV(records, cases) {
+    const found = records.filter(r => r.name === "workroom-current-template.csv");
+    if (found.length > 1) deny("Dubbele HUMAN-CSV.");
+    if (!found.length) return cases.map(c => [c.id,c.action,c.attention,
+      "unreviewed","unassigned","none"]);
+    const csv = parseCSV(utf8.decode(found[0].bytes));
+    if (csv.length !== cases.length+1 || csv[0].length !== FIELDS.length ||
+      !FIELDS.every((x,i)=>csv[0][i] === x)) deny("PRIVATE HUMAN-CSV kopregels/dossierhoeveelheid wijken af.");
+    const rows=[];
+    for(let i=0;i<cases.length;i++){
+      const r=csv[i+1],c=cases[i];
+      if (!r || r.length !== FIELDS.length ||
+        r[0] !== c.id || r[1] !== c.action || r[2] !== c.attention ||
+        !STAGES.includes(r[3]) || !ROUTES.includes(r[4]) || !BLOCKERS.includes(r[5]))
+        deny("PRIVATE HUMAN-CSV verwijst naar andere, verouderde of gewijzigde bronregels.");
+      rows.push(r);
+    }
+    return rows;
+  }
+  function admit(records) {
+    const cases=sourceCurrent(sourceDocs(records));
+    const rows=checkCSV(records,cases);
+    return {cases,rows,hasCSV:records.some(r=>r.name==="workroom-current-template.csv")};
+  }
+  const make = (tag,text) => {const e=document.createElement(tag);e.textContent=text;return e;};
+  function select(options,selected,kind) {
+    const el=document.createElement("select");el.dataset.kind=kind;
+    for(const option of options) {
+      const node=document.createElement("option");node.value=option;node.textContent=option;
+      if(option===selected)node.selected=true;
+      el.append(node);
+    }
+    return el;
+  }
+  function render(records) {
+    const root=document.getElementById("human-board");
+    if(!root) return;
+    root.replaceChildren();
+    unsavedHumanEdits = false;
+    if(!records) {root.append(make("p","Geen PRIVATE Casebook-bronset geopend."));return;}
+    const {cases,rows,hasCSV}=admit(records);
+    const notice=make("p",hasCSV ?
+      "PRIVATE huidige HUMAN-CSV volledig aan de laatste geselecteerde bronset gekoppeld; wijzigingen alleen na expliciet Opslaan." :
+      "Nog geen huidige HUMAN-CSV in de werkset. Je kunt hier een aan de laatste bronset gekoppelde concept-CSV maken; dit is geen door de oorspronkelijke bron geauthenticeerd document.");
+    root.append(notice);
+    if(!cases.length){root.append(make("p","Geen huidige dossiers in het laatst geselecteerde Casebook-bronmoment."));}
+    const counters=make("p","");
+    counters.className="metrics";counters.setAttribute("aria-live","polite");root.append(counters);
+    const controls=document.createElement("div");controls.className="human-filters";
+    const search=document.createElement("input");search.type="search";search.placeholder="Zoek PRIVATE dossier-ID of oorspronkelijke bronactie";
+    search.setAttribute("aria-label","Zoek originele bronrecords");
+    const filter=select(["alle-bronrecords","bron-HOLD","bron-veranderd","HUMAN-onbehandeld"],
+      "alle-bronrecords","filter");
+    filter.setAttribute("aria-label","Filter bronwijziging en HUMAN-status");
+    controls.append(search,filter);root.append(controls);
+    const filtered=make("p","");filtered.className="muted";root.append(filtered);
+    const scroll=document.createElement("div");scroll.className="human-scroll";
+    const table=document.createElement("table"),thead=document.createElement("thead"),tr=document.createElement("tr");
+    for(const label of ["Origineel dossier (PRIVATE)","Bronactie (niet actueel geverifieerd)","Bronlabel","Laatste bronobservatie (niet geverifieerd)","HUMAN-fase","HUMAN-route","HUMAN-blokkade"]){
+      tr.append(make("th",label));
+    }thead.append(tr);table.append(thead);
+    const tbody=document.createElement("tbody"),inputs=[];
+    const visible=[];
+    rows.forEach((row,index) => {
+      const r=document.createElement("tr");
+      for(let i=0;i<3;i++){r.append(make("td",row[i]));}
+      r.append(make("td",cases[index].observation));
+      visible.push(r);
+      const controls=[select(STAGES,row[3],"stage"),select(ROUTES,row[4],"route"),select(BLOCKERS,row[5],"blocker")];
+      controls.forEach(el=>{const td=document.createElement("td");td.append(el);r.append(td);});
+      inputs.push(controls);tbody.append(r);
+    });
+    table.append(tbody);scroll.append(table);root.append(scroll);
+    const actions=document.createElement("div");actions.className="section-heading";
+    const save=document.createElement("button");save.type="button";save.id="save-human";
+    save.textContent="Sla HUMAN-opvolging lokaal in de PRIVATE werkset op";
+    actions.append(save);root.append(actions);
+    const status=make("p","Geen wijziging in de oorspronkelijke bronbestanden.");status.className="muted";root.append(status);
+    const update=()=>{
+      const stages=Object.fromEntries(STAGES.map(s=>[s,0]));
+      const blockers=Object.fromEntries(BLOCKERS.map(s=>[s,0]));
+      for(const values of inputs){stages[values[0].value]++;blockers[values[2].value]++;}
+      counters.textContent=Object.entries(stages).map(([k,n])=>k+": "+n).join(" · ") +
+        " · consent/lineage-review: " + ((blockers["needs-independent-consent"]||0)+(blockers["unresolved-tenant-lineage"]||0));
+      const term=search.value.trim().toLocaleLowerCase("nl-NL");
+      let displayed=0;
+      for (let i=0;i<rows.length;i++) {
+        const kind=filter.value,c=cases[i],r=rows[i],stage=inputs[i][0].value;
+        const hit=(!term || r.slice(0,3).some(v=>v.toLocaleLowerCase("nl-NL").includes(term))) &&
+          (kind==="alle-bronrecords" || (kind==="bron-HOLD" && c.attention.startsWith("HOLD_")) ||
+          (kind==="bron-veranderd" && c.observation!=="GEEN LAATSTE BRONWIJZIGING") ||
+          (kind==="HUMAN-onbehandeld" && stage==="unreviewed"));
+        visible[i].hidden=!hit;
+        if(hit)displayed++;
+      }
+      filtered.textContent=displayed+" / "+rows.length+
+        " actuele PRIVATE dossierregels zichtbaar; observaties zijn uitsluitend over de geselecteerde bronmomenten, niet over echte actuele toestemming.";
+    };
+    for(const values of inputs) for(const el of values) el.addEventListener("change",()=>{
+      unsavedHumanEdits = true;
+      update();status.textContent="Niet-opgeslagen HUMAN-wijzigingen. Deze wijzigen geen bron of grant.";
+    });
+    search.addEventListener("input",update);filter.addEventListener("change",update);
+    update();
+    save.addEventListener("click",async()=>{
+      save.disabled=true;
+      try {
+        const now=rows.map((row,i)=>[...row.slice(0,3),...inputs[i].map(el=>el.value)]);
+        if (!window.confirm("Maak/vervang uitsluitend de lokale HUMAN-CSV in de werkset? Originele Casebook JSON blijft onveranderd; pas na opnieuw versleutelen wordt dit verder gedeeld."))
+          return;
+        if (!window.LightUpTransfer?.setHumanCSV) deny("PRIVATE overdracht niet beschikbaar.");
+        await window.LightUpTransfer.setHumanCSV(now);
+        status.textContent="Nieuwe brongebonden PRIVATE HUMAN-CSV in lokale werkset opgeslagen. Versleutel opnieuw vóór overdracht.";
+      }catch(e){status.textContent="HOLD: "+(e instanceof Error?e.message:"Ongeldige HUMAN-CSV");}
+      finally{save.disabled=false;}
+    });
+  }
+  function serialize(rows) {
+    function cell(s) {
+      if(typeof s !== "string" || /[\r\n]/.test(s)) deny("CSV-veld bevat nieuweregel.");
+      if(/^[=+\-@\t]/.test(s)) deny("Onveilige CSV-celstart.");
+      return /[",]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+    }
+    return [...[FIELDS],...rows].map(row=>row.map(cell).join(",")).join("\r\n")+"\r\n";
+  }
+  window.LightUpCasebookHandoff=Object.freeze({admit,render,serialize,hasUnsavedEdits:()=>unsavedHumanEdits});
+})();
+
+/* Offline scope Casebook HUMAN two-recipient field reconciliation. Never authorizes a scan. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id), enc=new TextEncoder(),
+  dec=new TextDecoder("utf-8",{fatal:true}), h=window.LightUpCasebookHandoff;
+const SCHEMA="lightup-private-casebook-transfer",ITER=310000,
+  MAX_VAULT=26*1024*1024,MAX_SOURCE=4*1024*1024,MAX_SUM=12*1024*1024;
+let work=null,busy=false;
+const deny=message=>{throw Error(message);};
+const keys=(obj,names)=>obj&&typeof obj==="object"&&!Array.isArray(obj)&&
+  JSON.stringify(Object.keys(obj))===JSON.stringify(names);
+const sha=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),
+  n=>n.toString(16).padStart(2,"0")).join("");
+const originalNames=name=>/^casebook-(?:0[1-9]|1[0-2])\.json$/.test(name);
+const defaultHuman=["unreviewed","unassigned","none"];
+const humanOptions=[
+ ["unreviewed","investigating","awaiting-owner","documented"],
+ ["unassigned","original-scope-owner","client-clarification", "independent-security-review","operator-followup"],
+ ["none","missing-source","missing-owner","needs-independent-consent", "requires-revocation-review","unresolved-tenant-lineage"]
+];
+const customChoice=(v,j)=>typeof v==="string"&&v.startsWith("custom:")&&
+ humanOptions[j].includes(v.slice(7));
+const resolved=(v,j)=>["A","B","reset"].includes(v)||customChoice(v,j);
+
+const flags=["source_authenticated","client_consent_verified","operator_consent_verified",
+ "authorization_granted","execution_allowed","release_approved"];
+function b64(bytes) {
+ let s="";for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));
+ return btoa(s);
+}
+function from64(text,max) {
+ if(typeof text!=="string"||text.length>Math.ceil(max/3)*4+8||
+   !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(text))
+   deny("Ongeldige of te grote base64-data.");
+ let raw;try{raw=atob(text);}catch{deny("Ongeldige base64-data.");}
+ if(raw.length>max)deny("Brondata overschrijdt vaste limiet.");
+ const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+ if(b64(bytes)!==text)deny("Niet-canonieke base64-data.");
+ return bytes;
+}
+function canonical(text,label) {
+ let o;try{o=JSON.parse(text);}catch{deny("Ongeldige "+label+"-JSON.");}
+ if(JSON.stringify(o)!==text)deny("Niet-canonieke "+label+"-JSON.");
+ return o;
+}
+function rejectDuplicateKeys(text) {
+ let p=0;const skip=()=>{while(p<text.length&&/[ \t\r\n]/.test(text[p]))p++;};
+ const str=()=>{
+  if(text[p]!=='"')deny("Ongeldige JSON sleutel/tekst.");
+  const start=p++;
+  while(p<text.length){const c=text[p++];if(c==="\\"){p++;continue;}
+    if(c==='"')return JSON.parse(text.slice(start,p));}
+  deny("Afgebroken JSON-tekst.");
+ };
+ const val=depth=>{
+  if(depth>40)deny("JSON bron te diep.");skip();
+  if(text[p]==="{"){
+   p++;const found=new Set();skip();if(text[p]==="}"){p++;return;}
+   for(;;){skip();const k=str();if(found.has(k))deny("Dubbele JSON bron-sleutel.");
+    found.add(k);skip();if(text[p++]!==":")deny("Onjuiste JSON bron.");
+    val(depth+1);skip();if(text[p]==="}"){p++;return;}
+    if(text[p++]!==",")deny("Onjuiste JSON bron.");}
+  }
+  if(text[p]==="["){
+   p++;skip();if(text[p]==="]"){p++;return;}
+   for(;;){val(depth+1);skip();if(text[p]==="]"){p++;return;}
+    if(text[p++]!==",")deny("Onjuiste JSON bronlijst.");}
+  }
+  if(text[p]==='"'){str();return;}
+  const m=/^(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/.exec(text.slice(p));
+  if(!m)deny("Onjuiste JSON bronwaarde.");p+=m[0].length;
+ };
+ val(0);skip();if(p!==text.length)deny("Overtollige JSON broninhoud.");
+}
+function sourceClient(bytes) {
+ const text=dec.decode(bytes);rejectDuplicateKeys(text);
+ let o;try{o=JSON.parse(text);}catch{deny("Ongeldige Casebook JSON.");}
+ const fields=["schema","status","source","as_of","client_id",
+  "requests","engagements","grants","risk_approvals","case_overview","declared_counts",...flags];
+ if(!o||typeof o!=="object"||Array.isArray(o)||
+  Object.keys(o).length!==fields.length||fields.some(k=>!Object.hasOwn(o,k))||
+  o.schema!=="lightup.auth_casebook.v1"||o.status!=="REVIEW_ONLY"||
+  o.source!=="original_persisted_domain_unverified"||
+  typeof o.client_id!=="string"||!/^[\x21-\x7e]{1,180}$/.test(o.client_id)||
+  ["requests","engagements","grants","risk_approvals","case_overview"].some(k=>!Array.isArray(o[k]))||
+  !o.declared_counts||typeof o.declared_counts!=="object"||Array.isArray(o.declared_counts)||
+  flags.some(k=>o[k]!==false))deny("Bronvorm of NON-AUTHORITY-vlaggen ongeldig.");
+ return o.client_id;
+}
+function checkNames(files) {
+ if(!Array.isArray(files)||files.length<2||files.length>13)
+  deny("Vereist 1–12 originele Casebooks met opgeslagen HUMAN CSV.");
+ const names=files.map(f=>f.name);
+ if(names.at(-1)!=="workroom-current-template.csv"||
+  JSON.stringify(names)!==JSON.stringify([...names].sort()))
+  deny("Oorspronkelijke bestandslijst niet compleet/canoniek.");
+ names.slice(0,-1).forEach((n,i)=>{
+  if(n!=="casebook-"+String(i+1).padStart(2,"0")+".json")
+   deny("Ontbrekende, dubbele of niet-opeenvolgende bronmomenten.");
+ });
+}
+async function keyFor(password,salt,usage){
+ const material=await crypto.subtle.importKey("raw",enc.encode(password),"PBKDF2",false,["deriveKey"]);
+ return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:ITER,hash:"SHA-256"},
+   material,{name:"AES-GCM",length:256},false,[usage]);
+}
+async function admit(file,password){
+ if(!file||typeof file.name!=="string"||!/\.lupt$/i.test(file.name)||
+  file.name.length>160||file.size<100||file.size>MAX_VAULT)
+  deny("Kies een begrensde oorspronkelijke .lupt overdracht.");
+ const envelope=canonical(await file.text(),"originele envelope");
+ if(!keys(envelope,["schema","version","kdf","iterations","cipher","salt_b64",
+  "iv_b64","ciphertext_b64"])||
+  envelope.schema!==SCHEMA||envelope.version!==1||envelope.kdf!=="PBKDF2-SHA256"||
+  envelope.iterations!==ITER||envelope.cipher!=="AES-256-GCM")
+  deny("Geen oorspronkelijke canonieke PRIVATE Casebook v1 envelope.");
+ const salt=from64(envelope.salt_b64,16),iv=from64(envelope.iv_b64,12),
+  cipher=from64(envelope.ciphertext_b64,MAX_VAULT);
+ if(salt.length!==16||iv.length!==12||cipher.length<16)deny("Ongeldige cryptografische envelope.");
+ let plaintext;
+ try {plaintext=new Uint8Array(await crypto.subtle.decrypt(
+  {name:"AES-GCM",iv},await keyFor(password,salt,"decrypt"),cipher));}
+ catch{deny("Ontsleutelen geweigerd; wachtwoord of bytes gewijzigd.");}
+ let body;
+ try{
+  if(plaintext.length>20*1024*1024)deny("Ontsleutelde inhoud te groot.");
+  body=canonical(dec.decode(plaintext),"PRIVATE inhoud");
+ }finally{plaintext.fill(0);}
+ if(!keys(body,["schema","version","files"])||body.schema!==SCHEMA||
+  body.version!==1)deny("PRIVATE body heeft onbekend formaat.");
+ checkNames(body.files);
+ const records=[];let total=0,client=null;
+ for(const item of body.files) {
+  if(!keys(item,["name","size","sha256","content_b64"])||
+    !Number.isSafeInteger(item.size)||item.size<1||item.size>MAX_SOURCE||
+    typeof item.sha256!=="string"||!/^[a-f0-9]{64}$/.test(item.sha256))
+   deny("Onjuiste PRIVATE bestandsmanifest.");
+  const bytes=from64(item.content_b64,MAX_SOURCE);
+  if(bytes.length!==item.size||await sha(bytes)!==item.sha256)
+   deny("Bronbyte-lengte of SHA-256 niet gelijk.");
+  total+=bytes.length;if(total>MAX_SUM)deny("Bronbundel te groot.");
+  if(originalNames(item.name)){
+   const c=sourceClient(bytes);
+   if(client!==null&&client!==c)deny("Verschillende zelfverklaarde client-ID in bronset.");
+   client=c;
+  }
+  records.push({name:item.name,size:item.size,sha256:item.sha256,bytes});
+ }
+ const admitted=h.admit(records);
+ if(!admitted.hasCSV)deny("Beide pakketten moeten opgeslagen brongebonden HUMAN-keuzes bevatten.");
+ return {records,client,cases:admitted.cases,rows:admitted.rows};
+}
+function zero(bundle){if(bundle)for(const r of bundle.records)r.bytes.fill(0);}
+function sameSource(a,b){
+ if(a.client!==b.client||a.records.length!==b.records.length||
+   JSON.stringify(a.cases)!==JSON.stringify(b.cases))
+  deny("HOLD: niet dezelfde originele historische Casebook-bronset.");
+ for(let i=0;i<a.records.length-1;i++)if(
+   a.records[i].name!==b.records[i].name||
+   a.records[i].size!==b.records[i].size||
+   a.records[i].sha256!==b.records[i].sha256)
+  deny("HOLD: andere originele Casebook-bronbytes (geen automatische samenvoeging).");
+}
+function status(message,error=false) {
+ $("status").textContent=message;$("status").classList.toggle("error",error);
+}
+function node(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
+function tally(){
+ if(!work)return;
+ let unresolved=0,changed=0;
+ work.a.rows.forEach((r,i)=>{
+  if(r.slice(3).some((v,j)=>v!==work.b.rows[i][j+3]))changed++;
+  r.slice(3).forEach((v,j)=>{if(v!==work.b.rows[i][j+3]&&!resolved(work.choices[i][j],j))unresolved++;});
+ });
+ $("summary").textContent=work.cases.length+" brondossiers · "+changed+
+  " met HUMAN-verschil · "+unresolved+" onbesliste velden. De bron blijft ongeverifieerd.";
+ $("publish").disabled=busy||unresolved!==0;
+ $("aggregate").disabled=busy||unresolved!==0;
+ window.LightUpCasebookPortfolio?.render();
+}
+function show(){
+ $("cases").replaceChildren();
+ if(!work)return;
+ const search=$("search").value.trim().toLowerCase(),only=$("conflicts").checked,
+  unresolvedOnly=$("unresolved-only").checked;
+ let shown=0;
+ work.cases.forEach((c,i)=>{
+  const ra=work.a.rows[i],rb=work.b.rows[i];
+  const diff=ra.slice(3).some((v,j)=>v!==rb[j+3]);
+  const pending=ra.slice(3).some((v,j)=>v!==rb[j+3]&&!resolved(work.choices[i][j],j));
+  if(only&&!diff||unresolvedOnly&&!pending)return;
+  if(search&&![c.id,c.action,c.attention].some(s=>s.toLowerCase().includes(search)))return;
+  shown++;
+  const card=node("article","");card.className="case"+(diff?" differing":"");
+  card.dataset.caseIndex=String(i);
+  card.tabIndex=-1;
+  card.append(node("h3",c.id),
+   node("p","Originele bronactie: "+c.action+" · aandacht: "+c.attention+" (niet actueel geverifieerd)"));
+  const table=node("table",""),header=node("tr","");
+  ["HUMAN-veld","Ontvanger A","Ontvanger B","Expliciete keuze"].forEach(s=>header.append(node("th",s)));
+  const head=node("thead","");head.append(header);table.append(head);
+  const body=node("tbody","");
+  ["Fase","Route","Blokkade"].forEach((label,j)=>{
+   const row=node("tr","");row.append(node("th",label),
+    node("td",ra[j+3]),node("td",rb[j+3]));
+   const td=node("td","");
+   if(ra[j+3]===rb[j+3])td.append(node("strong","Identiek — behouden"));
+   else{
+    const select=document.createElement("select");select.setAttribute("aria-label",label+" voor "+c.id);
+    [["","HOLD — beslis"],["A","Kies A: "+ra[j+3]],["B","Kies B: "+rb[j+3]],
+     ["reset","Heropen HUMAN: "+defaultHuman[j]],
+     ["custom","Andere toegestane HUMAN-waarde…"]].forEach(([v,s])=>{
+      const option=node("option",s);option.value=v;select.append(option);
+     });
+    const saved=work.choices[i][j];
+    select.value=saved.startsWith("custom:")?"custom":saved;
+    const extra=document.createElement("select");
+    extra.setAttribute("aria-label","Nieuwe canonieke HUMAN-waarde "+label+" voor "+c.id);
+    const prompt=node("option","Kies nieuwe HUMAN-waarde");prompt.value="";extra.append(prompt);
+    humanOptions[j].forEach(v=>{const o=node("option",v);o.value=v;extra.append(o);});
+    extra.value=customChoice(saved,j)?saved.slice(7):"";
+    extra.hidden=select.value!=="custom";
+    extra.addEventListener("change",()=>{
+      const before=work.choices[i][j];
+      window.LightUpCasebookOutputPreview?.invalidate();
+      work.finalReceipt=null;
+      work.choices[i][j]="custom:"+extra.value;
+      window.LightUpCasebookBulk?.recordManual(i,j,before,work.choices[i][j]);
+      tally();
+      if(unresolvedOnly&&resolved(work.choices[i][j],j))show();
+    });
+    select.addEventListener("change",()=>{
+      extra.hidden=select.value!=="custom";
+      extra.value="";
+      const before=work.choices[i][j];
+      window.LightUpCasebookOutputPreview?.invalidate();
+      work.finalReceipt=null;
+      work.choices[i][j]=select.value==="custom"?"custom:":select.value;
+      window.LightUpCasebookBulk?.recordManual(i,j,before,work.choices[i][j]);
+      tally();if(unresolvedOnly&&resolved(work.choices[i][j],j))show();
+    });
+    td.append(select,extra);
+   }
+   row.append(td);body.append(row);
+  });
+  table.append(body);card.append(table);
+  if(diff)window.LightUpCasebookNotes?.render(card,i,c);
+  $("cases").append(card);
+ });
+ $("shown").textContent="Zichtbaar: "+shown+" van "+work.cases.length;
+ for(const element of $("cases").querySelectorAll("select,textarea"))element.disabled=busy;
+ tally();
+}
+async function publish(){
+ if(!work)deny("Geen huidige PRIVATE werkruimte.");
+ const combined=work.a.rows.map((ra,i)=>{
+  const rb=work.b.rows[i];const row=ra.slice(0,3);
+  for(let j=0;j<3;j++){
+   const choice=work.choices[i][j];
+   if(ra[j+3]===rb[j+3])row.push(ra[j+3]);
+   else if(choice==="A")row.push(ra[j+3]);
+   else if(choice==="B")row.push(rb[j+3]);
+   else if(choice==="reset")row.push(defaultHuman[j]);
+   else if(customChoice(choice,j))row.push(choice.slice(7));
+   else deny("HOLD: nog onbesliste HUMAN-keuzes.");
+  }
+  return row;
+ });
+ const password=$("new-password").value;
+ if([...password].length<12||enc.encode(password).length>1024)
+  deny("Nieuw wachtwoord moet 12–1024 UTF-8-tekens/bytes bevatten.");
+ if(!$("ack").checked)deny("PRIVATE HUMAN-only bevestiging ontbreekt.");
+ if(!window.confirm("Maak uitsluitend NIEUW lokaal AES-256-GCM bron+HUMAN pakket? Niets autoriseert een scan."))
+  return;
+ const csv=enc.encode(h.serialize(combined));
+ try{
+  if(csv.length>131072)deny("Nieuwe HUMAN-CSV te groot.");
+  const orig=work.a.records.slice(0,-1);
+  const newHuman={name:"workroom-current-template.csv",size:csv.length,
+   sha256:await sha(csv),bytes:csv};
+  // Read the exact outgoing current HUMAN CSV with the original source-owner
+  // admission code before producing a protected transfer. This is the existing
+  // source contract, not a new authorization or release gate.
+  const native=h.admit([...orig,newHuman]);
+  if(!native.hasCSV||JSON.stringify(native.rows)!==JSON.stringify(combined))
+   deny("HOLD: oorspronkelijke brongebonden HUMAN-validator weigert de beoogde uitgang.");
+  const items=[...orig,newHuman].map(x=>({
+   name:x.name,size:x.size,sha256:x.sha256,content_b64:b64(x.bytes)}));
+  const plaintext=enc.encode(JSON.stringify({schema:SCHEMA,version:1,files:items}));
+  let ciphertext,salt,iv;
+  try{
+   if(plaintext.length>20*1024*1024)deny("Nieuwe PRIVATE bundel te groot.");
+   salt=crypto.getRandomValues(new Uint8Array(16));
+   iv=crypto.getRandomValues(new Uint8Array(12));
+   ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
+    await keyFor(password,salt,"encrypt"),plaintext));
+  }finally{plaintext.fill(0);}
+  const envelope={schema:SCHEMA,version:1,kdf:"PBKDF2-SHA256",iterations:ITER,
+   cipher:"AES-256-GCM",salt_b64:b64(salt),iv_b64:b64(iv),ciphertext_b64:b64(ciphertext)};
+  const bytes=enc.encode(JSON.stringify(envelope));
+  if(bytes.length>MAX_VAULT)deny("Nieuwe versleutelde bundel te groot.");
+  const offeredSha256=await sha(bytes);
+  const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+  const link=document.createElement("a");link.href=url;
+  link.download="lightup-casebook-private-reconciled.lupt";
+  document.body.append(link);link.click();link.remove();
+  work.finalReceipt={bundle_sha256:offeredSha256,human_csv_sha256:newHuman.sha256};
+  window.LightUpCasebookOutputPreview?.comparePublished(newHuman.sha256);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  status("Nieuwe AES-256-GCM PRIVATE brongebonden overdracht aangeboden. Oorspronkelijke HUMAN-validator accepteert exacte uitvoerbytes; dit verleent geen consent, grant of bronproducent-authenticatie.");
+ }finally{csv.fill(0);}
+}
+function setBusy(v){
+ busy=v;$("open").disabled=v;$("publish").disabled=v||!work;
+ $("aggregate").disabled=v||!work;
+ $("clear-session").disabled=v;
+ for(const element of $("cases").querySelectorAll("select,textarea"))element.disabled=v;
+ window.LightUpCasebookBulk?.setBusy(v);
+ window.LightUpCasebookPortfolio?.setBusy(v);
+ window.LightUpCasebookNoteBulk?.setBusy(v);
+}
+$("open").addEventListener("click",async()=>{
+ if(!window.crypto?.subtle||!window.isSecureContext){status("HOLD: WebCrypto secure context vereist.",true);return;}
+ setBusy(true);let a=null,b=null;
+ try{
+  if(!$("ack").checked)deny("Bevestig PRIVATE HUMAN-only reikwijdte.");
+  if(!$("file-a").files[0]||!$("file-b").files[0])deny("Twee originele .lupt-pakketten vereist.");
+  a=await admit($("file-a").files[0],$("password-a").value);
+  b=await admit($("file-b").files[0],$("password-b").value);
+  sameSource(a,b);
+  if(work&&!window.confirm("Vorige lokale nog niet-gepubliceerde HUMAN-beslissingen vervangen?"))
+   deny("Bestaande werkruimte behouden.");
+  const old=work;
+  window.LightUpCasebookOutputPreview?.invalidate();
+  work={a,b,cases:a.cases,choices:a.rows.map((r,i)=>[0,1,2].map(j=>
+   r[j+3]===b.rows[i][j+3]?"same":"")),finalReceipt:null};
+  a=null;b=null;
+  window.LightUpCasebookNotes?.reset(work.cases.length);
+  window.LightUpCasebookBulk?.reset();
+  zero(old?.a);zero(old?.b);
+  show();status("Beide exacte originele bronsets en opgeslagen HUMAN-keuzes lokaal geaccepteerd. Verschillen vereisen expliciete menselijke beslissingen.");
+ }catch(e){status("HOLD: "+(e instanceof Error?e.message:"Ongeldige overdracht"),true);}
+ finally{zero(a);zero(b);
+  $("password-a").value="";$("password-b").value="";
+  $("file-a").value="";$("file-b").value="";
+  setBusy(false);tally();}
+});
+$("publish").addEventListener("click",async()=>{
+ setBusy(true);
+ try{await publish();}catch(e){status("HOLD: "+(e instanceof Error?e.message:"Overdracht geweigerd"),true);}
+ finally{$("new-password").value="";setBusy(false);tally();}
+});
+$("search").addEventListener("input",show);
+$("conflicts").addEventListener("change",show);
+$("unresolved-only").addEventListener("change",show);
+$("next-unresolved").addEventListener("click",()=>{
+ if(!work)return;
+ const pending=[];
+ work.a.rows.forEach((r,i)=>{
+  if(r.slice(3).some((v,j)=>v!==work.b.rows[i][j+3]&&!resolved(work.choices[i][j],j)))
+   pending.push(i);
+ });
+ if(!pending.length){status("Alle HUMAN-conflicten zijn expliciet beslist.");return;}
+ $("search").value="";$("unresolved-only").checked=true;
+ $("conflicts").checked=false;
+ const visible=Array.from($("cases").querySelectorAll("[data-case-index]"))
+  .map(n=>Number(n.dataset.caseIndex));
+ const selected=visible.filter(i=>pending.includes(i));
+ const target=selected.length ? selected[0] : pending[0];
+ show();
+ const node=$("cases").querySelector('[data-case-index="'+target+'"]');
+ node?.scrollIntoView({behavior:"smooth",block:"start"});
+ node?.focus({preventScroll:true});
+});
+function anonymousReport(){
+ if(!work||$("publish").disabled)deny("HOLD: los eerst alle HUMAN-verschillen op.");
+ const c={cases:work.cases.length,conflicting_cases:0,changed_fields:0,
+   selected_a:0,selected_b:0,reopened:0,custom_human:0,identical:0};
+ work.a.rows.forEach((row,i)=>{
+  let different=false;
+  for(let j=0;j<3;j++){
+   if(row[j+3]===work.b.rows[i][j+3]){c.identical++;continue;}
+   different=true;c.changed_fields++;
+   const selected=work.choices[i][j];
+   if(selected==="A")c.selected_a++;
+   else if(selected==="B")c.selected_b++;
+   else if(selected==="reset")c.reopened++;
+   else if(customChoice(selected,j))c.custom_human++;
+   else deny("HOLD: onbesliste HUMAN-keuze in rapport.");
+  }
+  if(different)c.conflicting_cases++;
+ });
+ if(!window.confirm("Exporteer uitsluitend PRIVATE-geaggregeerde HUMAN-aantallen zonder bron-IDs of hashes? Kleine groepen kunnen toch gevoelige informatie verraden."))return;
+ const out={schema:"lightup.casebook.human_reconciliation_aggregate.v1",
+  status:"REVIEW_ONLY",authority:"NONE",...c,
+  source_authenticated:false,client_consent_verified:false,
+  operator_consent_verified:false,authorization_granted:false,
+  execution_allowed:false,release_approved:false};
+ const bytes=enc.encode(JSON.stringify(out)+"\n");
+ const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+ const link=document.createElement("a");link.href=url;
+ link.download="lightup-casebook-HUMAN-aggregate.json";
+ document.body.append(link);link.click();link.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
+ status("Bronvrije HUMAN-aggregaatontvangst aangeboden; geen controle, consent of autorisatie.");
+}
+$("aggregate").addEventListener("click",()=>{
+ try{anonymousReport();}catch(e){status("HOLD: "+e.message,true);}
+});
+window.LightUpBulkBridge=Object.freeze({
+ refresh:()=>{if(!work||busy)deny("HOLD: PRIVATE HUMAN-werkruimte niet geopend.");show();},
+ focus:index=>{
+  if(!work||busy||!Number.isInteger(index)||index<0||index>=work.cases.length)
+   deny("HOLD: ongeldig privébroncase voor lokale navigatie.");
+  $("search").value="";$("conflicts").checked=false;
+  $("unresolved-only").checked=false;
+  show();
+  const card=$("cases").querySelector('[data-case-index="'+index+'"]');
+  card?.scrollIntoView({behavior:"smooth",block:"start"});
+  card?.focus({preventScroll:true});
+ },
+ read:()=>{
+  if(!work||busy)return null;
+  const visible=Array.from($("cases").querySelectorAll("[data-case-index]"))
+   .map(e=>Number(e.dataset.caseIndex));
+  return {cases:work.cases.map((c,i)=>({
+   id:c.id,attention:c.attention,action:c.action,
+   a:work.a.rows[i].slice(3),b:work.b.rows[i].slice(3),
+   choices:[...work.choices[i]]})),visible};
+ },
+ apply:changes=>{
+  if(!work||busy||!Array.isArray(changes)||!changes.length||changes.length>600)
+   deny("HOLD: geen geldige PRIVATE HUMAN-keuzewerkset.");
+  const touched=new Set();
+  for(const {i,j,from,to} of changes){
+   if(!Number.isInteger(i)||i<0||i>=work.cases.length||
+    !Number.isInteger(j)||j<0||j>2||
+    ![from,to].every(v=>typeof v==="string")||touched.has(i+":"+j))
+    deny("HOLD: ongeldige of dubbele bulk-aanpassing.");
+   touched.add(i+":"+j);
+   const same=work.a.rows[i][j+3]===work.b.rows[i][j+3];
+   if(work.choices[i][j]!==from||from===to||
+    (same&&(to!=="same"||from!=="same"))||
+    (!same&&!["","custom:","A","B","reset"].includes(to)&&!customChoice(to,j)))
+    deny("HOLD: verlopen of niet-canonieke HUMAN-keuzewijziging; bron opnieuw bekijken.");
+  }
+  window.LightUpCasebookOutputPreview?.invalidate();
+  for(const {i,j,to} of changes)work.choices[i][j]=to;
+  work.finalReceipt=null;
+  show();
+  return changes.length;
+ }
+});
+window.LightUpCasebookDraftAPI=Object.freeze({
+ snapshot:()=>work?{
+  sources:work.a.records.slice(0,-1).map(r=>({name:r.name,size:r.size,sha256:r.sha256})),
+  human:[work.a.records.at(-1).sha256,work.b.records.at(-1).sha256],
+  choices:work.choices.map(r=>[...r]),
+  notes:window.LightUpCasebookNotes?.read()||[]}:null,
+ restore:body=>{
+  if(!work)deny("HOLD: oorspronkelijke PRIVATE bronnen ontbreken.");
+  const actual=window.LightUpCasebookDraftAPI.snapshot();
+  if(JSON.stringify(body.sources)!==JSON.stringify(actual.sources)||
+    JSON.stringify(body.human)!==JSON.stringify(actual.human))
+   deny("HOLD: checkpoint hoort bij andere originele bron of andere A/B HUMAN-revisie.");
+  if(!Array.isArray(body.choices)||body.choices.length!==work.cases.length)
+   deny("HOLD: checkpoint heeft een afwijkend aantal HUMAN-cases.");
+  const candidate=body.choices.map((r,i)=>{
+   if(!Array.isArray(r)||r.length!==3)deny("HOLD: incomplete HUMAN-beslissingen.");
+   return r.map((v,j)=>{
+    const same=work.a.rows[i][j+3]===work.b.rows[i][j+3];
+    if(same&&v!=="same")deny("HOLD: bronidentiek HUMAN-veld mag niet worden herzien.");
+    if(!same&&!["","custom:","A","B","reset"].includes(v)&&!customChoice(v,j))
+     deny("HOLD: niet-canonieke HUMAN-conflictbeslissing.");
+    return v;
+   });
+  });
+  const existing=window.LightUpCasebookNotes?.read()||[];
+  const incoming=body.version===2?body.notes:existing;
+  if(!Array.isArray(incoming)||incoming.length!==work.cases.length)
+   deny("HOLD: PRIVATE HUMAN-motivering heeft onjuist bronaantal.");
+  const bound=incoming.map(window.LightUpCasebookNotes.canonical);
+  if(!window.confirm("Herstel alleen HUMAN-keuzes en optionele PRIVATE notities op exact dezelfde oorspronkelijke bronnen? Originele Casebook bytes blijven onveranderd."))
+   return false;
+  window.LightUpCasebookNotes.restore(bound);
+  work.finalReceipt=null;
+  window.LightUpCasebookOutputPreview?.invalidate();
+  work.choices=candidate;
+  window.LightUpCasebookBulk?.reset();
+  show();return true;
+ }
+});
+window.LightUpCasebookReceiptAPI=Object.freeze({
+ snapshot:()=>{
+  if(!work||busy||!work.finalReceipt)return null;
+  let pending=false;
+  work.a.rows.forEach((r,i)=>r.slice(3).forEach((v,j)=>{
+   if(v!==work.b.rows[i][j+3]&&!resolved(work.choices[i][j],j))pending=true;
+  }));
+  if(pending)return null;
+  const draft=window.LightUpCasebookDraftAPI.snapshot();
+  return {sources:draft.sources,human:draft.human,
+   result:{...work.finalReceipt},
+   cases:work.cases.map((c,i)=>({
+    id:c.id,source_action:c.action,source_attention:c.attention,
+    original_a:work.a.rows[i].slice(3),original_b:work.b.rows[i].slice(3),
+    decision:[...work.choices[i]],note:window.LightUpCasebookNotes.read()[i]
+   }))};
+ }
+});
+$("clear-session").addEventListener("click",()=>{
+ if(busy)return;
+ if(!work&&!window.LightUpCasebookReceiptClear)return;
+ if(!window.confirm("Wis alle lokale PRIVATE Casebook-werksetbytes, HUMAN-keuzes, notities, ingelezen reviewmemo en formulierselecties uit dit browsertabblad? Opgeslagen originele bestanden op schijf blijven onaangeroerd."))return;
+ if(work){zero(work.a);zero(work.b);}
+ work=null;
+ window.LightUpCasebookOutputPreview?.invalidate();
+ window.LightUpCasebookBulk?.reset();
+ window.LightUpCasebookPortfolio?.render();
+ window.LightUpCasebookNotes?.reset(0);
+ window.LightUpCasebookReceiptClear?.();
+ $("cases").replaceChildren();$("shown").textContent="";
+ $("summary").textContent="Lokale PRIVATE werkset gewist; geen originele bronnen geladen.";
+ for(const el of document.querySelectorAll('input[type="password"],input[type="file"]'))el.value="";
+ $("search").value="";$("conflicts").checked=false;
+ $("unresolved-only").checked=false;
+ $("publish").disabled=true;$("aggregate").disabled=true;
+ status("Lokale PRIVATE werkset, reviewmemo en keuzecontext uit appstatus verwijderd; browsergeheugen kan door de runtime nog tijdelijk kopieën bevatten.");
+});
+window.addEventListener("pagehide",()=>{if(work){zero(work.a);zero(work.b);}
+ window.LightUpCasebookReceiptClear?.();});
+$("publish").disabled=true;$("aggregate").disabled=true;
+})();
+/* Offline private HUMAN reconciliation reasons; no grant, client authorization or source mutation. */
+(() => {
+"use strict";
+const REASONS=Object.freeze([
+ "not-recorded","source-clarification","client-question","independent-review",
+ "consent-to-verify","revocation-followup","conflicting-human-interpretation",
+ "manual-followup"
+]);
+const LABELS=Object.freeze({
+ "not-recorded":"Geen reden ingevuld",
+ "source-clarification":"Oorspronkelijke bron moet worden verduidelijkt",
+ "client-question":"Vraag aan oorspronkelijke cliënt",
+ "independent-review":"Onafhankelijke menselijke review nodig",
+ "consent-to-verify":"Actuele toestemming moet onafhankelijk worden nagegaan",
+ "revocation-followup":"Oorspronkelijke intrekking vereist menselijke opvolging",
+ "conflicting-human-interpretation":"Twee verschillende HUMAN-interpretaties",
+ "manual-followup":"Overig HUMAN-vervolg"
+});
+const MAX_BYTES=1200,MAX_ENTRIES=200;
+const enc=new TextEncoder();
+let notes=[];
+const deny=x=>{throw Error(x);};
+function canonical(entry){
+ if(!entry||typeof entry!=="object"||Array.isArray(entry)||
+  JSON.stringify(Object.keys(entry))!==JSON.stringify(["reason","note"]))
+  deny("HOLD: PRIVATE HUMAN-aantekening heeft onbekende velden.");
+ const {reason,note}=entry;
+ if(!REASONS.includes(reason)||typeof note!=="string"||
+   note.length>800||enc.encode(note).length>MAX_BYTES||
+   /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(note))
+  deny("HOLD: HUMAN-aantekening is te groot of onveilig.");
+ return {reason,note};
+}
+function reset(length){
+ if(!Number.isInteger(length)||length<0||length>MAX_ENTRIES)deny("Teveel HUMAN-aantekeningen.");
+ notes=Array.from({length},()=>({reason:"not-recorded",note:""}));
+ window.LightUpCasebookNoteBulk?.reset();
+}
+function read(){
+ return notes.map(x=>({...x}));
+}
+function restore(rows){
+ if(!Array.isArray(rows)||rows.length!==notes.length||rows.length>MAX_ENTRIES)
+  deny("HOLD: HUMAN-notities komen niet overeen met de huidige oorspronkelijke dossiers.");
+ const candidate=rows.map(canonical);
+ notes=candidate;
+ window.LightUpCasebookNoteBulk?.reset();
+}
+function render(parent,index,caseInfo){
+ const entry=notes[index];
+ if(!entry||!caseInfo)deny("HOLD: brongebonden notitie ontbreekt.");
+ const section=document.createElement("section");
+ section.className="human-notes";
+ const title=document.createElement("h4");
+ title.textContent="Optionele PRIVATE HUMAN-motivering — geen bronbewijs of toestemming";
+ section.append(title);
+ const label=document.createElement("label");
+ label.textContent="Menselijke reden voor opvolging";
+ const select=document.createElement("select");
+ select.setAttribute("aria-label","PRIVATE reden voor "+caseInfo.id);
+ for(const value of REASONS){
+  const option=document.createElement("option");
+  option.value=value;option.textContent=LABELS[value];
+  select.append(option);
+ }
+ select.value=entry.reason;
+ select.addEventListener("change",()=>{
+  notes[index]=canonical({reason:select.value,note:notes[index].note});
+  window.LightUpCasebookNoteBulk?.invalidateHistory();
+ });
+ label.append(select);section.append(label);
+ const noteLabel=document.createElement("label");
+ noteLabel.textContent="Privécontext (maximaal 800 tekens en 1.200 UTF-8 bytes; niet in Casebook CSV)";
+ const textarea=document.createElement("textarea");
+ textarea.rows=3;textarea.maxLength=800;textarea.value=entry.note;
+ textarea.setAttribute("aria-label","PRIVATE motivering voor "+caseInfo.id);
+ const feedback=document.createElement("small");
+ feedback.className="muted";feedback.textContent="Uitsluitend privé, niet in oorspronkelijke bron of telling.";
+ textarea.addEventListener("input",()=>{
+  const next={reason:notes[index].reason,note:textarea.value};
+  try {
+   notes[index]=canonical(next);
+   feedback.textContent=enc.encode(next.note).length+" van 1.200 privé UTF-8 bytes";
+   feedback.classList.remove("error");
+  }catch{
+   textarea.value=notes[index].note;
+   feedback.textContent="HOLD: motivering overschrijdt privélengte of bevat controlecodes.";
+   feedback.classList.add("error");
+  }
+ });
+ noteLabel.append(textarea,feedback);section.append(noteLabel);
+ parent.append(section);
+}
+function applyReasons(changes){
+ if(!Array.isArray(changes)||changes.length<1||changes.length>MAX_ENTRIES)
+  deny("HOLD: te groot of ontbrekend PRIVATE HUMAN-redenenpakket.");
+ const seen=new Set();
+ for(const change of changes){
+  if(!change||typeof change!=="object"||
+    JSON.stringify(Object.keys(change))!==JSON.stringify(["i","from","to"])||
+    !Number.isInteger(change.i)||change.i<0||change.i>=notes.length||
+    seen.has(change.i)||!REASONS.includes(change.from)||
+    !REASONS.includes(change.to)||change.from===change.to||
+    notes[change.i].reason!==change.from)
+   deny("HOLD: ongeldige of intussen gewijzigde PRIVATE HUMAN-opvolgreden.");
+  seen.add(change.i);
+ }
+ for(const change of changes)notes[change.i]={
+  reason:change.to,note:notes[change.i].note};
+ return changes.length;
+}
+window.LightUpCasebookNotes=Object.freeze({reset,read,restore,render,canonical,applyReasons,
+ reasons:REASONS,labels:LABELS});
+})();
+
+/* Offline, source-bound encrypted HUMAN decision checkpoint. No original bytes in checkpoint. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id),api=window.LightUpCasebookDraftAPI;
+const enc=new TextEncoder(),dec=new TextDecoder("utf-8",{fatal:true});
+const LEGACY_SCHEMA="lightup.casebook.private_human_reconciliation_draft.v1";
+const SCHEMA="lightup.casebook.private_human_reconciliation_draft.v2";
+const ITER=310000,MAX_FILE=256*1024,MAX_BODY=128*1024;
+const fail=msg=>{throw Error(msg);};
+const exact=(o,k)=>o!==null&&typeof o==="object"&&!Array.isArray(o)&&
+ JSON.stringify(Object.keys(o))===JSON.stringify(k);
+function from64(s,max){
+ if(typeof s!=="string"||s.length>Math.ceil(max/3)*4+8||
+  !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(s))
+   fail("Onveilige HUMAN checkpoint-base64.");
+ let raw;try{raw=atob(s);}catch{fail("Ongeldige checkpoint-base64.");}
+ if(raw.length>max)fail("Checkpoint te groot.");
+ const arr=Uint8Array.from(raw,c=>c.charCodeAt(0));
+ if(to64(arr)!==s)fail("Niet-canonieke checkpoint-base64.");
+ return arr;
+}
+function to64(bytes){
+ let str="";for(let i=0;i<bytes.length;i+=8192)
+  str+=String.fromCharCode(...bytes.subarray(i,i+8192));
+ return btoa(str);
+}
+function parse(text){
+ let obj;try{obj=JSON.parse(text);}catch{fail("Checkpoint-JSON ongeldig.");}
+ if(JSON.stringify(obj)!==text)fail("Niet-canonieke checkpoint-inhoud.");
+ return obj;
+}
+function passwordOk(password){
+ if([...password].length<12||enc.encode(password).length>1024)
+  fail("Checkpoint-wachtwoord moet minimaal 12 tekens en maximaal 1024 UTF-8 bytes bevatten.");
+}
+async function keyFor(password,salt,usage){
+ const key=await crypto.subtle.importKey("raw",enc.encode(password),"PBKDF2",false,["deriveKey"]);
+ return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:ITER,hash:"SHA-256"},
+  key,{name:"AES-GCM",length:256},false,[usage]);
+}
+function status(msg,error=false){
+ $("draft-status").textContent=(error?"HOLD: ":"")+msg;
+ $("draft-status").classList.toggle("error",error);
+}
+function download(name,bytes){
+ const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+ const link=document.createElement("a");link.href=url;link.download=name;
+ document.body.append(link);link.click();link.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function authBody(snapshot){
+ if(!snapshot)fail("Open eerst beide oorspronkelijke PRIVATE Casebook-bronnen.");
+ if(!snapshot.sources||!snapshot.human||!snapshot.choices)
+  fail("Originele bron en HUMAN binding ontbreken.");
+ return {schema:SCHEMA,version:2,sources:snapshot.sources,human:snapshot.human,
+  choices:snapshot.choices,notes:snapshot.notes,
+  source_authenticated:false,client_consent_verified:false,
+  operator_consent_verified:false,authorization_granted:false,
+  execution_allowed:false,release_approved:false};
+}
+let busy=false;
+function setBusy(b){
+ busy=b;for(const id of ["draft-save","draft-open"])$(id).disabled=b;
+}
+$("draft-save").addEventListener("click",async()=>{
+ if(!crypto?.subtle||!isSecureContext){status("WebCrypto secure context ontbreekt.",true);return;}
+ if(busy)return;setBusy(true);
+ try{
+  if(!$("ack").checked)fail("HUMAN-only bevestiging ontbreekt.");
+  const snapshot=api.snapshot(),pass=$("draft-new-pass").value;passwordOk(pass);
+  if(!window.confirm("Maak een NIEUW versleuteld PRIVATE HUMAN-beslisconcept? Originele bronnen worden NIET bijgevoegd."))return;
+  const body=enc.encode(JSON.stringify(authBody(snapshot)));
+  if(body.length>MAX_BODY)fail("Checkpoint-overzicht te groot.");
+  const salt=crypto.getRandomValues(new Uint8Array(16)),
+   iv=crypto.getRandomValues(new Uint8Array(12));
+  const cipher=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
+   await keyFor(pass,salt,"encrypt"),body));
+  body.fill(0);
+  const envelope={schema:SCHEMA,version:2,kdf:"PBKDF2-SHA256",
+   iterations:ITER,cipher:"AES-256-GCM",salt_b64:to64(salt),
+   iv_b64:to64(iv),ciphertext_b64:to64(cipher)};
+  const bytes=enc.encode(JSON.stringify(envelope));
+  if(bytes.length>MAX_FILE)fail("Versleuteld checkpoint groter dan limiet.");
+  download("lightup-casebook-PRIVATE-human-draft.lurd",bytes);
+  status("Alleen bronhash-gebonden HUMAN-keuzes versleuteld opgeslagen. Voor herstel moeten beide oorspronkelijke PRIVATE overdrachten opnieuw worden geopend.");
+ }catch(e){status(e instanceof Error?e.message:"Checkpoint geweigerd.",true);}
+ finally{$("draft-new-pass").value="";setBusy(false);}
+});
+$("draft-open").addEventListener("click",async()=>{
+ if(!crypto?.subtle||!isSecureContext){status("WebCrypto secure context ontbreekt.",true);return;}
+ if(busy)return;setBusy(true);
+ try{
+  if(!$("ack").checked)fail("HUMAN-only bevestiging ontbreekt.");
+  const file=$("draft-file").files[0],password=$("draft-open-pass").value;
+  if(!file||typeof file.name!=="string"||file.name.length>160||
+    !/\.lurd$/i.test(file.name)||file.size<80||file.size>MAX_FILE)
+   fail("Kies een geldige beperkte PRIVATE HUMAN-checkpoint .lurd.");
+  if(!password)fail("Wachtwoord ontbreekt.");
+  if(!api.snapshot())fail("Open eerst de twee oorspronkelijke PRIVATE bronsets.");
+  const env=parse(await file.text());
+  if(!exact(env,["schema","version","kdf","iterations","cipher","salt_b64",
+   "iv_b64","ciphertext_b64"])||!((env.schema===SCHEMA&&env.version===2)||
+    (env.schema===LEGACY_SCHEMA&&env.version===1))||
+   env.kdf!=="PBKDF2-SHA256"||env.iterations!==ITER||env.cipher!=="AES-256-GCM")
+   fail("Checkpoint-envelope niet oorspronkelijk canoniek.");
+  const salt=from64(env.salt_b64,16),iv=from64(env.iv_b64,12),
+   cipher=from64(env.ciphertext_b64,MAX_FILE);
+  if(salt.length!==16||iv.length!==12||cipher.length<16)
+   fail("Ongeldige cryptografische parameters.");
+  let bytes;
+  try{bytes=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv},
+    await keyFor(password,salt,"decrypt"),cipher));}
+  catch{fail("Wachtwoord of checkpoint-ciphertext onjuist.");}
+  if(bytes.length>MAX_BODY)fail("Checkpoint-plaintext te groot.");
+  let body;
+  try{body=parse(dec.decode(bytes));}
+  finally{bytes.fill(0);}
+  const mandatory=["schema","version","sources","human","choices"];
+  const authority=["source_authenticated","client_consent_verified","operator_consent_verified",
+    "authorization_granted","execution_allowed","release_approved"];
+  const isV2=env.schema===SCHEMA;
+  if(!exact(body,[...mandatory,...(isV2?["notes"]:[]),...authority])||
+    body.schema!==env.schema||body.version!==env.version||
+    ["source_authenticated","client_consent_verified","operator_consent_verified",
+     "authorization_granted","execution_allowed","release_approved"].some(k=>body[k]!==false))
+   fail("Onjuiste checkpoint-bron of autoriteitsflags.");
+  // api.restore performs a second, exact *currently open* original-source,
+  // both original HUMAN CSV fingerprints and every HUMAN option check.
+  if(!api.restore(body)){status("HUMAN-restore geannuleerd; bestaande keuzes behouden.");return;}
+  status("Oorspronkelijk bron+beide HUMAN-CSV-bound beslisconcept in huidig browsergeheugen hersteld. Geen grant/toestemming.");
+ }catch(e){status(e instanceof Error?e.message:"Checkpoint geweigerd.",true);}
+ finally{$("draft-open-pass").value="";$("draft-file").value="";setBusy(false);}
+});
+})();
+/* PRIVATE encrypted HUMAN reviewer memorandum linked to offered original .lupt byte digest.
+ * Does not authenticate original producer, human identity, client consent or grant. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const API=window.LightUpCasebookReceiptAPI,notes=window.LightUpCasebookNotes;
+const enc=new TextEncoder(),dec=new TextDecoder("utf-8",{fatal:true});
+const SCHEMA="lightup.casebook.private_human_review_memo.v1",ITER=310000,
+ MAX_FILE=1024*1024,MAX_BODY=512*1024,FLAGS=[
+ "source_authenticated","client_consent_verified","operator_consent_verified",
+ "authorization_granted","execution_allowed","release_approved"
+];
+const REASON_FIELDS=["schema","version","status","sources","human","result","cases",...FLAGS];
+const fail=msg=>{throw Error(msg);};
+const exact=(o,keys)=>o!==null&&typeof o==="object"&&!Array.isArray(o)&&
+ JSON.stringify(Object.keys(o))===JSON.stringify(keys);
+const hex=x=>typeof x==="string"&&/^[0-9a-f]{64}$/.test(x);
+const safeText=(s,max=1200)=>typeof s==="string"&&s.length<=max&&
+ !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s);
+const stages=["unreviewed","investigating","awaiting-owner","documented"];
+const routes=["unassigned","original-scope-owner","client-clarification",
+ "independent-security-review","operator-followup"];
+const blockers=["none","missing-source","missing-owner","needs-independent-consent",
+ "requires-revocation-review","unresolved-tenant-lineage"];
+const enums=[stages,routes,blockers];
+let opened=null,working=false;
+window.LightUpCasebookReceiptClear=()=>{
+ opened=null;$("receipt-view").replaceChildren();
+ window.LightUpCasebookRevisionClear?.();
+ window.LightUpCasebookTimelineClear?.();
+ status("PRIVATE lokaal ontvangen memo uit weergave verwijderd.");
+};
+function status(message,error=false){
+ $("receipt-status").textContent=(error?"HOLD: ":"")+message;
+ $("receipt-status").classList.toggle("error",error);
+}
+function base64(bytes){
+ let s="";for(let i=0;i<bytes.length;i+=8192)
+  s+=String.fromCharCode(...bytes.subarray(i,i+8192));
+ return btoa(s);
+}
+function from64(text,limit){
+ if(typeof text!=="string"||text.length>Math.ceil(limit/3)*4+8||
+  !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(text))
+  fail("Ongeldige memo base64.");
+ let raw;try{raw=atob(text);}catch{fail("Ongeldige memo base64.");}
+ if(raw.length>limit)fail("Memo overschrijdt harde grens.");
+ const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+ if(base64(bytes)!==text)fail("Niet-canonieke memo base64.");
+ return bytes;
+}
+function parse(text){
+ let body;try{body=JSON.parse(text);}catch{fail("Memo is geen geldige JSON.");}
+ if(JSON.stringify(body)!==text)fail("Memo-JSON niet canoniek.");
+ return body;
+}
+function checkPassword(password){
+ if([...password].length<12||enc.encode(password).length>1024)
+  fail("Memo-wachtwoord: minimaal 12 tekens, maximaal 1024 UTF-8 bytes.");
+}
+async function keyFor(password,salt,usage){
+ const raw=await crypto.subtle.importKey("raw",enc.encode(password),"PBKDF2",false,["deriveKey"]);
+ return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:ITER,hash:"SHA-256"},
+   raw,{name:"AES-GCM",length:256},false,[usage]);
+}
+function admit(body){
+ if(!exact(body,REASON_FIELDS)||body.schema!==SCHEMA||body.version!==1||
+  body.status!=="REVIEW_ONLY"||FLAGS.some(k=>body[k]!==false))
+  fail("Memo bronformaat of authority-vlaggen onjuist.");
+ if(!Array.isArray(body.sources)||body.sources.length<1||body.sources.length>12||
+  !Array.isArray(body.human)||body.human.length!==2||
+  !body.human.every(hex)||!exact(body.result,["bundle_sha256","human_csv_sha256"])||
+  !hex(body.result.bundle_sha256)||!hex(body.result.human_csv_sha256)||
+  !Array.isArray(body.cases)||body.cases.length>200)
+  fail("Memo heeft onjuist bron-/resultaatmanifest.");
+ body.sources.forEach((source,i)=>{
+  if(!exact(source,["name","size","sha256"])||
+   source.name!=="casebook-"+String(i+1).padStart(2,"0")+".json"||
+   !Number.isSafeInteger(source.size)||source.size<1||source.size>4*1024*1024||
+   !hex(source.sha256))
+   fail("Memo noemt een onjuist oorspronkelijk bronbestand.");
+ });
+ const seen=new Set();
+ body.cases.forEach(row=>{
+  if(!exact(row,["id","source_action","source_attention","original_a",
+    "original_b","decision","note"])||
+   !safeText(row.id,400)||!row.id||seen.has(row.id)||
+   !safeText(row.source_action,2000)||!safeText(row.source_attention,500)||
+   !Array.isArray(row.original_a)||!Array.isArray(row.original_b)||
+   !Array.isArray(row.decision)||row.original_a.length!==3||
+   row.original_b.length!==3||row.decision.length!==3)
+   fail("Memo-case ongeldig, dubbel of incompleet.");
+  seen.add(row.id);
+  notes.canonical(row.note);
+  for(let j=0;j<3;j++){
+   const a=row.original_a[j],b=row.original_b[j],chosen=row.decision[j];
+   if(!enums[j].includes(a)||!enums[j].includes(b)||
+    (a===b&&chosen!=="same")||
+    (a!==b&&!["A","B","reset"].includes(chosen)&&
+     !(typeof chosen==="string"&&chosen.startsWith("custom:")&&
+       enums[j].includes(chosen.slice(7)))))
+    fail("Memo heeft niet-originele HUMAN-waarden.");
+  }
+ });
+ return body;
+}
+function produce(snapshot){
+ if(!snapshot)fail("Maak eerst een versleutelde PRIVATE bron+HUMAN overdracht.");
+ if(!Array.isArray(snapshot.cases)||snapshot.cases.length<1)
+  fail("Geen echte originele HUMAN-cases om te documenteren.");
+ return admit({schema:SCHEMA,version:1,status:"REVIEW_ONLY",
+  sources:snapshot.sources,human:snapshot.human,result:snapshot.result,
+  cases:snapshot.cases,source_authenticated:false,client_consent_verified:false,
+  operator_consent_verified:false,authorization_granted:false,
+  execution_allowed:false,release_approved:false});
+}
+function download(name,bytes){
+ const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+ const a=document.createElement("a");a.href=url;a.download=name;
+ document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function setWorking(v){
+ working=v;$("receipt-save").disabled=v;$("receipt-open").disabled=v;
+ $("receipt-verify").disabled=v;$("receipt-rekey").disabled=v;
+}
+const el=(tag,t)=>{const e=document.createElement(tag);e.textContent=t;return e;};
+function render(body){
+ const panel=$("receipt-view");panel.replaceChildren();
+ const h=el("h3","Ontvangen PRIVATE HUMAN-memo · bron is NIET geauthenticeerd");
+ panel.append(h,el("p","Resultaat (ongetekende lokale versleutelde byte-SHA256): "+
+  body.result.bundle_sha256),
+  el("p","HUMAN CSV SHA256: "+body.result.human_csv_sha256),
+  el("p","Oorspronkelijke bronnen: "+body.sources.length+
+   " · PRIVÉ-dossiers: "+body.cases.length+
+   " · memo is uitsluitend door de bezitters van het wachtwoord ontsleuteld."));
+ const table=el("table",""),thead=el("thead",""),top=el("tr","");
+ ["Privé broncase","Oorspronkelijke bronactie","HUMAN-beslissingen","Privé reviewreden en motivering"]
+  .forEach(s=>top.append(el("th",s)));thead.append(top);table.append(thead);
+ const tbody=el("tbody","");
+ for(const row of body.cases){
+  const tr=el("tr","");
+  const decisions=row.decision.map((d,i)=>{
+   const resolved=d==="same"?row.original_a[i]:
+    d==="A"?row.original_a[i]:
+    d==="B"?row.original_b[i]:
+    d==="reset"?enums[i][0]:d.slice(7);
+   return ["fase","route","blokkade"][i]+": "+resolved+" ("+d+")";
+  }).join("\n");
+  [row.id,row.source_action+" / "+row.source_attention,decisions,
+    row.note.reason+" — "+row.note.note].forEach(v=>tr.append(el("td",v)));
+  tbody.append(tr);
+ }
+ table.append(tbody);panel.append(table);
+}
+async function decodeMemo(file,pw){
+  if(!file||typeof file.name!=="string"||file.name.length>160||
+    !/\.lurm$/i.test(file.name)||file.size<80||file.size>MAX_FILE||!pw)
+    fail("Selecteer een geldig beperkt PRIVATE memo en wachtwoord.");
+  const env=parse(await file.text());
+  if(!exact(env,["schema","version","kdf","iterations","cipher","salt_b64","iv_b64","ciphertext_b64"])||
+    env.schema!==SCHEMA||env.version!==1||env.kdf!=="PBKDF2-SHA256"||
+    env.iterations!==ITER||env.cipher!=="AES-256-GCM")
+    fail("Memo-envelope onbekend.");
+  const salt=from64(env.salt_b64,16),iv=from64(env.iv_b64,12),
+    cipher=from64(env.ciphertext_b64,MAX_FILE);
+  if(salt.length!==16||iv.length!==12||cipher.length<16)fail("Memo cryptografische parameters ongeldig.");
+  let clear;
+  try{clear=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv},
+    await keyFor(pw,salt,"decrypt"),cipher));}
+  catch{fail("Wachtwoord of memo-body onjuist.");}
+  if(clear.length>MAX_BODY)fail("PRIVATE memo te groot.");
+  let candidate;
+  try{candidate=admit(parse(dec.decode(clear)));}
+  finally{clear.fill(0);}
+  return candidate;
+ }
+window.LightUpCasebookReceiptLibrary=Object.freeze({
+ decodeMemo,current:()=>opened
+});
+async function encryptMemo(memo,pw,filename){
+ checkPassword(pw);
+  const plaintext=enc.encode(JSON.stringify(memo));
+  let encrypted,salt,iv;
+  try{
+   if(plaintext.length>MAX_BODY)fail("PRIVATE memo te groot.");
+   salt=crypto.getRandomValues(new Uint8Array(16));
+   iv=crypto.getRandomValues(new Uint8Array(12));
+   encrypted=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
+     await keyFor(pw,salt,"encrypt"),plaintext));
+  }finally{plaintext.fill(0);}
+  const envelope={schema:SCHEMA,version:1,kdf:"PBKDF2-SHA256",
+    iterations:ITER,cipher:"AES-256-GCM",salt_b64:base64(salt),
+    iv_b64:base64(iv),ciphertext_b64:base64(encrypted)};
+  const bytes=enc.encode(JSON.stringify(envelope));
+  if(bytes.length>MAX_FILE)fail("Versleuteld PRIVATE memo te groot.");
+  download(filename,bytes);
+}
+$("receipt-save").addEventListener("click",async()=>{
+ if(!window.isSecureContext||!crypto?.subtle){status("WebCrypto secure context vereist.",true);return;}
+ if(working)return;setWorking(true);
+ try{
+  if(!$("ack").checked)fail("Bevestig eerst PRIVATE HUMAN-only gebruik.");
+  const snapshot=produce(API.snapshot()),pw=$("receipt-save-pass").value;
+  checkPassword(pw);
+  if(!window.confirm("Maak afzonderlijk NIEUW versleuteld PRIVATE memo met oorspronkelijke dossier-IDs, HUMAN-opvolgnotities en ongetekende SHA-256-resultaatbinding? Dit is GEEN autorisatie."))return;
+  await encryptMemo(snapshot,pw,"lightup-PRIVATE-human-review-memo.lurm");
+  status("Nieuw afzonderlijk PRIVATE HUMAN-memo aangeboden; niet in oorspronkelijke Casebook/HUMAN CSV opgenomen.");
+ }catch(e){status(e instanceof Error?e.message:"Versleuteld memo geweigerd.",true);}
+ finally{$("receipt-save-pass").value="";setWorking(false);}
+});
+$("receipt-open").addEventListener("click",async()=>{
+ if(!window.isSecureContext||!crypto?.subtle){status("WebCrypto secure context vereist.",true);return;}
+ if(working)return;setWorking(true);
+ try{
+  if(!$("ack").checked)fail("PRIVATE HUMAN-only erkenning vereist.");
+  const candidate=await decodeMemo($("receipt-file").files[0],$("receipt-open-pass").value);
+  if(opened&&!window.confirm("Vorige gelezen PRIVATE memo vervangen?"))return;
+  opened=candidate;window.LightUpCasebookRevisionClear?.();
+  window.LightUpCasebookTimelineClear?.();render(opened);
+  status("PRIVATE HUMAN-memo lokaal heropend, intern consistent maar zonder echte oorspronkelijke producent-, consent- of grant-verificatie.");
+ }catch(e){status(e instanceof Error?e.message:"Ongeldig memo.",true);}
+ finally{$("receipt-open-pass").value="";$("receipt-file").value="";setWorking(false);}
+});
+$("receipt-rekey").addEventListener("click",async()=>{
+ if(!window.isSecureContext||!crypto?.subtle){status("Veilige WebCrypto-context vereist.",true);return;}
+ if(working)return;setWorking(true);
+ try{
+  if(!opened)fail("Open eerst een bestaande PRIVATE reviewmemo.");
+  if(!$("ack").checked)fail("PRIVATE HUMAN-only erkenning ontbreekt.");
+  const pw=$("receipt-rekey-pass").value;checkPassword(pw);
+  if(!window.confirm("Versleutel exact dezelfde intern geaccepteerde PRIVATE HUMAN-reviewmemo opnieuw onder een nieuw onafhankelijk wachtwoord, verse salt en nonce? Geen bron of consent is geverifieerd."))return;
+  await encryptMemo(opened,pw,"lightup-PRIVATE-human-review-memo-rekey.lurm");
+  status("Bestaand PRIVATE HUMAN-reviewmemo met nieuwe AES-GCM salt/nonce opnieuw versleuteld, zonder oorspronkelijke plaintext bronbestanden te downloaden.");
+ }catch(e){status(e instanceof Error?e.message:"Dooroverdracht geweigerd.",true);}
+ finally{$("receipt-rekey-pass").value="";setWorking(false);}
+});
+$("receipt-verify").addEventListener("click",async()=>{
+ if(working)return;setWorking(true);
+ try{
+  if(!opened)fail("Open eerst een privé versleuteld memo.");
+  const file=$("receipt-check-file").files[0];
+  if(!file||file.size<100||file.size>26*1024*1024||
+    !/\.lupt$/i.test(file.name))fail("Kies een begrensd origineel versleuteld .lupt-resultaat.");
+  const hash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",await file.arrayBuffer())),
+   b=>b.toString(16).padStart(2,"0")).join("");
+  if(hash!==opened.result.bundle_sha256)
+    fail("Geselecteerd versleuteld resultaat heeft NIET de memo-bytehash; geen bronbinding bewezen.");
+  status("EXACTE ENCRYPTED BYTE MATCH: .lupt-bestand hoort bij het ongetekende PRIVATE memo. Dit bewijst geen oorspronkelijke bronproducent, geldigheid, consent of scanmachtiging.");
+ }catch(e){status(e instanceof Error?e.message:"Bytevergelijking geweigerd.",true);}
+ finally{$("receipt-check-file").value="";setWorking(false);}
+});
+})();
+/* Independent private HUMAN review memo revision reader; never authorizes activity. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const library=window.LightUpCasebookReceiptLibrary;
+const enc=new TextEncoder();
+const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const deny=s=>{throw Error(s);};
+let summary=null,busy=false;
+const status=(s,error=false)=>{
+ $("revision-status").textContent=(error?"HOLD: ":"")+s;
+ $("revision-status").classList.toggle("error",error);
+};
+const make=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
+function setBusy(v){
+ busy=v;$("revision-compare").disabled=v;$("revision-export").disabled=v||!summary;
+}
+function admission(a,b){
+ if(!a||!b)deny("Open eerst memo A en kies een tweede memo B.");
+ if(!eq(a.sources,b.sources)||!eq(a.human,b.human))
+  deny("Verschillende originele Casebook-bronnen of A/B HUMAN-input: geen historische conclusie.");
+ if(a.cases.length!==b.cases.length)deny("Ongelijk aantal broncases; afgebroken vergelijking.");
+ for(let i=0;i<a.cases.length;i++){
+  const prev=a.cases[i],next=b.cases[i];
+  if(!eq([prev.id,prev.source_action,prev.source_attention,prev.original_a,prev.original_b],
+         [next.id,next.source_action,next.source_attention,next.original_a,next.original_b]))
+   deny("Casebook-bron of oorspronkelijke HUMAN-ingang gewijzigd op bronrij "+(i+1)+".");
+ }
+}
+function compare(a,b){
+ admission(a,b);
+ const changes=[],counts={cases:a.cases.length,changed_cases:0,
+  changed_choice_fields:0,changed_human_notes:0,changed_human_reasons:0,
+  unchanged_cases:0,source_bound:true,
+  human_csv_bytes_differ:a.result.human_csv_sha256!==b.result.human_csv_sha256};
+ for(let i=0;i<a.cases.length;i++){
+  const x=a.cases[i],y=b.cases[i];
+  const decisions=[0,1,2].filter(j=>x.decision[j]!==y.decision[j]);
+  const noteChanged=x.note.note!==y.note.note;
+  const reasonChanged=x.note.reason!==y.note.reason;
+  const changed=decisions.length>0||noteChanged||reasonChanged;
+  if(changed){
+   counts.changed_cases++;
+   counts.changed_choice_fields+=decisions.length;
+   counts.changed_human_notes+=Number(noteChanged);
+   counts.changed_human_reasons+=Number(reasonChanged);
+   changes.push({id:x.id,decision_fields:decisions,
+      before:x.decision,after:y.decision,
+      previous_reason:x.note.reason,next_reason:y.note.reason,
+      note_changed:noteChanged});
+  }else counts.unchanged_cases++;
+ }
+ return {counts,changes};
+}
+function render(comparison,a,b){
+ const box=$("revision-view");box.replaceChildren();
+ box.append(make("h3","PRIVATE menselijk revisieverschil — uitsluitend zelfverklaarde bronbytes"));
+ const c=comparison.counts;
+ box.append(make("p",c.changed_cases+" dossiers gewijzigd · "+
+ c.changed_choice_fields+" keuzes gewijzigd · "+c.changed_human_reasons+
+ " redenwijzigingen · "+c.changed_human_notes+" notities gewijzigd (inhoud verborgen)."));
+ box.append(make("p","Oorspronkelijke inputs identiek aan bronreferenties in beide versleutelde memo's. "+
+ (c.human_csv_bytes_differ?"Uitvoer-HUMAN CSV bytes verschillen.":"Uitvoer-HUMAN CSV bytes zijn gelijk.")+
+ " Geen datum-, volgorde-, toestemming- of producentauthenticatie."));
+ box.append(make("p","Memo A ongetekende .lupt SHA-256: "+a.result.bundle_sha256+
+ " · memo B ongetekende .lupt SHA-256: "+b.result.bundle_sha256));
+ if(!comparison.changes.length){box.append(make("p","Geen verschillen in bewaarde HUMAN-beslissingen, reden of notitietekst."));return;}
+ const table=make("table",""),head=make("tr","");
+ ["PRIVATE broncase","HUMAN-keuzeverandering","HUMAN-redencategorie",
+  "Privénotitie veranderd?"].forEach(s=>head.append(make("th",s)));
+ const thead=make("thead","");thead.append(head);table.append(thead);
+ const tbody=make("tbody","");
+ const names=["fase","route","blokkade"];
+ for(const row of comparison.changes){
+  const tr=make("tr","");
+  const d=row.decision_fields.length ? row.decision_fields.map(i=>
+    names[i]+": "+row.before[i]+" → "+row.after[i]).join(" · "):"Geen HUMAN-keuzewijziging";
+  const vals=[row.id,d,row.previous_reason+" → "+row.next_reason,
+    row.note_changed?"JA (inhoud niet gekopieerd)":"NEE"];
+  vals.forEach(v=>tr.append(make("td",v)));tbody.append(tr);
+ }
+ table.append(tbody);box.append(table);
+}
+$("revision-compare").addEventListener("click",async()=>{
+ if(!crypto?.subtle||!window.isSecureContext){status("Veilige WebCrypto-context ontbreekt.",true);return;}
+ if(busy)return;setBusy(true);
+ try{
+  if(!$("ack").checked)deny("Bevestig PRIVATE, niet-autoriserende bronreview.");
+  const old=library.current();
+  if(!old)deny("Open eerst memo A in het bovenstaande PRIVATE memo-leesdeel.");
+  const candidate=await library.decodeMemo(
+    $("revision-file").files[0],$("revision-password").value);
+  const next=compare(old,candidate);
+  render(next,old,candidate);
+  summary=next.counts;
+  status("Brongebonden HUMAN-memo-verschillen lokaal berekend; geen originele producer-/clientauthenticatie.");
+ }catch(e){status(e instanceof Error?e.message:"Niet-compatibele memo's",true);}
+ finally{$("revision-password").value="";$("revision-file").value="";setBusy(false);}
+});
+$("revision-export").addEventListener("click",()=>{
+ try{
+  if(!summary)deny("Vergelijk eerst twee volledig geaccepteerde PRIVATE memos.");
+  if(!window.confirm("Exporteer slechts menselijke revisie-aantallen zonder Casebook IDs, bron-SHAs of notities? Kleine cohorten kunnen gevoelig blijven."))return;
+  const body={schema:"lightup.casebook.human_review_revision_aggregate.v1",
+    status:"REVIEW_ONLY",authority:"NONE",
+    cases:summary.cases,changed_cases:summary.changed_cases,
+    changed_choice_fields:summary.changed_choice_fields,
+    changed_human_notes:summary.changed_human_notes,
+    changed_human_reasons:summary.changed_human_reasons,
+    unchanged_cases:summary.unchanged_cases,
+    human_csv_bytes_differ:summary.human_csv_bytes_differ,
+    source_authenticated:false,client_consent_verified:false,
+    operator_consent_verified:false,authorization_granted:false,
+    execution_allowed:false,release_approved:false};
+  const url=URL.createObjectURL(new Blob([enc.encode(JSON.stringify(body)+"\n")],
+    {type:"application/octet-stream"}));
+  const a=document.createElement("a");a.href=url;
+  a.download="lightup-HUMAN-revision-aggregate.json";
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  status("Bronvrije HUMAN-revisietelling lokaal aangeboden; geen bron of toestemming geverifieerd.");
+ }catch(e){status(e instanceof Error?e.message:"Revisietelling geweigerd.",true);}
+});
+window.LightUpCasebookRevisionLibrary=Object.freeze({compare});
+window.LightUpCasebookRevisionClear=()=>{
+ summary=null;$("revision-view").replaceChildren();
+ $("revision-export").disabled=true;
+ status("PRIVATE revisievergelijking gewist.");
+};
+})();
+/* HUMAN-only offline original source-identical memo sequence desk. Order is human selected, not authenticated chronology. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const source=window.LightUpCasebookReceiptLibrary;
+const comparison=window.LightUpCasebookRevisionLibrary;
+const encoder=new TextEncoder();
+const deny=m=>{throw Error(m);};
+let steps=[],busy=false;
+function status(msg,error=false){
+ $("timeline-status").textContent=(error?"HOLD: ":"")+msg;
+ $("timeline-status").classList.toggle("error",error);
+}
+function lock(v){
+ busy=v;$("timeline-add").disabled=v;
+ $("timeline-export").disabled=v||steps.length<2;
+ $("timeline-clear").disabled=v;
+}
+const element=(tag,text)=>{const e=document.createElement(tag);e.textContent=text;return e;};
+function count(record){return {
+ changed_cases:record.changed_cases,
+ changed_choice_fields:record.changed_choice_fields,
+ changed_human_notes:record.changed_human_notes,
+ changed_human_reasons:record.changed_human_reasons,
+ unchanged_cases:record.unchanged_cases,
+ human_csv_bytes_differ:record.human_csv_bytes_differ
+};}
+function render(){
+ const root=$("timeline-view");root.replaceChildren();
+ if(!steps.length){
+  $("timeline-export").disabled=true;
+  root.append(element("p","Open eerst PRIVATE memo A in het memo-paneel en voeg hier aparte vervolgmemobestanden toe."));
+  return;
+ }
+ root.append(element("p",steps.length+" zelfgekozen HUMAN-reviewmomenten; de volgorde is een operatorinvoer, GEEN geverifieerde tijdlijn."));
+ const table=element("table",""),tr=element("tr","");
+ ["Handmatige volgorde","Wijzigingen t.o.v. vorige memo","Afwijking t.o.v. beginmemo","Uitvoer HUMAN CSV"]
+ .forEach(t=>tr.append(element("th",t)));
+ const head=element("thead","");head.append(tr);table.append(head);
+ const body=element("tbody","");
+ steps.forEach((s,i)=>{
+  const row=element("tr","");
+  const previous=i===0?"Start (zelfgekozen)":s.delta.changed_cases+" dossiers; "+
+   s.delta.changed_choice_fields+" HUMAN-velden; "+
+   s.delta.changed_human_notes+" notities gewijzigd; "+
+   s.delta.changed_human_reasons+" redenen gewijzigd";
+  const baseline=i===0?"Start":s.baseline.changed_cases+" dossiers sinds beginselectie";
+  [String(i+1),previous,baseline,
+   i===0?"Zelfverklaarde uitgang":s.delta.human_csv_bytes_differ?"Afwijkende CSV-bytehash":"Identieke CSV-bytehash"]
+   .forEach(t=>row.append(element("td",t)));
+  body.append(row);
+ });
+ table.append(body);root.append(table);
+ $("timeline-export").disabled=busy||steps.length<2;
+}
+async function add(){
+ if(steps.length>=12)deny("Maximaal twaalf menselijke memomomenten in deze lokale reeks.");
+ const first=source.current();
+ if(!first)deny("Open eerst een PRIVATE memo A hierboven.");
+ const file=$("timeline-file").files[0],pw=$("timeline-pass").value;
+ if(!file||!pw)deny("Kies een vervolgmemobestand en zelfstandig wachtwoord.");
+ const incoming=await source.decodeMemo(file,pw);
+ const anchor=steps[0]?.memo||first;
+ // Strict original source/history and original HUMAN A/B input must be byte-identical.
+ comparison.compare(anchor,incoming);
+ const previous=steps.at(-1)?.memo||anchor;
+ const delta=comparison.compare(previous,incoming).counts;
+ const baseline=comparison.compare(anchor,incoming).counts;
+ if(steps.length===0){
+  steps.push({memo:anchor,delta:null,baseline:null});
+ }
+ steps.push({memo:incoming,delta:count(delta),baseline:count(baseline)});
+ render();
+ status("Zelfgekozen PRIVATE memo nr. "+steps.length+" bron-identiek toegelaten. Dit is géén geauthenticeerde kalender of bewijs van remediation.");
+}
+$("timeline-add").addEventListener("click",async()=>{
+ if(!crypto?.subtle||!window.isSecureContext){status("Veilige WebCrypto-context ontbreekt.",true);return;}
+ if(busy)return;lock(true);
+ try{
+  if(!$("ack").checked)deny("PRIVATE HUMAN-only erkenning ontbreekt.");
+  await add();
+ }catch(e){status(e instanceof Error?e.message:"Vervolgmemobestand geweigerd.",true);}
+ finally{$("timeline-pass").value="";$("timeline-file").value="";lock(false);}
+});
+function clear(){
+ steps=[];render();
+ status("Zelfgekozen PRIVATE memo-reeks uit het lokale weergavegeheugen verwijderd.");
+}
+$("timeline-clear").addEventListener("click",()=>{
+ if(busy||!steps.length)return;
+ if(!window.confirm("Verwijder de lokale zelfgekozen PRIVATE memo-reeks uit dit tabblad? Reeds opgeslagen bestanden blijven intact."))return;
+ clear();
+});
+window.LightUpCasebookTimelineClear=clear;
+$("timeline-export").addEventListener("click",()=>{
+ try{
+  if(steps.length<2)deny("Minstens twee bron-identieke HUMAN-memo's nodig.");
+  if(!window.confirm("Exporteer uitsluitend bronvrije aantallen van een zelfgekozen HUMAN-reeks? De volgorde is NIET geauthenticeerd en kleine groepen kunnen gevoelig zijn."))return;
+  const out={
+   schema:"lightup.casebook.human_review_selected_series_aggregate.v1",
+   status:"REVIEW_ONLY",authority:"NONE",human_selected_order_only:true,
+   source_order_authenticated:false,source_identity_authenticated:false,
+   cases:steps[0].memo.cases.length,
+   moments:steps.map((s,i)=>({
+    human_selected_ordinal:i+1,
+    changed_from_previous:i===0?null:s.delta,
+    changed_from_first:i===0?null:s.baseline
+   })),
+   source_authenticated:false,client_consent_verified:false,
+   operator_consent_verified:false,authorization_granted:false,
+   execution_allowed:false,release_approved:false
+  };
+  const bytes=encoder.encode(JSON.stringify(out)+"\n");
+  if(bytes.length>65536)deny("Bronvrij memo-aggregaat te groot.");
+  const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+  const link=document.createElement("a");link.href=url;
+  link.download="lightup-HUMAN-selected-memo-series-aggregate.json";
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  status("Bronvrije zelfgekozen HUMAN-reekstelling aangeboden; geen tijd-, bron- of toestemming-authenticatie.");
+ }catch(e){status(e instanceof Error?e.message:"Aggregaat geweigerd.",true);}
+});
+render();
+})();
+/* LightUp offline source-bound PRIVATE HUMAN bulk triage and reversible decision history.
+ * No risk approval, consent verification, grant, original source or network access. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const bridge=window.LightUpBulkBridge;
+const options=[
+ ["unreviewed","investigating","awaiting-owner","documented"],
+ ["unassigned","original-scope-owner","client-clarification","independent-security-review","operator-followup"],
+ ["none","missing-source","missing-owner","needs-independent-consent",
+  "requires-revocation-review","unresolved-tenant-lineage"]
+];
+const humanFields=["HUMAN-fase","HUMAN-route","HUMAN-blokkade"];
+const MAX_HISTORY=30;
+let preview=null,undo=[],redo=[],busy=false;
+const deny=m=>{throw Error(m);};
+const setStatus=(m,error=false)=>{
+ $("bulk-status").textContent=(error?"HOLD: ":"")+m;
+ $("bulk-status").classList.toggle("error",error);
+};
+const make=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
+const bulkChoice=()=>{
+ const type=$("bulk-value").value;
+ if(type!=="custom")return type;
+ const choice=$("bulk-custom").value;
+ return options[Number($("bulk-field").value)].includes(choice)?"custom:"+choice:"";
+};
+function showOptions(){
+ const field=Number($("bulk-field").value);
+ const list=$("bulk-custom");list.replaceChildren();
+ const blank=make("option","Kies een expliciete HUMAN-waarde");blank.value="";
+ list.append(blank);
+ for(const value of options[field]){
+  const node=make("option",value);node.value=value;list.append(node);
+ }
+ list.hidden=$("bulk-value").value!=="custom";
+ invalidate();
+}
+function invalidate(){
+ preview=null;
+ $("bulk-apply").disabled=true;
+ $("bulk-preview").replaceChildren();
+ $("bulk-preview").append(make("p","Nog geen actuele HUMAN-bulkvoorvertoning."));
+ updateButtons();
+}
+function updateButtons(){
+ $("bulk-undo").disabled=busy||undo.length===0;
+ $("bulk-redo").disabled=busy||redo.length===0;
+ $("bulk-plan").disabled=busy;
+ $("bulk-apply").disabled=busy||!preview;
+ $("bulk-history").textContent=undo.length+" beschikbare ongedaan-stappen · "+
+  redo.length+" beschikbare herstelstappen (alleen huidig PRIVATE tabblad).";
+}
+function setBusy(v){
+ busy=v;
+ for(const el of [$("bulk-field"),$("bulk-value"),$("bulk-custom"),$("bulk-scope")])el.disabled=v;
+ updateButtons();
+}
+function reset(){
+ undo=[];redo=[];invalidate();
+ setStatus("PRIVATE brongebonden bulkgeschiedenis gewist; nog geen bulkkeuze toegepast.");
+}
+function recordManual(i,j,from,to){
+ if(busy)return;
+ if(from!==to){
+  undo.push([{i,j,from,to}]);
+  if(undo.length>MAX_HISTORY)undo.shift();
+  redo=[];invalidate();
+ }
+}
+function plan(){
+ const data=bridge.read();
+ if(!data)deny("Open eerst twee exact dezelfde oorspronkelijke PRIVATE bronnen.");
+ const field=Number($("bulk-field").value),value=bulkChoice();
+ if(!Number.isInteger(field)||field<0||field>2||
+    !["A","B","reset"].includes(value)&&!(
+       value.startsWith("custom:")&&options[field].includes(value.slice(7))))
+  deny("Kies eerst één canonieke HUMAN-veldwaarde.");
+ const all=$("bulk-scope").value==="all-unresolved";
+ const visible=new Set(data.visible);
+ const proposed=[];
+ for(let i=0;i<data.cases.length;i++){
+  const c=data.cases[i];
+  if(!all&&!visible.has(i))continue;
+  if(c.a[field]===c.b[field])continue;
+  const old=c.choices[field];
+  // Bulk decisions apply only to *unresolved* disagreements. Existing
+  // deliberately selected HUMAN fields may never be silently overwritten.
+  if(old!==""&&old!=="custom:")continue;
+  if(old!==value)proposed.push({i,j:field,from:old,to:value});
+ }
+ if(!proposed.length)deny("Geen nog onbesliste oorspronkelijke HUMAN-veldconflicten binnen het gekozen bereik.");
+ if(proposed.length>200)deny("Teveel wijzigingen in één expliciete HUMAN-bulkactie.");
+ return {changes:proposed,field,value,scope:$("bulk-scope").value,
+  affected:proposed.map(ch=>data.cases[ch.i].id)};
+}
+function renderPreview(result){
+ const root=$("bulk-preview");root.replaceChildren();
+ root.append(make("p","PRIVATE bulkvoorvertoning: "+result.changes.length+
+  " nog onbesliste "+humanFields[result.field]+"-velden → "+
+  (result.value.startsWith("custom:")?result.value.slice(7):result.value)+
+  ". Reeds beoordeelde velden en originele bronbestanden blijven onaangeroerd."));
+ const shown=result.affected.slice(0,8);
+ const details=make("p","Getroffen PRIVATE brondossiers: "+shown.join(" · ")+
+  (result.affected.length>8?" · plus "+(result.affected.length-8)+" andere PRIVATE dossiers.":""));
+ root.append(details);
+ root.append(make("p","Voorvertoning is GEEN goedkeuring: expliciete bevestiging vereist. "+
+  "Bronacties, grants, cliënt-/operatortoestemming, werkelijk scanbeleid en originele CSV-bronrijen worden hierdoor niet geverifieerd."));
+}
+$("bulk-plan").addEventListener("click",()=>{
+ try{preview=plan();renderPreview(preview);updateButtons();
+  setStatus(preview.changes.length+" HUMAN-veldkeuzes klaar voor expliciete bulkbeoordeling.");}
+ catch(e){invalidate();setStatus(e.message||"Ongeldige bulkvoorvertoning.",true);}
+});
+$("bulk-apply").addEventListener("click",()=>{
+ try{
+  if(!preview||!bridge.read())deny("Ververs eerst de HUMAN-bulkvoorvertoning.");
+  const expected=plan();
+  if(expected.field!==preview.field||expected.value!==preview.value||
+    expected.scope!==preview.scope||
+    JSON.stringify(expected.changes)!==JSON.stringify(preview.changes))
+   deny("HOLD: oorspronkelijke keuzestand/filters zijn gewijzigd. Maak een nieuwe voorvertoning.");
+  if(!window.confirm("Pas uitsluitend "+preview.changes.length+
+      " PRIVATE HUMAN-keuzes toe in dit tabblad? Dit verleent GEEN grant, scanmachtiging of consent. Iedere stap kan via Ongedaan worden teruggezet."))
+    return;
+  const tx=preview.changes.map(c=>({...c}));
+  bridge.apply(tx);
+  undo.push(tx);if(undo.length>MAX_HISTORY)undo.shift();redo=[];
+  invalidate();
+  setStatus(tx.length+" oorspronkelijke HUMAN-conflicten expliciet gekozen; alle bronbestanden blijven intact.");
+ }catch(e){invalidate();setStatus(e.message||"Bulk-actie geweigerd.",true);}
+});
+function reverse(tx){
+ return tx.map(({i,j,from,to})=>({i,j,from:to,to:from}));
+}
+$("bulk-undo").addEventListener("click",()=>{
+ if(busy||!undo.length)return;
+ try{
+  const tx=undo.at(-1);
+  bridge.apply(reverse(tx));
+  undo.pop();redo.push(tx);invalidate();
+  setStatus("Laatste PRIVATE HUMAN-keuzestap ongedaan gemaakt zonder wijziging van bronbestanden.");
+ }catch(e){invalidate();setStatus("HOLD: "+e.message,true);}
+});
+$("bulk-redo").addEventListener("click",()=>{
+ if(busy||!redo.length)return;
+ try{
+  const tx=redo.at(-1);
+  bridge.apply(tx);redo.pop();undo.push(tx);
+  if(undo.length>MAX_HISTORY)undo.shift();invalidate();
+  setStatus("Laatste teruggedraaide PRIVATE HUMAN-keuzestap opnieuw toegepast.");
+ }catch(e){invalidate();setStatus("HOLD: "+e.message,true);}
+});
+for(const id of ["bulk-field","bulk-value"])$(id).addEventListener("change",showOptions);
+for(const id of ["bulk-custom","bulk-scope"])$(id).addEventListener("change",invalidate);
+window.LightUpCasebookBulk=Object.freeze({reset,recordManual,setBusy});
+showOptions();
+})();
+/* LightUp PRIVATE source-declared Casebook operator portfolio; browser-only, no grant. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id),bridge=window.LightUpBulkBridge,
+ enc=new TextEncoder();
+const buckets=[
+ ["source-hold","Bronlabel HOLD (niet geverifieerd)"],
+ ["risk-pending","Risicobesluit wacht volgens bron"],
+ ["window-review","Verlopen/toekomstig grantvenster volgens bron"],
+ ["other","Overige oorspronkelijke bronlabels"]
+];
+const stages=[
+ ["unresolved","Onbeslist"],["partial","Gedeeltelijk besloten"],
+ ["resolved","Alle HUMAN-verschillen besloten"],["identical","Geen HUMAN-verschil"]
+];
+const six={
+ source_authenticated:false,client_consent_verified:false,
+ operator_consent_verified:false,authorization_granted:false,
+ execution_allowed:false,release_approved:false
+};
+let frozen=false;
+const element=(tag,body)=>{const e=document.createElement(tag);e.textContent=body;return e;};
+const deny=msg=>{throw Error(msg);};
+function attentionClass(s){
+ return s.startsWith("HOLD_")?"source-hold":
+  s==="RISK_DECISION_PENDING_SOURCE_REVIEW"?"risk-pending":
+  ["EXPIRED_GRANT_SOURCE_REVIEW","FUTURE_GRANT_SOURCE_REVIEW"].includes(s)?"window-review":"other";
+}
+function stage(c){
+ let diff=0,done=0;
+ for(let j=0;j<3;j++){
+  if(c.a[j]===c.b[j])continue;
+  diff++;
+  const x=c.choices[j];
+  if(["A","B","reset"].includes(x)||
+    typeof x==="string"&&x.startsWith("custom:")&&x.length>7)done++;
+ }
+ return {diff,done,status:diff===0?"identical":
+  done===0?"unresolved":done===diff?"resolved":"partial"};
+}
+function stats(data){
+ const groups=Object.fromEntries(buckets.map(([id])=>[id,{
+  cases:0,differences:0,pending:0,decided:0,complete:0
+ }]));
+ const cases=data.cases.map((c,i)=>{
+  const s=stage(c),bucket=attentionClass(c.attention);
+  const g=groups[bucket];g.cases++;g.differences+=s.diff;
+  g.decided+=s.done;g.pending+=s.diff-s.done;
+  g.complete+=Number(s.status==="resolved"||s.status==="identical");
+  return {i,...c,...s,bucket};
+ });
+ const total={cases:cases.length,differences:0,pending:0,decided:0,
+  complete:0,source_hold:0};
+ for(const g of Object.values(groups)){
+  total.differences+=g.differences;total.pending+=g.pending;
+  total.decided+=g.decided;total.complete+=g.complete;
+ }
+ total.source_hold=groups["source-hold"].cases;
+ return {cases,groups,total};
+}
+function showMessage(s,error=false){
+ $("portfolio-status").textContent=(error?"HOLD: ":"")+s;
+ $("portfolio-status").classList.toggle("error",error);
+}
+function addCell(row,text){
+ const td=element("td",text);row.append(td);
+}
+function render(){
+ const pane=$("portfolio-table"),root=$("portfolio-groups");
+ const current=bridge.read();
+ if(!current){
+  if(frozen)return;
+  pane.replaceChildren();root.replaceChildren();
+  $("portfolio-progress").value=0;$("portfolio-progress").max=1;
+  $("portfolio-numbers").textContent="Geen oorspronkelijke PRIVATE bron geopend.";
+  $("portfolio-export").disabled=true;
+  $("portfolio-jump").disabled=true;
+  return;
+ }
+ const derived=stats(current);
+ const t=derived.total;
+ $("portfolio-numbers").textContent=t.cases+" PRIVATE cases · "+
+  t.differences+" oorspronkelijke HUMAN-conflictvelden · "+
+  t.decided+" menselijk beslist · "+t.pending+" onbeslist · "+
+  t.source_hold+" volgens ongeverifieerde HOLD-bronlabels.";
+ $("portfolio-progress").max=Math.max(1,t.differences);
+ $("portfolio-progress").value=t.decided;
+ root.replaceChildren();
+ const gtable=element("table",""),head=element("tr","");
+ ["Originele broncategorie","Privé-dossiers","Onbeslist","Menselijk besloten"].forEach(x=>head.append(element("th",x)));
+ const thead=element("thead","");thead.append(head);gtable.append(thead);
+ const tbody=element("tbody","");
+ for(const [id,label] of buckets){
+  const g=derived.groups[id],row=element("tr","");
+  [label,String(g.cases),String(g.pending),String(g.decided)].forEach(v=>addCell(row,v));
+  tbody.append(row);
+ }
+ gtable.append(tbody);root.append(gtable);
+ const q=$("portfolio-search").value.trim().toLocaleLowerCase("nl-NL");
+ const category=$("portfolio-group").value,review=$("portfolio-stage").value;
+ let rows=derived.cases.filter(c=>
+  (category==="all"||c.bucket===category)&&
+  (review==="all"||c.status===review)&&
+  (!q||[c.id,c.action,c.attention].some(x=>x.toLocaleLowerCase("nl-NL").includes(q))));
+ rows=rows.sort((a,b)=>{
+  const pa=buckets.findIndex(x=>x[0]===a.bucket),pb=buckets.findIndex(x=>x[0]===b.bucket);
+  return pa-pb||(b.diff-b.done)-(a.diff-a.done)||(a.id<b.id?-1:1);
+ });
+ pane.replaceChildren();
+ $("portfolio-visible").textContent=rows.length+" van "+derived.cases.length+" PRIVATE dossiers zichtbaar.";
+ if(!rows.length){
+  pane.append(element("p","Geen PRIVATE dossiers voldoen aan deze lokale bron- en HUMAN-filters."));
+  $("portfolio-jump").disabled=true;
+ }else{
+  const table=element("table",""),header=element("tr","");
+  ["Origineel dossier","Bronlabel","HUMAN-velden","Status","Open dossier"].forEach(x=>header.append(element("th",x)));
+  const h=element("thead","");h.append(header);table.append(h);
+  const body=element("tbody","");
+  for(const c of rows){
+   const tr=element("tr","");
+   [c.id,c.attention,c.done+"/"+c.diff,c.status].forEach(v=>addCell(tr,v));
+   const cell=element("td","");
+   const button=element("button","Open in HUMAN-workruimte");
+   button.type="button";button.className="secondary";
+   button.disabled=frozen;button.addEventListener("click",()=>bridge.focus(c.i));
+   cell.append(button);tr.append(cell);body.append(tr);
+  }
+  table.append(body);pane.append(table);
+  $("portfolio-jump").disabled=frozen;
+ }
+ $("portfolio-export").disabled=frozen;
+}
+function setBusy(state){
+ frozen=state;
+ $("portfolio-jump").disabled=state;
+ $("portfolio-export").disabled=state;
+ for(const b of $("portfolio-table").querySelectorAll("button"))b.disabled=state;
+ if(!state)render();
+}
+$("portfolio-jump").addEventListener("click",()=>{
+ try{
+  const data=bridge.read();if(!data)deny("Geen actuele originele PRIVATE Cases.");
+  const s=stats(data);
+  const group=$("portfolio-group").value,status=$("portfolio-stage").value;
+  const q=$("portfolio-search").value.trim().toLocaleLowerCase("nl-NL");
+  const list=s.cases.filter(c=>
+   (group==="all"||c.bucket===group)&&
+   (status==="all"||c.status===status)&&
+   (!q||[c.id,c.action,c.attention].some(v=>v.toLocaleLowerCase("nl-NL").includes(q))));
+  if(!list.length)deny("Geen lokaal zichtbaar dossier in deze categorie.");
+  list.sort((a,b)=>(b.diff-b.done)-(a.diff-a.done));
+  bridge.focus(list[0].i);
+  showMessage("Naar gekozen PRIVATE HUMAN-broncase genavigeerd; geen bevoegdheid toegekend.");
+ }catch(e){showMessage(e.message,true);}
+});
+$("portfolio-export").addEventListener("click",()=>{
+ try{
+  const data=bridge.read();if(!data)deny("Originele PRIVATE bron niet geopend.");
+  if(!window.confirm("Exporteer uitsluitend HUMAN-voortgangsaantallen per zelfverklaarde brongroep (geen dossier-ID/bronhash/actietekst)? Kleine cohorten kunnen alsnog gevoelig zijn."))return;
+  const {groups,total}=stats(data);
+  const out={schema:"lightup.casebook.private_human_portfolio_aggregate.v1",
+   status:"REVIEW_ONLY",authority:"NONE",source_labels_unverified:true,
+   ...total,groups:Object.entries(groups).map(([category,n])=>({category,...n})),...six};
+  const encoded=enc.encode(JSON.stringify(out)+"\n");
+  const url=URL.createObjectURL(new Blob([encoded],{type:"application/octet-stream"}));
+  const a=document.createElement("a");a.href=url;
+  a.download="lightup-PRIVATE-human-portfolio-aggregate.json";
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2500);
+  showMessage("Bronvrij HUMAN-triageportfolio lokaal aangeboden; geen bronvalidatie of toestemming.");
+ }catch(e){showMessage(e.message,true);}
+});
+for(const id of ["portfolio-search","portfolio-group","portfolio-stage"]){
+ $(id).addEventListener(id==="portfolio-search"?"input":"change",render);
+}
+window.LightUpCasebookPortfolio=Object.freeze({render,setBusy});
+render();
+})();
+/* Offline human-only exact reconciled Casebook CSV pre-publication preview, not authority. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const bridge=window.LightUpBulkBridge,original=window.LightUpCasebookHandoff;
+const enc=new TextEncoder();
+const allowed=[
+ ["unreviewed","investigating","awaiting-owner","documented"],
+ ["unassigned","original-scope-owner","client-clarification","independent-security-review","operator-followup"],
+ ["none","missing-source","missing-owner","needs-independent-consent",
+  "requires-revocation-review","unresolved-tenant-lineage"]
+];
+let generation=0,active=false,expectedSha=null;
+const deny=x=>{throw Error(x);};
+const el=(tag,s)=>{const e=document.createElement(tag);e.textContent=s;return e;};
+function setStatus(message,error=false){
+ $("preview-status").textContent=(error?"HOLD: ":"")+message;
+ $("preview-status").classList.toggle("error",error);
+}
+function outcome(a,b,choice,j){
+ if(a===b)return {value:a,method:"Oorspronkelijk gelijk"};
+ if(choice==="A")return {value:a,method:"Menselijk A"};
+ if(choice==="B")return {value:b,method:"Menselijk B"};
+ if(choice==="reset")return {value:allowed[j][0],method:"Menselijk heropend"};
+ if(typeof choice==="string"&&choice.startsWith("custom:")&&
+    allowed[j].includes(choice.slice(7)))
+  return {value:choice.slice(7),method:"Nieuwe toegestane HUMAN-waarde"};
+ return {value:null,method:"HOLD — nog geen menselijk besluit"};
+}
+function evaluate(data){
+ if(!data)deny("Laad eerst twee oorspronkelijke, exacte PRIVATE bronsets.");
+ const rows=[],cases=[];
+ let unresolved=0,differing=0,kept=0,deliberate=0;
+ for(const c of data.cases){
+  const row=[c.id,c.action,c.attention],fields=[];
+  let caseChanged=false;
+  for(let j=0;j<3;j++){
+   const a=c.a[j],b=c.b[j],chosen=outcome(a,b,c.choices[j],j);
+   if(!allowed[j].includes(a)||!allowed[j].includes(b))
+    deny("Niet-canoniek oorspronkelijke HUMAN-veld.");
+   if(a!==b){caseChanged=true;deliberate+=Number(chosen.value!==null);}
+   else kept++;
+   if(chosen.value===null)unresolved++;
+   row.push(chosen.value);
+   fields.push({a,b,...chosen,field:["Fase","Route","Blokkade"][j]});
+  }
+  if(caseChanged)differing++;
+  rows.push(row);cases.push({id:c.id,action:c.action,attention:c.attention,fields,caseChanged});
+ }
+ return {rows,cases,total:cases.length,differing,unresolved,kept,deliberate};
+}
+function render(result){
+ const panel=$("preview-result");panel.replaceChildren();
+ const term=$("preview-search").value.trim().toLocaleLowerCase("nl-NL"),
+  differentOnly=$("preview-different").checked;
+ let shown=0;
+ for(const c of result.cases){
+  if(differentOnly&&!c.caseChanged)continue;
+  if(term&&![c.id,c.action,c.attention].some(x=>x.toLocaleLowerCase("nl-NL").includes(term)))continue;
+  const details=el("details","");details.className="result-case";
+  const summary=el("summary",c.id+" · "+(c.caseChanged?"HUMAN-verschil":"Oorspronkelijk HUMAN gelijk")+
+   " · "+c.attention);
+  details.append(summary,el("p","Originele bronactie (niet onafhankelijk geverifieerd): "+c.action));
+  const table=el("table",""),head=el("tr","");
+  ["Menselijk veld","Bron A","Bron B","Voorgenomen HUMAN-uitkomst","Keuzebasis"].forEach(t=>head.append(el("th",t)));
+  const thead=el("thead","");thead.append(head);table.append(thead);
+  const tbody=el("tbody","");
+  c.fields.forEach(f=>{
+   const row=el("tr","");
+   [f.field,f.a,f.b,f.value===null?"HOLD — GEEN UITKOMST":f.value,f.method].forEach(x=>row.append(el("td",x)));
+   if(f.value===null)row.className="pending";
+   tbody.append(row);
+  });
+  table.append(tbody);details.append(table);
+  panel.append(details);
+  shown++;
+ }
+ $("preview-visible").textContent=shown+" van "+result.total+" PRIVATE dossiers in de huidige voorvertoning.";
+}
+function invalidate(){
+ generation++;active=false;expectedSha=null;
+ $("preview-sha").textContent="Geen actuele SHA-256 van een volledig menselijk besloten resultaat.";
+ $("preview-result").replaceChildren();
+ $("preview-visible").textContent="";
+ $("preview-export-state").textContent="Geen actueel prospectief CSV-resultaat.";
+}
+async function calculate(){
+ const thisGeneration=++generation;
+ active=false;
+ const data=bridge.read();
+ const review=evaluate(data);
+ render(review);
+ $("preview-different").disabled=false;$("preview-search").disabled=false;
+ $("preview-export-state").textContent=review.total+" oorspronkelijke PRIVATE dossiers · "+
+  review.differing+" met HUMAN-verschillen · "+
+  review.deliberate+" expliciet besloten conflictvelden · "+
+  review.unresolved+" nog onbehandeld.";
+ if(review.unresolved){
+  $("preview-sha").textContent="HOLD: geen volledig brongebonden HUMAN-CSV SHA-256 zolang besluiten ontbreken.";
+  setStatus("Alleen een lokaal gedeeltelijk HUMAN-voorstel getoond. Export van definitieve Casebook blijft in bestaande flow geweigerd.");
+  return;
+ }
+ if(!crypto?.subtle||!window.isSecureContext)deny("SHA-256 preview vereist een veilige lokale WebCrypto-context.");
+ // Match exactly the original source-owner's canonical current HUMAN CSV serializer.
+ const humanBytes=enc.encode(original.serialize(review.rows));
+ if(humanBytes.length>131072)deny("Voorlopige huidige HUMAN-CSV groter dan oorspronkelijke grens.");
+ let digest;
+ try{
+  digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",humanBytes)),
+   b=>b.toString(16).padStart(2,"0")).join("");
+ }finally{humanBytes.fill(0);}
+ if(thisGeneration!==generation)return;
+ const current=bridge.read();
+ if(!current||JSON.stringify(data.cases)!==JSON.stringify(current.cases)){
+  invalidate();deny("Bron-/HUMAN-keuzes wijzigden tijdens de lokale preview. Kies opnieuw.");
+ }
+ active=true;expectedSha=digest;
+ render(review);
+ $("preview-sha").textContent="Zelfberekende prospective HUMAN CSV SHA-256 (geen bronverificatie): "+digest;
+ setStatus("Volledig besloten HUMAN-uitvoer lokaal vooraf bekeken. Het SHA-verwijzingsgetal authenticeert geen producent of toestemming; daadwerkelijke export blijft afzonderlijk expliciet.");
+}
+$("preview-build").addEventListener("click",async()=>{
+ try{await calculate();}catch(e){invalidate();setStatus(e.message||"Ongeldige HUMAN-resultaatvoorvertoning.",true);}
+});
+for(const [id,event] of [["preview-search","input"],["preview-different","change"]]){
+ $(id).addEventListener(event,()=>{
+  if(!active)return;
+  const data=bridge.read();if(!data){invalidate();return;}
+  try{render(evaluate(data));}catch(e){invalidate();setStatus(e.message,true);}
+ });
+}
+window.LightUpCasebookOutputPreview=Object.freeze({invalidate,
+ comparePublished:actual=>{
+  if(!expectedSha){setStatus("PRIVATE .lupt aangeboden zonder eerdere optionele CSV-preview; geen hashvergelijking geclaimd.");return;}
+  if(typeof actual!=="string"||!/^[a-f0-9]{64}$/.test(actual)||actual!==expectedSha){
+   setStatus("HOLD: de actuele .lupt HUMAN CSV-hash is NIET identiek aan de voorgaande lokale preview; controleer de nieuwe overdracht opnieuw bij oorspronkelijke validator.",true);
+   return;
+  }
+  setStatus("LOKALE BYTEGELIJKHEID: nieuwe versleutelde HUMAN-CSV-hash en eerder bekeken voorlopige CSV-hash zijn gelijk. Dit authenticeert geen oorspronkelijke bronproducent, toestemming of grant.");
+ }
+});
+invalidate();
+})();
+/* Offline PRIVATE HUMAN follow-up reason batch queue, source-bound, no authority. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id),bridge=window.LightUpBulkBridge,
+ notes=window.LightUpCasebookNotes;
+const MAX_HISTORY=25;
+const node=(tag,body)=>{const n=document.createElement(tag);n.textContent=body;return n;};
+let proposed=null,undo=[],redo=[],busy=false;
+const deny=m=>{throw Error(m);};
+function status(text,error=false){
+ $("note-bulk-status").textContent=(error?"HOLD: ":"")+text;
+ $("note-bulk-status").classList.toggle("error",error);
+}
+function controls(){
+ $("note-bulk-preview-btn").disabled=busy;
+ $("note-bulk-apply").disabled=busy||!proposed;
+ $("note-bulk-undo").disabled=busy||!undo.length;
+ $("note-bulk-redo").disabled=busy||!redo.length;
+ $("note-bulk-reason").disabled=busy;
+ $("note-bulk-scope").disabled=busy;
+ $("note-bulk-history").textContent=undo.length+" ongedaan-stappen · "+
+  redo.length+" herstelstappen (alleen deze PRIVATE browsersessie).";
+}
+function invalidate(){
+ proposed=null;
+ $("note-bulk-plan").replaceChildren();
+ $("note-bulk-plan").append(node("p","Nog geen actuele brongebonden HUMAN-redenenvoorvertoning."));
+ controls();
+}
+function reset(){undo=[];redo=[];invalidate();}
+function setBusy(v){busy=v;controls();}
+function plan(){
+ const original=bridge.read();if(!original)deny("Open eerst twee identieke PRIVATE Casebook-bronnen.");
+ const reason=$("note-bulk-reason").value;
+ if(!notes.reasons.includes(reason)||reason==="not-recorded")
+  deny("Kies een originele HUMAN-opvolgreden (geen toestemming of grant).");
+ const all=$("note-bulk-scope").value==="all",visible=new Set(original.visible),
+  memo=notes.read(),changes=[],ids=[];
+ if(memo.length!==original.cases.length)deny("PRIVATE HUMAN-notities niet aan huidige bronaantallen gekoppeld.");
+ for(let i=0;i<original.cases.length;i++){
+  if(!all&&!visible.has(i))continue;
+  const c=original.cases[i];
+  if(!c.a.some((x,j)=>x!==c.b[j]))continue;
+  if(memo[i].reason!=="not-recorded")continue;
+  changes.push({i,from:memo[i].reason,to:reason});ids.push(c.id);
+ }
+ if(!changes.length)deny("Geen PRIVATE HUMAN-conflictdossiers zonder bestaande opvolgreden in dit bereik.");
+ if(changes.length>200)deny("Teveel PRIVATE menselijke notitieregels.");
+ return {reason,all,changes,ids};
+}
+function renderPlan(p){
+ const div=$("note-bulk-plan");div.replaceChildren();
+ div.append(node("p",p.changes.length+" PRIVATE HUMAN-conflictdossiers zonder bestaande reden"+
+  " → '"+notes.labels[p.reason]+"'. Reeds ingevulde redenen en alle oorspronkelijke privénotitieteksten blijven exact behouden."));
+ div.append(node("p","Lokale voorbeelden: "+p.ids.slice(0,7).join(" · ")+
+  (p.ids.length>7?" · plus "+(p.ids.length-7)+" andere PRIVATE broncases":"")));
+ div.append(node("p","Dit is een menselijke opvolgredencategorie, GEEN verificatie, grant, scanmachtiging of automatische actie."));
+}
+$("note-bulk-preview-btn").addEventListener("click",()=>{
+ try{proposed=plan();renderPlan(proposed);controls();status("PRIVATE opvolgredenen klaar voor expliciete menselijke bevestiging.");}
+ catch(e){invalidate();status(e.message||"Redenenvoorvertoning ongeldig.",true);}
+});
+$("note-bulk-apply").addEventListener("click",()=>{
+ try{
+  if(busy||!proposed)deny("Nieuwe brongebonden voorvertoning vereist.");
+  const now=plan();
+  if(now.reason!==proposed.reason||now.all!==proposed.all||
+    JSON.stringify(now.changes)!==JSON.stringify(proposed.changes))
+    deny("PRIVATE oorspronkelijke dossiers of selectie gewijzigd. Maak een nieuwe voorvertoning.");
+  if(!window.confirm("Zet uitsluitend "+proposed.changes.length+
+    " nog lege PRIVATE HUMAN-opvolgredenen op '"+notes.labels[proposed.reason]+
+    "'? Geen oorspronkelijke bron, notitietekst, grant of toestemming verandert."))return;
+  const tx=proposed.changes.map(x=>({...x}));
+  notes.applyReasons(tx);bridge.refresh();
+  undo.push(tx);if(undo.length>MAX_HISTORY)undo.shift();redo=[];
+  invalidate();
+  status(tx.length+" PRIVATE menselijke opvolgredenen toegekend zonder bestaande redenen te overschrijven.");
+ }catch(e){invalidate();status(e.message||"Redenenbulkactie geweigerd.",true);}
+});
+const reverse=changes=>changes.map(({i,from,to})=>({i,from:to,to:from}));
+$("note-bulk-undo").addEventListener("click",()=>{
+ if(busy||!undo.length)return;
+ try{const tx=undo.at(-1);notes.applyReasons(reverse(tx));
+  bridge.refresh();undo.pop();redo.push(tx);invalidate();
+  status("Laatste menselijke PRIVATE redenenbatch ongedaan gemaakt.");}
+ catch(e){invalidate();status(e.message||"Ongedaan maken geweigerd.",true);}
+});
+$("note-bulk-redo").addEventListener("click",()=>{
+ if(busy||!redo.length)return;
+ try{const tx=redo.at(-1);notes.applyReasons(tx);
+  bridge.refresh();redo.pop();undo.push(tx);if(undo.length>MAX_HISTORY)undo.shift();
+  invalidate();status("Eerder teruggedraaide PRIVATE menselijke redenenbatch hersteld.");}
+ catch(e){invalidate();status(e.message||"Opnieuw toepassen geweigerd.",true);}
+});
+for(const id of ["note-bulk-reason","note-bulk-scope"])
+ $(id).addEventListener("change",invalidate);
+window.LightUpCasebookNoteBulk=Object.freeze({reset,setBusy,
+ invalidateHistory:()=>{undo=[];redo=[];invalidate();}});
+reset();
+})();</script></body></html>
