@@ -59,7 +59,10 @@ integrity, each persisted record's SHA-256 and indexed identity, expected
 scenario, exact first-party check set, all metric contracts, unique independent
 scenario/run/record IDs, the expected 2/2/4 evidence-record counts, and each
 evidence record's source-defined worker capability, tool, observation kind,
-run identity and fixed loopback lab provenance. Files must be owner-private:
+run identity and fixed loopback lab provenance. It also binds each
+persisted evaluation to the exact first-party M1 engine version, an empty
+model-binding set, zero human involvement/compute cost and precisely 2/2/4
+worker calls across the service/TLS/HTTP scorers. Files must be owner-private:
 the directory is mode 0700 and all four artifacts are mode 0600 or stricter.
 The SQLite connections explicitly disable trusted schema and reopen through
 read-only immutable descriptors; the report stays open and is rechecked for
