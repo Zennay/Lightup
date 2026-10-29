@@ -337,54 +337,144 @@ def _prepare_store_dir(raw_path: str) -> Path:
 def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
     raw_receipt = _canonical(receipt)
     digest = _sha(raw_receipt)
+    receipt_json = raw_receipt.decode("utf-8")
     with sqlite3.connect(bundle / "replay-ledger.sqlite3") as ledger:
-        row = ledger.execute("SELECT receipt_json FROM replay_receipts WHERE receipt_sha256=?", (digest,)).fetchone()
-        if row is None or row[0] != raw_receipt.decode("utf-8"):
-            raise RuntimeError("ledger receipt mismatch")
-        events = set()
-        for event_id, event_type, raw in ledger.execute("SELECT event_id,event_type,payload_json FROM replay_events"):
+        stored_receipts = ledger.execute(
+            "SELECT receipt_sha256,receipt_json FROM replay_receipts"
+        ).fetchall()
+        if stored_receipts != [(digest, receipt_json)]:
+            raise RuntimeError("ledger receipt set mismatch")
+        event_payloads: dict[str, tuple[str, dict[str, Any]]] = {}
+        for event_id, event_type, raw in ledger.execute(
+            "SELECT event_id,event_type,payload_json FROM replay_events"
+        ):
             payload = json.loads(raw)
-            if _canonical(payload).decode("utf-8") != raw or _sha(_canonical({"event_type": event_type, "payload": payload})) != event_id:
+            if (not isinstance(payload, dict)
+                    or _canonical(payload).decode("utf-8") != raw
+                    or _sha(_canonical({"event_type": event_type, "payload": payload})) != event_id):
                 raise RuntimeError("replay event integrity check failed")
-            events.add(event_id)
-        evidence = set()
-        for sha, kind, profile, raw in ledger.execute("SELECT evidence_sha256,evidence_kind,profile_id,payload_json FROM replay_evidence"):
+            event_payloads[event_id] = (event_type, payload)
+        evidence: set[tuple[str, str, str]] = set()
+        for sha, kind, profile, raw in ledger.execute(
+            "SELECT evidence_sha256,evidence_kind,profile_id,payload_json FROM replay_evidence"
+        ):
             payload = json.loads(raw)
-            if _canonical(payload).decode("utf-8") != raw or _sha(raw.encode("utf-8")) != sha:
+            if (not isinstance(payload, dict)
+                    or _canonical(payload).decode("utf-8") != raw
+                    or _sha(raw.encode("utf-8")) != sha):
                 raise RuntimeError("evidence payload integrity check failed")
             evidence.add((sha, kind, profile))
-    refs = {item["event_id"] for item in receipt["profiles"]}
-    refs.add(receipt["remediation"]["event_id"])
-    refs.update(item["event_id"] for item in receipt["retests"])
-    if not refs.issubset(events):
-        raise RuntimeError("receipt references a missing event")
+
+    expected_events: dict[str, tuple[str, dict[str, Any]]] = {}
     for item in receipt["profiles"]:
-        if (item["evidence_sha256"], "baseline", item["profile_id"]) not in evidence:
-            raise RuntimeError("baseline receipt references missing evidence")
+        expected_events[item["event_id"]] = (
+            "baseline", {key: value for key, value in item.items() if key != "event_id"}
+        )
+    remediation = receipt["remediation"]
+    expected_events[remediation["event_id"]] = (
+        "remediation", {key: value for key, value in remediation.items() if key != "event_id"}
+    )
+    for item in receipt["retests"]:
+        expected_events[item["event_id"]] = (
+            "retest", {key: value for key, value in item.items() if key != "event_id"}
+        )
+    expected_event_count = len(receipt["profiles"]) + 1 + len(receipt["retests"])
+    if len(expected_events) != expected_event_count or set(event_payloads) != set(expected_events):
+        raise RuntimeError("replay event set does not match receipt")
+    for event_id, expected in expected_events.items():
+        if event_payloads[event_id] != expected:
+            raise RuntimeError("replay event payload does not match receipt")
+
+    expected_evidence = {
+        (item["evidence_sha256"], "baseline", item["profile_id"])
+        for item in receipt["profiles"]
+    }
+    expected_evidence.update(
+        (item["retest_evidence_sha256"], "retest", "hardened")
+        for item in receipt["retests"]
+    )
+    if evidence != expected_evidence:
+        raise RuntimeError("evidence payload set does not match receipt")
     for item in receipt["retests"]:
         if ((item["baseline_evidence_sha256"], "baseline", "exposed") not in evidence
                 or (item["retest_evidence_sha256"], "retest", "hardened") not in evidence):
             raise RuntimeError("retest receipt references missing evidence")
-    if set(receipt["remediation"]["finding_keys"]) != {item["finding_key"] for item in receipt["retests"]}:
+    if set(receipt["remediation"]["finding_keys"]) != {
+        item["finding_key"] for item in receipt["retests"]
+    }:
         raise RuntimeError("remediation and retest finding sets disagree")
-    state_ids = set()
+
+    expected_state_evidence = {
+        (item["evidence_sha256"], "fixture-baseline-observation",
+         item["profile_id"], item["fixture_sha256"], None)
+        for item in receipt["profiles"]
+    }
+    expected_state_evidence.update(
+        (item["retest_evidence_sha256"], "fixture-retest-observation",
+         "hardened", None, item["finding_key"])
+        for item in receipt["retests"]
+    )
+    state_ids: set[str] = set()
+    state_records: list[tuple[str, str, str, str | None, str | None]] = []
+    exposed_evidence_ids: list[str] = []
+    exposed_sha = next(
+        item["evidence_sha256"] for item in receipt["profiles"]
+        if item["profile_id"] == "exposed"
+    )
     with sqlite3.connect(bundle / "state.sqlite3") as state:
-        rows = state.execute("SELECT evidence_id,sha256,kind,metadata_json FROM evidence WHERE source='lightup.lab_replay'")
+        rows = state.execute(
+            "SELECT evidence_id,sha256,kind,metadata_json "
+            "FROM evidence WHERE source='lightup.lab_replay'"
+        ).fetchall()
         for evidence_id, sha, kind, raw_meta in rows:
             meta = json.loads(raw_meta)
-            ekind = {"fixture-baseline-observation": "baseline", "fixture-retest-observation": "retest"}.get(kind)
-            if ekind is None or (sha, ekind, meta.get("profile_id")) not in evidence:
-                raise RuntimeError("StateStore evidence has no canonical payload")
+            if not isinstance(meta, dict):
+                raise RuntimeError("StateStore evidence metadata is invalid")
+            if kind == "fixture-baseline-observation":
+                if set(meta) != {"profile_id", "fixture_sha256"}:
+                    raise RuntimeError("baseline StateStore metadata is invalid")
+                record = (sha, kind, meta["profile_id"], meta["fixture_sha256"], None)
+                if sha == exposed_sha and meta["profile_id"] == "exposed":
+                    exposed_evidence_ids.append(evidence_id)
+            elif kind == "fixture-retest-observation":
+                if set(meta) != {"profile_id", "finding_key"}:
+                    raise RuntimeError("retest StateStore metadata is invalid")
+                record = (sha, kind, meta["profile_id"], None, meta["finding_key"])
+            else:
+                raise RuntimeError("StateStore contains unexpected fixture evidence")
+            state_records.append(record)
             state_ids.add(evidence_id)
+    if (len(state_records) != len(expected_state_evidence)
+            or set(state_records) != expected_state_evidence):
+        raise RuntimeError("StateStore evidence set does not match receipt")
+    if len(exposed_evidence_ids) != 1:
+        raise RuntimeError("exposed baseline evidence identity is ambiguous")
+
+    expected_checks = {item["check_id"] for item in receipt["retests"]}
+    title_to_check = {
+        title: check_id
+        for check_id, _header, title, _severity, _impact, _fix
+        in http_baseline.BASELINE_CHECKS
+    }
     with sqlite3.connect(bundle / "domain.sqlite3") as domain:
-        findings = domain.execute("SELECT evidence_ids_json,retest_status FROM findings").fetchall()
+        findings = domain.execute(
+            "SELECT title,evidence_ids_json,retest_status FROM findings"
+        ).fetchall()
     if len(findings) != len(receipt["retests"]):
         raise RuntimeError("finding/retest counts disagree")
-    for raw_ids, status in findings:
+    actual_checks = []
+    for title, raw_ids, status in findings:
+        check_id = title_to_check.get(title)
+        if check_id is None:
+            raise RuntimeError("domain finding is not present in the fixture catalog")
+        actual_checks.append(check_id)
         ids = json.loads(raw_ids)
-        if status != "fixed" or not ids or any(item not in state_ids for item in ids):
+        if status != "fixed" or ids != [exposed_evidence_ids[0]] or any(
+            item not in state_ids for item in ids
+        ):
             raise RuntimeError("durable finding evidence lineage is incomplete")
-
+    if len(actual_checks) != len(expected_checks) or set(actual_checks) != expected_checks:
+        raise RuntimeError("domain finding set does not match retest receipt")
 
 def _verify_existing_bundle(path: Path, receipt_bytes: bytes, digest: str) -> None:
     # Idempotent reuse must not turn a formerly private receipt public after a
