@@ -20,6 +20,7 @@ sys.path.insert(0, str(HERE))
 
 import batch
 import receipt
+import recheck_batch
 
 AUTHORITY_FALSE = ("authorized", "consent_verified", "dispatch_allowed", "release_allowed")
 BATCH_PRIVATE_FIELDS = {
@@ -27,6 +28,11 @@ BATCH_PRIVATE_FIELDS = {
     "ordered_receipt_sha256", "items",
 }
 SINGLE_SOURCE_FIELDS = {"source_reported_status", "source_sha256", "byte_count"}
+RECHECK_KEYS = {
+    "receipt_format", "status", "receipt_authenticated", "manifest_authenticated",
+    "source_authenticated", "source_schema_verified", "receipt_matches_current_inputs",
+    *AUTHORITY_FALSE,
+}
 
 
 def require(condition: bool, label: str) -> None:
@@ -75,6 +81,14 @@ def assert_anonymous_batch(result: dict) -> None:
     require(not (BATCH_PRIVATE_FIELDS & result.keys()), "rejected batch must not disclose partial metadata")
 
 
+def assert_recheck(result: dict, expected_match: bool) -> None:
+    assert_hold_authority(result, batch_result=True)
+    require(result.get("receipt_authenticated") is False, "receipt authentication must remain false")
+    require(result.get("receipt_format") == recheck_batch.RECHECK_FORMAT, "recheck receipt format mismatch")
+    require(result.get("receipt_matches_current_inputs") is expected_match, "recheck match result mismatch")
+    require(set(result) == RECHECK_KEYS, "recheck must disclose only its minimal fixed fields")
+
+
 def check_schema_contracts() -> None:
     manifest_schema = json.loads((HERE / "batch-manifest.schema.json").read_text(encoding="utf-8"))
     output_schema = json.loads((HERE / "batch-receipt.schema.json").read_text(encoding="utf-8"))
@@ -95,6 +109,15 @@ def check_schema_contracts() -> None:
     for flag in ("manifest_authenticated", "source_authenticated", "source_schema_verified", *AUTHORITY_FALSE):
         require(props[flag].get("const") is False, f"receipt schema must pin {flag} false")
     require(props["byte_expectations_match"].get("type") == "boolean", "receipt schema must type byte expectation result")
+
+    recheck_schema = json.loads((HERE / "batch-recheck.schema.json").read_text(encoding="utf-8"))
+    require(recheck_schema.get("additionalProperties") is False, "recheck schema must reject extra fields")
+    recheck_props = recheck_schema["properties"]
+    require(recheck_props["receipt_format"].get("const") == recheck_batch.RECHECK_FORMAT, "recheck schema/runtime version drift")
+    require(recheck_props["status"].get("const") == "HOLD", "recheck schema must remain HOLD")
+    for flag in ("receipt_authenticated", "manifest_authenticated", "source_authenticated", "source_schema_verified", *AUTHORITY_FALSE):
+        require(recheck_props[flag].get("const") is False, f"recheck schema must pin {flag} false")
+    require(recheck_props["receipt_matches_current_inputs"].get("type") == "boolean", "recheck schema must type its match result")
 
 
 def check_cli(script: Path, *arguments: str) -> dict:
@@ -201,6 +224,26 @@ def run() -> None:
         repeated = batch.inspect_batch(str(manifest_path), manifest_digest)
         require(repeated.get("ordered_receipt_sha256") == admitted.get("ordered_receipt_sha256"), "same snapshot must be reproducible")
 
+        receipt_path = root / "batch-receipt.json"
+        receipt_bytes = json.dumps(admitted, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("ascii")
+        write_private(receipt_path, receipt_bytes)
+        rechecked = recheck_batch.recheck(str(receipt_path), str(manifest_path), manifest_digest)
+        assert_recheck(rechecked, True)
+
+        # Receipt edits and a changed source order must not silently re-admit a saved receipt.
+        tampered_receipt = dict(admitted)
+        wrong_commitment = "0" * 64 if admitted["ordered_receipt_sha256"] != "0" * 64 else "1" * 64
+        tampered_receipt["ordered_receipt_sha256"] = wrong_commitment
+        tampered_path = root / "tampered-receipt.json"
+        write_private(tampered_path, json.dumps(tampered_receipt, sort_keys=True, separators=(",", ":")).encode("ascii"))
+        assert_recheck(recheck_batch.recheck(str(tampered_path), str(manifest_path), manifest_digest), False)
+
+        reordered_manifest = {"format": batch.FORMAT, "sources": list(reversed(manifest["sources"]))}
+        reordered_data = json.dumps(reordered_manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        reordered_path = root / "reordered-manifest.json"
+        write_private(reordered_path, reordered_data)
+        assert_recheck(recheck_batch.recheck(str(receipt_path), str(reordered_path), digest(reordered_data)), False)
+
         assert_anonymous_batch(batch.inspect_batch(str(manifest_path), wrong_digest))
 
         bad_source_manifest = dict(manifest)
@@ -232,8 +275,15 @@ def run() -> None:
         cli_batch = check_cli(HERE / "batch.py", str(manifest_path), manifest_digest)
         assert_hold_authority(cli_batch, batch_result=True)
         require(cli_batch.get("byte_expectations_match") is True, "valid batch CLI must preserve byte match")
+        cli_recheck = check_cli(HERE / "recheck_batch.py", str(receipt_path), str(manifest_path), manifest_digest)
+        assert_recheck(cli_recheck, True)
 
-    print("PASS: receipt/batch schemas, deterministic custody, anonymous HOLD failures, CLI exit contract")
+        # Source drift against the original manifest must collapse to anonymous HOLD.
+        second_path.write_bytes(source_bytes("HOLD", {"note": "source-drift"}))
+        os.chmod(second_path, 0o600)
+        assert_recheck(recheck_batch.recheck(str(receipt_path), str(manifest_path), manifest_digest), False)
+
+    print("PASS: receipt/batch/recheck schemas, deterministic custody, anonymous HOLD failures, CLI exit contract")
 
 
 if __name__ == "__main__":
