@@ -213,7 +213,7 @@ def validate_source(source: Any) -> dict[str, Any]:
 
 def _open_without_symlink_components(path: str) -> int:
     """Open a path while refusing symlinks in every supplied path component."""
-    require(type(path) is str and bool(path) and "\\x00" not in path)
+    require(type(path) is str and bool(path) and "\x00" not in path)
     nofollow = getattr(os, "O_NOFOLLOW", 0)
     directory = getattr(os, "O_DIRECTORY", 0)
     require(bool(nofollow) and bool(directory) and os.open in os.supports_dir_fd)
