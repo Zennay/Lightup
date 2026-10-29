@@ -153,6 +153,28 @@ class PrivateReplayStorageContract(unittest.TestCase):
                 _verify_database_lineage(bundle, receipt)
 
 
+    def test_replay_receipt_table_view_substitution_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary)
+            receipt, _raw, _digest = _build_replay(bundle)
+            with sqlite3.connect(bundle / "replay-ledger.sqlite3") as connection:
+                connection.execute("ALTER TABLE replay_receipts RENAME TO receipt_shadow")
+                connection.execute(
+                    "CREATE VIEW replay_receipts AS "
+                    "SELECT receipt_sha256,receipt_json FROM receipt_shadow"
+                )
+            with self.assertRaisesRegex(RuntimeError, "SQLite schema is not canonical"):
+                _verify_database_lineage(bundle, receipt)
+
+    def test_replay_foreign_sqlite_table_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary)
+            receipt, _raw, _digest = _build_replay(bundle)
+            with sqlite3.connect(bundle / "replay-ledger.sqlite3") as connection:
+                connection.execute("CREATE TABLE extra_evidence (value TEXT)")
+            with self.assertRaisesRegex(RuntimeError, "SQLite schema is not canonical"):
+                _verify_database_lineage(bundle, receipt)
+
     def test_state_store_rejects_non_loopback_producer_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             bundle = Path(temporary)

@@ -43,6 +43,44 @@ CREATE TABLE IF NOT EXISTS replay_receipts (
 """
 
 
+# The current synthetic replay engine is pinned to these physical tables.
+# A view or foreign table must not masquerade as a durable evidence store.
+_EXPECTED_LINEAGE_TABLES = {
+    "state.sqlite3": frozenset({"capability_leases", "evidence", "lab_evaluations", "runs"}),
+    "domain.sqlite3": frozenset({"assessment_requests", "authorization_grants", "clients", "coverage_entries", "credentials", "engagements", "findings", "login_failures", "prospects", "risk_approvals", "sessions", "users"}),
+    "replay-ledger.sqlite3": frozenset({"replay_events", "replay_evidence", "replay_receipts"}),
+}
+
+
+def _open_checked_lineage_database(bundle: Path, name: str) -> sqlite3.Connection:
+    # A missing file must never be silently recreated by a verifier.
+    uri = (bundle / name).absolute().as_uri() + "?mode=ro"
+    connection = sqlite3.connect(uri, uri=True)
+    try:
+        connection.execute("PRAGMA query_only=ON")
+        connection.execute("PRAGMA trusted_schema=OFF")
+        if connection.execute("PRAGMA quick_check").fetchone() != ("ok",):
+            raise RuntimeError("replay SQLite integrity check failed")
+        schema = connection.execute("SELECT type,name,sql FROM sqlite_schema").fetchall()
+        tables = {item_name for kind, item_name, _sql in schema if kind == "table"}
+        if (
+            tables != _EXPECTED_LINEAGE_TABLES[name]
+            or any(kind not in {"table", "index"} for kind, _item_name, _sql in schema)
+            or any(
+                kind == "table" and (
+                    not isinstance(sql, str)
+                    or sql.lstrip().upper().startswith("CREATE VIRTUAL TABLE")
+                )
+                for kind, _item_name, sql in schema
+            )
+        ):
+            raise RuntimeError("replay SQLite schema is not canonical")
+        return connection
+    except Exception:
+        connection.close()
+        raise
+
+
 def _canonical(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, allow_nan=False, sort_keys=True,
                       separators=(",", ":")).encode("utf-8")
@@ -341,7 +379,7 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
     raw_receipt = _canonical(receipt)
     digest = _sha(raw_receipt)
     receipt_json = raw_receipt.decode("utf-8")
-    with sqlite3.connect(bundle / "replay-ledger.sqlite3") as ledger:
+    with _open_checked_lineage_database(bundle, "replay-ledger.sqlite3") as ledger:
         stored_receipts = ledger.execute(
             "SELECT receipt_sha256,receipt_json FROM replay_receipts"
         ).fetchall()
@@ -427,7 +465,7 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
         item["evidence_sha256"] for item in receipt["profiles"]
         if item["profile_id"] == "exposed"
     )
-    with sqlite3.connect(bundle / "state.sqlite3") as state:
+    with _open_checked_lineage_database(bundle, "state.sqlite3") as state:
         rows = state.execute(
             "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json "
             "FROM evidence"
@@ -506,7 +544,7 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
         for check_id, _header, title, _severity, _impact, _fix
         in http_baseline.BASELINE_CHECKS
     }
-    with sqlite3.connect(bundle / "domain.sqlite3") as domain:
+    with _open_checked_lineage_database(bundle, "domain.sqlite3") as domain:
         findings = domain.execute(
             "SELECT title,evidence_ids_json,retest_status FROM findings"
         ).fetchall()
