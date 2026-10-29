@@ -211,6 +211,13 @@ label { font-size:.85rem; color:var(--muted); }
 .task-links strong, .task-links span { display:block; }
 .task-links span { color:var(--muted); font-size:.85rem; margin-top:4px; }
 .task-links a:hover { border-color:var(--accent); }
+.secondary-panel { margin:14px 0; padding:10px 14px; border:1px solid var(--line);
+                   border-radius:10px; background:var(--card); }
+.secondary-panel > summary { display:flex; align-items:center; gap:8px;
+                              min-height:44px; color:var(--ink); font-weight:650; }
+.secondary-panel[open] > summary { margin-bottom:12px; }
+.secondary-panel .grid { margin:0; }
+.secondary-panel > :last-child { margin-bottom:0; }
 .grant-request { padding-top:12px; border-top:1px solid var(--line); margin-top:20px; }
 .grant-request h3 { font-size:1rem; margin:4px 0 10px; }
 .grant-step { min-width:0; margin:16px 0; padding:14px;
@@ -270,6 +277,8 @@ label { font-size:.85rem; color:var(--muted); }
   .risk-cards { grid-template-columns:minmax(0,1fr); }
   .risk-cards .risk-choice { min-height:72px; }
   .card { padding:14px; }
+  .secondary-panel { padding:10px 12px; }
+  .secondary-panel > summary { align-items:flex-start; }
   .row { align-items:flex-start; }
   .risk-guide dl { grid-template-columns:1fr; gap:4px; }
   .risk-guide dd { margin-bottom:12px; }
@@ -1902,7 +1911,7 @@ class LightUpWebApp:
         body = (
             '<h1>Human assessment decisions</h1>'
             '<p class="sub">Review original client requests and risk elevations. '
-            'Every decision remains separate from scope grants, current consent, '
+            'Every decision remains separate from any scope/authorization grant, current consent, '
             'revocation-at-use and HUMAN GO. Active testing is locked.</p>'
             '<div class="grid">'
             f'<section class="card"><div class="kpi">{len(pending_requests)}</div>'
@@ -2275,7 +2284,7 @@ class LightUpWebApp:
         coverage_overview = (
             '<section class="card" aria-labelledby="coverage-summary-heading">'
             '<span class="badge warn">Evidence, not a security score</span>'
-            '<h2 id="coverage-summary-heading">What has actually been assessed?</h2>'
+            '<h2 id="coverage-summary-heading">What has been assessed?</h2>'
             f'<p>{_e(coverage_message)}</p>'
             '<div class="grid">'
             f'<div><strong>{assessed_domains}</strong><p class="meta">Assessed capability entries</p></div>'
@@ -2579,29 +2588,35 @@ class LightUpWebApp:
             + follow_up_board
             + coverage_overview
             + scope_board
-            + "<div class=\"grid\">"
-            f"<div class=\"card\"><div class=\"kpi\">{len(findings)}</div>"
-            "<div class=\"kpi-label\">Findings</div></div>"
-            f"<div class=\"card\"><div class=\"kpi\">{fixed}</div>"
-            "<div class=\"kpi-label\">Recorded fixed findings</div></div>"
-            f"<div class=\"card\"><div class=\"kpi\">{urgent_outstanding}</div>"
-            "<div class=\"kpi-label\">Critical/high findings needing follow-up</div></div>"
-            f"<div class=\"card\"><div class=\"kpi\">{recorded_regressions}</div>"
-            "<div class=\"kpi-label\">Recorded regressions needing follow-up</div></div>"
-            f"<div class=\"card\"><div class=\"kpi\">{len(requests)}</div>"
-            "<div class=\"kpi-label\">Assessment requests</div></div>"
-            "</div>"
+            + '<details class="secondary-panel"><summary>Assessment counts · '
+              f'{len(findings)} findings · {len(requests)} requests</summary>'
+              '<div class="grid">'
+              f'<div class="card"><div class="kpi">{len(findings)}</div>'
+              '<div class="kpi-label">Findings</div></div>'
+              f'<div class="card"><div class="kpi">{fixed}</div>'
+              '<div class="kpi-label">Recorded fixed findings</div></div>'
+              f'<div class="card"><div class="kpi">{urgent_outstanding}</div>'
+              '<div class="kpi-label">Critical/high findings needing follow-up</div></div>'
+              f'<div class="card"><div class="kpi">{recorded_regressions}</div>'
+              '<div class="kpi-label">Recorded regressions needing follow-up</div></div>'
+              f'<div class="card"><div class="kpi">{len(requests)}</div>'
+              '<div class="kpi-label">Assessment requests</div></div>'
+              '</div></details>'
             + ("" if show_first_request else request_section)
-            + f'<h2 id="requests-history-heading">Recent assessment requests</h2><p><a href="/portal/{_e(client_id)}/requests">'
-              f'Open all {len(requests)} requests in the private inbox</a></p>'
+            + '<details class="secondary-panel"><summary id="requests-history-heading">Recent requests · '
+              f'{len(requests)} total</summary>'
+            + f'<p><a href="/portal/{_e(client_id)}/requests">Open all {len(requests)} requests in the private inbox</a></p>'
             + request_rows
+            + '</details>'
             + f"<p><a href=\"/portal/{_e(client_id)}/authorization-plan\">"
               "Review authorization plan (read-only)</a></p>"
             + f'<h2 id="findings-heading">Recorded findings</h2>{self._finding_cards(findings, portal=True)}'
-            + '<h2 id="coverage-details">Coverage by engagement</h2>'
+            + '<details class="secondary-panel"><summary id="coverage-details">Coverage by engagement · '
+              f'{len(coverage_reports)} engagement(s)</summary>'
             + ("".join(self._coverage_card(ctx, e.engagement_id, e.name, report)
                        for e, report in coverage_reports)
                or '<p class="empty">No engagements yet.</p>')
+            + '</details>'
         )
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
