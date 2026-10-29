@@ -125,6 +125,7 @@ def _artifact_fd(directory: int, name: str, maximum: int) -> int:
 def _verify_database(fd: int, name: str, summary: dict[str, Any]) -> dict[str, Any]:
     # Reopen the pinned descriptor as read-only/immutable. This never initializes
     # StateStore's schema or creates writable SQLite journal/SHM sidecars.
+    before = os.fstat(fd)
     database_uri = f"file:/proc/self/fd/{fd}?mode=ro&immutable=1"
     with closing(sqlite3.connect(database_uri, uri=True, timeout=2)) as con:
         con.row_factory = sqlite3.Row
@@ -193,7 +194,17 @@ def _verify_database(fd: int, name: str, summary: dict[str, Any]) -> dict[str, A
                 or json.dumps(summary, sort_keys=True, allow_nan=False)
                 != json.dumps(recomputed, sort_keys=True, allow_nan=False)):
             raise ValueError("stored evaluation differs from score report")
-        return {"record_sha256": digest, "evidence_count": len(evidence_ids)}
+        result = {"record_sha256": digest, "evidence_count": len(evidence_ids)}
+    # immutable=1 tells SQLite not to acquire a write lock. It does not prevent
+    # another process from changing this file; catch that without making writes.
+    after = os.fstat(fd)
+    if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns,
+        before.st_ctime_ns) != (
+        after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns,
+        after.st_ctime_ns
+    ):
+        raise ValueError("persisted evidence changed while being inspected")
+    return result
 
 
 def inspect_score_run(directory: str | Path) -> dict[str, Any]:
