@@ -2196,6 +2196,11 @@ class LightUpWebApp:
             raise ValueError("operator must explicitly confirm request review")
         if decision not in {"approve", "reject"}:
             raise ValueError("assessment decision must be exactly approve or reject")
+        if (decision == "approve"
+                and form.get("approve_scope_boundary") != "understood"):
+            raise ValueError(
+                "operator must acknowledge approval is for scope review only"
+            )
         self.store.review_assessment_request(
             auth.context, request_id, decision == "approve"
         )
@@ -2208,6 +2213,11 @@ class LightUpWebApp:
             raise ValueError("operator must explicitly confirm risk review")
         if decision not in {"approve", "deny"}:
             raise ValueError("risk-elevation decision must be exactly approve or deny")
+        if (decision == "approve"
+                and form.get("approve_risk_boundary") != "understood"):
+            raise ValueError(
+                "operator must acknowledge risk approval does not grant scope"
+            )
         # Fail closed for direct POSTs that bypass the review HTML. The original
         # DomainStore still needs its separate same-transaction #1275 repair.
         self._risk_review_record(auth.context, approval_id)
