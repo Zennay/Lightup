@@ -15,6 +15,7 @@ web = ["gunicorn>=23,<24"]
 
 [project.scripts]
 lightup = "lightup.cli:main"
+lightup-lab-fixture-replay = "lightup.lab_replay:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
