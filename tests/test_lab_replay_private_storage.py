@@ -161,7 +161,7 @@ class PrivateReplayStorageContract(unittest.TestCase):
             with sqlite3.connect(state_path) as state:
                 row = state.execute(
                     "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json,created_at "
-                    "FROM evidence WHERE kind='fixture-baseline-observation' LIMIT 1"
+                    "FROM evidence WHERE kind='fixture-baseline-observation' AND metadata_json LIKE '%"profile_id":"exposed"%' LIMIT 1"
                 ).fetchone()
             self.assertIsNotNone(row)
             evidence_id, run_id, capability_id, kind, source, digest, raw_meta, created_at = row
@@ -200,7 +200,7 @@ class PrivateReplayStorageContract(unittest.TestCase):
                     "UPDATE evidence SET run_id=? WHERE evidence_id=?",
                     ("missing-run-id", evidence_id),
                 )
-            with self.assertRaisesRegex(RuntimeError, "references a missing run"):
+            with self.assertRaisesRegex(RuntimeError, "not bound to exposed baseline run"):
                 _verify_database_lineage(bundle, receipt)
             with sqlite3.connect(state_path) as state:
                 state.execute(
