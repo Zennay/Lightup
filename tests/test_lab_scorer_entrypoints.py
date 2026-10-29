@@ -7,7 +7,7 @@ from contextlib import redirect_stderr
 from pathlib import Path
 from unittest.mock import patch
 
-from lightup import lab_service_score, lab_tls_score, lab_web_score
+from lightup import lab_canary, lab_service_score, lab_tls_score, lab_web_score
 
 
 class LabScorerEntrypointTests(unittest.TestCase):
@@ -27,6 +27,15 @@ class LabScorerEntrypointTests(unittest.TestCase):
             scripts["lightup-lab-web-score"],
             "lightup.lab_web_score:main",
         )
+        self.assertEqual(scripts["lightup-lab-safety-canary"], "lightup.lab_canary:main")
+
+    def test_safety_canary_rejects_target_override_before_any_network(self) -> None:
+        with patch("lightup.lab_canary.run_lab_service_inventory_score") as scorer:
+            with redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as raised:
+                    lab_canary.main(["--target", "https://example.com"])
+        self.assertEqual(raised.exception.code, 2)
+        scorer.assert_not_called()
 
     def test_all_scorer_clis_reject_caller_supplied_targets_before_execution(self) -> None:
         cases = (

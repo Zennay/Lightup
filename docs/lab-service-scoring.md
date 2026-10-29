@@ -34,3 +34,11 @@ The command accepts no target override and makes no external network request.
 It does not issue grants, dispatch work, authorize real targets, run
 remediation, or deploy. A local score is calibration evidence only; it is not
 proof of external authorization or release readiness.
+
+## Installed offline safety gate
+
+Run `lightup-lab-safety-canary` for one machine-readable local authentication,
+refusal, loopback service/TLS/HTTP scoring and cleanup summary. Only fixed
+127.0.0.1 fixtures are used; all CLI overrides are rejected. A PASS asserts
+`lab_only=true` and both `external_target_authorized=false` and
+`deployment_authorized=false`. No authority or external evidence is implied.

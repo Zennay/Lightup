@@ -99,6 +99,13 @@ The service-inventory scorer checks a known loopback listener against a closed-p
 
 After installation, the three scoring commands are available as `lightup-lab-service-score`, `lightup-lab-tls-score`, and `lightup-lab-web-score`. Their fixture targets are fixed to loopback and cannot be overridden.
 
+The installed `lightup-lab-safety-canary` command runs local authentication,
+scope-denial and all three loopback scorers in isolated temporary SQLite state.
+It emits source-free JSON with lab-only/non-authority flags, rejects target
+overrides, and preserves the existing CI wrapper at
+`scripts/check_safety_canaries.py`. This is not a grant or deploy check.
+
+
 The `plan` command is intentionally non-invasive: it only emits a structured plan.
 
 The web shell (`docs/webapp.md`) serves the operator dashboard on `/` and the
