@@ -74,6 +74,7 @@ def _read_private_regular(path):
                 data = stream.read(MAX_BYTES + 1)
             after = os.fstat(fd)
             identity = lambda st: (st.st_dev, st.st_ino, st.st_size,
+                                   st.st_mode, st.st_uid, st.st_nlink,
                                    st.st_mtime_ns, st.st_ctime_ns)
             if len(data) != before.st_size or identity(before) != identity(after):
                 raise ValueError("source changed during read")
