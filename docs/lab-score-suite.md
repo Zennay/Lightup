@@ -57,9 +57,23 @@ WAL/SHM/journal sidecars are rejected rather than silently ignored.
 It verifies strict canonical, duplicate-free report/record JSON, database
 integrity, each persisted record's SHA-256 and indexed identity, expected
 scenario, exact first-party check set, all metric contracts, unique independent
-scenario/run/record IDs, and each evidence reference's run binding and content
-hash metadata. It then compares the reconstructed summaries byte-canonically
-with the saved report. Missing, extra, altered or raced artifacts fail closed.
+scenario/run/record IDs, the expected 2/2/4 evidence-record counts, and each
+evidence record's source-defined worker capability, tool, observation kind,
+run identity and fixed loopback lab provenance. Files must be owner-private:
+the directory is mode 0700 and all four artifacts are mode 0600 or stricter.
+The SQLite connections explicitly disable trusted schema and reopen through
+read-only immutable descriptors; the report stays open and is rechecked for
+byte content and inode/stat changes after the SQLite inspections. Both each
+SQLite file and the containing directory are checked for concurrent mutation.
+The inspector then compares reconstructed summaries with the saved report.
+Missing, extra, altered or raced artifacts fail closed.
+
+The SQLite evidence rows contain a stored SHA-256 **claim**, not the original
+evidence payload bytes. The inspector can verify the digest's representation
+and record lineage, but cannot independently recompute the digest against
+unavailable payloads or prove the original scoring findings. A successful
+result is limited to persisted offline storage consistency; it never acts as
+an attestation, a review approval, or permission to scan.
 
 Only fixed capability names, evidence counts and record digests are printed.
 A successful inspection reports storage consistency of **the saved synthetic
