@@ -51,6 +51,14 @@ def build_parser() -> argparse.ArgumentParser:
     assess.add_argument("--profile")
     assess.add_argument("--no-review", action="store_true")
 
+    evaluations = sub.add_parser("lab-evaluations",
+                                 help="list persisted lab evaluation scores")
+    evaluations.add_argument("--db", default="lightup-lab.db")
+    evaluation_selector = evaluations.add_mutually_exclusive_group()
+    evaluation_selector.add_argument("--scenario-id")
+    evaluation_selector.add_argument("--record-id")
+    evaluations.add_argument("--limit", type=int, default=20)
+
     boot = sub.add_parser("create-operator",
                           help="bootstrap the first operator account")
     boot.add_argument("--db", default="lightup.db")
@@ -114,6 +122,20 @@ def main(argv: list[str] | None = None) -> int:
         if args.no_review:
             argv.append("--no-review")
         return main_assess(argv)
+
+    if args.command == "lab-evaluations":
+        from .state import StateStore
+
+        store = StateStore(args.db)
+        try:
+            records = ([store.get_lab_evaluation(args.record_id)] if args.record_id
+                       else store.list_lab_evaluations(scenario_id=args.scenario_id,
+                                                       limit=args.limit))
+        except (KeyError, ValueError) as exc:
+            print(json.dumps({"error": str(exc)}, indent=2))
+            return 2
+        print(json.dumps({"count": len(records), "records": records}, indent=2))
+        return 0
 
     if args.command in {"create-operator", "create-client-user"}:
         return _account_command(args)
