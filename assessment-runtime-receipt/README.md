@@ -36,3 +36,18 @@ The batch CLI **always exits 3 and reports HOLD** and emits receipt_format: ligh
 Only if *every* admission succeeds does the response include ordinal-only source-reported status, byte counts and digests, an aggregate byte count and an ordered receipt digest. The v2 digest uses a distinct domain separator, binds the exact manifest digest, and then commits to each ordered source ordinal, byte count, digest and status with explicit delimiters. These fields are private custody metadata, **not** a signature or proof of chronology, scenario lineage, sender identity, ground truth or an atomic snapshot. Sources are read sequentially; files could change between reads. A manifest digest recorded from the manifest itself is only self-consistency unless anchored independently. Never publish the manifest or custody metadata without a separate privacy review.
 
 The single-source receipt additionally compares descriptor ownership, permission bits and link count before and after reading, in addition to inode/size/timestamps. Both receipt readers reject paths longer than 4096 characters before opening path components. Both commands remain isolated, read-only and non-authorizing, with no target or network access. The project-wide source-owner, security/privacy, original CI and explicit HUMAN GO gates remain unchanged.
+
+
+## Recheck a saved batch receipt (offline)
+
+A batch receipt can be rechecked later against the **current bytes** of the same private manifest and its source files. Capture the original CLI output into a new owner-private file, then run the rechecker with the same independently held manifest digest:
+
+```sh
+# Choose a new path that does not already exist; keep the receipt private.
+(umask 077; set -C; python3 assessment-runtime-receipt/batch.py /private/lab/manifest.json EXPECTED_MANIFEST_SHA256 > /private/lab/batch-receipt.json) || test "$?" -eq 3
+python3 assessment-runtime-receipt/recheck_batch.py /private/lab/batch-receipt.json /private/lab/manifest.json EXPECTED_MANIFEST_SHA256
+```
+
+The rechecker strictly parses the saved JSON, recomputes the current batch receipt and compares the canonical receipt content. It reports only `receipt_matches_current_inputs` and keeps `status: HOLD`; it always exits **3**, including when the content matches. A missing, malformed, changed or non-private receipt, manifest or source returns the same anonymous false result without identifying the failed item or disclosing source metadata. The receipt itself is not authenticated, signed or trusted by this operation.
+
+Rechecking reads the manifest and source files sequentially, so it is not an atomic snapshot. A true match means only that the saved receipt content equals the output recomputed from the bytes admitted during this recheck. It does not establish source identity, chronology, schema truth, consent, authorization, or release permission.
