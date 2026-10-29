@@ -300,25 +300,33 @@ def _require_private_artifact(path: Path, *, directory: bool) -> os.stat_result:
     return info
 
 
+def _check_store_path_components(path: Path) -> None:
+    """Fail closed on replaceable ancestors; /tmp-style sticky dirs are safe."""
+    for candidate in (*reversed(path.parents), path):
+        try:
+            info = os.lstat(candidate)
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode):
+            raise PermissionError("store path must not contain symlink components")
+        if not stat.S_ISDIR(info.st_mode):
+            raise PermissionError("store path components must be directories")
+        if candidate == path:
+            continue
+        mode = stat.S_IMODE(info.st_mode)
+        if mode & 0o022 and not (info.st_uid == 0 and mode & stat.S_ISVTX):
+            raise PermissionError("store path ancestor must not be group/other writable")
+
+
 def _prepare_store_dir(raw_path: str) -> Path:
     path = Path(os.path.abspath(Path(raw_path).expanduser()))
-    # Do not let a symlinked parent silently redirect a supposedly private store.
-    for candidate in (*reversed(path.parents), path):
-        try:
-            info = os.lstat(candidate)
-        except FileNotFoundError:
-            continue
-        if stat.S_ISLNK(info.st_mode):
-            raise PermissionError("store path must not contain symlink components")
+    # Check both sides of mkdir: non-sticky writable ancestors can replace a
+    # private child between operations. Only a root-owned sticky directory
+    # (typically /tmp) is an acceptable shared-writable ancestor.
+    _check_store_path_components(path)
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    for candidate in (*reversed(path.parents), path):
-        try:
-            info = os.lstat(candidate)
-        except FileNotFoundError:
-            continue
-        if stat.S_ISLNK(info.st_mode):
-            raise PermissionError("store path must not contain symlink components")
-    info = _require_private_artifact(path, directory=True)
+    _check_store_path_components(path)
+    _require_private_artifact(path, directory=True)
     return path.resolve()
 
 
