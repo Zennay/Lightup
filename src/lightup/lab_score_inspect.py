@@ -233,13 +233,15 @@ def _verify_database(fd: int, name: str, summary: dict[str, Any]) -> dict[str, A
 
 def inspect_score_run(directory: str | Path) -> dict[str, Any]:
     fd = _private_dir_fd(directory)
+    report_fd: int | None = None
     try:
         before = os.fstat(fd)
         if set(os.listdir(fd)) != _FILES:
             raise ValueError("unexpected score artifact set")
         report_fd = _artifact_fd(fd, "report.json", _MAX_REPORT)
-        with os.fdopen(report_fd, "rb") as stream:
-            report = _json_object(stream.read(_MAX_REPORT + 1), canonical="report")
+        report_before = os.fstat(report_fd)
+        report_bytes = os.pread(report_fd, _MAX_REPORT + 1, 0)
+        report = _json_object(report_bytes, canonical="report")
         if (set(report) != {"schema", "passed", "failure_reasons",
                             "scorers", "safety", "artifact_directory"}
                 or report["schema"] != SCORE_SCHEMA
@@ -276,12 +278,19 @@ def inspect_score_run(directory: str | Path) -> dict[str, Any]:
             finally:
                 os.close(database_fd)
         after = os.fstat(fd)
+        report_after = os.fstat(report_fd)
         if (set(os.listdir(fd)) != _FILES
                 or (before.st_dev, before.st_ino, before.st_mtime_ns,
                     before.st_ctime_ns) !=
                    (after.st_dev, after.st_ino, after.st_mtime_ns,
                     after.st_ctime_ns)):
             raise ValueError("score directory changed during inspection")
+        if (report_before.st_dev, report_before.st_ino, report_before.st_size,
+            report_before.st_mtime_ns, report_before.st_ctime_ns) != (
+            report_after.st_dev, report_after.st_ino, report_after.st_size,
+            report_after.st_mtime_ns, report_after.st_ctime_ns
+        ) or os.pread(report_fd, _MAX_REPORT + 1, 0) != report_bytes:
+            raise ValueError("score report changed during inspection")
         return {
             "schema": INSPECT_SCHEMA,
             "passed": True,
@@ -291,6 +300,8 @@ def inspect_score_run(directory: str | Path) -> dict[str, Any]:
             "deployment": False,
         }
     finally:
+        if report_fd is not None:
+            os.close(report_fd)
         os.close(fd)
 
 
