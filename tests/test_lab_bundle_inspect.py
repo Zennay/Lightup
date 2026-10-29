@@ -4,6 +4,7 @@ import io
 import json
 import os
 import shutil
+import sqlite3
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -88,6 +89,24 @@ class LabBundleInspectorTest(unittest.TestCase):
         wal.write_bytes(b"uncheckpointed")
         os.chmod(wal, 0o600)
         with self.assertRaisesRegex(ValueError, "WAL contains uncheckpointed data"):
+            lab_bundle_inspect.inspect_bundle(str(bundle))
+
+    def test_receipt_table_replaced_by_equivalent_view_is_rejected(self) -> None:
+        bundle = self.copy_bundle()
+        with sqlite3.connect(bundle / "replay-ledger.sqlite3") as connection:
+            connection.execute("ALTER TABLE replay_receipts RENAME TO receipt_shadow")
+            connection.execute(
+                "CREATE VIEW replay_receipts AS "
+                "SELECT receipt_sha256,receipt_json FROM receipt_shadow"
+            )
+        with self.assertRaisesRegex(ValueError, "canonical replay schema"):
+            lab_bundle_inspect.inspect_bundle(str(bundle))
+
+    def test_unreferenced_sqlite_table_is_rejected(self) -> None:
+        bundle = self.copy_bundle()
+        with sqlite3.connect(bundle / "replay-ledger.sqlite3") as connection:
+            connection.execute("CREATE TABLE foreign_rows (payload TEXT)")
+        with self.assertRaisesRegex(ValueError, "canonical replay schema"):
             lab_bundle_inspect.inspect_bundle(str(bundle))
 
     def test_symlinked_bundle_path_is_rejected(self) -> None:

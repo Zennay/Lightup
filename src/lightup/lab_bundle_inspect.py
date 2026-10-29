@@ -30,6 +30,12 @@ _REQUIRED_FILES = {
 }
 _STICKY_TEMP_DIRS = {"/tmp", "/var/tmp", "/dev/shm"}
 _HEX_LENGTH = 64
+# A pinned replay engine has a fixed synthetic SQLite table set.
+_EXPECTED_TABLES = {
+    "state.sqlite3": frozenset({"capability_leases", "evidence", "lab_evaluations", "runs"}),
+    "domain.sqlite3": frozenset({"assessment_requests", "authorization_grants", "clients", "coverage_entries", "credentials", "engagements", "findings", "login_failures", "prospects", "risk_approvals", "sessions", "users"}),
+    "replay-ledger.sqlite3": frozenset({"replay_events", "replay_evidence", "replay_receipts"}),
+}
 
 
 def _canonical(value: Any) -> bytes:
@@ -211,14 +217,32 @@ def _assert_directory_stable(
         raise RuntimeError("bundle directory entries changed during verification")
 
 
-def _connect_readonly(fd: int) -> sqlite3.Connection:
+def _connect_readonly(fd: int, database_name: str) -> sqlite3.Connection:
     uri = f"file:/proc/self/fd/{fd}?mode=ro&immutable=1"
     connection = sqlite3.connect(uri, uri=True, timeout=5)
-    connection.execute("PRAGMA query_only=ON")
-    if connection.execute("PRAGMA quick_check").fetchone() != ("ok",):
+    try:
+        connection.execute("PRAGMA query_only=ON")
+        connection.execute("PRAGMA trusted_schema=OFF")
+        if connection.execute("PRAGMA quick_check").fetchone() != ("ok",):
+            raise ValueError("SQLite integrity check failed")
+        schema = connection.execute("SELECT type,name,sql FROM sqlite_schema").fetchall()
+        tables = {name for kind, name, _sql in schema if kind == "table"}
+        if (
+            tables != _EXPECTED_TABLES[database_name]
+            or any(kind not in {"table", "index"} for kind, _name, _sql in schema)
+            or any(
+                kind == "table" and (
+                    not isinstance(sql, str)
+                    or sql.lstrip().upper().startswith("CREATE VIRTUAL TABLE")
+                )
+                for kind, _name, sql in schema
+            )
+        ):
+            raise ValueError("SQLite schema is not the canonical replay schema")
+        return connection
+    except Exception:
         connection.close()
-        raise ValueError("SQLite integrity check failed")
-    return connection
+        raise
 
 
 def _verify_receipt(receipt: dict[str, Any], digest: str, bundle_name: str) -> None:
@@ -368,7 +392,7 @@ def _verify_databases(
     database_fds: dict[str, int],
     receipt: dict[str, Any],
 ) -> tuple[int, int, int, int]:
-    with closing(_connect_readonly(database_fds["replay-ledger.sqlite3"])) as ledger:
+    with closing(_connect_readonly(database_fds["replay-ledger.sqlite3"], "replay-ledger.sqlite3")) as ledger:
         receipt_rows = ledger.execute(
             "SELECT receipt_sha256,receipt_json FROM replay_receipts"
         ).fetchall()
@@ -426,13 +450,13 @@ def _verify_databases(
     if len(retest_by_key) != len(retests):
         raise ValueError("duplicate retest finding key")
 
-    with closing(_connect_readonly(database_fds["state.sqlite3"])) as state:
+    with closing(_connect_readonly(database_fds["state.sqlite3"], "state.sqlite3")) as state:
         state_rows = state.execute(
             "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json FROM evidence"
         ).fetchall()
     baseline_evidence_by_profile = verify_state_rows(state_rows, profiles, retests)
 
-    with closing(_connect_readonly(database_fds["domain.sqlite3"])) as domain:
+    with closing(_connect_readonly(database_fds["domain.sqlite3"], "domain.sqlite3")) as domain:
         findings = domain.execute(
             "SELECT title,evidence_ids_json,retest_status FROM findings"
         ).fetchall()
