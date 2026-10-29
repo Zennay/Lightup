@@ -24,12 +24,17 @@ from .labsync import ensure_lab_engagement, persist_lab_findings, retest_finding
 from .state import StateStore
 from .workers import http_baseline
 
-SCHEMA_VERSION = 1
-ENGINE_VERSION = "loopback-fixture-replay-v1"
+SCHEMA_VERSION = 2
+ENGINE_VERSION = "loopback-fixture-replay-v2"
 PROFILE_ORDER = ("exposed", "partially-hardened", "hardened")
 _LEDGER_SCHEMA = """
 CREATE TABLE IF NOT EXISTS replay_events (
  event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, payload_json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS replay_evidence (
+ evidence_sha256 TEXT NOT NULL, evidence_kind TEXT NOT NULL,
+ profile_id TEXT NOT NULL, payload_json TEXT NOT NULL,
+ PRIMARY KEY(evidence_sha256,evidence_kind,profile_id)
 );
 CREATE TABLE IF NOT EXISTS replay_receipts (
  receipt_sha256 TEXT PRIMARY KEY, receipt_json TEXT NOT NULL
@@ -136,6 +141,21 @@ def _record_event(ledger: sqlite3.Connection, event_type: str,
     return event_id
 
 
+def _record_evidence_payload(ledger: sqlite3.Connection, evidence_sha: str,
+                             evidence_kind: str, profile_id: str, payload: bytes) -> None:
+    payload_json = payload.decode("utf-8")
+    if _sha(payload) != evidence_sha or _canonical(json.loads(payload_json)).decode("utf-8") != payload_json:
+        raise RuntimeError("canonical evidence payload failed digest/canonical checks")
+    ledger.execute("INSERT OR IGNORE INTO replay_evidence VALUES(?,?,?,?)",
+                   (evidence_sha, evidence_kind, profile_id, payload_json))
+    row = ledger.execute(
+        "SELECT payload_json FROM replay_evidence WHERE evidence_sha256=? AND evidence_kind=? AND profile_id=?",
+        (evidence_sha, evidence_kind, profile_id)).fetchone()
+    if row is None or row[0] != payload_json:
+        raise RuntimeError("stored evidence payload did not match its content digest")
+    ledger.commit()
+
+
 def _finding_key(profile: FixtureProfile, check_id: str) -> str:
     return _sha(_canonical({"profile_id": profile.profile_id,
                             "fixture_sha256": _profile_sha(profile), "check_id": check_id}))
@@ -170,6 +190,7 @@ def _build_replay(stage: Path) -> tuple[dict[str, Any], bytes, str]:
             evidence_id, evidence_sha = _store_evidence(
                 state, baseline["run_id"], "fixture-baseline-observation", evidence_payload,
                 {"profile_id": profile_id, "fixture_sha256": _profile_sha(profile)})
+            _record_evidence_payload(ledger, evidence_sha, "baseline", profile_id, evidence_payload)
             expected_ids = sorted(profile.expected_check_ids)
             engine_ids = sorted(item["check_id"] for item in baseline["findings"])
             observed_ids = observed["observed_check_ids"]
@@ -212,6 +233,7 @@ def _build_replay(stage: Path) -> tuple[dict[str, Any], bytes, str]:
             _evidence_id, retest_sha = _store_evidence(
                 state, exposed_result["run_id"], "fixture-retest-observation", retest_bytes,
                 {"profile_id": "hardened", "finding_key": key})
+            _record_evidence_payload(ledger, retest_sha, "retest", "hardened", retest_bytes)
             passed = updated.retest_status.value == "fixed" and not retest_observation["observed_check_ids"]
             retest_payload = {
                 "finding_key": key, "check_id": check_id,
@@ -256,6 +278,7 @@ def _build_replay(stage: Path) -> tuple[dict[str, Any], bytes, str]:
     for artifact in stage.iterdir():
         if artifact.is_file() and not artifact.is_symlink():
             os.chmod(artifact, 0o600)
+    _verify_database_lineage(stage, receipt)
     return receipt, receipt_bytes, receipt_sha
 
 
@@ -271,6 +294,59 @@ def _prepare_store_dir(raw_path: str) -> Path:
     return path.resolve()
 
 
+
+def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
+    raw_receipt = _canonical(receipt)
+    digest = _sha(raw_receipt)
+    with sqlite3.connect(bundle / "replay-ledger.sqlite3") as ledger:
+        row = ledger.execute("SELECT receipt_json FROM replay_receipts WHERE receipt_sha256=?", (digest,)).fetchone()
+        if row is None or row[0] != raw_receipt.decode("utf-8"):
+            raise RuntimeError("ledger receipt mismatch")
+        events = set()
+        for event_id, event_type, raw in ledger.execute("SELECT event_id,event_type,payload_json FROM replay_events"):
+            payload = json.loads(raw)
+            if _canonical(payload).decode("utf-8") != raw or _sha(_canonical({"event_type": event_type, "payload": payload})) != event_id:
+                raise RuntimeError("replay event integrity check failed")
+            events.add(event_id)
+        evidence = set()
+        for sha, kind, profile, raw in ledger.execute("SELECT evidence_sha256,evidence_kind,profile_id,payload_json FROM replay_evidence"):
+            payload = json.loads(raw)
+            if _canonical(payload).decode("utf-8") != raw or _sha(raw.encode("utf-8")) != sha:
+                raise RuntimeError("evidence payload integrity check failed")
+            evidence.add((sha, kind, profile))
+    refs = {item["event_id"] for item in receipt["profiles"]}
+    refs.add(receipt["remediation"]["event_id"])
+    refs.update(item["event_id"] for item in receipt["retests"])
+    if not refs.issubset(events):
+        raise RuntimeError("receipt references a missing event")
+    for item in receipt["profiles"]:
+        if (item["evidence_sha256"], "baseline", item["profile_id"]) not in evidence:
+            raise RuntimeError("baseline receipt references missing evidence")
+    for item in receipt["retests"]:
+        if ((item["baseline_evidence_sha256"], "baseline", "exposed") not in evidence
+                or (item["retest_evidence_sha256"], "retest", "hardened") not in evidence):
+            raise RuntimeError("retest receipt references missing evidence")
+    if set(receipt["remediation"]["finding_keys"]) != {item["finding_key"] for item in receipt["retests"]}:
+        raise RuntimeError("remediation and retest finding sets disagree")
+    state_ids = set()
+    with sqlite3.connect(bundle / "state.sqlite3") as state:
+        rows = state.execute("SELECT evidence_id,sha256,kind,metadata_json FROM evidence WHERE source='lightup.lab_replay'")
+        for evidence_id, sha, kind, raw_meta in rows:
+            meta = json.loads(raw_meta)
+            ekind = {"fixture-baseline-observation": "baseline", "fixture-retest-observation": "retest"}.get(kind)
+            if ekind is None or (sha, ekind, meta.get("profile_id")) not in evidence:
+                raise RuntimeError("StateStore evidence has no canonical payload")
+            state_ids.add(evidence_id)
+    with sqlite3.connect(bundle / "domain.sqlite3") as domain:
+        findings = domain.execute("SELECT evidence_ids_json,retest_status FROM findings").fetchall()
+    if len(findings) != len(receipt["retests"]):
+        raise RuntimeError("finding/retest counts disagree")
+    for raw_ids, status in findings:
+        ids = json.loads(raw_ids)
+        if status != "fixed" or not ids or any(item not in state_ids for item in ids):
+            raise RuntimeError("durable finding evidence lineage is incomplete")
+
+
 def _verify_existing_bundle(path: Path, receipt_bytes: bytes, digest: str) -> None:
     if path.is_symlink() or not path.is_dir():
         raise PermissionError("receipt-addressed store entry is not a regular directory")
@@ -284,6 +360,7 @@ def _verify_existing_bundle(path: Path, receipt_bytes: bytes, digest: str) -> No
         artifact = path / name
         if artifact.is_symlink() or not artifact.is_file():
             raise RuntimeError("existing receipt-addressed bundle is incomplete")
+    _verify_database_lineage(path, json.loads(receipt_bytes))
 
 
 def main(argv: list[str] | None = None) -> int:
