@@ -380,6 +380,17 @@ class WebAppTest(unittest.TestCase):
         _, _, body = self.request("GET", f"/clients/{self.client_a.client_id}",
                                   token=self.op_token)
         self.assertIn("Current recorded grant · execution OFF", body)
+        plan_status, _, plan_body = self.request(
+            "GET", f"/portal/{self.client_a.client_id}/authorization-plan",
+            token=self.a_token,
+        )
+        self.assertEqual(plan_status, "200 OK")
+        self.assertIn("No testing authority", plan_body)
+        self.assertIn("Testing not authorized", plan_body)
+        self.assertIn("Revocation must be checked immediately before any action", plan_body)
+        self.assertIn("separate final human approval", plan_body)
+        self.assertNotIn("PLAN ONLY · execution locked", plan_body)
+        self.assertNotIn("HOLD · no execution", plan_body)
 
         # Destructive risk cannot be granted through the UI.
         status, _, _ = self.request(

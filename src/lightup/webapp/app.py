@@ -1524,10 +1524,10 @@ class LightUpWebApp:
             )
             next_link = '<a href="#engagement-review">Review risk blockers</a>'
         else:
-            next_heading = "Records exist; release authority is still absent"
+            next_heading = "Records exist, but testing is not authorized"
             next_explanation = (
-                "No displayed scope or review state independently proves "
-                "current consent, revocation at use, independent review or HUMAN GO."
+                "A recorded scope or review decision does not prove that consent is current "
+                "or that testing is allowed. Revocation must be checked immediately before any action, and a human must give separate final approval."
             )
             next_link = '<a href="#engagement-review">Read remaining safety gates</a>'
 
@@ -1550,10 +1550,10 @@ class LightUpWebApp:
                 )
                 label = "Rejected — no scope authority"
             elif request.status == RequestStatus.UNDER_REVIEW.value:
-                next_step = "Independent operator review is underway. Testing stays locked."
+                next_step = "An operator is reviewing this request. Testing is not authorized yet."
                 label = "Under human review"
             else:
-                next_step = "Awaiting an independent operator decision. Testing stays locked."
+                next_step = "Waiting for an operator decision. Testing is not authorized yet."
                 label = "Awaiting human decision"
             receipt = (
                 f"/portal/{_e(plan.client_id)}/requests/{_e(request.request_id)}"
@@ -1632,7 +1632,7 @@ class LightUpWebApp:
                     '</li>'
                 )
             risk_history = (
-                f'<details><summary>Risk-elevation review history '
+                f'<details><summary>Risk review history '
                 f'({len(risk_reviews)} recorded; no execution authority)</summary>'
                 f'<ul>{"".join(risk_reviews)}</ul>'
                 '<p class="meta">Risk decisions never extend recorded request-bound '
@@ -1640,27 +1640,27 @@ class LightUpWebApp:
                 if risk_reviews else ''
             )
             blockers = ("".join(f"<li>{_e(reason)}</li>" for reason in entry.blockers)
-                        or "<li>No additional engagement-specific blockers recorded. "
-                           "Global consent, revocation and HUMAN GO gates remain.</li>")
+                        or "<li>No additional engagement-specific blockers are recorded. "
+                           "Current client consent, revocation checks immediately before any action, and separate final human approval are still required.</li>")
             cards.append(
                 f'<section class="card scope-review" id="engagement-{_e(entry.engagement_id)}">'
                 '<div class="row">'
                 f'<h3>{_e(entry.name)}</h3>'
-                '<span class="badge lock">HOLD · no execution</span></div>'
+                '<span class="badge lock">Testing not authorized</span></div>'
                 f'<p class="meta">Recorded engagement: {_e(entry.status)} · '
                 f'Scope window: {_e(entry.scope_record_state.replace("_", " ").lower())} · '
                 f'Pending risk decisions: {entry.pending_elevations}</p>'
                 '<div class="scope-blockers">'
-                '<strong>Required before any future authorization</strong>'
+                '<strong>Still required before testing can be authorized</strong>'
                 f'<ul>{blockers}</ul></div>'
                 f'{scope}{risk_history}</section>'
             )
         body = (
             f'<h1>{_e(plan.client_name)} — scope and safety</h1>'
-            '<p class="sub">Read-only original records for HUMAN review. '
-            'No scan, grant action, target contact or activation is possible here.</p>'
+            '<p class="sub">This page shows existing records for human review only. '
+            'It cannot start testing, change a grant, or contact a target.</p>'
             '<section class="card next-action" aria-labelledby="scope-next">'
-            '<span class="badge lock">PLAN ONLY · execution locked</span>'
+            '<span class="badge lock">No testing authority</span>'
             f'<h2 id="scope-next">{_e(next_heading)}</h2>'
             f'<p>{_e(next_explanation)}</p>'
             f'<p>{next_link}</p>'
