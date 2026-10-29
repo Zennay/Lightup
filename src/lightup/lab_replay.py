@@ -417,33 +417,57 @@ def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
     state_ids: set[str] = set()
     state_records: list[tuple[str, str, str, str | None, str | None]] = []
     exposed_evidence_ids: list[str] = []
+    baseline_run_ids: dict[str, str] = {}
+    retest_run_ids: set[str] = set()
     exposed_sha = next(
         item["evidence_sha256"] for item in receipt["profiles"]
         if item["profile_id"] == "exposed"
     )
     with sqlite3.connect(bundle / "state.sqlite3") as state:
+        run_ids = {row[0] for row in state.execute("SELECT run_id FROM runs")}
         rows = state.execute(
-            "SELECT evidence_id,sha256,kind,metadata_json "
-            "FROM evidence WHERE source='lightup.lab_replay'"
+            "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json "
+            "FROM evidence"
         ).fetchall()
-        for evidence_id, sha, kind, raw_meta in rows:
+        for evidence_id, run_id, capability_id, kind, source, sha, raw_meta in rows:
+            if source != "lightup.lab_replay":
+                raise RuntimeError("StateStore contains unexpected evidence source")
+            if capability_id != http_baseline.CAPABILITY_ID:
+                raise RuntimeError("StateStore evidence capability does not match fixture catalog")
+            if run_id not in run_ids:
+                raise RuntimeError("StateStore evidence references a missing run")
             meta = json.loads(raw_meta)
-            if not isinstance(meta, dict):
-                raise RuntimeError("StateStore evidence metadata is invalid")
+            if (not isinstance(meta, dict)
+                    or _canonical(meta).decode("utf-8") != raw_meta):
+                raise RuntimeError("StateStore evidence metadata is invalid or non-canonical")
             if kind == "fixture-baseline-observation":
                 if set(meta) != {"profile_id", "fixture_sha256"}:
                     raise RuntimeError("baseline StateStore metadata is invalid")
-                record = (sha, kind, meta["profile_id"], meta["fixture_sha256"], None)
-                if sha == exposed_sha and meta["profile_id"] == "exposed":
+                profile_id = meta["profile_id"]
+                if profile_id in baseline_run_ids:
+                    raise RuntimeError("StateStore baseline profile has duplicate run evidence")
+                baseline_run_ids[profile_id] = run_id
+                record = (sha, kind, profile_id, meta["fixture_sha256"], None)
+                if sha == exposed_sha and profile_id == "exposed":
                     exposed_evidence_ids.append(evidence_id)
             elif kind == "fixture-retest-observation":
                 if set(meta) != {"profile_id", "finding_key"}:
                     raise RuntimeError("retest StateStore metadata is invalid")
+                retest_run_ids.add(run_id)
                 record = (sha, kind, meta["profile_id"], None, meta["finding_key"])
             else:
                 raise RuntimeError("StateStore contains unexpected fixture evidence")
             state_records.append(record)
             state_ids.add(evidence_id)
+    expected_profile_ids = {item["profile_id"] for item in receipt["profiles"]}
+    if set(baseline_run_ids) != expected_profile_ids or "exposed" not in baseline_run_ids:
+        raise RuntimeError("StateStore baseline run set does not match receipt")
+    if len(set(baseline_run_ids.values())) != len(baseline_run_ids):
+        raise RuntimeError("StateStore baseline profiles share a run identity")
+    if run_ids != set(baseline_run_ids.values()):
+        raise RuntimeError("StateStore run set does not match baseline evidence")
+    if retest_run_ids != {baseline_run_ids["exposed"]}:
+        raise RuntimeError("StateStore retest evidence is not bound to exposed baseline run")
     if (len(state_records) != len(expected_state_evidence)
             or set(state_records) != expected_state_evidence):
         raise RuntimeError("StateStore evidence set does not match receipt")
