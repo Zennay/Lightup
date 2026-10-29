@@ -2,14 +2,19 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sqlite3
 import stat
 import tempfile
 import unittest
 from pathlib import Path
 
 from lightup.lab_replay import (
+    _build_replay,
+    _canonical,
     _prepare_store_dir,
     _require_private_artifact,
+    _sha,
+    _verify_database_lineage,
     _verify_existing_bundle,
 )
 
@@ -112,6 +117,39 @@ class PrivateReplayStorageContract(unittest.TestCase):
             os.chmod(checksum, 0o600)
             with self.assertRaises(PermissionError):
                 _verify_existing_bundle(bundle, receipt, digest)
+
+
+    def test_replay_rejects_unreferenced_ledger_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary)
+            receipt, _receipt_bytes, _digest = _build_replay(bundle)
+            ledger_path = bundle / "replay-ledger.sqlite3"
+
+            extra_event_payload = {"unexpected": "extra"}
+            extra_event_json = _canonical(extra_event_payload).decode("utf-8")
+            extra_event_id = _sha(_canonical({
+                "event_type": "baseline", "payload": extra_event_payload
+            }))
+            with sqlite3.connect(ledger_path) as ledger:
+                ledger.execute(
+                    "INSERT INTO replay_events(event_id,event_type,payload_json) VALUES(?,?,?)",
+                    (extra_event_id, "baseline", extra_event_json),
+                )
+            with self.assertRaisesRegex(RuntimeError, "event set does not match receipt"):
+                _verify_database_lineage(bundle, receipt)
+
+            extra_evidence_payload = {"unexpected": "extra"}
+            extra_evidence_json = _canonical(extra_evidence_payload).decode("utf-8")
+            extra_evidence_sha = _sha(extra_evidence_json.encode("utf-8"))
+            with sqlite3.connect(ledger_path) as ledger:
+                ledger.execute("DELETE FROM replay_events WHERE event_id=?", (extra_event_id,))
+                ledger.execute(
+                    "INSERT INTO replay_evidence"
+                    "(evidence_sha256,evidence_kind,profile_id,payload_json) VALUES(?,?,?,?)",
+                    (extra_evidence_sha, "baseline", "exposed", extra_evidence_json),
+                )
+            with self.assertRaisesRegex(RuntimeError, "evidence payload set does not match receipt"):
+                _verify_database_lineage(bundle, receipt)
 
 
 if __name__ == "__main__":
