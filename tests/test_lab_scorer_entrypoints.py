@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import io
+import json
 import subprocess
 import sys
 import tomllib
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -44,20 +45,39 @@ class LabScorerEntrypointTests(unittest.TestCase):
             "from lightup import lab_canary; from unittest.mock import patch; "
             "bad={'passed':False}; "
             "patcher=patch.object(lab_canary,'run_lab_service_inventory_score',return_value=bad); "
-            "patcher.start(); lab_canary.main([])"
+            "patcher.start(); raise SystemExit(lab_canary.main([]))"
         )
         process = subprocess.run(
             [sys.executable, "-O", "-c", program],
             capture_output=True, text=True, check=False,
         )
         self.assertNotEqual(process.returncode, 0)
-        self.assertIn("Offline safety gate denied: service scorer", process.stderr)
-        self.assertNotIn('"service_inventory_labeval_passed": true', process.stdout)
+        self.assertEqual(process.returncode, 2)
+        self.assertEqual(json.loads(process.stdout), {
+            "status": "HOLD", "passed": False, "lab_only": True,
+            "external_target_authorized": False, "deployment_authorized": False,
+        })
+        self.assertEqual(process.stderr, "")
 
     def test_unrelated_loopback_validation_failure_is_not_a_denial_pass(self) -> None:
-        with patch("lightup.lab_canary._loopback", side_effect=RuntimeError("internal failure")):
-            with self.assertRaisesRegex(RuntimeError, "internal failure"):
-                lab_canary.main([])
+        with patch("lightup.lab_canary._loopback", side_effect=RuntimeError("private path /tmp/secret")):
+            with redirect_stdout(io.StringIO()) as output:
+                result = lab_canary.main([])
+        self.assertEqual(result, 2)
+        self.assertEqual(json.loads(output.getvalue())["status"], "HOLD")
+        self.assertNotIn("secret", output.getvalue())
+
+    def test_failure_receipt_never_echoes_private_exception_content(self) -> None:
+        with patch("lightup.lab_canary.run_lab_service_inventory_score",
+                   side_effect=ValueError("sensitive:/tmp/private-evidence.db")):
+            with redirect_stdout(io.StringIO()) as out:
+                result = lab_canary.main([])
+        self.assertEqual(result, 2)
+        self.assertEqual(json.loads(out.getvalue()), {
+            "status": "HOLD", "passed": False, "lab_only": True,
+            "external_target_authorized": False, "deployment_authorized": False,
+        })
+        self.assertNotIn("sensitive", out.getvalue())
 
     def test_safety_gate_rejects_missing_checks_and_noncanonical_metrics(self) -> None:
         from copy import deepcopy

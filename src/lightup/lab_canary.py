@@ -51,9 +51,7 @@ def _require_first_party_score(result: dict, label: str, valid: int, calls: int,
     return metrics
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="lightup-lab-safety-canary", description="Offline fixed-loopback safety gate.")
-    parser.parse_args(argv)  # Caller cannot select a network target or database.
+def _run_canary() -> int:
     denied = subprocess.run(
         [sys.executable, "-m", "lightup.cli", "scope-check", "8.8.8.8"],
         capture_output=True, text=True, check=False,
@@ -122,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     if not (not Path(directory).exists()):
         raise RuntimeError("Offline safety gate denied: temporary-state cleanup")
     print(json.dumps({
+        "status": "PASS", "passed": True,
         "public_target_denied": True, "execution_enabled": False,
         "authentication_required": True, "activation_locked": True,
         "non_loopback_refused": True,
@@ -149,6 +148,23 @@ def main(argv: list[str] | None = None) -> int:
         "web_baseline_evidence_quality": score_metrics["evidence_quality"],
     }, sort_keys=True))
     return 0
+
+def main(argv: list[str] | None = None) -> int:
+    """Return a privacy-minimal receipt instead of exposing exception details."""
+    parser = argparse.ArgumentParser(
+        prog="lightup-lab-safety-canary",
+        description="Offline fixed-loopback safety gate.",
+    )
+    parser.parse_args(argv)  # Reject caller-supplied targets without running labs.
+    try:
+        return _run_canary()
+    except Exception:
+        print(json.dumps({
+            "status": "HOLD", "passed": False, "lab_only": True,
+            "external_target_authorized": False,
+            "deployment_authorized": False,
+        }, sort_keys=True))
+        return 2
 
 
 if __name__ == "__main__":

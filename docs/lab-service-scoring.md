@@ -52,3 +52,10 @@ The combined gate requires complete named scorer checklists and canonical
 numeric metric types, 2/2/4 tool calls, zero policy/scope/human interventions
 and zero compute cost. Missing checks, integer booleans or negative-zero cost
 never satisfy PASS.
+
+The installed canary emits one JSON result with `status=PASS` and
+`passed=true` on valid local calibration. If a check or runtime step fails,
+it returns exit 2 and only `status=HOLD`, `passed=false`, lab-only and
+false external-target/release flags. Failure receipts omit exception contents,
+private paths, run identities and evidence payloads. Invalid CLI arguments
+are rejected before executing the lab.
