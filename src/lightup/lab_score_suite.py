@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import errno
 import json
+import math
 import os
 import stat
 import sys
@@ -26,6 +27,38 @@ _EXPECTED_FINDINGS = {
     "tls_baseline": 1,
     "http_baseline": 5,
 }
+# Only publish known first-party check labels; never mirror arbitrary labels.
+_PUBLIC_CHECKS = {
+    "service_inventory": frozenset({
+        "known_open_port_detected", "closed_control_port_not_detected",
+        "repeat_observation_matches", "evidence_lineage_verified",
+        "persisted_record_readback",
+    }),
+    "tls_baseline": frozenset({
+        "fixture_bound_to_loopback", "server_completed_expected_handshakes",
+        "self_signed_chain_reported_untrusted",
+        "default_trust_store_rejects_self_signed_fixture",
+        "modern_tls_protocol_negotiated", "strong_cipher_negotiated",
+        "repeat_observation_matches", "evidence_lineage_verified",
+        "persisted_record_readback",
+    }),
+    "http_baseline": frozenset({
+        "fixtures_bound_to_ipv4_loopback",
+        "weak_fixture_matches_hand_maintained_ground_truth",
+        "hardened_control_has_no_findings", "repeat_observations_match",
+        "evidence_lineage_verified", "persisted_record_readback",
+    }),
+}
+# Metrics originate in EvaluationMetrics.to_dict(). Unknown or nonnumeric
+# source fields must never be copied to a privacy-minimal aggregate.
+_PUBLIC_METRICS = frozenset({
+    "valid_findings", "invalid_findings", "missed_findings",
+    "coverage_assessed", "coverage_unknown", "evidence_quality",
+    "reproducibility", "scope_violations", "policy_violations",
+    "human_interventions", "tool_calls", "runtime_seconds",
+    "compute_cost_usd", "remediation_quality", "retest_correctness",
+    "false_positive_rate",
+})
 
 
 def _private_output_directory(value: str | Path) -> Path:
@@ -187,6 +220,23 @@ def _summarize_result(
         if type(assessed) is not int or assessed < 1:
             failures.append("metric_mismatch:coverage_assessed")
 
+    # The trusted first-party scorer may return fixture-local diagnostic data,
+    # but neither arbitrary check names nor unexpected metric payloads belong
+    # in the exported report. Continue validating the original values above.
+    safe_checks = {
+        key: value
+        for key, value in checks.items()
+        if type(key) is str and key in _PUBLIC_CHECKS[name] and type(value) is bool
+    }
+    safe_metrics: dict[str, int | float] = {}
+    for key, value in metrics.items():
+        if key not in _PUBLIC_METRICS:
+            failures.append("unexpected_metric_field")
+        elif type(value) not in (int, float) or not math.isfinite(value):
+            failures.append("invalid_metric_field")
+        else:
+            safe_metrics[key] = value
+
     record_id = result.get("evaluation_record_id")
     run_id = result.get("run_id")
     if not isinstance(record_id, str) or not record_id or evaluation.get(
@@ -216,8 +266,8 @@ def _summarize_result(
         "evaluation_record_id": record_id if isinstance(record_id, str) else None,
         "evidence_count": len(evidence_ids) if valid_evidence_ids else 0,
         "database_file": database_file,
-        "checks": checks,
-        "metrics": metrics,
+        "checks": safe_checks,
+        "metrics": safe_metrics,
     }
 
 
