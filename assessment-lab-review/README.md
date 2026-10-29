@@ -29,6 +29,8 @@ The Python standard-library companion emits only aggregate counts:
 Exit status 0 means admitted for review; exit status 2 means HOLD. The CLI
 never prints findings, endpoint values, evidence IDs, notes, paths or raw errors.
 
+The reader opens each supplied path component relative to an already-open directory descriptor and refuses symlinks in both parent directories and the final file. Parent traversal (`..`), non-regular files, multi-link files and files that change during the bounded read fail closed.
+
 ## Data handling
 
 - Source and follow-up notes stay in page memory. There is no localStorage,
