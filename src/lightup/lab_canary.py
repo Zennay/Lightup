@@ -22,6 +22,35 @@ from lightup.webapp import create_app
 from lightup.webapp.__main__ import _loopback
 
 
+SERVICE_CHECKS = tuple('known_open_port_detected closed_control_port_not_detected repeat_observation_matches evidence_lineage_verified persisted_record_readback'.split())
+TLS_CHECKS = tuple('fixture_bound_to_loopback server_completed_expected_handshakes self_signed_chain_reported_untrusted default_trust_store_rejects_self_signed_fixture modern_tls_protocol_negotiated strong_cipher_negotiated repeat_observation_matches evidence_lineage_verified persisted_record_readback'.split())
+HTTP_CHECKS = tuple('fixtures_bound_to_ipv4_loopback weak_fixture_matches_hand_maintained_ground_truth hardened_control_has_no_findings repeat_observations_match evidence_lineage_verified persisted_record_readback'.split())
+
+
+def _require_first_party_score(result: dict, label: str, valid: int, calls: int, required_checks: tuple[str, ...]) -> dict:
+    if result.get("passed") is not True:
+        raise RuntimeError(f"Offline safety gate denied: {label} scorer")
+    checks = result.get("checks")
+    if not isinstance(checks, dict) or set(checks) != set(required_checks):
+        raise RuntimeError(f"Offline safety gate denied: {label} check inventory")
+    if any(checks[name] is not True for name in required_checks):
+        raise RuntimeError(f"Offline safety gate denied: {label} persisted checks")
+    metrics = result["evaluation"]["metrics"]
+    expected = {
+        "valid_findings": valid, "invalid_findings": 0, "missed_findings": 0,
+        "coverage_unknown": 0, "scope_violations": 0, "policy_violations": 0,
+        "human_interventions": 0, "tool_calls": calls, "reproducibility": 1.0,
+        "evidence_quality": 1.0, "compute_cost_usd": 0.0,
+    }
+    for key, wanted in expected.items():
+        actual = metrics.get(key)
+        if type(actual) is not type(wanted):
+            raise RuntimeError(f"Offline safety gate denied: {label} metric contract")
+        if (actual.hex() != wanted.hex() if type(wanted) is float else actual != wanted):
+            raise RuntimeError(f"Offline safety gate denied: {label} metric contract")
+    return metrics
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="lightup-lab-safety-canary", description="Offline fixed-loopback safety gate.")
     parser.parse_args(argv)  # Caller cannot select a network target or database.
@@ -80,51 +109,15 @@ def main(argv: list[str] | None = None) -> int:
         service_score = run_lab_service_inventory_score(
             Path(directory) / "service-labeval.db"
         )
-        if not (service_score["passed"]):
-            raise RuntimeError("Offline safety gate denied: service scorer")
-        service_metrics = service_score["evaluation"]["metrics"]
-        if not ((
-            service_metrics["valid_findings"],
-            service_metrics["invalid_findings"],
-            service_metrics["missed_findings"],
-            service_metrics["reproducibility"],
-            service_metrics["evidence_quality"],
-        ) == (1, 0, 0, 1.0, 1.0)):
-            raise RuntimeError("Offline safety gate denied: service findings and quality")
-        if not (all(service_score["checks"].values())):
-            raise RuntimeError("Offline safety gate denied: service persisted checks")
+        service_metrics = _require_first_party_score(service_score, "service", 1, 2, SERVICE_CHECKS)
 
         tls_score = run_lab_tls_baseline_score(
             Path(directory) / "tls-labeval.db"
         )
-        if not (tls_score["passed"]):
-            raise RuntimeError("Offline safety gate denied: TLS scorer")
-        tls_metrics = tls_score["evaluation"]["metrics"]
-        if not ((
-            tls_metrics["valid_findings"],
-            tls_metrics["invalid_findings"],
-            tls_metrics["missed_findings"],
-            tls_metrics["reproducibility"],
-            tls_metrics["evidence_quality"],
-        ) == (1, 0, 0, 1.0, 1.0)):
-            raise RuntimeError("Offline safety gate denied: TLS findings and quality")
-        if not (all(tls_score["checks"].values())):
-            raise RuntimeError("Offline safety gate denied: TLS persisted checks")
+        tls_metrics = _require_first_party_score(tls_score, "TLS", 1, 2, TLS_CHECKS)
 
         score = run_lab_web_baseline_score(Path(directory) / "web-labeval.db")
-        if not (score["passed"]):
-            raise RuntimeError("Offline safety gate denied: HTTP scorer")
-        score_metrics = score["evaluation"]["metrics"]
-        if not ((
-            score_metrics["valid_findings"],
-            score_metrics["invalid_findings"],
-            score_metrics["missed_findings"],
-            score_metrics["reproducibility"],
-            score_metrics["evidence_quality"],
-        ) == (5, 0, 0, 1.0, 1.0)):
-            raise RuntimeError("Offline safety gate denied: HTTP findings and quality")
-        if not (all(score["checks"].values())):
-            raise RuntimeError("Offline safety gate denied: HTTP persisted checks")
+        score_metrics = _require_first_party_score(score, "HTTP", 5, 4, HTTP_CHECKS)
 
     if not (not Path(directory).exists()):
         raise RuntimeError("Offline safety gate denied: temporary-state cleanup")

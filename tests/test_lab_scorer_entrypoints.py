@@ -59,6 +59,38 @@ class LabScorerEntrypointTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "internal failure"):
                 lab_canary.main([])
 
+    def test_safety_gate_rejects_missing_checks_and_noncanonical_metrics(self) -> None:
+        from copy import deepcopy
+        metrics = {
+            "valid_findings": 1, "invalid_findings": 0, "missed_findings": 0,
+            "coverage_unknown": 0, "scope_violations": 0, "policy_violations": 0,
+            "human_interventions": 0, "tool_calls": 2,
+            "reproducibility": 1.0, "evidence_quality": 1.0, "compute_cost_usd": 0.0,
+        }
+        good = {
+            "passed": True,
+            "checks": dict.fromkeys(lab_canary.SERVICE_CHECKS, True),
+            "evaluation": {"metrics": metrics},
+        }
+        self.assertEqual(
+            lab_canary._require_first_party_score(good, "service", 1, 2, lab_canary.SERVICE_CHECKS),
+            metrics,
+        )
+        for change in ("missing", "wrong_type", "bool_count", "negative_zero", "tool_count"):
+            bad = deepcopy(good)
+            if change == "missing":
+                bad["checks"] = {}
+            elif change == "wrong_type":
+                bad["checks"]["persisted_record_readback"] = 1
+            elif change == "bool_count":
+                bad["evaluation"]["metrics"]["valid_findings"] = True
+            elif change == "negative_zero":
+                bad["evaluation"]["metrics"]["compute_cost_usd"] = -0.0
+            else:
+                bad["evaluation"]["metrics"]["tool_calls"] = 3
+            with self.subTest(change=change), self.assertRaisesRegex(RuntimeError, "Offline safety gate denied"):
+                lab_canary._require_first_party_score(bad, "service", 1, 2, lab_canary.SERVICE_CHECKS)
+
     def test_all_scorer_clis_reject_caller_supplied_targets_before_execution(self) -> None:
         cases = (
             (

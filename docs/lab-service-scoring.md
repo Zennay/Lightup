@@ -47,3 +47,8 @@ The safety gate's mandatory checks run even with optimized Python (`python -O`
 or `PYTHONOPTIMIZE`); failed scorer metrics, login/scope denial or cleanup
 raise a generic failure instead of falsely reporting a successful calibration.
 Only the web shell's expected argument-type denial counts as a valid bind refusal.
+
+The combined gate requires complete named scorer checklists and canonical
+numeric metric types, 2/2/4 tool calls, zero policy/scope/human interventions
+and zero compute cost. Missing checks, integer booleans or negative-zero cost
+never satisfy PASS.
