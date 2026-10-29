@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LightUp offline batch receipt recheck output v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "receipt_format",
+    "status",
+    "receipt_authenticated",
+    "manifest_authenticated",
+    "source_authenticated",
+    "source_schema_verified",
+    "receipt_matches_current_inputs",
+    "authorized",
+    "consent_verified",
+    "dispatch_allowed",
+    "release_allowed"
+  ],
+  "properties": {
+    "receipt_format": {
+      "const": "lightup-offline-receipt-batch-recheck-v1"
+    },
+    "status": {
+      "const": "HOLD"
+    },
+    "receipt_authenticated": {
+      "const": false
+    },
+    "manifest_authenticated": {
+      "const": false
+    },
+    "source_authenticated": {
+      "const": false
+    },
+    "source_schema_verified": {
+      "const": false
+    },
+    "receipt_matches_current_inputs": {
+      "type": "boolean"
+    },
+    "authorized": {
+      "const": false
+    },
+    "consent_verified": {
+      "const": false
+    },
+    "dispatch_allowed": {
+      "const": false
+    },
+    "release_allowed": {
+      "const": false
+    }
+  }
+}

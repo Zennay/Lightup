@@ -1,0 +1,57 @@
+# Destructive lab operator step-up: isolated candidate ledger (#1173)
+
+This experimental component implements *durable candidate issuance and revocation* in a separately supplied SQLite database. It is intentionally **not connected** to ToolExecutor, web routes, the lab runtime, the deployment system or real targets. Scope and authorization remain **INCUBATE M3/M7, PLAN/LAB ONLY; DRAFT/HOLD**. An opt-in operator callback must return the literal boolean `True` after externally authenticating the operator and checking role + action. Nothing in this module implements or proves that callback, and it must never be populated by AI output, HTTP request fields or tool arguments.
+
+## Material invariants
+
+- Immutable per-run issue record with exact client, engagement, asset, capability, tool, operator and UTC timestamps, max 24 hours; no universal or wildcard target approval.
+- Exactly one issuance per run enforced with SQLite `UNIQUE`. Revocation is durable, irreversible through this API, survives restart and cannot be evaded by reissuing the same run.
+- Every candidate read/review requires an exact client identity, preventing accidental cross-tenant disclosure. An opt-in atomic whole-engagement revocation requires the tenant and engagement identifiers and can never revoke other tenants or unrelated engagements. Empty revocation is denied rather than being reported as a successful operator decision.
+- Transactional `BEGIN IMMEDIATE` issuance/revocation; rollback only when this component actually began the transaction, never of an externally owned SQLite transaction. Operator gate is called only after malformed identity/window input is rejected. Three genuine SQLite regression tests cover issue, single revoke and atomic tenant-engagement revoke against a pre-existing caller transaction. Deny unknown callbacks, non-boolean results and exceptions without disclosing their details.
+- Review receipts always return `authorization_verified=false`, `permit_issued=false`, `execution_enabled=false`, `merge_approved=false`, `release_approved=false`, including a current nonrevoked candidate. `REVIEW_ONLY` is an **untrusted local hint**, not authority.
+- Real SQLite tests cover persistence across new connections, repeated issue, fail-closed revocation and malicious input. No simulated approvals establish real consent.
+
+## Missing trust boundaries (DO NOT integrate yet)
+
+This table is **not tamper-evident**. Anyone controlling the SQLite file or injecting a permissive operator callback can forge records. There is no independently proven authenticated human, durable role history, trusted clock, immutable audit log, customer consent/asset ownership, physical lab confinement, network egress fencing, destination binding, execution lock, or integration with every dispatch path. The original executor source owner [PR #107](https://github.com/Zennay/Lightup/pull/107) and optional step-up owner [PR #1172](https://github.com/Zennay/Lightup/pull/1172) must review and integrate only after those are independently established; this PR does not modify their files.
+
+Run tests in the repository's existing environment with:
+```sh
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_lab_approval_candidate_ledger.py' -v
+```
+
+**NO REAL SCANS · NO ACTIVE LAB PAYLOADS · NO DEPLOY · NO CLAIM OF AUTHORIZATION.**
+
+## Read-time integrity hardening (follow-up)
+
+Every persisted candidate is revalidated on read: exact canonical builtin UTC `isoformat` encoding, ordered issuance/expiry, max 24-hour original window, and revocation not preceding issuance. This blocks accidental or attacker-controlled SQLite edits from producing an inflated `REVIEW_ONLY` receipt. The human-facing `review` operation returns a privacy-safe `HOLD` receipt (all five authority flags false) even if a row is malformed; direct `inspect` raises `CandidateHeld` for explicit owner diagnostics.
+
+**Important:** this is not a tamper-evident signed ledger, trusted operator identity, actual current consent or executor permission. Full SQLite write access can replace entire rows; this helper never authorizes a real target. Tested with synthetic disposable SQLite time-widening, backdating, malformed timezone aliases and impossible revocation chronology.
+
+## Tenant-wide emergency HOLD candidate (development only)
+
+The opt-in `freeze_tenant(client_id, actor, operator_gate)` needs a separate literal-True operator callback for action `freeze`. It transactionally installs a **durable irreversible tenant-local HOLD sentinel** and revokes all outstanding candidate records for the exact client across engagements. A later `issue()` checks the sentinel **under the same SQLite BEGIN IMMEDIATE write lock as its insert**. Even an empty tenant can be frozen ahead of first issuance. The `review()` path independently checks the frozen tenant sentinel, so manually clearing a candidate row's revocation marker cannot promote `REVIEW_ONLY`. Wildcard-looking selectors `*`, `?`, `%` are denied, as are missing operator proof and already-frozen clients. Foreign client candidates remain unchanged; rollback never touches an existing caller transaction. Ten genuine SQLite regressions cover these cases, including reopening the DB after freeze.
+
+**Important boundary:** this changes only this local candidate store. It does **not** stop a real executor, revoke any real approval, prove authenticated user intent, fence network egress, or survive an adversary rewriting/deleting SQLite freeze records. No `unfreeze` API is supplied: a fresh trusted operator process and independently reviewed migration would be required, not a model command. **No activation, deploy or real-target use is enabled by this helper.**
+
+## Durable engagement-level candidate HOLD (follow-up)
+
+Unlike `revoke_engagement`, which only revokes **existing** candidate rows, the new opt-in `freeze_engagement` permanently stores a frozen `(client_id, engagement_id)` tuple, and in the same SQLite `BEGIN IMMEDIATE` transaction revokes every existing unrevoked candidate from that exact client/engagement. `issue` checks both tenant-level and engagement-level freeze records under its own write lock **before insert**, so a subsequent new run cannot silently bypass the previous cancellation. An empty engagement may be pre-frozen, and candidates belonging to unrelated engagements or tenants remain unaffected. A review receipt for a frozen engagement is always `HOLD`, with all five execution/authority flags false, even if its row-level revoked fields are cleared later. No `unfreeze` API exists.
+
+Twelve isolated, real disposable-SQLite tests cover multi-engagement isolation, cross-tenant sameness, persistent pre-freeze, role denial, wildcard selection denial, transaction isolation, restart durability, tampered revocation markers, and composing with tenant freeze.
+
+**Safety boundary:** all records are operator-supplied **synthetic candidate metadata**, not verified customer authorization; row/database ownership is not tamper-proof. This addition does not change the active `ToolExecutor`, remote systems, egress boundaries, or any true permit decision. An externally authenticated operator gate and verified asset/consent ownership are still required before any runtime integration or activation.
+
+## Exact tenant binding for single-run revocation
+
+The original synthetic helper's `revoke(run_id=...)` selector accepted only a run identifier. A callback that was scoped outside this SQLite module could thereby accidentally revoke another tenant's candidate by knowing its run id. The offline-only `revoke(run_id=..., client_id=...)` now **requires an exact canonical client identity** and constrains its single SQLite update to `WHERE run_id=? AND client_id=? AND revoked_at IS NULL`. Missing client id is an API error; wrong client id produces a safe `CandidateHeld`, zero changed candidate rows, no cross-tenant audit information and no positive release flags. Wildcard-like tenant selectors are refused before operator callbacks. Existing disposable regressions and six new scoped-denial tests cover this boundary, including persistence and caller transaction protection.
+
+No trusted authenticated operator context or trusted customer ownership is proved by a caller-supplied `client_id`. Source-only development and synthetic candidate bookkeeping: **this is NOT installed execution authorization, real target revocation, or a scan permit**.
+
+## Independent per-run synthetic revocation tombstones (follow-up)
+
+All four local candidate revocation routes (`revoke`, `revoke_engagement`, `freeze_tenant`, `freeze_engagement`) now write an **independent per-run/client revocation tombstone** in the **same SQLite write transaction** as the candidate's `revoked_at` / `revoked_by` update. Failed updates rollback their tombstone inserts. No wildcard target or cross-tenant revocation is possible through the SQL selectors.
+
+On every `inspect`, the reader validates that `revoked_at` and `revoked_by` are present or absent together. If a local tombstone exists, the candidate's revocation time and actor must match its canonical stored record; any mismatch raises `CandidateHeld` and the operator-facing `review` becomes `HOLD` with all five authority flags false. This closes a real local preview-integrity hole: previously, clearing the candidate row's individual revocation markers could show a revoked synthetic candidate as `REVIEW_ONLY`. Fourteen genuine disposable SQLite tests cover each revoke path, isolated tenant/engagement scope, mismatch/corruption, double revocation, failed transaction, and persistence across reopen.
+
+**Not tamper-proof:** anyone with arbitrary SQLite write access can corrupt/delete BOTH the candidate and its tombstone. There is still no cryptographic log, independent human provenance, consent reference or lab network isolation attestation. The tombstones live only in a non-authorizing, uninstalled candidate ledger. This development change **must not be wired as a real permit/production scan approval**.

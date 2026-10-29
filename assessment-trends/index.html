@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; script-src 'self'; style-src 'self'">
+<title>LightUp · Assessment Trends</title>
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<header class="hero">
+  <p class="eyebrow">LIGHTUP / ASSESSMENT RUNTIME</p>
+  <h1>Assessment Trends</h1>
+  <p>Compare 3–12 already-completed canonical cohort snapshots. Inspect persistence, reappearance and metric trajectories without running an assessment.</p>
+  <div id="statusBanner" class="status hold" role="status" aria-live="polite">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. No sources loaded.</div>
+</header>
+<main>
+<section class="panel no-print">
+  <div class="section-head"><h2>01 / Import existing snapshots</h2><span class="tag">Offline · memory only</span></div>
+  <p>Select 3–12 original cohort-comparison JSON documents from the existing comparator. The selected file order is a display order only, not authenticated chronology. Each file is limited to 256 KiB.</p>
+  <label class="file-picker">Choose 3–12 cohort JSON files
+    <input id="files" type="file" accept=".json,application/json" multiple>
+  </label>
+  <h3>Selected local display order (not authenticated chronology)</h3>
+  <p class="footnote">Browsers do not guarantee your intended file order. Use the controls below to explicitly set the manual comparison order. Filenames are shown here for orientation only and never included in exports.</p>
+  <p id="pendingSourceStatus" class="message" role="status" aria-live="polite">No pending input files.</p>
+  <ol id="pendingSourceList" class="pending-source-list" aria-label="Manually ordered source slots"></ol>
+  <div class="controls">
+    <button id="import" type="button" disabled>Import selected manual order atomically</button>
+    <button id="demo" type="button" class="secondary">Load fictional demo</button>
+    <button id="forget" type="button" class="ghost" disabled>Forget all local data</button>
+  </div>
+  <p id="message" class="message" role="status" aria-live="polite">No source files have been admitted.</p>
+  <p class="footnote">If the current workspace has HUMAN stages, saved notes or unsaved note drafts, replacing sources or switching to the fictional demo requires confirmation. Forget all always requires confirmation. Cancel preserves the current in-memory work.</p>
+  <p class="footnote">Malformed, duplicate-key, mismatched or baseline-inconsistent batches are rejected as a whole. A failed import leaves the previously admitted workspace untouched. Original source-byte fingerprints are retained only in tab memory for optional PRIVATE recovery; they are never in anonymous exports.</p>
+</section>
+<section class="panel">
+  <div class="section-head"><h2>02 / Snapshot summary</h2><span class="tag">REVIEW_ONLY / HOLD</span></div>
+  <div id="summaryCards" class="cards"><p class="empty">Import snapshots to build the trend view.</p></div>
+  <p id="summaryText" class="footnote"></p>
+</section>
+<section class="panel">
+  <div class="section-head"><h2>03 / Metric persistence heatmap</h2><span class="tag">Source-reported flags</span></div>
+  <p>Cells show how many anonymous scenarios carry a source-reported regression flag for that metric in each manually selected snapshot. Review-priority grouping is a static display aid, not an independently assessed security severity. “Persistent” means the same scenario/metric is flagged in at least two consecutive slots. “Reappearing” means a flag returns after at least one unflagged manual slot; it does not establish a fix or recurrence in authenticated time.</p>
+  <div id="metricHeatmap" class="tablewrap"><p class="empty">No admitted metrics yet.</p></div>
+  <h3>Cohort-level numeric distribution by manual slot</h3>
+  <p>Each row summarizes source-reported candidate and delta values across all anonymous scenarios for one metric in one manually ordered slot. Median, quartiles, IQR and slot-01 median shifts describe supplied reports only; they are not authenticated time trends, independently validated measurements or remediation evidence.</p>
+  <label>Filter numeric distribution by static review group
+    <select id="metricDistributionGroup">
+      <option value="all">All static review groups</option>
+      <option value="P1 · Scope / policy">P1 · Scope / policy</option>
+      <option value="P2 · Findings">P2 · Findings</option>
+      <option value="P3 · Coverage">P3 · Coverage</option>
+      <option value="P4 · Evidence / scoring">P4 · Evidence / scoring</option>
+      <option value="Info · Operations">Info · Operations</option>
+    </select>
+  </label>
+  <label>Filter by source-reported regression flags
+    <select id="metricDistributionFlagFilter">
+      <option value="all">All metric/slot rows</option>
+      <option value="flagged">At least one flagged scenario</option>
+      <option value="clear">No flagged scenarios</option>
+    </select>
+  </label>
+  <p id="metricDistributionSummary" class="message" role="status" aria-live="polite">Import snapshots to summarize numeric metric distributions.</p>
+  <div id="metricDistribution" class="tablewrap" role="region" aria-label="Cohort-level numeric distributions by manual slot" tabindex="0"><p class="empty">No numeric distributions yet.</p></div>
+  <div class="controls no-print">
+    <button id="metricDistributionCsv" type="button" disabled>Export filtered metric distributions CSV</button>
+    <button id="metricDistributionJson" type="button" class="secondary" disabled>Export filtered metric distributions JSON</button>
+    <button id="metricDistributionBrief" type="button" class="ghost" disabled>Export script-free printable distribution brief</button>
+  </div>
+  <h3>Compact metric-level trend summary</h3>
+  <p>Collapse all selected manual slots into one row per metric. First/last medians show the endpoints; net shifts compare the first and last displayed slots; maximum absolute median shifts identify the largest observed deviation from slot 01. Flag prevalence is summarized across all selected slots. This is a navigation aid over untrusted reports, not authenticated chronology or a severity ranking.</p>
+  <label>Filter metrics by source flags across all selected slots
+    <select id="metricTrendFlagFilter">
+      <option value="all">All metrics in selected group</option>
+      <option value="flagged">At least one flagged scenario in any slot</option>
+      <option value="clear">No flagged scenarios in any slot</option>
+    </select>
+  </label>
+  <label>Sort metric summaries for review
+    <select id="metricTrendSort">
+      <option value="fixed">Fixed metric order</option>
+      <option value="flagged_percent">Highest maximum flag prevalence</option>
+      <option value="flagged_observations">Most flagged scenario-slot observations</option>
+      <option value="candidate_shift">Largest absolute median candidate shift</option>
+      <option value="delta_shift">Largest absolute median delta shift</option>
+      <option value="flagged_slots">Most slots containing flags</option>
+    </select>
+  </label>
+  <p id="metricTrendSummaryText" class="message" role="status" aria-live="polite">Import snapshots to summarize median shifts and source-flag prevalence.</p>
+  <div id="metricTrendSummary" class="tablewrap" role="region" aria-label="Compact per-metric trend summary" tabindex="0"><p class="empty">No trend summaries yet.</p></div>
+  <div class="controls no-print">
+    <button id="metricTrendSummaryCsv" type="button" disabled>Export metric trend summary CSV</button>
+    <button id="metricTrendSummaryJson" type="button" class="secondary" disabled>Export metric trend summary JSON</button>
+    <button id="metricTrendSummaryBrief" type="button" class="ghost" disabled>Export script-free printable trend summary</button>
+  </div>
+  <h3>Unknown-coverage movement · separate uncertainty signal</h3>
+  <p>Track total and median source-declared unknown coverage, plus how many anonymous scenarios report higher or lower values than manual slot 01. This is deliberately separate from regression flags: rising unknown coverage is an uncertainty signal, not a reclassified regression, verified finding or chronology.</p>
+  <p id="coverageUnknownSummary" class="message" role="status" aria-live="polite">Import snapshots to compare declared unknown coverage separately from regression flags.</p>
+  <div class="controls no-print">
+    <label>Sort uncertainty slots<select id="coverageUnknownSort" disabled>
+      <option value="slot">Manual slot order</option>
+      <option value="total">Highest total unknown coverage</option>
+      <option value="median">Highest median unknown coverage</option>
+      <option value="affected">Most scenarios with unknown coverage</option>
+      <option value="net_magnitude">Largest absolute total change vs slot 01</option>
+      <option value="movement">Largest absolute total change vs previous slot</option>
+    </select></label>
+  </div>
+  <div id="coverageUnknownTrajectory" class="tablewrap" role="region" aria-label="Unknown coverage distribution and changes by manual slot" tabindex="0"><p class="empty">No coverage uncertainty trajectory yet.</p></div>
+  <div class="controls no-print">
+    <button id="coverageUnknownCsv" type="button" disabled>Export unknown-coverage CSV</button>
+    <button id="coverageUnknownJson" type="button" class="secondary" disabled>Export unknown-coverage JSON</button>
+    <button id="coverageUnknownBrief" type="button" class="ghost" disabled>Export script-free unknown-coverage brief</button>
+  </div>
+  <h3>Compare unknown coverage between any two manual slots</h3>
+  <p>Choose any two distinct displayed slots to inspect per-scenario unknown-coverage values and changes. This is an uncertainty comparison only: an increase is not reclassified as a regression, and a decrease does not prove remediation. Rows use anonymous scenario ordinals, never original scenario IDs.</p>
+  <div class="controls">
+    <label>From manual slot<select id="coverageUnknownPairFrom" disabled><option value="1">Slot 01</option></select></label>
+    <label>To manual slot<select id="coverageUnknownPairTo" disabled><option value="2">Slot 02</option></select></label>
+    <label>Scenario change filter<select id="coverageUnknownPairFilter" disabled>
+      <option value="all">All scenarios</option>
+      <option value="increased">Increased unknown coverage</option>
+      <option value="decreased">Decreased unknown coverage</option>
+      <option value="unchanged">Unchanged unknown coverage</option>
+    </select></label>
+    <label>Sort scenario changes<select id="coverageUnknownPairSort" disabled>
+      <option value="scenario">Canonical scenario order</option>
+      <option value="increase">Largest increases first</option>
+      <option value="decrease">Largest decreases first</option>
+      <option value="magnitude">Largest absolute changes first</option>
+    </select></label>
+  </div>
+  <p id="coverageUnknownPairSummary" class="message" role="status" aria-live="polite">Import snapshots to compare unknown coverage for any two distinct manual slots.</p>
+  <div id="coverageUnknownPairTable" class="tablewrap" role="region" aria-label="Anonymous per-scenario unknown-coverage comparison" tabindex="0"><p class="empty">No pairwise coverage comparison yet.</p></div>
+  <div class="controls no-print">
+    <button id="coverageUnknownPairCsv" type="button" disabled>Export pairwise unknown coverage CSV</button>
+    <button id="coverageUnknownPairJson" type="button" class="secondary" disabled>Export pairwise unknown coverage JSON</button>
+    <button id="coverageUnknownPairBrief" type="button" class="ghost" disabled>Export script-free pairwise coverage brief</button>
+  </div>
+  <h3>Manual-slot flag-state transition matrix</h3>
+  <p>For every selected metric/slot pair, classify each anonymous scenario as clear in both, flagged in both, clear → flagged, or flagged → clear. The default matrix compares adjacent slots; switch to all distinct manual-slot pairs to compare non-adjacent endpoints directly. This separates new source-reported flags from flags that are no longer reported without implying a verified fix. The selected order is a display order, not authenticated chronology. The static review-group filter above also applies here.</p>
+  <label>Compare pair scope
+    <select id="metricTransitionScope">
+      <option value="adjacent">Adjacent pairs only (default)</option>
+      <option value="all_pairs">All distinct manual-slot pairs</option>
+    </select>
+  </label>
+  <label>Filter flag-state transition rows
+    <select id="metricTransitionFilter">
+      <option value="all">All metric/slot pairs</option>
+      <option value="changed">At least one scenario changed flag state</option>
+      <option value="clear_to_flagged">At least one clear → flagged scenario</option>
+      <option value="flagged_to_clear">At least one flagged → clear scenario (not a verified fix)</option>
+      <option value="flagged_both">At least one scenario flagged in both slots</option>
+      <option value="clear_both">At least one scenario clear in both slots</option>
+    </select>
+  </label>
+  <p id="metricTransitionSummary" class="message" role="status" aria-live="polite">Import at least two snapshots to summarize flag-state changes.</p>
+  <div id="metricTransitionTable" class="tablewrap" role="region" aria-label="Per-metric source-flag state transitions by selected manual-slot pair" tabindex="0"><p class="empty">No flag-state transitions yet.</p></div>
+  <div class="controls no-print">
+    <button id="metricTransitionCsv" type="button" disabled>Export filtered flag transitions CSV</button>
+    <button id="metricTransitionJson" type="button" class="secondary" disabled>Export filtered flag transitions JSON</button>
+    <button id="metricTransitionBrief" type="button" class="ghost" disabled>Export script-free printable transition brief</button>
+  </div>
+  <h4>Inspect the scenarios behind a transition</h4>
+  <p>This local-only drilldown identifies which anonymous scenarios change one metric's source-flag state between any two selected manual slots, including non-adjacent slots. The aggregate matrix above remains adjacent-only. Choose a metric, pair and flag-state category; open a scenario in the existing trajectory view or export only the filtered anonymous cases. Original scenario IDs remain private to this tab, and the drilldown has no network or authorization behavior.</p>
+  <div class="queue-controls">
+    <label>Metric to inspect
+      <select id="metricTransitionMetric" disabled><option>Import snapshots first</option></select>
+    </label>
+    <label>Manual-slot pair
+      <select id="metricTransitionPair" disabled><option>Import at least two snapshots</option></select>
+    </label>
+    <label>Flag-state category
+      <select id="metricTransitionCaseFilter" disabled>
+        <option value="changed">Flag state changed in either direction</option>
+        <option value="clear_to_flagged">Clear → flagged</option>
+        <option value="flagged_to_clear">Flagged → clear (not a verified fix)</option>
+        <option value="flagged_both">Flagged in both slots</option>
+        <option value="clear_both">Clear in both slots</option>
+      </select>
+    </label>
+  </div>
+  <p id="metricTransitionCasesSummary" class="message" role="status" aria-live="polite">Import at least two snapshots to inspect the scenarios behind a flag-state transition.</p>
+  <div id="metricTransitionCases" class="tablewrap" role="region" aria-label="Local anonymous scenario drilldown for one metric transition" tabindex="0"><p class="empty">No transition details yet.</p></div>
+  <div class="controls no-print">
+    <button id="metricTransitionCasesCsv" type="button" disabled>Export matched anonymous cases CSV</button>
+    <button id="metricTransitionCasesJson" type="button" class="secondary" disabled>Export matched anonymous cases JSON</button>
+    <button id="metricTransitionCasesBrief" type="button" class="ghost" disabled>Export script-free printable case brief</button>
+  </div>
+  <p class="footnote">Both distribution views are aggregate-only: no original scenario IDs, filenames, source hashes or HUMAN notes. All authority/verification flags stay false; manual slot numbers never assert chronology.</p>
+  <p class="footnote">Exports contain fixed metric labels, manual slot numbers, aggregate numeric values and literal false authority fields only. They exclude original scenario IDs, filenames, uploaded source hashes and HUMAN notes. A static review group is a display aid, not a severity judgment.</p>
+</section>
+<section class="panel">
+  <div class="section-head"><h2>04 / Anonymous scenario trajectories</h2><span class="tag">IDs hidden</span></div>
+  <p>Each scenario has a stable local ordinal. The workspace validates original IDs privately to confirm exact membership, but never displays or exports them. Filter by source-reported HOLD, persistent flags or reappearing flags, or enter an exact anonymous ordinal; the table is paginated in groups of 100 to keep larger cohorts responsive. The trajectory table also shows first/last flagged manual slot, persistent metrics, metrics whose flags reappeared after a gap, total reappearance events and the longest consecutive flag streak. These are source-reported summaries over manually selected slots, not a verified remediation or chronology verdict.</p>
+  <label>Inspect anonymous scenario
+    <select id="scenarioSelect" disabled><option>Import snapshots first</option></select>
+  </label>
+  <div class="queue-controls">
+    <label>Scenario view
+      <select id="scenarioViewFilter">
+        <option value="all">All anonymous scenarios</option>
+        <option value="hold">Source reports HOLD</option>
+        <option value="persistent">Has persistent metric flags</option>
+        <option value="reappeared">Has reappearing metric flags</option>
+      </select>
+    </label>
+    <label>Exact anonymous scenario ordinal
+      <input id="scenarioSearch" type="search" inputmode="numeric" maxlength="32" autocomplete="off" placeholder="e.g. 12 or Scenario 12">
+    </label>
+  </div>
+  <p id="scenarioPageSummary" class="message" role="status" aria-live="polite">Import snapshots to see anonymous scenario trajectories.</p>
+  <div id="scenarioHeatmap" class="tablewrap" role="region" aria-label="Paginated anonymous scenario trajectories" tabindex="0"><p class="empty">No admitted scenarios yet.</p></div>
+  <div class="controls no-print">
+    <button id="scenarioPrev" type="button" class="secondary" disabled>Previous 100 scenarios</button>
+    <button id="scenarioNext" type="button" class="secondary" disabled>Next 100 scenarios</button>
+  </div>
+  <h3>Selected scenario · metric trajectory</h3>
+  <div id="trajectoryTable" class="tablewrap"><p class="empty">No trajectory to inspect yet.</p></div>
+  <div class="controls no-print">
+    <button id="exportScenarioCsv" type="button" disabled>Export selected scenario CSV</button>
+    <button id="exportScenarioJson" type="button" class="secondary" disabled>Export selected scenario JSON</button>
+    <button id="exportScenarioBrief" type="button" class="ghost" disabled>Export selected scenario printable HTML</button>
+  </div>
+  <p class="footnote">Minimum-necessary local handoff: exports only the selected anonymous scenario across the manually ordered slots. Original scenario IDs, filenames, source hashes and HUMAN notes are excluded. Slot order is not authenticated chronology; source-reported flags do not prove findings or fixes.</p>
+</section>
+
+<section class="panel no-print" id="flagReview">
+  <div class="section-head"><h2>05 / Source-flag change review queue</h2><span class="tag">Manual order · not chronology</span></div>
+  <p>Explore first reports, repeated flags, reappearances and flags no longer reported. A missing flag is <strong>not</strong> a verified fix. Filter the local queue, page through source-reported events, open a specific anonymous scenario/metric in the HUMAN commentary editor or explicitly export the filtered anonymous events. Nothing here approves a scan or release.</p>
+  <div class="queue-controls">
+    <label>Source-flag event<select id="reviewKind">
+      <option value="all">All source-flag events</option>
+      <option value="initial">Initially flagged</option>
+      <option value="first">First flagged in selected order</option>
+      <option value="consecutive">Consecutive flags</option>
+      <option value="reappeared">Flag reappeared</option>
+      <option value="absent">Not flagged in this slot (not a verified fix)</option>
+    </select></label>
+    <label>Review group<select id="reviewGroup"><option value="all">All review groups</option></select></label>
+    <label>HUMAN-only follow-up stage<select id="reviewStage">
+      <option value="all">All HUMAN stages</option>
+      <option value="UNREVIEWED">UNREVIEWED</option>
+      <option value="NEEDS_INPUT">NEEDS_INPUT</option>
+      <option value="FOLLOW_UP">FOLLOW_UP</option>
+      <option value="HUMAN_NOTED">HUMAN_NOTED</option>
+    </select></label>
+    <label>Selected snapshot slot<select id="reviewSlot"><option value="all">All manual slots</option></select></label>
+  </div>
+  <h3>Source-flag transitions by selected slot</h3>
+  <p class="footnote">Unfiltered counts over admitted reports, not authenticated time. A flag absent in a later slot does not prove any fix.</p>
+  <div id="reviewSummary" class="tablewrap" role="region" aria-label="Source-flag counts by selected slot" tabindex="0"></div>
+  <p id="reviewHumanSummary" class="message" role="status" aria-live="polite">No local HUMAN stages.</p>
+  <p id="reviewCount" class="message" role="status" aria-live="polite">Import snapshots to see local source-flag transitions.</p>
+  <div class="queue-controls" aria-label="HUMAN-only visible-page stage editor">
+    <label>Batch HUMAN stage for explicitly selected rows on the visible page (maximum 100)
+      <select id="reviewBulkStage">
+        <option value="">Choose a HUMAN self-report stage…</option>
+        <option value="UNREVIEWED">UNREVIEWED (clear local mark)</option>
+        <option value="NEEDS_INPUT">NEEDS_INPUT</option>
+        <option value="FOLLOW_UP">FOLLOW_UP</option>
+        <option value="HUMAN_NOTED">HUMAN_NOTED</option>
+      </select>
+    </label>
+    <label><input id="reviewBulkSelectAll" type="checkbox" disabled> Select all events on this visible page</label>
+    <div class="controls">
+      <button id="reviewBulkApply" type="button" disabled>Preview &amp; confirm selected-row changes</button>
+      <button id="reviewBulkUndo" type="button" class="secondary" disabled>Undo last batch</button>
+    </div>
+  </div>
+  <p id="reviewBulkStatus" class="message" role="status" aria-live="polite">Choose visible row checkboxes before applying a batch; only those selected rows change after confirmation. This is not an approval, remediation finding or permission.</p>
+  <div id="reviewTable" class="tablewrap" role="region" aria-label="Paginated anonymous change events" tabindex="0"></div>
+  <div class="controls">
+    <button id="reviewPrev" type="button" class="secondary" disabled>Previous 100</button>
+    <button id="reviewNext" type="button" class="secondary" disabled>Next 100</button>
+    <button id="reviewExportCsv" type="button" disabled>Export filtered anonymous CSV</button>
+    <button id="reviewExportJson" type="button" class="secondary" disabled>Export filtered anonymous JSON</button>
+    <button id="reviewExportStages" type="button" class="ghost" disabled>Export PRIVATE HUMAN JSON</button>
+    <button id="reviewExportStageCsv" type="button" class="ghost" disabled>Export PRIVATE HUMAN CSV</button>
+    <button id="reviewExportStageBrief" type="button" class="ghost" disabled>Export PRIVATE printable HUMAN brief</button>
+  </div>
+  <p class="footnote">Only explicitly selected checkboxes on the current filtered page (maximum 100) can be batch-changed after confirmation. Undo restores the previous local HUMAN stage map only if no later stage change or source replacement occurred. These marks are never verified evidence or approvals.</p>
+  <p class="footnote">HUMAN stages are only local, unsigned self-reports; they reset when another snapshot batch is admitted, demo is loaded or data are forgotten. HUMAN stages and note text are never included in anonymous reports. The separately confirmed PRIVATE JSON, CSV and script-free HTML exports record only manual ordinals and stages; it cannot authenticate the original source and must not be imported against a different cohort.</p>
+  <p class="footnote">Export contains only manually ordered anonymous slots, fixed metric/group labels, numeric candidate/delta, source flags and literal false authority fields. No original IDs, uploaded content, filenames, hashes or HUMAN notes. The order is neither independently authenticated chronology nor a verified security result.</p>
+</section>
+
+<section class="panel no-print" id="humanPlan">
+  <div class="section-head"><h2>06 / PRIVATE HUMAN follow-up work plan</h2><span class="tag">Non-authorizing HUMAN self-reports</span></div>
+  <p>Collect the source-flag events manually marked <strong>NEEDS_INPUT</strong> or <strong>FOLLOW_UP</strong> into one action desk. Fixed P1–P4/Info grouping prioritizes readability only; it is <strong>not measured severity</strong> or a security verdict. Proposed next steps are generic HUMAN questions. Review the currently loaded source or open a note without triggering a scan, grant or external request.</p>
+  <div class="queue-controls">
+    <label>PRIVATE handoff: static review group
+      <select id="workPlanGroup"><option value="all">All static review groups</option></select>
+    </label>
+    <label>PRIVATE handoff: HUMAN-only stage
+      <select id="workPlanStage">
+        <option value="all">All actionable HUMAN stages</option>
+        <option value="NEEDS_INPUT">NEEDS_INPUT only</option>
+        <option value="FOLLOW_UP">FOLLOW_UP only</option>
+      </select>
+    </label>
+  </div>
+  <p id="workPlanSummary" class="message" role="status" aria-live="polite">Import snapshots and mark HUMAN stages to assemble a local follow-up plan.</p>
+  <div id="workPlanTable" class="tablewrap" role="region" aria-label="Sorted private HUMAN next-action plan" tabindex="0"></div>
+  <p id="workPlanRange" class="footnote">No outstanding HUMAN follow-up actions.</p>
+  <div class="controls">
+    <button id="workPlanPrev" type="button" class="secondary" disabled>Previous 100</button>
+    <button id="workPlanNext" type="button" class="secondary" disabled>Next 100</button>
+    <button id="workPlanExportJson" type="button" class="ghost" disabled>Export PRIVATE HUMAN plan JSON</button>
+    <button id="workPlanExportCsv" type="button" class="ghost" disabled>Export PRIVATE HUMAN plan CSV</button>
+    <button id="workPlanExportBrief" type="button" class="ghost" disabled>Export PRIVATE printable HUMAN plan</button>
+  </div>
+  <p class="footnote">Exports include ONLY the selected static-group/HUMAN-stage subset and label the chosen filters. Narrow this handoff before sharing; the current HUMAN work and original source reports remain intact.</p>
+  <p class="footnote">PRIVATE outputs contain manually ordered anonymous scenario slots, static metric labels, HUMAN-only stages and generic follow-up suggestions. They exclude original source IDs, filenames, hashes, HUMAN note text and original evidence. A HUMAN assignment is not authorization or independent verification.</p>
+</section>
+<section class="panel no-print" id="commentary">
+  <div class="section-head"><h2>07 / Private human commentary</h2><span class="tag">In-memory only</span></div>
+  <p>Notes are never part of the anonymous aggregate brief, JSON or CSV. Save explicitly to retain commentary in this tab. For original source cohorts, sharing HUMAN notes uses only the encrypted, source-byte-bound note handoff below. Plaintext note export is limited to fictional demo data.</p>
+  <label>Metric for commentary
+    <select id="noteMetric" disabled></select>
+  </label>
+  <label>Human commentary (maximum 500 characters)
+    <textarea id="noteInput" maxlength="500" rows="4" disabled placeholder="Record a human observation; not measured evidence or remediation proof."></textarea>
+  </label>
+  <div class="controls">
+    <button id="saveNote" type="button" disabled>Save commentary in memory</button>
+    <button id="clearNote" type="button" class="secondary" disabled>Clear commentary</button>
+     <button id="clearAllNotes" type="button" class="secondary" disabled>Clear all HUMAN notes and drafts</button>
+     <button id="undoNote" type="button" class="secondary" disabled>Undo commentary</button>
+     <button id="redoNote" type="button" class="secondary" disabled>Redo commentary</button>
+    <button id="exportNotes" type="button" class="ghost" disabled>Export fictional demo notes only (plaintext JSON)</button>
+  </div>
+  <p id="noteHistoryStatus" role="status" aria-live="polite" class="footnote">Undo/redo stays in memory and is bound to the active source cohort.</p>
+   <p id="noteMessage" class="message" role="status" aria-live="polite"></p>
+  <h3>Locally saved PRIVATE HUMAN note index</h3>
+  <p>Browse saved notes after returning from an encrypted PRIVATE packet. This index shows only fixed metrics, anonymous scenario ordinals and character counts; it never displays note text until you explicitly open its editor. Nothing is stored in your browser after forgetting or closing this tab.</p>
+  <label>Filter saved HUMAN notes by static group
+    <select id="savedNoteGroup"><option value="all">All saved HUMAN note groups</option></select>
+  </label>
+  <p id="savedNoteCount" class="footnote">No HUMAN notes saved locally.</p>
+  <div id="savedNoteTable" class="tablewrap" role="region" aria-label="Private saved HUMAN note index" tabindex="0"></div>
+  <div class="controls">
+    <button id="savedNotePrev" type="button" class="secondary" disabled>Previous 80 notes</button>
+    <button id="savedNoteNext" type="button" class="secondary" disabled>Next 80 notes</button>
+  </div>
+</section>
+
+
+<section class="panel no-print" id="noteHandoff">
+  <div class="section-head"><h2>08 / Encrypted PRIVATE HUMAN note-only handoff</h2><span class="tag">Source-bound · minimum necessary</span></div>
+  <p>Exchange saved HUMAN commentary independently of your complete review session. Select the current anonymous scenario/metric note only, or explicitly choose all saved notes. The downloaded packet is <strong>locally encrypted</strong> with a password and bound to the exact original source-file bytes and manual ordering. It carries no HUMAN stages, original IDs, filenames, targets or raw findings. This is confidential self-reported commentary, not verified evidence or approval.</p>
+  <label>Notes to include in the encrypted packet
+    <select id="notePacketScope">
+      <option value="current">Only selected scenario + metric note (minimum necessary)</option>
+      <option value="all">All explicitly saved HUMAN notes</option>
+    </select>
+  </label>
+  <p id="notePacketCount" class="footnote">Import original source snapshots to exchange HUMAN notes securely.</p>
+  <div class="queue-controls">
+    <label>New note-only packet passphrase (14–256 characters)
+      <input id="notePacketSecret" type="password" minlength="14" maxlength="256" autocomplete="new-password">
+    </label>
+    <label>Confirm note-only packet passphrase
+      <input id="notePacketConfirm" type="password" minlength="14" maxlength="256" autocomplete="new-password">
+    </label>
+  </div>
+  <button id="notePacketExport" type="button" disabled>Export encrypted PRIVATE HUMAN notes</button>
+  <label class="file-picker">Import an encrypted PRIVATE note-only packet (original sources must already be admitted)
+    <input id="notePacketFile" type="file" accept=".json,application/json" disabled>
+  </label>
+  <label>Passphrase for selected encrypted note-only packet
+    <input id="notePacketUnlock" type="password" maxlength="256" autocomplete="off">
+  </label>
+  <button id="notePacketImport" type="button" class="secondary" disabled>Decrypt, validate and merge HUMAN notes locally</button>
+  <p id="notePacketMessage" class="message" role="status" aria-live="polite">No PRIVATE note packet loaded.</p>
+  <p class="footnote">Decryption uses Web Crypto AES-256-GCM and PBKDF2-SHA256. Import refuses plaintext note packets, wrong passwords, duplicate or unexpected fields, source drift and mismatched original membership. It confirms possible overwrites before changing saved HUMAN notes. Current source data, HUMAN review stages and unrelated notes remain intact. No server, account, scan, grant, verification or password recovery.</p>
+</section>
+<section class="panel no-print" id="resume">
+  <div class="section-head"><h2>09 / PRIVATE human work recovery</h2><span class="tag">Exact source bytes · offline</span></div>
+  <p>Keep HUMAN work between browser sessions without creating an account, network request or browser storage. First import the <strong>same 3–12 original JSON snapshots in exactly the same manually selected order</strong>, then restore your PRIVATE work. Newly saved sessions are <strong>passphrase-encrypted locally</strong> with AES-256-GCM and PBKDF2-SHA256 (310,000 iterations, random salt and nonce). This separately confirmed PRIVATE unsigned JSON envelope contains all saved HUMAN notes and self-reported review stages, plus SHA-256 fingerprints of original source bytes. Treat it as confidential.</p>
+  <p id="sessionAvailability" class="footnote">Import original snapshots to enable source-byte-bound PRIVATE save and resume.</p>
+  <div class="queue-controls">
+    <label>New recovery passphrase (14–256 characters)
+      <input id="sessionSavePassphrase" type="password" minlength="14" maxlength="256" autocomplete="new-password" placeholder="Stored nowhere; losing it prevents recovery">
+    </label>
+    <label>Confirm recovery passphrase
+      <input id="sessionSaveConfirm" type="password" minlength="14" maxlength="256" autocomplete="new-password">
+    </label>
+  </div>
+  <div class="controls">
+    <button id="exportPrivateSession" type="button" disabled>Save ENCRYPTED PRIVATE HUMAN session</button>
+  </div>
+  <label class="file-picker">Choose PRIVATE HUMAN recovery JSON
+    <input id="privateSessionFile" type="file" accept=".json,application/json" disabled>
+  </label>
+  <label>Passphrase for encrypted recovery (leave blank for older unencrypted v1 files)
+    <input id="sessionUnlockPassphrase" type="password" maxlength="256" autocomplete="off">
+  </label>
+  <div class="controls">
+    <button id="importPrivateSession" class="secondary" type="button" disabled>Decrypt and restore only against identical source bytes</button>
+  </div>
+  <p id="sessionMessage" class="message" role="status" aria-live="polite">No recovery file loaded.</p>
+  <p class="footnote">Recovery is atomic: invalid, duplicate, incorrectly encrypted, oversized (decrypted contents over 2 MiB), out-of-scope, altered or differently ordered inputs are rejected before replacing work. A successful restore requires separate confirmation; forgotten or newly imported source data clears prior local HUMAN work. Browser Web Crypto is required for encrypted export/decryption and local source-byte digest matching. New recovery sessions are encrypted by default; older plaintext PRIVATE v1 files remain importable but are never newly exported. Passphrases are cleared from input fields after each operation and are not sent over the network. Source hashes establish local byte equality, <strong>not authentic provenance or security clearance</strong>. Private files are never included in anonymous exports.</p>
+</section>
+
+
+<section class="panel no-print" id="rotateSession">
+  <div class="section-head"><h2>10 / PRIVATE encrypted recovery migration</h2><span class="tag">No data mutation · original-source bound</span></div>
+  <p>Convert an older unencrypted PRIVATE review file into an encrypted recovery file, or change the password on an existing encrypted file. First admit the exact same original source snapshots and manual order. The original file is only read; current HUMAN stages and notes are <strong>never modified</strong>. The newly downloaded file uses a fresh random salt and nonce. Older plaintext copies remain on your device until you manage them yourself.</p>
+  <label class="file-picker">Choose one PRIVATE source-bound HUMAN session (legacy v1 JSON or encrypted envelope)
+    <input id="rotateSourceFile" type="file" accept=".json,application/json" disabled>
+  </label>
+  <div class="queue-controls">
+    <label>Previous passphrase (leave blank for old plaintext v1 file)
+      <input id="rotateOldSecret" type="password" maxlength="256" autocomplete="off">
+    </label>
+    <label>New encryption passphrase (14–256 characters)
+      <input id="rotateNewSecret" type="password" minlength="14" maxlength="256" autocomplete="new-password">
+    </label>
+    <label>Confirm new encryption passphrase
+      <input id="rotateConfirmSecret" type="password" minlength="14" maxlength="256" autocomplete="new-password">
+    </label>
+  </div>
+  <button id="rotateSubmit" type="button" disabled>Encrypt / rotate PRIVATE session without altering current work</button>
+  <p id="rotateMessage" class="message" role="status" aria-live="polite">Choose the exact original source cohort before migrating a PRIVATE session.</p>
+  <p class="footnote">Strict byte-hash, event, metric and stage admission happens before creating a new encrypted envelope. Failed or cancelled migrations do not change the original file or current local review. Encryption protects the downloaded content under the passphrase; it does not authenticate source provenance, authorization or verified findings. There is no password recovery.</p>
+</section>
+<section class="panel no-print" id="revision">
+  <div class="section-head"><h2>11 / PRIVATE human review revision comparison</h2><span class="tag">Read-only · offline</span></div>
+  <p>Compare two separately saved, source-byte-bound PRIVATE HUMAN sessions against the exact same already-admitted original cohort. This view <strong>does not restore, merge or rewrite either session</strong>. It shows changes to HUMAN stage choices and indicates whether saved HUMAN notes were added, removed or edited, <strong>without displaying or exporting note text</strong>. File order is a human comparison preference, not authenticated chronology.</p>
+  <div class="queue-controls">
+    <label class="file-picker">Earlier PRIVATE HUMAN session
+      <input id="revisionEarlierFile" type="file" accept=".json,application/json" disabled>
+    </label>
+    <label class="file-picker">Later PRIVATE HUMAN session
+      <input id="revisionLaterFile" type="file" accept=".json,application/json" disabled>
+    </label>
+  </div>
+  <label>Passphrase shared by encrypted PRIVATE revisions (leave blank for older plaintext v1)
+    <input id="revisionUnlockPassphrase" type="password" maxlength="256" autocomplete="off">
+  </label>
+  <button id="revisionCompare" type="button" disabled>Decrypt and compare PRIVATE revisions · no mutation</button>
+  <p id="revisionCompareSummary" class="message" role="status" aria-live="polite">Choose two source-bound PRIVATE sessions after admitting their original snapshots.</p>
+  <div id="revisionCompareTable" class="tablewrap" role="region" tabindex="0" aria-label="Private source-bound HUMAN revision differences"></div>
+  <p id="revisionCompareCount" class="footnote"></p>
+  <div class="controls">
+    <button id="revisionExportJson" class="secondary" type="button" disabled>Export PRIVATE revision JSON</button>
+    <button id="revisionExportCsv" class="secondary" type="button" disabled>Export PRIVATE revision CSV</button>
+    <button id="revisionExportBrief" class="ghost" type="button" disabled>Export PRIVATE script-free revision brief</button>
+  </div>
+  <p class="footnote">Both source-bound bundles are fully re-admitted, including exact input byte digests and event scope, before comparison. No original IDs, source hashes, filenames or saved note text appear in the comparison exports. Changed or absent HUMAN declarations are not evidence of a resolved issue. The current working review remains untouched.</p>
+</section>
+
+<section class="panel no-print" id="humanRounds">
+  <div class="section-head"><h2>12 / PRIVATE HUMAN review rounds</h2><span class="tag">2–8 source-bound revisions</span></div>
+  <p>Inspect a manually ordered sequence of 2–8 previously saved PRIVATE HUMAN review sessions. Every session must match the exact original source bytes and original snapshot order. Compare HUMAN stage workloads and how many note contents changed between selected rounds without loading notes into reports. These round numbers are <strong>display ordinals, not proven timestamps or verified remediation</strong>. Nothing is merged into the current HUMAN work.</p>
+  <label class="file-picker">Choose 2–8 PRIVATE source-bound HUMAN session JSON files, in display order
+    <input id="timelineFiles" type="file" accept=".json,application/json" multiple disabled>
+  </label>
+  <label>Passphrase shared by encrypted PRIVATE rounds (leave blank for older plaintext v1)
+    <input id="timelineUnlockPassphrase" type="password" maxlength="256" autocomplete="off">
+  </label>
+  <button id="timelineImport" type="button" disabled>Decrypt and compare HUMAN rounds · read-only</button>
+  <p id="timelineSummary" class="message" role="status" aria-live="polite">Select 2–8 source-bound PRIVATE HUMAN revisions to compare manual slots.</p>
+  <div id="timelineTable" class="tablewrap" role="region" aria-label="Anonymous HUMAN review round counts" tabindex="0"></div>
+  <h3>HUMAN review workload by metric and manual round</h3>
+  <p class="footnote">N = NEEDS_INPUT · F = FOLLOW_UP · H = HUMAN_NOTED. Only manually entered HUMAN statuses; no verified findings or remediation.</p>
+  <div id="timelineMetricTable" class="tablewrap" role="region" aria-label="Private anonymous fixed-metric HUMAN round workload matrix" tabindex="0"></div>
+  <div class="controls">
+    <button id="timelineExportJson" class="secondary" type="button" disabled>Export PRIVATE rounds JSON</button>
+    <button id="timelineExportCsv" class="secondary" type="button" disabled>Export PRIVATE rounds CSV</button>
+    <button id="timelineExportMetrics" class="secondary" type="button" disabled>Export PRIVATE metric workload CSV</button>
+    <button id="timelineExportBrief" class="ghost" type="button" disabled>Export PRIVATE script-free rounds brief</button>
+  </div>
+  <p class="footnote">Only aggregate HUMAN self-report counts are retained for this view; original source identities, digests, filenames and HUMAN note text are never in these exports. A missing note, changed HUMAN stage or absent source flag does not establish a verified fix. Previous comparison remains visible when any new file fails atomic admission.</p>
+</section>
+<section class="panel no-print">
+  <div class="section-head"><h2>13 / Explicit local handoff</h2><span class="tag">No authority</span></div>
+  <div class="controls">
+    <button id="exportJson" type="button" disabled>Export aggregate JSON</button>
+    <button id="exportCsv" type="button" disabled>Export anonymous trajectory CSV</button>
+    <button id="exportBrief" type="button" disabled>Download script-free aggregate brief</button>
+    <button id="print" type="button" disabled>Print aggregate brief</button>
+  </div>
+  <p class="footnote">Anonymous exports include no original scenario IDs, file names, uploaded hashes, raw source JSON or private notes. Source status and metric flags remain unverified claims from the imported reports. All authorization, consent, dispatch and release flags remain false.</p>
+</section>
+<section id="printBrief" class="print-only" aria-label="Anonymous aggregate brief"></section>
+</main>
+<footer>LightUp Assessment Trends · local comparison only · no network, storage, scanner, handler, grant or release capability.</footer>
+</body>
+</html>
