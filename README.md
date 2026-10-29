@@ -122,3 +122,10 @@ CSRF protection.
 - **Security Twin (planned)** — durable current-state model, attack graph and future-state change simulation.
 
 See `docs/ai-orchestration.md` for the AI-layer contracts.
+
+
+For operator-readable local verification, run
+`lightup-lab-safety-canary --format text`. The default `--format json`
+remains compatible with CI; either output reports PASS/HOLD and never grants
+permission to scan real targets or deploy. Text receipts contain no private
+paths, request data or user identities.

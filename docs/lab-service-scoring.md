@@ -88,3 +88,13 @@ The synthetic client session is also denied access to the operator dashboard.
 An otherwise valid request with mismatched Origin or cross-site Fetch Metadata
 must be rejected before SQLite mutation, while an equivalent same-origin
 request with valid CSRF is accepted as an unapproved synthetic request.
+
+## Offline operator safety summary
+
+The installed `lightup-lab-safety-canary --format text` command displays a
+brief human-readable PASS/HOLD summary of auth/session boundaries, tenant
+isolation and the three known synthetic scorer outcomes. The existing
+machine-readable JSON receipt remains the default, including for CI.
+Failures return code 2 in both modes, without private exception content.
+The `--format` option cannot select a network target or source dataset.
+Neither receipt grants any external-target, deployment or release authority.

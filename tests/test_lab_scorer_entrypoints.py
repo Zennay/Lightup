@@ -130,6 +130,41 @@ class LabScorerEntrypointTests(unittest.TestCase):
             self.assertIs(data[field], True)
         self.assertIs(data["deployment_authorized"], False)
 
+    def test_text_summary_from_real_fixed_loopback_product(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            result = lab_canary.main(["--format", "text"])
+        self.assertEqual(result, 0)
+        summary = output.getvalue()
+        for line in (
+            "offline lab safety gate: PASS",
+            "Service scorer: PASS (synthetic valid findings: 1)",
+            "TLS scorer: PASS (synthetic valid findings: 1)",
+            "HTTP scorer: PASS (synthetic valid findings: 5)",
+            "External target and deployment authority: NONE",
+        ):
+            self.assertIn(line, summary)
+        self.assertNotIn("synthetic.example.test", summary)
+
+    def test_text_mode_failure_never_exposes_private_data(self) -> None:
+        with patch("lightup.lab_canary.run_lab_service_inventory_score",
+                   side_effect=RuntimeError("PRIVATE /tmp/client-secret")):
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main(["--format", "text"])
+        self.assertEqual(code, 2)
+        self.assertEqual(output.getvalue().strip(), (
+            "LightUp offline lab safety gate: HOLD\n"
+            "No external target or deployment authorized"
+        ))
+
+    def test_unknown_format_rejected_before_any_scorer(self) -> None:
+        with patch("lightup.lab_canary.run_lab_service_inventory_score") as scorer:
+            with redirect_stderr(io.StringIO()) as error:
+                with self.assertRaises(SystemExit) as caught:
+                    lab_canary.main(["--format", "/tmp/PRIVATE-target"])
+        self.assertEqual(caught.exception.code, 2)
+        self.assertNotIn("PRIVATE-target", error.getvalue())
+        scorer.assert_not_called()
+
     def test_safety_gate_rejects_missing_checks_and_noncanonical_metrics(self) -> None:
         from copy import deepcopy
         metrics = {

@@ -186,7 +186,7 @@ def _run_canary() -> int:
 
     if not (not Path(directory).exists()):
         raise RuntimeError("Offline safety gate denied: temporary-state cleanup")
-    print(json.dumps({
+    return {
         "status": "PASS", "passed": True,
         "public_target_denied": True, "execution_enabled": False,
         "authentication_required": True, "activation_locked": True,
@@ -220,8 +220,25 @@ def _run_canary() -> int:
         "web_baseline_missed_findings": score_metrics["missed_findings"],
         "web_baseline_reproducibility": score_metrics["reproducibility"],
         "web_baseline_evidence_quality": score_metrics["evidence_quality"],
-    }, sort_keys=True))
-    return 0
+    }
+
+
+def _render_text(result: dict) -> str:
+    """Operator-facing output with no private artifacts or authority claims."""
+    if result["status"] != "PASS":
+        return "LightUp offline lab safety gate: HOLD\nNo external target or deployment authorized"
+    return "\n".join((
+        "LightUp offline lab safety gate: PASS",
+        "Mode: FIXED LOOPBACK LAB; external execution: DISABLED",
+        "Authentication, CSRF and session revocation: PASS",
+        "Client isolation, operator roles and origin boundaries: PASS",
+        f"Service scorer: PASS (synthetic valid findings: {result['service_inventory_valid_findings']})",
+        f"TLS scorer: PASS (synthetic valid findings: {result['tls_baseline_valid_findings']})",
+        f"HTTP scorer: PASS (synthetic valid findings: {result['web_baseline_valid_findings']})",
+        "Ephemeral state: REMOVED",
+        "External target and deployment authority: NONE",
+    ))
+
 
 class _PrivateArgumentParser(argparse.ArgumentParser):
     """Never echo caller-provided target or path strings into shared logs."""
@@ -236,16 +253,20 @@ def main(argv: list[str] | None = None) -> int:
         prog="lightup-lab-safety-canary",
         description="Offline fixed-loopback safety gate.",
     )
-    parser.parse_args(argv)  # Reject caller-supplied targets without running labs.
+    parser.add_argument("--format", choices=("json", "text"), default="json",
+                        help="Output one machine-readable JSON receipt or a private-safe summary")
+    args = parser.parse_args(argv)  # No caller-supplied target is supported.
+    exit_code = 0
     try:
-        return _run_canary()
+        result = _run_canary()
     except Exception:
-        print(json.dumps({
+        exit_code = 2
+        result = {
             "status": "HOLD", "passed": False, "lab_only": True,
-            "external_target_authorized": False,
-            "deployment_authorized": False,
-        }, sort_keys=True))
-        return 2
+            "external_target_authorized": False, "deployment_authorized": False,
+        }
+    print(_render_text(result) if args.format == "text" else json.dumps(result, sort_keys=True))
+    return exit_code
 
 
 if __name__ == "__main__":
