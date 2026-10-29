@@ -211,12 +211,46 @@ def validate_source(source: Any) -> dict[str, Any]:
     return root
 
 
+def _open_without_symlink_components(path: str) -> int:
+    """Open a path while refusing symlinks in every supplied path component."""
+    require(type(path) is str and bool(path) and "\\x00" not in path)
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    directory = getattr(os, "O_DIRECTORY", 0)
+    require(bool(nofollow) and bool(directory) and os.open in os.supports_dir_fd)
+    require(not path.endswith(os.sep))
+
+    if os.path.isabs(path):
+        directory_fd = os.open(os.sep, os.O_RDONLY | directory | nofollow)
+        parts = path.split(os.sep)[1:]
+    else:
+        directory_fd = os.open(".", os.O_RDONLY | directory | nofollow)
+        parts = path.split(os.sep)
+
+    try:
+        require(bool(parts) and all(part != ".." for part in parts))
+        components = [part for part in parts if part not in ("", ".")]
+        require(bool(components))
+        for component in components[:-1]:
+            next_fd = os.open(
+                component,
+                os.O_RDONLY | directory | nofollow,
+                dir_fd=directory_fd,
+            )
+            os.close(directory_fd)
+            directory_fd = next_fd
+        return os.open(
+            components[-1],
+            os.O_RDONLY | nofollow | getattr(os, "O_NONBLOCK", 0),
+            dir_fd=directory_fd,
+        )
+    finally:
+        os.close(directory_fd)
+
+
 def read_explicit_file(path: str) -> bytes:
     fd = -1
     try:
-        nofollow = getattr(os, "O_NOFOLLOW", 0)
-        require(bool(nofollow))
-        fd = os.open(path, os.O_RDONLY | nofollow | getattr(os, "O_NONBLOCK", 0))
+        fd = _open_without_symlink_components(path)
         before = os.fstat(fd)
         require(stat.S_ISREG(before.st_mode) and before.st_nlink == 1)
         require(0 < before.st_size <= MAX_SOURCE_BYTES)
