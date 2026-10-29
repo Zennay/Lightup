@@ -331,7 +331,9 @@ def _prepare_store_dir(raw_path: str) -> Path:
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
     _check_store_path_components(path)
     _require_private_artifact(path, directory=True)
-    return path.resolve()
+    # Do not resolve the path after validation: resolve() would follow every
+    # component again and reopen a symlink-substitution window.
+    return path
 
 
 def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
@@ -537,7 +539,14 @@ def main(argv: list[str] | None = None) -> int:
             if destination.exists() or destination.is_symlink():
                 _verify_existing_bundle(destination, receipt_bytes, digest)
             else:
+                # Recheck store custody at the publication boundary, then
+                # validate the installed bundle after the atomic rename.
+                _check_store_path_components(store_dir)
+                _require_private_artifact(store_dir, directory=True)
                 os.replace(stage, destination)
+                _check_store_path_components(store_dir)
+                _require_private_artifact(store_dir, directory=True)
+                _verify_existing_bundle(destination, receipt_bytes, digest)
             print(json.dumps({
                 "outcome": receipt["outcome"], "receipt_sha256": digest,
                 "store_path": str(destination),
