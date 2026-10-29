@@ -314,7 +314,11 @@ def _check_store_path_components(path: Path) -> None:
         if candidate == path:
             continue
         mode = stat.S_IMODE(info.st_mode)
-        if mode & 0o022 and not (info.st_uid == 0 and mode & stat.S_ISVTX):
+        sticky_temp_dirs = {Path("/tmp"), Path("/var/tmp"), Path("/dev/shm")}
+        is_root_owned_sticky_temp = (
+            candidate in sticky_temp_dirs and info.st_uid == 0 and bool(mode & stat.S_ISVTX)
+        )
+        if mode & 0o022 and not is_root_owned_sticky_temp:
             raise PermissionError("store path ancestor must not be group/other writable")
 
 
