@@ -256,6 +256,23 @@ class WebAppTest(unittest.TestCase):
                         body.index('aria-label="Client task shortcuts"'))
         self.assertEqual(self.store.list_assessment_requests(self.operator), [])
 
+    def test_private_report_explains_separate_safety_gates(self):
+        status, _, body = self.request(
+            "GET", f"/portal/{self.client_a.client_id}/report", token=self.a_token,
+        )
+        self.assertEqual(status, "200 OK")
+        self.assertIn('id="report-safety-gates"', body)
+        self.assertIn("What must happen before any future testing?", body)
+        self.assertIn("Request and operator review", body)
+        self.assertIn("Written authorization and exact scope", body)
+        self.assertIn("Separate risk decision", body)
+        self.assertIn("Action-time safety checks and HUMAN GO", body)
+        self.assertIn("This report does not start testing; execution remains OFF.", body)
+        self.assertIn("This report authorizes no action.", body)
+        self.assertLess(body.index('id="report-safety-gates"'),
+                        body.index('id="report-agenda-heading"'))
+        self.assertEqual(self.store.list_assessment_requests(self.operator), [])
+
     def test_portal_submits_assessment_request(self):
         status, headers, _ = self.request(
             "POST", f"/portal/{self.client_a.client_id}/requests",
