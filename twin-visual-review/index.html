@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp · Declared Future Topology Review</title>
+<link rel="stylesheet" href="./style.css">
+<script defer src="./app.js"></script>
+</head>
+<body>
+<header class="mast">
+ <div class="eyebrow">LIGHTUP / FUTURE SECURITY / HUMAN LAB-ONLY</div>
+ <h1>Before / after topology review</h1>
+ <p>Compare two <strong>human-declared, unverified</strong> models. No network, target activity, permission, findings, or automated risk verdict.</p>
+ <div class="banner" role="note"><strong>DRAFT / HOLD</strong> · This is not the authenticated Security Twin. A declared change is not proof of reachability, exploitability, security improvement, or permission to act.</div>
+</header>
+<main>
+ <section class="panel full" aria-labelledby="workspace-title">
+  <div class="sectionhead"><div><span class="eyebrow">WORKSPACE</span><h2 id="workspace-title">Private local draft</h2></div><span class="chip">Memory only</span></div>
+  <div class="toolbar">
+   <button id="demo">Load fictional example</button><button id="reset" class="quiet">Clear work</button>
+   <button id="copy" class="quiet">Copy current → proposed</button>
+   <button id="save">Save PRIVATE snapshot</button><button id="brief" class="quiet">Download PRIVATE human brief</button><button id="counts" class="quiet">Counts JSON</button><button id="countsCsv" class="quiet">Counts CSV</button>
+   <label class="upload">Import PRIVATE snapshot <input id="import" type="file" accept=".json,application/json"></label>
+  </div>
+  <p class="subdued">Imports replace the current draft only after confirmation. Files remain in this tab's memory until you explicitly download them. Downloaded PRIVATE snapshots are <strong>not encrypted</strong>.</p>
+  <p id="status" role="status" aria-live="polite"></p>
+ </section>
+ <section class="panel" aria-labelledby="edit-title">
+  <div class="sectionhead"><div><span class="eyebrow">MODEL EDITOR</span><h2 id="edit-title">Declared components</h2></div></div>
+  <label for="state">Editing snapshot</label>
+  <select id="state"><option value="current">Current (declared)</option><option value="proposed">Proposed future (declared)</option></select>
+  <form id="nodeForm" class="editor-form">
+   <h3>Add node</h3>
+   <label for="nodeId">Local ID (letters, digits, _ or -)</label><input id="nodeId" required pattern="[A-Za-z][A-Za-z0-9_-]{0,31}" maxlength="32" placeholder="billing_api" autocomplete="off">
+   <label for="nodeLabel">Display label</label><input id="nodeLabel" required maxlength="80" placeholder="Fictional billing API" autocomplete="off">
+   <label for="nodeType">Category</label><select id="nodeType"><option value="service">Service</option><option value="identity">Identity</option><option value="data">Data store</option><option value="boundary">Boundary</option></select>
+   <button type="submit">Add declared node</button>
+  </form>
+  <div id="nodes" class="items" aria-label="Declared nodes"></div>
+  <form id="edgeForm" class="editor-form">
+   <h3>Add directional relationship</h3>
+   <label for="edgeFrom">From</label><select id="edgeFrom"></select>
+   <label for="edgeTo">To</label><select id="edgeTo"></select>
+   <label for="edgeKind">Human assumption</label>
+   <select id="edgeKind"><option value="calls">Calls</option><option value="may-access">May access</option><option value="trusts">Trusts</option><option value="crosses-boundary">Crosses boundary</option></select>
+   <button type="submit">Add declared relationship</button>
+  </form>
+  <div id="edges" class="items" aria-label="Declared relationships"></div>
+ </section>
+ <section class="panel" aria-labelledby="questions-title">
+  <div class="sectionhead"><div><span class="eyebrow">HUMAN FOLLOW-UP</span><h2 id="questions-title">What needs a real owner?</h2></div></div>
+  <p>Only a local discussion choice, never a security decision. No names, source evidence, secrets or free-text.</p>
+  <label for="followup">Suggested next step</label>
+  <select id="followup">
+   <option value="needs-owner">Identify the true system owner</option>
+   <option value="needs-evidence">Request independently sourced evidence</option>
+   <option value="clarify-boundary">Clarify trust and tenant boundaries</option>
+   <option value="lab-only-followup">Plan separate authorized isolated-lab review</option>
+  </select>
+  <h3>Difference overview</h3>
+  <div class="metrics" id="metrics"></div>
+  <h3>Literal declared differences</h3>
+  <div id="changes" class="change-list" aria-live="polite"></div>
+  <div class="banner amber">No verdict. Unknown coverage remains unknown. Deleted graph entries are <strong>not</strong> verified vulnerability fixes.</div>
+ </section>
+ <section class="panel full" aria-labelledby="viz-title">
+  <div class="sectionhead"><div><span class="eyebrow">VISUAL EXPLANATION</span><h2 id="viz-title">Two independent declared snapshots</h2></div><span class="chip">Read-only preview</span></div>
+  <div class="twins">
+   <div><h3>Current declaration</h3><svg id="currentGraph" role="img" aria-label="Diagram of current declared model" viewBox="0 0 600 400"></svg></div>
+   <div><h3>Proposed declaration</h3><svg id="proposedGraph" role="img" aria-label="Diagram of future declared model" viewBox="0 0 600 400"></svg></div>
+  </div>
+  <p class="subdued">Lines are directional, human-supplied hypotheses; their position is a layout convenience, not actual network topology. Keyboard-accessible difference list above is the authoritative local *declaration* display.</p>
+ </section>
+ <section class="panel full" aria-labelledby="chains-title">
+  <div class="sectionhead"><div><span class="eyebrow">HYPOTHETICAL LINK CHAINS</span><h2 id="chains-title">Declared identity → data connection chains</h2></div><span class="chip">Human reasoning only</span></div>
+  <p>Enumerates only <strong>explicitly declared, directional</strong> relationship sequences (1–4 edges, max 200 displayed). It does not infer real authorization, exploitation, network routes or evidence. Absent chains are not fixed vulnerabilities.</p>
+  <div class="metrics" id="chainMetrics"></div>
+  <div id="chainNotice" role="status" class="subdued"></div>
+  <div id="chainList" class="change-list" aria-label="Declared connection chains"></div>
+ </section>
+</main>
+<footer>LightUp · Not connected to a client, target, data store, grant, scanner, CI verdict or deployed Security Twin. Draft/HOLD.</footer>
+</body></html>
