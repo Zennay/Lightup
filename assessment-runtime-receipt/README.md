@@ -13,7 +13,7 @@ Intake constraints: regular file owned by the invoking effective user ID, single
 
 ## Bounded multi-source batch (offline)
 
-For a 2–8-source review, use `batch.py` with an owner-private manifest containing only canonical **absolute** local paths and separately recorded lowercase SHA-256 byte expectations. The machine-readable coarse shape is described by `batch-manifest.schema.json`; the runtime remains stricter about path components, ownership, file mode, links, stable reads, duplicate paths/digests and actual byte identity. Schema validity is not source validation or authorization. Example (replace paths and digests with your own private lab artifacts):
+For a 2–8-source review, use `batch.py` with an owner-private manifest containing only canonical **absolute** local paths and separately recorded lowercase SHA-256 byte expectations. The input shape is described by `batch-manifest.schema.json` and the output envelope by `batch-receipt.schema.json`; the runtime remains stricter about path components, ownership, file mode, links, stable reads, duplicate paths/digests and actual byte identity. Schema validity is not source validation or authorization. Example (replace paths and digests with your own private lab artifacts):
 
 ```json
 {

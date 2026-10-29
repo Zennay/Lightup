@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LightUp offline batch receipt output v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "receipt_format",
+    "status",
+    "manifest_authenticated",
+    "source_authenticated",
+    "source_schema_verified",
+    "byte_expectations_match",
+    "authorized",
+    "consent_verified",
+    "dispatch_allowed",
+    "release_allowed"
+  ],
+  "properties": {
+    "receipt_format": {
+      "const": "lightup-offline-receipt-batch-receipt-v2"
+    },
+    "status": {
+      "const": "HOLD"
+    },
+    "manifest_authenticated": {
+      "const": false
+    },
+    "source_authenticated": {
+      "const": false
+    },
+    "source_schema_verified": {
+      "const": false
+    },
+    "byte_expectations_match": {
+      "type": "boolean"
+    },
+    "authorized": {
+      "const": false
+    },
+    "consent_verified": {
+      "const": false
+    },
+    "dispatch_allowed": {
+      "const": false
+    },
+    "release_allowed": {
+      "const": false
+    },
+    "sources_admitted": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 8
+    },
+    "total_bytes": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 2097152
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "ordered_receipt_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ordinal",
+          "source_reported_status",
+          "byte_count",
+          "source_sha256"
+        ],
+        "properties": {
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8
+          },
+          "source_reported_status": {
+            "enum": [
+              "HOLD",
+              "REVIEW_ONLY"
+            ]
+          },
+          "byte_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 262144
+          },
+          "source_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "byte_expectations_match": {
+            "const": true
+          }
+        },
+        "required": [
+          "byte_expectations_match"
+        ]
+      },
+      "then": {
+        "required": [
+          "sources_admitted",
+          "total_bytes",
+          "manifest_sha256",
+          "ordered_receipt_sha256",
+          "items"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "byte_expectations_match": {
+            "const": false
+          }
+        },
+        "required": [
+          "byte_expectations_match"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "sources_admitted"
+              ]
+            },
+            {
+              "required": [
+                "total_bytes"
+              ]
+            },
+            {
+              "required": [
+                "manifest_sha256"
+              ]
+            },
+            {
+              "required": [
+                "ordered_receipt_sha256"
+              ]
+            },
+            {
+              "required": [
+                "items"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
