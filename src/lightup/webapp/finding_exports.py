@@ -40,11 +40,23 @@ class FindingExportWebApp(LightUpWebApp):
     def portal(self, auth: AuthState, form: dict[str, str], client_id: str) -> Response:
         response = super().portal(auth, form, client_id)
         href = html.escape(f"/portal/{client_id}/findings.csv", quote=True)
-        body = response.body.decode("utf-8").replace(
-            "<h2>Findings</h2>",
-            f'<div class="row"><h2>Findings</h2><a href="{href}">Download CSV</a></div>',
-            1,
+        body = response.body.decode("utf-8")
+        # The client portal heading is now task-labelled and carries a stable
+        # anchor. Match that heading first, while retaining the legacy heading
+        # fallback for any older renderer that still uses it.
+        body, replacements = re.subn(
+            r'<h2 id="findings-heading">Recorded findings</h2>',
+            f'<div class="row"><h2 id="findings-heading">Recorded findings</h2>'
+            f'<a href="{href}">Download CSV</a></div>',
+            body,
+            count=1,
         )
+        if replacements == 0:
+            body = body.replace(
+                "<h2>Findings</h2>",
+                f'<div class="row"><h2>Findings</h2><a href="{href}">Download CSV</a></div>',
+                1,
+            )
         return Response(body, status=response.status)
 
 

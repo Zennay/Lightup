@@ -233,6 +233,46 @@ class WebAppTest(unittest.TestCase):
                                      token=self.op_token)
         self.assertNotIn("Secret-A-finding", body_op)
 
+    def test_portal_explains_separate_safety_gates(self):
+        status, _, body = self.request(
+            "GET", f"/portal/{self.client_a.client_id}", token=self.a_token,
+        )
+        self.assertEqual(status, "200 OK")
+        self.assertIn('id="assessment-safety-gates"', body)
+        self.assertIn("Why a request does not start testing", body)
+        self.assertIn("Request and operator review", body)
+        self.assertIn("Written authorization and exact scope", body)
+        self.assertIn("Separate risk decision", body)
+        self.assertIn("Action-time safety checks and HUMAN GO", body)
+        self.assertIn("This portal does not start testing; execution remains OFF.", body)
+        self.assertIn(
+            "These are distinct gates, not a progress indicator or proof that any gate has passed.",
+            body,
+        )
+        # Preserve the task-first hierarchy and keep the disclosure side-effect free.
+        self.assertLess(body.index('id="next-step-heading"'),
+                        body.index('id="assessment-safety-gates"'))
+        self.assertLess(body.index('id="assessment-safety-gates"'),
+                        body.index('aria-label="Client task shortcuts"'))
+        self.assertEqual(self.store.list_assessment_requests(self.operator), [])
+
+    def test_private_report_explains_separate_safety_gates(self):
+        status, _, body = self.request(
+            "GET", f"/portal/{self.client_a.client_id}/report", token=self.a_token,
+        )
+        self.assertEqual(status, "200 OK")
+        self.assertIn('id="report-safety-gates"', body)
+        self.assertIn("What must happen before any future testing?", body)
+        self.assertIn("Request and operator review", body)
+        self.assertIn("Written authorization and exact scope", body)
+        self.assertIn("Separate risk decision", body)
+        self.assertIn("Action-time safety checks and HUMAN GO", body)
+        self.assertIn("This report does not start testing; execution remains OFF.", body)
+        self.assertIn("This report authorizes no action.", body)
+        self.assertLess(body.index('id="report-safety-gates"'),
+                        body.index('id="report-agenda-heading"'))
+        self.assertEqual(self.store.list_assessment_requests(self.operator), [])
+
     def test_portal_submits_assessment_request(self):
         status, headers, _ = self.request(
             "POST", f"/portal/{self.client_a.client_id}/requests",
@@ -240,9 +280,12 @@ class WebAppTest(unittest.TestCase):
             token=self.a_token, csrf=self.a_csrf,
         )
         self.assertEqual(status, "303 See Other")
-        self.assertEqual(headers["Location"], f"/portal/{self.client_a.client_id}")
         requests = self.store.list_assessment_requests(self.operator)
         self.assertEqual(len(requests), 1)
+        self.assertEqual(
+            headers["Location"],
+            f"/portal/{self.client_a.client_id}/requests/{requests[0].request_id}",
+        )
         self.assertEqual(requests[0].requested_assets,
                          ("app.acme.example", "api.acme.example"))
         self.assertIs(requests[0].requested_mode, AssessmentMode.AUTHORIZED_ASSESSMENT)
@@ -265,13 +308,92 @@ class WebAppTest(unittest.TestCase):
         request_id = self.store.list_assessment_requests(self.operator)[0].request_id
         status, _, _ = self.request(
             "POST", f"/assessments/requests/{request_id}/decision",
-            {"decision": "approve"}, token=self.op_token, csrf=self.op_csrf)
+            {"decision": "approve", "reviewed": "yes",
+             "approve_scope_boundary": "understood"},
+            token=self.op_token, csrf=self.op_csrf)
         self.assertEqual(status, "303 See Other")
         decided = self.store.list_assessment_requests(self.operator)[0]
         self.assertEqual(decided.status.value, "approved")
         self.assertEqual(decided.decided_by, self.op_user.user_id)
 
+    def test_request_approval_requires_server_side_scope_acknowledgement(self):
+        self.request(
+            "POST", f"/portal/{self.client_a.client_id}/requests",
+            {"assets": "app.acme.example", "risk": "2"},
+            token=self.a_token, csrf=self.a_csrf,
+        )
+        request_record = self.store.list_assessment_requests(self.operator)[0]
+        decision_url = f"/assessments/requests/{request_record.request_id}/decision"
+
+        status, _, _ = self.request(
+            "POST", decision_url,
+            {"decision": "approve", "reviewed": "yes"},
+            token=self.op_token, csrf=self.op_csrf,
+        )
+        self.assertEqual(status, "400 Bad Request")
+        still_pending = self.store.get_assessment_request(
+            self.operator, request_record.request_id,
+        )
+        self.assertEqual(still_pending.status.value, "submitted")
+
+        status, _, _ = self.request(
+            "POST", decision_url,
+            {"decision": "approve", "reviewed": "yes",
+             "approve_scope_boundary": "understood"},
+            token=self.op_token, csrf=self.op_csrf,
+        )
+        self.assertEqual(status, "303 See Other")
+        approved = self.store.get_assessment_request(
+            self.operator, request_record.request_id,
+        )
+        self.assertEqual(approved.status.value, "approved")
+
+    def test_risk_approval_requires_server_side_scope_acknowledgement(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Risk acknowledgement review",
+        )
+        client_context = self.store.context_for_user(self.user_a.user_id)
+        approval = self.store.request_risk_elevation(
+            client_context, engagement.engagement_id, RiskLevel.ELEVATED,
+            "A separate human risk review is required",
+        )
+        decision_url = f"/assessments/elevations/{approval.approval_id}/decision"
+
+        status, _, _ = self.request(
+            "POST", decision_url,
+            {"decision": "approve", "reviewed": "yes"},
+            token=self.op_token, csrf=self.op_csrf,
+        )
+        self.assertEqual(status, "400 Bad Request")
+        still_pending = self.store.list_risk_approvals(self.operator)[0]
+        self.assertEqual(still_pending.status.value, "pending")
+
+        status, _, _ = self.request(
+            "POST", decision_url,
+            {"decision": "approve", "reviewed": "yes",
+             "approve_risk_boundary": "understood"},
+            token=self.op_token, csrf=self.op_csrf,
+        )
+        self.assertEqual(status, "303 See Other")
+        approved = self.store.list_risk_approvals(self.operator)[0]
+        self.assertEqual(approved.status.value, "approved")
+
     def test_operator_creates_engagement_and_grant_via_ui(self):
+        self.request(
+            "POST", f"/portal/{self.client_a.client_id}/requests",
+            {"assets": "app.acme.example, api.acme.example", "risk": "3",
+             "notes": "Q4 authorized scope review"},
+            token=self.a_token, csrf=self.a_csrf,
+        )
+        approved_request_id = self.store.list_assessment_requests(self.operator)[0].request_id
+        status, _, _ = self.request(
+            "POST", f"/assessments/requests/{approved_request_id}/decision",
+            {"decision": "approve", "reviewed": "yes",
+             "approve_scope_boundary": "understood"},
+            token=self.op_token, csrf=self.op_csrf,
+        )
+        self.assertEqual(status, "303 See Other")
+
         status, headers, _ = self.request(
             "POST", f"/clients/{self.client_a.client_id}/engagements",
             {"name": "Q4 assessment"}, token=self.op_token, csrf=self.op_csrf)
@@ -286,7 +408,8 @@ class WebAppTest(unittest.TestCase):
             {"approved_by": "CISO Acme", "reference": "AUTH-2026-007",
              "assets": "app.acme.example, api.acme.example",
              "excluded_assets": "legacy.acme.example",
-             "capabilities": "web-baseline", "max_risk": "3", "valid_days": "30"},
+             "capabilities": "web-baseline", "max_risk": "3", "valid_days": "30",
+             "approved_request_id": approved_request_id},
             token=self.op_token, csrf=self.op_csrf)
         self.assertEqual(status, "303 See Other")
         grant = self.store.get_current_grant(self.operator, engagement.engagement_id)
@@ -296,7 +419,18 @@ class WebAppTest(unittest.TestCase):
         self.assertFalse(grant.scope.allows_asset("legacy.acme.example"))
         _, _, body = self.request("GET", f"/clients/{self.client_a.client_id}",
                                   token=self.op_token)
-        self.assertIn("Authorization current", body)
+        self.assertIn("Current recorded grant · execution OFF", body)
+        plan_status, _, plan_body = self.request(
+            "GET", f"/portal/{self.client_a.client_id}/authorization-plan",
+            token=self.a_token,
+        )
+        self.assertEqual(plan_status, "200 OK")
+        self.assertIn("No testing authority", plan_body)
+        self.assertIn("Testing not authorized", plan_body)
+        self.assertIn("Revocation must be checked immediately before any action", plan_body)
+        self.assertIn("separate final human approval", plan_body)
+        self.assertNotIn("PLAN ONLY · execution locked", plan_body)
+        self.assertNotIn("HOLD · no execution", plan_body)
 
         # Destructive risk cannot be granted through the UI.
         status, _, _ = self.request(
@@ -322,6 +456,51 @@ class WebAppTest(unittest.TestCase):
     def test_no_active_execution_routes_exist(self):
         for _method, pattern, _handler, _access in self.app.routes:
             self.assertNotRegex(pattern.pattern, r"(scan|exploit|probe|execute|attack)")
+
+
+    def test_client_portal_uses_progressive_disclosure_for_secondary_panels(self):
+        self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Q4 UX review",
+        )
+        client_context = self.store.context_for_user(self.user_a.user_id)
+        recorded = self.store.submit_assessment_request(
+            client_context,
+            requested_assets=("app.acme.example",),
+            requested_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            requested_risk=RiskLevel.STANDARD,
+            notes="Review the owned staging application",
+        )
+
+        status, _, body = self.request(
+            "GET", f"/portal/{self.client_a.client_id}", token=self.a_token,
+        )
+        self.assertEqual(status, "200 OK")
+        primary = body.index('<section class="card next-action"')
+        shortcuts = body.index('<nav class="task-links"')
+        counts = body.index(
+            '<details class="secondary-panel"><summary>Assessment counts',
+        )
+        history = body.index(
+            '<details class="secondary-panel"><summary id="requests-history-heading">Recent requests',
+        )
+        coverage = body.index(
+            '<details class="secondary-panel"><summary id="coverage-details">Coverage by engagement',
+        )
+        self.assertLess(primary, shortcuts)
+        self.assertLess(shortcuts, counts)
+        self.assertLess(counts, history)
+        self.assertLess(history, coverage)
+        self.assertNotIn('<details class="secondary-panel" open', body)
+        self.assertIn("Testing is not authorized", body)
+        self.assertIn("Why testing is still locked", body)
+        self.assertIn("Steps still needed", body)
+        self.assertIn("testing stays off", body)
+        self.assertNotIn("PLAN ONLY · testing locked", body)
+        self.assertNotIn("all HOLD", body)
+        self.assertNotIn("Separate blocking steps", body)
+        self.assertNotIn("revocation-at-use or HUMAN GO", body)
+        self.assertIn(f"Request {recorded.request_id[:8]}", body)
+        self.assertIn("Coverage — Q4 UX review", body)
 
 
 if __name__ == "__main__":

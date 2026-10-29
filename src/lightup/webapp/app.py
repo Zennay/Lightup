@@ -58,6 +58,15 @@ _RISK_LABELS = {
     RiskLevel.DESTRUCTIVE_LAB_ONLY: "5 — Destructive (lab only)",
 }
 
+_AUTH_REVIEW_ACTIONS = {
+    "review_client_requests": "Client requests awaiting review",
+    "review_risk_decisions": "Risk elevations awaiting review",
+    "review_unrestricted_grants": "Unrestricted legacy scope records",
+    "review_expired_grants": "Expired request-bound grant windows",
+    "review_future_grants": "Future-dated grant windows",
+    "review_missing_grants": "Engagements without request-bound grants",
+}
+
 _CSS = """
 :root { --bg:#f6f7f8; --card:#ffffff; --ink:#1c2430; --muted:#5d6b7a;
         --line:#e3e7ea; --accent:#2f6f5f; --warn:#8a5a19; --lock:#7a2e2e; }
@@ -67,15 +76,95 @@ body { margin:0; background:var(--bg); color:var(--ink);
 a { color:var(--accent); text-decoration:none; }
 header { background:var(--card); border-bottom:1px solid var(--line); }
 .wrap { max-width:960px; margin:0 auto; padding:0 20px; }
-header .wrap { display:flex; flex-wrap:wrap; align-items:baseline; gap:18px;
-               padding-top:14px; padding-bottom:14px; }
+header .wrap { display:flex; flex-wrap:wrap; align-items:center; gap:18px;
+               padding-top:12px; padding-bottom:12px; }
 .brand { font-weight:650; letter-spacing:.02em; }
-nav { display:flex; gap:14px; flex-wrap:wrap; align-items:baseline; }
-nav a { color:var(--muted); padding:2px 0; }
+.skip-link { position:absolute; left:12px; top:-120px; z-index:20;
+             background:var(--card); color:var(--ink); padding:10px 14px;
+             border:3px solid var(--accent); border-radius:8px; }
+.skip-link:focus { top:10px; }
+nav { display:flex; gap:8px 14px; flex-wrap:wrap; align-items:center; }
+nav a { color:var(--muted); display:inline-flex; min-height:44px;
+        align-items:center; padding:9px 4px; }
 nav a.active { color:var(--ink); border-bottom:2px solid var(--accent); }
 nav form { display:inline; }
 nav button { background:none; border:0; color:var(--muted); cursor:pointer;
              font:inherit; padding:0; }
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,
+textarea:focus-visible,summary:focus-visible {
+  outline:3px solid var(--accent); outline-offset:3px;
+}
+button,input:not([type="hidden"]):not([type="checkbox"]),select { min-height:44px; }
+input[type="checkbox"] { width:auto; min-height:auto; margin:0; }
+label.review-ack { display:flex; align-items:flex-start; gap:10px; margin:12px 0; }
+.report-section { break-inside:avoid; page-break-inside:avoid; }
+.report-section[id^="report-"]:target {
+  outline:3px solid var(--accent); outline-offset:3px;
+  scroll-margin-top:24px;
+}
+.report-section h3 { margin:6px 0 12px; font-size:1rem; }
+.report-section h4 { margin:14px 0 4px; font-size:.9rem; }
+.report-boundary { border-left:4px solid var(--lock); background:#fffaf7; }
+.report-kpis .card { margin-bottom:0; }
+.report-kpis strong { font-size:1.3rem; }
+.report-copy { white-space:pre-wrap; overflow-wrap:anywhere; }
+.report-agenda { border-left:4px solid var(--accent); }
+.report-agenda h2 { margin:8px 0 12px; }
+.report-agenda ol { padding-left:22px; margin:12px 0 0; }
+.report-agenda li { padding:10px 0; border-bottom:1px solid var(--line); }
+.report-agenda li:last-child { border-bottom:0; }
+.report-agenda li p { margin:4px 0; overflow-wrap:anywhere; }
+.report-agenda li a { min-height:44px; display:inline-flex; align-items:center; }
+.report-digest code { display:block; overflow-wrap:anywhere; font-size:.9rem;
+                      line-height:1.5; user-select:all; }
+.report-table { border-collapse:collapse; width:100%; table-layout:fixed; }
+.report-table th,.report-table td { padding:8px; border:1px solid var(--line);
+                                    text-align:left; overflow-wrap:anywhere; }
+.report-table th { font-size:.85rem; }
+.report-footer { margin-top:24px; }
+@media print {
+  body { color:#111; background:#fff; font-size:11pt; }
+  header, .skip-link, .print-controls, nav { display:none !important; }
+  main { padding:0; }
+  .wrap { max-width:none; padding:0; }
+  .card { border-color:#aaa; box-shadow:none; }
+  a { color:inherit; text-decoration:underline; }
+  .report-kpis { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .report-section { break-inside:avoid-page; }
+  .report-section[id^="report-"]:target { outline:none; }
+}
+.report-gap { border-left:4px solid var(--lock); }
+.report-gap ol { padding-left:24px; }
+.report-gap li { padding:8px 0; overflow-wrap:anywhere; }
+.report-gap li a { display:inline-flex; align-items:center; min-height:44px; }
+.report-index { border-left:4px solid var(--line); }
+.report-index ol { padding-left:24px; margin:8px 0 16px; }
+.report-index li { padding:4px 0; overflow-wrap:anywhere; }
+.report-index li a { display:inline-flex; align-items:center;
+                     min-height:38px; }
+.decision-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+                 gap:14px; align-items:stretch; }
+.decision-choice { min-width:0; display:flex; flex-direction:column; }
+.decision-choice h3 { margin:0 0 8px; font-size:1rem; }
+.decision-choice .review-ack { color:var(--ink); line-height:1.5; font-size:.9rem; }
+.decision-choice .review-ack input { flex:0 0 20px; width:20px;
+                                     min-height:20px; margin:3px 0 0; accent-color:var(--accent); }
+.decision-choice button { width:100%; margin-top:auto; min-height:48px; }
+.decision-boundaries { border-left:4px solid var(--lock); background:#fffaf7; }
+.decision-boundaries h2,.decision-facts h2 { margin:0 0 10px; }
+.decision-boundaries ul { margin:10px 0 18px; padding-left:22px; }
+.decision-facts p { overflow-wrap:anywhere; }
+@media (max-width:680px) {
+  .decision-grid { grid-template-columns:minmax(0,1fr); }
+}
+
+.safety-gates { border-left:4px solid var(--lock); background:#fffaf7; }
+.safety-gates summary { color:var(--ink); font-weight:650; min-height:44px;
+                        display:flex; align-items:center; }
+.safety-gates ol { margin:8px 0 0; padding-left:24px; }
+.safety-gates li { padding:7px 0; overflow-wrap:anywhere; }
+.safety-gates li p { margin:4px 0; }
+
 main { padding:28px 0 64px; }
 h1 { font-size:1.35rem; margin:0 0 4px; }
 h2 { font-size:1.05rem; margin:28px 0 10px; }
@@ -106,7 +195,101 @@ label { font-size:.85rem; color:var(--muted); }
 .row { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
        align-items:baseline; }
 .auth { max-width:380px; margin:8vh auto 0; }
+.auth label { display:block; font-weight:650; }
+.login-error { border-left:4px solid var(--lock); background:#fff4f2;
+               padding:8px 12px; margin:0 0 16px; }
+.login-error .error { margin:0; }
 .error { color:var(--lock); font-size:.9rem; }
+.risk-guide { border:1px solid var(--line); background:#f8faf9;
+              border-radius:10px; padding:12px 14px; margin:8px 0 16px; }
+.risk-guide summary { color:var(--ink); font-weight:650; min-height:24px; }
+.risk-guide dl { display:grid; grid-template-columns:minmax(100px, 130px) 1fr;
+                 gap:10px 16px; margin:16px 0 8px; }
+.risk-guide dt { color:var(--ink); font-weight:650; }
+.risk-guide dd { margin:0; color:var(--muted); }
+.risk-guide .meta { margin-bottom:0; }
+.next-action { border-left:4px solid var(--lock); background:#fffaf7; }
+.next-action h2 { margin:10px 0 4px; font-size:1.2rem; }
+.task-links { display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+              gap:12px; margin:0 0 28px; }
+.task-links a { display:block; min-height:96px; padding:14px 16px;
+                border-radius:10px; border:1px solid var(--line);
+                background:var(--card); color:var(--ink); }
+.task-links strong, .task-links span { display:block; }
+.task-links span { color:var(--muted); font-size:.85rem; margin-top:4px; }
+.task-links a:hover { border-color:var(--accent); }
+.secondary-panel { margin:14px 0; padding:10px 14px; border:1px solid var(--line);
+                   border-radius:10px; background:var(--card); }
+.secondary-panel > summary { display:flex; align-items:center; gap:8px;
+                              min-height:44px; color:var(--ink); font-weight:650; }
+.secondary-panel[open] > summary { margin-bottom:12px; }
+.secondary-panel .grid { margin:0; }
+.secondary-panel > :last-child { margin-bottom:0; }
+.grant-request { padding-top:12px; border-top:1px solid var(--line); margin-top:20px; }
+.grant-request h3 { font-size:1rem; margin:4px 0 10px; }
+.grant-step { min-width:0; margin:16px 0; padding:14px;
+              border:1px solid var(--line); border-radius:10px; }
+.grant-step legend { color:var(--ink); font-weight:650; padding:0 6px; }
+.grant-step label { display:block; margin-top:12px; }
+.grant-step input, .grant-step select { max-width:100%; }
+.request-status h3 { margin:0; font-size:1rem; }
+.request-status .request-actions { display:flex; flex-wrap:wrap; gap:10px 18px; }
+.request-status .request-actions a { min-height:44px; display:inline-flex;
+                                    align-items:center; }
+.inbox-jumps { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0; }
+.inbox-jumps a { padding:10px 14px; min-height:44px; display:inline-flex;
+                 align-items:center; background:var(--card);
+                 border:1px solid var(--line); border-radius:8px; }
+.scope-review h3 { margin:0; font-size:1rem; }
+.scope-review .scope-blockers { margin:12px 0; padding:12px 14px;
+                               border-left:3px solid var(--lock);
+                               background:#fffaf7; }
+.scope-review .scope-blockers ul { margin:8px 0 0; padding-left:22px; }
+.scope-review .scope-blockers li { margin:0 0 6px; }
+.finding-card h4 { margin:0; font-size:1rem; }
+.finding-card .remediation-flow { display:grid; list-style:none;
+                                   grid-template-columns:repeat(2,minmax(0,1fr));
+                                   gap:10px; margin:14px 0 4px; padding:0; }
+.finding-card .remediation-flow li { border:1px solid var(--line);
+                                     border-radius:8px; padding:12px; min-width:0; }
+.finding-card .remediation-flow strong { color:var(--ink); }
+.finding-card .remediation-flow p { margin:8px 0 0; overflow-wrap:anywhere; }
+.finding-card .finding-details summary { min-height:44px; display:flex;
+                                         align-items:center; font-weight:650; }
+@media (max-width:560px) {
+  .finding-card .remediation-flow { grid-template-columns:minmax(0,1fr); }
+}
+.risk-options { min-width:0; border:0; padding:0; margin:12px 0 18px; }
+.risk-options legend { color:var(--ink); font-weight:650; padding:0; }
+.risk-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:10px 0; }
+.risk-cards .risk-choice { display:flex; align-items:flex-start; gap:10px;
+                           cursor:pointer; min-height:92px; padding:12px;
+                           border:1px solid var(--line); border-radius:10px;
+                           background:var(--card); color:var(--ink); }
+.risk-cards input[type="radio"] { flex:0 0 20px; width:20px; height:20px;
+                                  min-height:20px; padding:0; margin:3px 0 0;
+                                  accent-color:var(--accent); }
+.risk-cards .risk-choice:focus-within { outline:3px solid var(--accent); outline-offset:2px; }
+.risk-cards strong, .risk-cards small { display:block; }
+.risk-cards small { font-size:.83rem; line-height:1.45; color:var(--muted); margin-top:4px; }
+@media (max-width:560px) {
+  .wrap { padding-left:16px; padding-right:16px; }
+  header .wrap { display:block; padding-top:12px; padding-bottom:12px; }
+  nav { margin-top:8px; gap:4px 12px; }
+  nav a { padding:10px 4px; }
+  nav button { min-height:44px; padding:8px 4px; }
+  .grid { grid-template-columns:minmax(0,1fr); }
+  .task-links { grid-template-columns:minmax(0,1fr); }
+  .task-links a { min-height:74px; }
+  .risk-cards { grid-template-columns:minmax(0,1fr); }
+  .risk-cards .risk-choice { min-height:72px; }
+  .card { padding:14px; }
+  .secondary-panel { padding:10px 12px; }
+  .secondary-panel > summary { align-items:flex-start; }
+  .row { align-items:flex-start; }
+  .risk-guide dl { grid-template-columns:1fr; gap:4px; }
+  .risk-guide dd { margin-bottom:12px; }
+}
 """
 
 
@@ -116,6 +299,138 @@ def _e(value: object) -> str:
 
 def _risk(level: RiskLevel) -> str:
     return _e(_RISK_LABELS[level])
+
+
+def _risk_choice_guide() -> str:
+    """Plain-language risk comparison; information only, never a permit."""
+    return (
+        '<details class="risk-guide">'
+        '<summary>Compare the testing risk levels and required reviews</summary>'
+        '<dl>'
+        '<dt>1 · Passive</dt><dd>Observation and evidence review only. '
+        'Submitting this choice does not approve contacting a system.</dd>'
+        '<dt>2 · Low impact</dt><dd>Would allow only narrowly scoped '
+        'non-destructive checks after a separate explicit authorization.</dd>'
+        '<dt>3 · Standard</dt><dd>Would require specific reviewed scope and '
+        'consent for more involved checks. Never implied by a request.</dd>'
+        '<dt>4 · Elevated</dt><dd>Requires a further independent risk '
+        'decision before any future consideration of activity.</dd>'
+        '</dl>'
+        '<p class="meta">Every level still needs independently verified '
+        'ownership, a reviewed client-origin request, a specific current '
+        'grant, consent, revocation checks and explicit HUMAN GO. '
+        'All target testing is locked in this build.</p>'
+        '</details>'
+    )
+
+
+_RISK_CHOICES = (
+    ("1", "Passive", "Review existing evidence. This form does not contact systems."),
+    ("2", "Low impact", "Limited checks would need separate verified authorization."),
+    ("3", "Standard", "Broader checks would need exact reviewed scope and consent."),
+    ("4", "Elevated", "An additional independent human risk decision is required."),
+)
+
+
+def _risk_choice_cards(prefix: str, selected: str = "",
+                       invalid: bool = False) -> str:
+    """Native radio choices keep the cost of each risk level visible.
+
+    The persisted form contract remains the same four risk values.
+    Selecting here never records consent, a grant or testing authority.
+    """
+    if prefix not in {"request", "retry", "fix", "preview"}:
+        raise ValueError("unsupported request risk field")
+    help_id = f"{prefix}-risk-help"
+    described_by = help_id + (" fix-risk-error" if invalid else "")
+    options = "".join(
+        '<label class="risk-choice">'
+        f'<input type="radio" name="risk" value="{value}"'
+        + (' checked' if selected == value else '')
+        + (' required' if value == "1" else '')
+        + (' aria-invalid="true"' if invalid else '')
+        + '><span>'
+        f'<strong>{_e(value)} — {_e(title)}</strong>'
+        f'<small>{_e(explanation)}</small></span></label>'
+        for value, title, explanation in _RISK_CHOICES
+    )
+    return (
+        f'<fieldset class="risk-options" id="{_e(prefix)}-risk"'
+        f' aria-describedby="{_e(described_by)}"'
+        + (' tabindex="-1" aria-invalid="true"' if invalid else '')
+        + '><legend>Requested testing risk</legend>'
+        f'<div class="risk-cards">{options}</div>'
+        f'<p class="meta" id="{_e(help_id)}">A risk choice is only a request. '
+        'It never permits testing; current scope, consent, revocation checks '
+        'and HUMAN GO are separate.</p></fieldset>'
+    )
+
+
+def _human_follow_up_order(findings):
+    """Stable original-evidence ordering shared by portal and private report.
+
+    Recorded regressions come first, then severity. Sorting does not perform
+    verification, approve a retest, or grant any execution capability.
+    """
+    severity_order = {
+        "critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4,
+    }
+    return sorted(
+        (item for item in findings if item.retest_status is not RetestStatus.FIXED),
+        key=lambda item: (
+            item.retest_status is not RetestStatus.REGRESSION,
+            severity_order.get(item.severity.value, 5),
+            item.title.casefold(), item.impact or "", item.remediation or "",
+        ),
+    )
+
+
+def _request_progress(status: RequestStatus) -> list[dict[str, str]]:
+    """Human-readable stages; never infer a live grant or activation."""
+    if type(status) is not RequestStatus:
+        raise ValueError("request progress requires an original persisted status")
+    reviewed = {
+        RequestStatus.SUBMITTED: ("AWAITING_REVIEW", "An independent operator must review this request."),
+        RequestStatus.UNDER_REVIEW: ("UNDER_REVIEW", "An independent operator is reviewing this request."),
+        RequestStatus.APPROVED: ("REQUEST_APPROVED_ONLY", "This decision is not a scope grant or scan permission."),
+        RequestStatus.REJECTED: ("REQUEST_REJECTED", "This request cannot be used to issue a scope grant."),
+    }[status]
+    rejected = status is RequestStatus.REJECTED
+    return [
+        {
+            "code": "CLIENT_SUBMISSION", "label": "Client request",
+            "state": "RECORDED",
+            "explanation": "Requested systems and risk are recorded; ownership is not independently verified.",
+        },
+        {
+            "code": "INDEPENDENT_OPERATOR_REVIEW", "label": "Human decision",
+            "state": reviewed[0], "explanation": reviewed[1],
+        },
+        {
+            "code": "REQUEST_BOUND_SCOPE", "label": "Recorded scope and risk limits",
+            "state": "BLOCKED_BY_REJECTION" if rejected else "CHECK_SEPARATELY",
+            "explanation": (
+                "This rejected request cannot support a scope grant. "
+                "A new client-origin request needs a new independent review."
+                if rejected else
+                "A grant for a particular engagement is never inferred from this receipt."
+            ),
+        },
+        {
+            "code": "CLIENT_CONSENT_AND_REVOCATION", "label": "Current consent and revocation",
+            "state": "NOT_APPLICABLE_TO_REJECTED_REQUEST" if rejected else "NOT_VERIFIED",
+            "explanation": (
+                "No consent or revocation check can rehabilitate this rejected request."
+                if rejected else
+                "Separate client consent and a revocation check at use are still required."
+            ),
+        },
+        {
+            "code": "HUMAN_GO_AND_EXECUTION", "label": "Human go and testing",
+            "state": "LOCKED",
+            "explanation": "No scan or capability activation is available in this plan/lab build.",
+        },
+    ]
 
 
 @dataclass(frozen=True)
@@ -183,10 +498,16 @@ def _page(title: str, nav: str, body: str, auth: AuthState,
         brand = "LightUp — Operator"
     else:
         base = f"/portal/{portal_client}"
-        links = [("portal", base, "Overview")]
+        links = [
+            ("portal", base, "Overview"),
+            ("requests", base + "/requests", "Requests"),
+            ("scope", base + "/authorization-plan", "Scope & safety"),
+        ]
         brand = "LightUp — Client portal"
     nav_html = "".join(
-        f'<a href="{href}" class="{"active" if key == nav else ""}">{label}</a>'
+        f'<a href="{_e(href)}" class="{"active" if key == nav else ""}"'
+        + (' aria-current="page"' if key == nav else '')
+        + f'>{_e(label)}</a>'
         for key, href, label in links
     ) + logout
     if nav == "login":
@@ -195,9 +516,12 @@ def _page(title: str, nav: str, body: str, auth: AuthState,
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
         f"<title>{_e(title)}</title><style>{_CSS}</style></head><body>"
+        '<a class="skip-link" href="#main-content">Skip to main content</a>'
         f"<header><div class=\"wrap\"><span class=\"brand\">{_e(brand)}</span>"
-        f"<nav>{nav_html}</nav></div></header>"
-        f"<main><div class=\"wrap\">{body}</div></main></body></html>"
+        f'<nav aria-label="{"Client portal" if portal_client is not None else "Operator"} navigation">'
+        f"{nav_html}</nav></div></header>"
+        f'<main id="main-content" tabindex="-1"><div class="wrap">{body}</div>'
+        "</main></body></html>"
     )
 
 
@@ -214,6 +538,18 @@ class LightUpWebApp:
             ("POST", re.compile(r"^/login$"), self.login_submit, "public"),
             ("POST", re.compile(r"^/logout$"), self.logout, "portal"),
             ("GET", re.compile(r"^/$"), self.overview, "operator"),
+            ("GET", re.compile(r"^/authorization-overview\.json$"),
+             self.authorization_overview_json, "operator"),
+            ("GET", re.compile(r"^/authorization-reviews(?:/(?P<kind>[\w-]+))?$"),
+             self.authorization_review_worklist, "operator"),
+            ("GET", re.compile(r"^/authorization-reviews\.csv$"),
+             self.authorization_review_worklist_csv, "operator"),
+            ("GET", re.compile(r"^/authorization-reviews/(?P<kind>[\w-]+)\.csv$"),
+             self.authorization_review_worklist_csv, "operator"),
+            ("GET", re.compile(r"^/authorization-reviews\.records\.csv$"),
+             self.authorization_review_records_csv, "operator"),
+            ("GET", re.compile(r"^/authorization-reviews/(?P<kind>[\w-]+)\.records\.csv$"),
+             self.authorization_review_records_csv, "operator"),
             ("GET", re.compile(r"^/discovery$"), self.discovery, "operator"),
             ("POST", re.compile(r"^/discovery/prospects$"), self.add_prospect, "operator"),
             ("POST", re.compile(r"^/discovery/prospects/(?P<prospect_id>[\w-]+)/status$"),
@@ -222,16 +558,44 @@ class LightUpWebApp:
             ("POST", re.compile(r"^/clients$"), self.create_client, "operator"),
             ("GET", re.compile(r"^/clients/(?P<client_id>[\w-]+)$"), self.client_detail,
              "operator"),
+            ("GET", re.compile(r"^/clients/(?P<client_id>[\w-]+)/authorization-plan$"),
+             self.authorization_plan, "operator"),
+            ("GET", re.compile(r"^/clients/(?P<client_id>[\w-]+)/authorization-plan.json$"),
+             self.authorization_plan_json, "operator"),
             ("POST", re.compile(r"^/clients/(?P<client_id>[\w-]+)/engagements$"),
              self.create_engagement, "operator"),
             ("POST", re.compile(r"^/engagements/(?P<engagement_id>[\w-]+)/grants$"),
              self.record_grant, "operator"),
             ("GET", re.compile(r"^/assessments$"), self.assessments, "operator"),
+            ("GET", re.compile(r"^/assessments/requests/(?P<request_id>[\w-]+)/review$"),
+             self.review_request_page, "operator"),
+            ("GET", re.compile(r"^/assessments/elevations/(?P<approval_id>[\w-]+)/review$"),
+             self.review_elevation_page, "operator"),
             ("POST", re.compile(r"^/assessments/requests/(?P<request_id>[\w-]+)/decision$"),
              self.decide_request, "operator"),
             ("POST", re.compile(r"^/assessments/elevations/(?P<approval_id>[\w-]+)/decision$"),
              self.decide_elevation, "operator"),
             ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)$"), self.portal, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/report$"),
+             self.portal_assessment_report, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/report\.json$"),
+             self.portal_assessment_report_json, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
+             self.portal_requests, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests\.json$"),
+             self.portal_requests_json, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/authorization-plan$"),
+             self.portal_authorization_plan, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/authorization-plan.json$"),
+             self.portal_authorization_plan_json, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/(?P<request_id>[\w-]+)$"),
+             self.portal_request_receipt, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/(?P<request_id>[\w-]+)\.json$"),
+             self.portal_request_receipt_json, "portal"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/(?P<request_id>[\w-]+)/new-draft$"),
+             self.portal_new_draft_from_rejection, "portal"),
+            ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests/preview$"),
+             self.portal_preview_request, "portal"),
             ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
              self.portal_submit_request, "portal"),
         ]
@@ -298,8 +662,12 @@ class LightUpWebApp:
             except TenantIsolationError:
                 return Response(_page("Forbidden", "", "<h1>Forbidden</h1>", auth),
                                 status="403 Forbidden")
-            except (KeyError, ValueError) as exc:
-                body = f"<h1>Request failed</h1><p class=\"sub\">{_e(exc)}</p>"
+            except (KeyError, ValueError):
+                # Domain exceptions can include client-controlled identifiers,
+                # grant references or database field content. Never echo them.
+                body = ("<h1>Request failed</h1>"
+                        "<p class=\"sub\">The request could not be processed. "
+                        "Check the information and try again.</p>")
                 return Response(_page("Error", "", body, auth), status="400 Bad Request")
         return Response(_page("Not found", "", "<h1>Not found</h1>", ANONYMOUS),
                         status="404 Not Found")
@@ -318,17 +686,31 @@ class LightUpWebApp:
                    error: str = "") -> Response:
         if auth.signed_in:
             return _redirect(self._home_for(auth.context))
-        error_html = f'<p class="error">{_e(error)}</p>' if error else ""
+        error_html = (
+            f'<div id="login-error" class="login-error" role="alert">'
+            f'<p class="error">{_e(error)}</p></div>'
+            if error else ""
+        )
+        error_attrs = ' aria-invalid="true" aria-describedby="login-error"' if error else ""
         body = (
-            "<div class=\"auth\"><div class=\"card\">"
-            "<h1>Sign in</h1>"
-            "<p class=\"sub\">LightUp — authorization-first security assessments.</p>"
-            f"{error_html}"
-            "<form method=\"post\" action=\"/login\">"
-            "<label>Email</label><input name=\"email\" type=\"email\" required>"
-            "<label>Password</label><input name=\"password\" type=\"password\" required>"
-            "<button>Sign in</button></form>"
-            "</div></div>"
+            '<div class="auth"><section class="card" aria-labelledby="login-heading">'
+            '<h1 id="login-heading">Sign in to LightUp</h1>'
+            '<p class="sub" id="login-intro">'
+            'Use your assigned client or operator account to review security '
+            'assessment requests and evidence.</p>'
+            f'{error_html}'
+            '<form method="post" action="/login" aria-describedby="login-intro">'
+            '<label for="login-email">Email address</label>'
+            f'<input id="login-email" name="email" type="email" '
+            f'autocomplete="username" autocapitalize="none" spellcheck="false" '
+            f'required{error_attrs}>'
+            '<label for="login-password">Password</label>'
+            f'<input id="login-password" name="password" type="password" '
+            f'autocomplete="current-password" required{error_attrs}>'
+            '<button type="submit">Sign in</button>'
+            '<p class="meta">Signing in lets you review authorized work; '
+            'it does not approve or start testing.</p>'
+            '</form></section></div>'
         )
         return Response(_page("LightUp — Sign in", "login", body, ANONYMOUS))
 
@@ -359,6 +741,173 @@ class LightUpWebApp:
 
     # -- operator pages -------------------------------------------------------
 
+    def authorization_overview_json(
+        self, auth: AuthState, form: dict[str, str]
+    ) -> Response:
+        import json
+        from ..authorization_plan import build_operator_portfolio_review_payload
+
+        # Dispatch requires a real operator session. Domain repeats the
+        # operator authorization boundary; no client asset bodies are exported.
+        payload = build_operator_portfolio_review_payload(self.store, auth.context)
+        body = json.dumps(payload, ensure_ascii=False, sort_keys=True,
+                          separators=(",", ":"), allow_nan=False) + "\n"
+        return Response(
+            body,
+            content_type="application/json; charset=utf-8",
+            extra_headers=[("Content-Disposition",
+                            'attachment; filename="lightup-m0-portfolio-review.json"')],
+        )
+
+    def authorization_review_worklist_csv(
+        self, auth: AuthState, form: dict[str, str],
+        kind: str | None = None,
+    ) -> Response:
+        from ..authorization_plan import (
+            build_operator_portfolio_review_payload,
+            to_operator_review_worklist_csv,
+        )
+
+        # A private review export, not a scope grant or assessment manifest.
+        if kind is not None and kind not in _AUTH_REVIEW_ACTIONS:
+            raise ValueError("unknown HUMAN worklist export category")
+        portfolio = build_operator_portfolio_review_payload(
+            self.store, auth.context
+        )
+        body = to_operator_review_worklist_csv(portfolio, kind=kind)
+        filename = (
+            f"lightup-m0-human-review-{kind}.csv"
+            if kind else "lightup-m0-human-review-worklist.csv"
+        )
+        return Response(
+            body, content_type="text/csv; charset=utf-8",
+            extra_headers=[(
+                "Content-Disposition",
+                f'attachment; filename="{filename}"',
+            )],
+        )
+
+    def authorization_review_records_csv(
+        self, auth: AuthState, form: dict[str, str],
+        kind: str | None = None,
+    ) -> Response:
+        from ..authorization_plan import (
+            build_operator_portfolio_review_payload,
+            to_operator_review_worklist_csv,
+        )
+
+        if kind is not None and kind not in _AUTH_REVIEW_ACTIONS:
+            raise ValueError("unknown HUMAN record export category")
+        portfolio = build_operator_portfolio_review_payload(
+            self.store, auth.context
+        )
+        # One row per persisted record, never the private target/assets or
+        # a grant/consent receipt. Source records remain HOLD/PLAN_ONLY.
+        body = to_operator_review_worklist_csv(
+            portfolio, kind=kind, records=True,
+        )
+        filename = (
+            f"lightup-m0-human-records-{kind}.csv"
+            if kind else "lightup-m0-human-records.csv"
+        )
+        return Response(
+            body, content_type="text/csv; charset=utf-8",
+            extra_headers=[(
+                "Content-Disposition",
+                f'attachment; filename="{filename}"',
+            )],
+        )
+
+    def authorization_review_worklist(
+        self, auth: AuthState, form: dict[str, str],
+        kind: str | None = None,
+    ) -> Response:
+        from ..authorization_plan import build_operator_portfolio_review_payload
+
+        if kind is not None and kind not in _AUTH_REVIEW_ACTIONS:
+            raise ValueError("unknown HUMAN review worklist filter")
+        portfolio = build_operator_portfolio_review_payload(
+            self.store, auth.context
+        )
+        category_totals = {key: 0 for key in _AUTH_REVIEW_ACTIONS}
+        for tenant in portfolio["review_queue"]:
+            for action in tenant["actions"]:
+                category_totals[action["kind"]] += action["count"]
+        items = [
+            item for item in portfolio["review_details"]
+            if kind is None or item["kind"] == kind
+        ]
+        order = {code: index for index, code in enumerate(_AUTH_REVIEW_ACTIONS)}
+        items.sort(key=lambda item: (
+            order[item["kind"]], item["created_at"] or "",
+            item["client_id"], item["record_id"],
+        ))
+        links = [
+            (None, "All categories", sum(category_totals.values())),
+            *((key, label, category_totals[key])
+              for key, label in _AUTH_REVIEW_ACTIONS.items()),
+        ]
+        filters = " · ".join(
+            (
+                f'<strong>{_e(label)} ({count})</strong>'
+                if key == kind else
+                f'<a href="/authorization-reviews'
+                f'{"/" + key if key else ""}">{_e(label)} ({count})</a>'
+            )
+            for key, label, count in links
+        )
+        cards = []
+        for item in items:
+            private_plan = (
+                f'/clients/{_e(item["client_id"])}/authorization-plan'
+            )
+            if item["record_type"] == "request":
+                target = f'/assessments/requests/{_e(item["record_id"])}/review'
+            elif item["record_type"] == "risk_elevation":
+                target = f'/assessments/elevations/{_e(item["record_id"])}/review'
+            elif item["record_type"] == "engagement":
+                target = f'{private_plan}#engagement-{_e(item["record_id"])}'
+            else:
+                raise ValueError("unknown read-only review pointer")
+            cards.append(
+                '<section class="card"><div class="row">'
+                f'<strong>{_e(item["client_name"])}</strong>'
+                '<span class="badge lock">HOLD · human review</span></div>'
+                f'<p class="meta">{_e(_AUTH_REVIEW_ACTIONS[item["kind"]])} · '
+                f'record {_e(item["record_id"])}</p>'
+                f'<a href="{target}">Open exact review record</a>'
+                ' · '
+                f'<a href="{private_plan}">Private scope context</a></section>'
+            )
+        csv_path = (
+            f"/authorization-reviews/{kind}.csv"
+            if kind else "/authorization-reviews.csv"
+        )
+        records_csv_path = (
+            f"/authorization-reviews/{kind}.records.csv"
+            if kind else "/authorization-reviews.records.csv"
+        )
+        body = (
+            "<h1>Human authorization review worklist</h1>"
+            "<p class=\"sub\">Private operator triage. Counts reflect recorded "
+            "review items only; they are not verified consent, a scan permit, "
+            "or a reason to bypass revocation-at-use and HUMAN GO.</p>"
+            f'<div class="card"><strong>{len(items)} matching original records · '
+            'all remain HUMAN review only</strong>'
+            f'<p class="meta">{filters}</p>'
+            f'<a href="{csv_path}">Download category totals CSV</a>'
+            ' · '
+            f'<a href="{records_csv_path}">Download exact record worklist CSV</a>'
+            ' · <a href="/authorization-overview.json">Full private JSON</a>'
+            ' · <a href="/">Back to overview</a></div>'
+            + ("".join(cards)
+               or '<p class="empty">No recorded items in this category. '
+                  'All activation gates remain locked.</p>')
+        )
+        return Response(_page(
+            "LightUp — HUMAN Review", "overview", body, auth
+        ))
+
     def overview(self, auth: AuthState, form: dict[str, str]) -> Response:
         ctx = auth.context
         clients = self.store.list_clients(ctx)
@@ -368,6 +917,48 @@ class LightUpWebApp:
         engagements = self.store.list_engagements(ctx)
         findings = self.store.list_findings(ctx)
         open_retests = [f for f in findings if f.retest_status is not RetestStatus.FIXED]
+
+        from ..authorization_plan import build_operator_portfolio_review_payload
+
+        # The operator HTML and private JSON use one shared fail-closed
+        # aggregate representation; no plan is interpreted as execution.
+        portfolio = build_operator_portfolio_review_payload(self.store, ctx)
+        action_labels = _AUTH_REVIEW_ACTIONS
+        review_cards = []
+        for item in portfolio["review_queue"]:
+            reasons = "".join(
+                f'<li>{action["count"]} '
+                f'{_e(action_labels[action["kind"]])}</li>'
+                for action in item["actions"]
+            )
+            review_cards.append(
+                '<section class="card"><div class="row">'
+                f'<strong>{_e(item["client_name"])}</strong>'
+                '<span class="badge lock">HOLD · review only</span></div>'
+                f'<p class="meta">{item["review_items"]} attention item(s); '
+                'not consent or an execution permit.</p>'
+                f'<ul>{reasons}</ul>'
+                f'<a href="/clients/{_e(item["client_id"])}/authorization-plan">'
+                'Open private authorization review</a></section>'
+            )
+        authorization_rows = []
+        for tenant in portfolio["tenants"]:
+            client_id = tenant["client_id"]
+            authorization_rows.append(
+                '<div class="card"><div class="row">'
+                f'<a href="/clients/{_e(client_id)}/authorization-plan">'
+                f'<strong>{_e(tenant["client_name"])}</strong></a>'
+                '<span class="badge lock">HOLD · no execution</span></div>'
+                f'<p class="meta">{tenant["requests_awaiting_review"]} request(s) awaiting review · '
+                f'{tenant["engagements_hold"]} engagement(s) · '
+                f'{tenant["without_current_grant"]} without a current request-bound grant · '
+                f'{tenant["expired_grant_engagements"]} expired scope window(s) · '
+                f'{tenant["future_dated_grant_engagements"]} not-yet-valid scope window(s) · '
+                f'{tenant["pending_risk_decisions"]} pending risk decision(s) · '
+                f'{tenant["unrestricted_legacy_scopes"]} unrestricted legacy scope(s)</p>'
+                f'<a href="/clients/{_e(client_id)}/authorization-plan">'
+                'Review scope and blockers</a></div>'
+            )
         body = (
             "<h1>Overview</h1>"
             "<p class=\"sub\">Status first; details live one click deeper.</p>"
@@ -381,7 +972,21 @@ class LightUpWebApp:
             f"<div class=\"card\"><div class=\"kpi\">{len(open_retests)}</div>"
             "<div class=\"kpi-label\">Findings awaiting fix/retest</div></div>"
             "</div>"
-            "<div class=\"card\"><div class=\"row\"><strong>Active testing</strong>"
+            "<h2>Authorization control plane</h2>"
+            "<p class=\"sub\">Plan-only portfolio review. Every tenant remains HOLD "
+            "until independent consent, revocation-at-use, source reviews and HUMAN GO. "
+            "<a href=\"/assessments\">Review pending requests</a> · "
+            "<a href=\"/authorization-overview.json\">Download private portfolio JSON</a>.</p>"
+            "<h3>Human review queue · no automatic activation</h3>"
+            '<p class="meta"><a href="/authorization-reviews">'
+            'Open filtered worklist</a> · '
+            '<a href="/authorization-reviews.csv">Export redacted CSV</a></p>'
+            + ("".join(review_cards)
+               or "<p class=\"empty\">No immediate recorded review items.</p>")
+            + "<h3>All client authorization states</h3>"
+            + ("".join(authorization_rows)
+               or "<p class=\"empty\">No clients yet.</p>")
+            + "<div class=\"card\"><div class=\"row\"><strong>Active testing</strong>"
             "<span class=\"badge lock\">Locked</span></div>"
             "<p class=\"meta\">This build has no real-target execution path. "
             "Unauthorized targets remain passive-discovery only; active capability "
@@ -475,17 +1080,177 @@ class LightUpWebApp:
         self.store.create_client(auth.context, form.get("name", ""))
         return _redirect("/clients")
 
+    def _client_scoped_evidence(self, ctx: AccessContext, client_id: str):
+        """Use one fail-closed provenance boundary for both client views.
+
+        Explicit tenant filters protect operator screens as well as portal
+        screens. The original domain joins still need their separate
+        source-owner review before any release.
+        """
+        engagements = self.store.list_engagements(ctx, client_id)
+        findings = self.store.list_findings(ctx, client_id=client_id)
+        engagement_ids = {item.engagement_id for item in engagements}
+        if any(item.client_id != client_id for item in engagements):
+            raise TenantIsolationError("cross-tenant client engagement denied")
+        if any(
+            item.client_id != client_id or item.engagement_id not in engagement_ids
+            for item in findings
+        ):
+            raise TenantIsolationError("cross-tenant client finding linkage denied")
+        return engagements, findings
+
     def client_detail(self, auth: AuthState, form: dict[str, str],
                       client_id: str) -> Response:
         ctx = auth.context
         client = self.store.get_client(ctx, client_id)
-        engagements = self.store.list_engagements(ctx, client_id)
-        findings = self.store.list_findings(ctx, client_id=client_id)
+        engagements, findings = self._client_scoped_evidence(ctx, client_id)
+        client_requests = self.store.list_assessment_requests(ctx, client_id)
+        if any(item.client_id != client_id for item in client_requests):
+            raise TenantIsolationError("cross-tenant operator request list denied")
+        approved_requests = tuple(
+            request for request in client_requests
+            if request.status is RequestStatus.APPROVED
+            and request.requested_mode is AssessmentMode.AUTHORIZED_ASSESSMENT
+            and RiskLevel.PASSIVE <= request.requested_risk <= RiskLevel.ELEVATED
+        )
         csrf = self._csrf_field(auth)
+        from ..capabilities import CapabilityState, get_capabilities
+
+        planning_capabilities = tuple(
+            cap for cap in get_capabilities()
+            if cap.state is CapabilityState.PLANNING
+        )
+        capability_guide = "".join(
+            f"<li><code>{_e(cap.capability_id)}</code> — {_e(cap.name)}</li>"
+            for cap in planning_capabilities
+        )
+        # One original client-specific human-decision worklist, rather than
+        # forcing operators to search the global review inbox by opaque IDs.
+        valid_request_states = {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            RequestStatus.APPROVED, RequestStatus.REJECTED,
+        }
+        if any(item.status not in valid_request_states for item in client_requests):
+            raise ValueError("unknown persisted assessment request state")
+        waiting_requests = sorted(
+            (
+                item for item in client_requests
+                if item.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+            ),
+            key=lambda item: (item.created_at, item.request_id),
+        )
+        decided_requests = sorted(
+            (
+                item for item in client_requests
+                if item.status in {RequestStatus.APPROVED, RequestStatus.REJECTED}
+            ),
+            key=lambda item: (item.created_at, item.request_id),
+            reverse=True,
+        )
+
+        def request_card(item) -> str:
+            pending = item.status in {
+                RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            }
+            action = (
+                "Open independent HUMAN review" if pending
+                else "Read recorded human decision"
+            )
+            return (
+                '<section class="card"><div class="row">'
+                f'<strong>Request {_e(item.request_id[:8])}</strong>'
+                f'<span class="badge">{_e(item.status.value)}</span></div>'
+                f'<p class="meta">Submitted {_e(item.created_at)} · '
+                f'Risk {_risk(item.requested_risk)} · '
+                f'Mode {_e(item.requested_mode.value)}</p>'
+                '<details><summary>Requested systems and client notes</summary>'
+                f'<p class="meta">Systems: {_e(", ".join(item.requested_assets))}</p>'
+                f'<p class="meta">Notes: {_e(item.notes) or "None"}</p>'
+                '</details>'
+                f'<a href="/assessments/requests/{_e(item.request_id)}/review">'
+                f'{action}</a></section>'
+            )
+
+        request_section = (
+            f'<h2>Client-origin requests · {len(client_requests)} total</h2>'
+            '<p class="sub">A client request can receive an independent human '
+            'decision; it never grants scope, verifies consent or starts testing.</p>'
+            f'<h3>Awaiting independent review ({len(waiting_requests)})</h3>'
+            + ("".join(request_card(item) for item in waiting_requests)
+               or '<p class="empty">No client requests are awaiting review.</p>')
+            + f'<details><summary>Recorded request decisions ({len(decided_requests)})</summary>'
+            + ("".join(request_card(item) for item in decided_requests)
+               or '<p class="empty">No human decisions recorded yet.</p>')
+            + '</details>'
+        )
+
+        # Keep every original risk decision on the same operator client dossier.
+        # The domain list is operator-wide: select by BOTH authoritative
+        # engagement ownership and duplicated risk-row client ownership.
+        engagement_by_id = {item.engagement_id: item for item in engagements}
+        client_risk_reviews = []
+        valid_risk_states = {"pending", "approved", "denied"}
+        for item in self.store.list_risk_approvals(ctx):
+            linked_engagement = engagement_by_id.get(item.engagement_id)
+            if item.client_id != client_id and linked_engagement is None:
+                continue
+            if linked_engagement is None or item.client_id != client_id:
+                raise TenantIsolationError(
+                    "cross-tenant client risk approval linkage denied"
+                )
+            if item.status.value not in valid_risk_states:
+                raise ValueError("unknown persisted risk review state")
+            client_risk_reviews.append(item)
+        pending_risk_reviews = sorted(
+            (item for item in client_risk_reviews if item.status.value == "pending"),
+            key=lambda item: (item.created_at, item.approval_id),
+        )
+        decided_risk_reviews = sorted(
+            (item for item in client_risk_reviews if item.status.value != "pending"),
+            key=lambda item: (item.created_at, item.approval_id),
+            reverse=True,
+        )
+
+        def risk_card(item) -> str:
+            engagement = engagement_by_id[item.engagement_id]
+            pending = item.status.value == "pending"
+            action = (
+                "Open independent HUMAN risk review" if pending
+                else "Read recorded HUMAN risk decision"
+            )
+            decision_note = (
+                f' · Decided {_e(item.decided_at or "Not recorded")}'
+                if not pending else ""
+            )
+            return (
+                '<section class="card"><div class="row">'
+                f'<strong>{_e(engagement.name)} · Risk {_risk(item.requested_risk)}</strong>'
+                f'<span class="badge">{_e(item.status.value)}</span></div>'
+                f'<p class="meta">Requested {_e(item.created_at)} · '
+                f'By {_e(item.requested_by)}{decision_note}</p>'
+                '<details><summary>Original risk justification</summary>'
+                f'<p class="meta">{_e(item.justification)}</p></details>'
+                f'<a href="/assessments/elevations/{_e(item.approval_id)}/review">'
+                f'{action}</a></section>'
+            )
+
+        risk_section = (
+            f'<h2>Engagement risk decisions · {len(client_risk_reviews)} total</h2>'
+            '<p class="sub">A risk-elevation decision never widens a grant, '
+            'verifies client consent or enables execution.</p>'
+            f'<h3>Awaiting risk decision ({len(pending_risk_reviews)}) · oldest first</h3>'
+            + ("".join(risk_card(item) for item in pending_risk_reviews)
+               or '<p class="empty">No elevated-risk decisions awaiting review.</p>')
+            + f'<details><summary>Recorded risk decisions ({len(decided_risk_reviews)})</summary>'
+            + ("".join(risk_card(item) for item in decided_risk_reviews)
+               or '<p class="empty">No recorded risk decisions yet.</p>')
+            + '</details>'
+        )
+
         engagement_cards = []
         for eng in engagements:
             grant = self.store.get_current_grant(ctx, eng.engagement_id)
-            grant_badge = ("<span class=\"badge ok\">Authorization current</span>" if grant
+            grant_badge = ("<span class=\"badge ok\">Current recorded grant · execution OFF</span>" if grant
                            else "<span class=\"badge warn\">No current authorization</span>")
             grant_detail = ""
             if grant:
@@ -493,36 +1258,121 @@ class LightUpWebApp:
                     "<details><summary>Authorization details</summary><p class=\"meta\">"
                     f"Reference {_e(grant.reference)} · approved by {_e(grant.approved_by)}"
                     f"<br>Assets: {_e(', '.join(grant.scope.assets))}"
+                    f"<br>Capabilities: {_e(', '.join(grant.scope.allowed_capabilities) or 'ALL — unrestricted legacy scope; review required')}"
                     f"<br>Max risk: {_risk(grant.scope.max_risk)}"
                     f"<br>Valid {_e(grant.valid_from.date())} – {_e(grant.valid_until.date())}"
                     "</p></details>"
                 )
-            else:
+            elif not approved_requests:
                 grant_detail = (
-                    "<details><summary>Record authorization grant</summary>"
-                    f"<form method=\"post\" action=\"/engagements/{_e(eng.engagement_id)}/grants\">"
-                    f"{csrf}"
-                    "<label>Approved by (client signatory)</label>"
-                    "<input name=\"approved_by\" required>"
-                    "<label>Authorization reference</label>"
-                    "<input name=\"reference\" required placeholder=\"AUTH-2026-...\">"
-                    "<label>Authorized assets (comma-separated)</label>"
-                    "<input name=\"assets\" required>"
-                    "<label>Excluded assets (comma-separated, optional)</label>"
-                    "<input name=\"excluded_assets\">"
-                    "<label>Allowed capabilities (comma-separated ids; empty = all)</label>"
-                    "<input name=\"capabilities\">"
-                    "<label>Maximum risk level</label><select name=\"max_risk\">"
-                    "<option value=\"1\">1 — Passive</option>"
-                    "<option value=\"2\">2 — Low impact</option>"
-                    "<option value=\"3\" selected>3 — Standard</option>"
-                    "<option value=\"4\">4 — Elevated</option></select>"
-                    "<label>Valid for (days)</label>"
-                    "<input name=\"valid_days\" type=\"number\" min=\"1\" max=\"365\" value=\"30\">"
-                    "<button>Record grant</button>"
-                    "<p class=\"meta\">A grant only authorizes what is listed here. "
-                    "Destructive simulation (level 5) is lab-only and cannot be "
-                    "granted for client assets.</p></form></details>"
+                    "<p class=\"meta\">An approved client request is required "
+                    "before any scope grant can be recorded. Have the client "
+                    "submit a request, then review it in Assessments. "
+                    "Execution stays OFF.</p>"
+                )
+            else:
+                grant_forms = []
+                for request in approved_requests:
+                    # Unique labels remain associated with their controls even
+                    # when several approved requests share one engagement.
+                    field_prefix = f"grant-{eng.engagement_id}-{request.request_id}"
+                    risk_options = "".join(
+                        f'<option value="{level.value}">{level.value} — {_e(label)}</option>'
+                        for level, label in (
+                            (RiskLevel.PASSIVE, "Passive"),
+                            (RiskLevel.LOW_IMPACT, "Low impact"),
+                            (RiskLevel.STANDARD, "Standard"),
+                            (RiskLevel.ELEVATED, "Elevated"),
+                        )
+                        if level <= request.requested_risk
+                    )
+                    requested_assets = ", ".join(request.requested_assets)
+                    grant_forms.append(
+                        f'<section class="grant-request" aria-labelledby="{_e(field_prefix)}-heading">'
+                        f'<h3 id="{_e(field_prefix)}-heading">Engagement: {_e(eng.name)}</h3>'
+                        '<div class="row">'
+                        '<strong>Independent client request approved for scope review</strong>'
+                        '<span class="badge lock">PLAN ONLY · no execution</span></div>'
+                        f'<p class="meta">Client-requested risk ceiling: '
+                        f'{_risk(request.requested_risk)}. A recorded request decision '
+                        'is not verified asset ownership, client consent or HUMAN GO.</p>'
+                        '<details><summary>Read original client request and approved asset list</summary>'
+                        f'<p class="meta">Request ID: <code>{_e(request.request_id)}</code></p>'
+                        f'<p>Original requested assets: {_e(requested_assets)}</p>'
+                        '<p class="meta">Use the exact approved asset identifiers; '
+                        'never add a destination absent from the original request.</p>'
+                        '</details>'
+                        f'<form method="post" action="/engagements/{_e(eng.engagement_id)}/grants"'
+                        f' aria-describedby="{_e(field_prefix)}-hold">'
+                        f'{csrf}'
+                        f'<input type="hidden" name="approved_request_id" value="{_e(request.request_id)}">'
+                        '<fieldset class="grant-step">'
+                        '<legend>1. Identify the authorization record</legend>'
+                        f'<label for="{_e(field_prefix)}-approved-by">'
+                        'Client signatory recorded on the authorization</label>'
+                        f'<input id="{_e(field_prefix)}-approved-by" name="approved_by" '
+                        'autocomplete="off" required>'
+                        '<p class="meta">Recording a signatory name does not independently '
+                        'verify their identity or consent.</p>'
+                        f'<label for="{_e(field_prefix)}-reference">Authorization reference</label>'
+                        f'<input id="{_e(field_prefix)}-reference" name="reference" required '
+                        'autocomplete="off" placeholder="Document or agreement reference">'
+                        '</fieldset>'
+                        '<fieldset class="grant-step">'
+                        '<legend>2. Restrict the requested scope</legend>'
+                        f'<label for="{_e(field_prefix)}-assets">Authorized assets '
+                        '(exact approved subset; comma-separated)</label>'
+                        f'<input id="{_e(field_prefix)}-assets" name="assets" '
+                        f'aria-describedby="{_e(field_prefix)}-assets-help" '
+                        'autocomplete="off" required>'
+                        f'<p class="meta" id="{_e(field_prefix)}-assets-help">'
+                        'Copy only the explicitly authorized asset identifiers '
+                        'from the original request shown above. An empty or wider '
+                        'scope is not acceptable.</p>'
+                        f'<label for="{_e(field_prefix)}-excluded">Excluded assets (optional)</label>'
+                        f'<input id="{_e(field_prefix)}-excluded" name="excluded_assets" '
+                        'autocomplete="off">'
+                        f'<label for="{_e(field_prefix)}-capabilities">'
+                        'Allowed planning capability IDs (comma-separated)</label>'
+                        f'<input id="{_e(field_prefix)}-capabilities" name="capabilities" '
+                        f'aria-describedby="{_e(field_prefix)}-capabilities-help" '
+                        'autocomplete="off" required>'
+                        f'<p class="meta" id="{_e(field_prefix)}-capabilities-help">'
+                        'Only explicitly named, known planning capabilities '
+                        'are accepted. Listing one never enables execution.</p>'
+                        '<details><summary>See available planning capability IDs</summary>'
+                        f'<ul>{capability_guide}</ul></details>'
+                        '</fieldset>'
+                        '<fieldset class="grant-step">'
+                        '<legend>3. Set a narrower risk ceiling and expiry</legend>'
+                        f'<label for="{_e(field_prefix)}-max-risk">Maximum recorded risk level</label>'
+                        f'<select id="{_e(field_prefix)}-max-risk" name="max_risk" required '
+                        f'aria-describedby="{_e(field_prefix)}-risk-help">'
+                        '<option value="" selected disabled>Choose within approved request</option>'
+                        f'{risk_options}</select>'
+                        f'<p class="meta" id="{_e(field_prefix)}-risk-help">'
+                        'Only levels at or below the original approved request are '
+                        'shown. Elevated risk still requires an independent risk '
+                        'decision; level 5 is never allowed for client assets.</p>'
+                        f'<label for="{_e(field_prefix)}-days">Record validity (days)</label>'
+                        f'<input id="{_e(field_prefix)}-days" name="valid_days" '
+                        'type="number" min="1" max="365" inputmode="numeric" required>'
+                        '</fieldset>'
+                        f'<p class="meta" id="{_e(field_prefix)}-hold">'
+                        '<strong>Stop line:</strong> recording this request-bound scope '
+                        'does not verify current consent, revocation at use or HUMAN GO. '
+                        'No scan, target contact or activation is available here.</p>'
+                        '<button>Record this request-bound scope only</button>'
+                        '</form></section>'
+                    )
+                grant_detail = (
+                    '<details><summary>Record authorization grant</summary>'
+                    '<p class="meta">Choose an original approved client request for each '
+                    'record. The three review steps distinguish signatory provenance, '
+                    'the exact asset/capability boundaries, and expiry. None of these '
+                    'form inputs independently proves consent or permits testing.</p>'
+                    + "".join(grant_forms)
+                    + '</details>'
                 )
             engagement_cards.append(
                 "<div class=\"card\"><div class=\"row\">"
@@ -539,17 +1389,346 @@ class LightUpWebApp:
         body = (
             f"<h1>{_e(client.name)}</h1>"
             f"<p class=\"sub\">Portal: <a href=\"/portal/{_e(client.client_id)}\">"
-            "open client portal</a></p>"
-            "<h2>Engagements</h2>"
+            "open client portal</a> · "
+            f"<a href=\"/clients/{_e(client.client_id)}/authorization-plan\">"
+            "Plan-only authorization review</a></p>"
+            + request_section
+            + risk_section
+            + "<h2>Engagements</h2>"
             + ("".join(engagement_cards) or "<p class=\"empty\">No engagements yet.</p>")
             + f"<h2>New engagement</h2>{new_engagement}"
             + "<h2>Coverage</h2>"
             + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
                        for e in engagements)
                or "<p class=\"empty\">No engagements yet.</p>")
-            + f"<h2>Findings</h2>{self._finding_cards(findings)}"
+            + f"<h2>Findings · human remediation priorities</h2>"
+              f"{self._finding_cards(findings)}"
         )
         return Response(_page(f"LightUp — {client.name}", "clients", body, auth))
+
+    def authorization_plan(self, auth: AuthState, form: dict[str, str],
+                           client_id: str) -> Response:
+        return self._authorization_plan_page(auth, client_id, portal=False)
+
+    def portal_authorization_plan(self, auth: AuthState, form: dict[str, str],
+                                  client_id: str) -> Response:
+        return self._authorization_plan_page(auth, client_id, portal=True)
+
+    def authorization_plan_json(self, auth: AuthState, form: dict[str, str],
+                                client_id: str) -> Response:
+        return self._authorization_plan_json(auth, client_id, portal=False)
+
+    def portal_authorization_plan_json(self, auth: AuthState, form: dict[str, str],
+                                       client_id: str) -> Response:
+        return self._authorization_plan_json(auth, client_id, portal=True)
+
+    def _authorization_plan_json(self, auth: AuthState, client_id: str,
+                                 *, portal: bool) -> Response:
+        import json
+        from ..authorization_plan import build_client_authorization_plan, to_review_payload
+
+        # Same verified session and domain tenant isolation as the HTML view.
+        # No grant writes, capability dispatch, consent or active actions.
+        viewer = self._portal_context(auth, client_id) if portal else auth.context
+        plan = build_client_authorization_plan(self.store, viewer, client_id)
+        payload = json.dumps(to_review_payload(plan), ensure_ascii=False,
+                             sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
+        return Response(
+            payload,
+            content_type="application/json; charset=utf-8",
+            extra_headers=[("Content-Disposition",
+                            'attachment; filename="lightup-plan-only-review.json"')],
+        )
+
+    def _authorization_plan_page(self, auth: AuthState, client_id: str,
+                                 *, portal: bool) -> Response:
+        from ..authorization_plan import build_client_authorization_plan
+
+        # The original read-only domain plan is the sole source of facts.
+        # A recorded decision never becomes consent, authorization to test,
+        # a release gate or a capability grant through the presentation.
+        viewer = self._portal_context(auth, client_id) if portal else auth.context
+        plan = build_client_authorization_plan(self.store, viewer, client_id)
+        if (plan.client_id != client_id or plan.state != "PLAN_ONLY"
+                or plan.execution_allowed is not False):
+            raise TenantIsolationError("untrusted client authorization plan state")
+
+        pending_states = {
+            RequestStatus.SUBMITTED.value, RequestStatus.UNDER_REVIEW.value,
+        }
+        decided_states = {RequestStatus.APPROVED.value, RequestStatus.REJECTED.value}
+        request_states = pending_states | decided_states
+        if any(request.status not in request_states for request in plan.request_reviews):
+            raise ValueError("unknown original request review status")
+        allowed_scope_states = {
+            "CURRENT", "EXPIRED", "NOT_YET_VALID", "NOT_RECORDED",
+        }
+        if any(entry.scope_record_state not in allowed_scope_states
+               for entry in plan.engagements):
+            raise ValueError("unknown recorded scope window state")
+
+        request_root = (
+            f"/portal/{_e(plan.client_id)}/requests"
+            if portal else "/assessments"
+        )
+        request_label = (
+            "Track original client requests" if portal
+            else "Open independent operator decisions"
+        )
+        next_engagement_url = (
+            f"/portal/{_e(plan.client_id)}" if portal
+            else f"/clients/{_e(plan.client_id)}"
+        )
+        pending_count = sum(
+            request.status in pending_states for request in plan.request_reviews
+        )
+        approved_count = sum(
+            request.status == RequestStatus.APPROVED.value
+            for request in plan.request_reviews
+        )
+        no_current_scope = sum(
+            entry.scope_record_state != "CURRENT" for entry in plan.engagements
+        )
+        pending_risks = sum(
+            entry.pending_elevations for entry in plan.engagements
+        )
+        if pending_count:
+            next_heading = "Independent decisions are still outstanding"
+            next_explanation = (
+                "An original client request needs a human operator decision "
+                "before separately recorded scope can even be considered."
+            )
+            next_link = f'<a href="{request_root}">{_e(request_label)}</a>'
+        elif not plan.request_reviews:
+            next_heading = "First, record an original client request"
+            next_explanation = (
+                "The client must declare exact systems, mode and requested "
+                "risk. An operator cannot invent the client-origin request."
+            )
+            next_link = (
+                f'<a href="/portal/{_e(plan.client_id)}#new-request">'
+                'Prepare an original client request</a>'
+                if portal else
+                f'<a href="{next_engagement_url}">Open client dossier</a>'
+            )
+        elif no_current_scope:
+            next_heading = "Review missing or expired scope records"
+            next_explanation = (
+                "A decided request does not automatically bind to an "
+                "engagement. Review the exact request, scope window and "
+                "outstanding human approvals below."
+            )
+            next_link = (
+                '<a href="#engagement-review">Review scope blockers</a>'
+                if portal else
+                f'<a href="{next_engagement_url}">Open operator client dossier</a>'
+            )
+        elif pending_risks:
+            next_heading = "Independent risk decisions are still pending"
+            next_explanation = (
+                "A recorded scope does not resolve pending higher-risk "
+                "decisions or authorize execution."
+            )
+            next_link = '<a href="#engagement-review">Review risk blockers</a>'
+        else:
+            next_heading = "Records exist, but testing is not authorized"
+            next_explanation = (
+                "A recorded scope or review decision does not prove that consent is current "
+                "or that testing is allowed. Revocation must be checked immediately before any action, and a human must give separate final approval."
+            )
+            next_link = '<a href="#engagement-review">Read remaining safety gates</a>'
+
+        # Keep sensitive original assets and opaque request identifiers behind
+        # intentional disclosure, while retaining an exact tenant-checked route
+        # to the private request receipt and full recorded review history.
+        pending_cards = []
+        decided_cards = []
+        for request in plan.request_reviews:
+            if request.status == RequestStatus.APPROVED.value:
+                next_step = (
+                    "Request accepted for scope review only. Compare exact "
+                    "assets and risk with a separately recorded grant."
+                )
+                label = "Accepted for scope review"
+            elif request.status == RequestStatus.REJECTED.value:
+                next_step = (
+                    "Rejected. This request can never support a grant; "
+                    "only a new client-origin request may be reviewed."
+                )
+                label = "Rejected — no scope authority"
+            elif request.status == RequestStatus.UNDER_REVIEW.value:
+                next_step = "An operator is reviewing this request. Testing is not authorized yet."
+                label = "Under human review"
+            else:
+                next_step = "Waiting for an operator decision. Testing is not authorized yet."
+                label = "Awaiting human decision"
+            receipt = (
+                f"/portal/{_e(plan.client_id)}/requests/{_e(request.request_id)}"
+                if portal else
+                f"/assessments/requests/{_e(request.request_id)}/review"
+            )
+            card = (
+                '<article class="card request-status"><div class="row">'
+                f'<h3>{_e(label)}</h3>'
+                f'<span class="badge">{_e(request.status)}</span></div>'
+                f'<p class="meta">Submitted: {_e(request.submitted_at)}'
+                + (f' · Decision: {_e(request.reviewed_at)}'
+                   if request.reviewed_at else '')
+                + f' · Mode: {_e(request.requested_mode.replace("_", " "))}'
+                f' · Requested risk: {_risk(request.requested_risk)}</p>'
+                f'<p><strong>Next:</strong> {_e(next_step)}</p>'
+                f'<p><a href="{receipt}">Read original human decision '
+                'and safety details</a></p>'
+                '<details><summary>Show original request systems and ID</summary>'
+                f'<p class="meta">Request: <code>{_e(request.request_id)}</code></p>'
+                f'<p>Systems: {_e(", ".join(request.requested_assets))}</p>'
+                '</details></article>'
+            )
+            if request.status in pending_states:
+                pending_cards.append((request.submitted_at, request.request_id, card))
+            else:
+                decided_cards.append((request.submitted_at, request.request_id, card))
+        pending_cards.sort(key=lambda item: (item[0], item[1]))
+        decided_cards.sort(key=lambda item: (item[0], item[1]), reverse=True)
+
+        # Every engagement stays HOLD even if the source reports a CURRENT
+        # request-bound scope window and no remaining recorded blockers.
+        # Show the exact source blockers rather than a made-up readiness score.
+        cards = []
+        for entry in plan.engagements:
+            capability_description = (
+                "ALL capabilities · unrestricted legacy grant requires review"
+                if entry.unrestricted_capabilities_recorded
+                else ", ".join(entry.recorded_capabilities) or "None recorded"
+            )
+            historical_window = (
+                (f'<br>Last eligible recorded grant expired: '
+                 f'{_e(entry.last_eligible_grant_expired_at)}'
+                 if entry.last_eligible_grant_expired_at else '')
+                + (f'<br>Next eligible recorded grant begins: '
+                   f'{_e(entry.next_eligible_grant_valid_from)}'
+                   if entry.next_eligible_grant_valid_from else '')
+            )
+            scope = (
+                "<details><summary>Inspect exact recorded assets, exclusions, "
+                "capabilities and expiry (not scan permission)</summary>"
+                f"<p class=\"meta\">Assets: {_e(', '.join(entry.recorded_scope))}<br>"
+                f"Excluded: {_e(', '.join(entry.excluded_scope) or 'None recorded')}<br>"
+                f"Recorded risk ceiling: {_risk(entry.max_risk) if entry.max_risk is not None else '—'}<br>"
+                f"Recorded capability scope: {_e(capability_description)}<br>"
+                f"Valid from: {_e(entry.grant_valid_from or '—')}<br>"
+                f"Valid until: {_e(entry.grant_valid_until or '—')}"
+                "</p></details>"
+                if entry.recorded_scope else (
+                    '<p class="meta">No current request-bound scope grant.<br>'
+                    f'Recorded window state: {_e(entry.scope_record_state.replace("_", " ").lower())}'
+                    f'{historical_window}</p>'
+                )
+            )
+            risk_reviews = []
+            for review in entry.risk_elevation_reviews:
+                reviewed = (
+                    f' · Decision recorded: {_e(review.reviewed_at)}'
+                    if review.reviewed_at else ''
+                )
+                risk_reviews.append(
+                    '<li>'
+                    f'<code>{_e(review.approval_id)}</code> · '
+                    f'{_e(review.status)} · requested ceiling {_risk(review.requested_risk)}'
+                    f' · Requested: {_e(review.requested_at)}{reviewed}'
+                    '</li>'
+                )
+            risk_history = (
+                f'<details><summary>Risk review history '
+                f'({len(risk_reviews)} recorded; no execution authority)</summary>'
+                f'<ul>{"".join(risk_reviews)}</ul>'
+                '<p class="meta">Risk decisions never extend recorded request-bound '
+                'scope or independently verify consent.</p></details>'
+                if risk_reviews else ''
+            )
+            blockers = ("".join(f"<li>{_e(reason)}</li>" for reason in entry.blockers)
+                        or "<li>No additional engagement-specific blockers are recorded.</li>")
+            cards.append(
+                f'<section class="card scope-review" id="engagement-{_e(entry.engagement_id)}">'
+                '<div class="row">'
+                f'<h3>{_e(entry.name)}</h3>'
+                '<span class="badge lock">Testing not authorized</span></div>'
+                f'<p class="meta">Recorded engagement: {_e(entry.status)} · '
+                f'Scope window: {_e(entry.scope_record_state.replace("_", " ").lower())} · '
+                f'Pending risk decisions: {entry.pending_elevations}</p>'
+                '<div class="scope-blockers">'
+                '<strong>Still required before testing can be authorized</strong>'
+                f'<ul>{blockers}</ul>'
+                '<p class="meta">Regardless of these engagement-specific blockers, '
+                'current client consent remains separate. Revocation must be checked '
+                'immediately before any action, and separate final human approval is '
+                'still required.</p></div>'
+                f'{scope}{risk_history}</section>'
+            )
+        body = (
+            f'<h1>{_e(plan.client_name)} — scope and safety</h1>'
+            '<p class="sub">This page shows existing records for human review only. '
+            'It cannot start testing, change a grant, or contact a target.</p>'
+            '<section class="card next-action" aria-labelledby="scope-next">'
+            '<span class="badge lock">No testing authority</span>'
+            f'<h2 id="scope-next">{_e(next_heading)}</h2>'
+            f'<p>{_e(next_explanation)}</p>'
+            f'<p>{next_link}</p>'
+            '</section>'
+            '<div class="grid" aria-label="Original record counts">'
+            f'<section class="card"><div class="kpi">{pending_count}</div>'
+            '<div class="kpi-label">Client requests awaiting human review</div></section>'
+            f'<section class="card"><div class="kpi">{approved_count}</div>'
+            '<div class="kpi-label">Requests accepted for scope review only</div></section>'
+            f'<section class="card"><div class="kpi">{no_current_scope}</div>'
+            '<div class="kpi-label">Engagements without current recorded scope</div></section>'
+            f'<section class="card"><div class="kpi">{pending_risks}</div>'
+            '<div class="kpi-label">Pending independent risk decisions</div></section>'
+            '</div>'
+            '<p class="meta">Counts are record states, not a security or '
+            'readiness score. Even a CURRENT recorded grant cannot establish '
+            'independent consent, revocation at use or HUMAN GO.</p>'
+            '<nav class="inbox-jumps" aria-label="Scope and safety sections">'
+            '<a href="#engagement-review">Engagement blockers</a>'
+            '<a href="#request-review">Request review history</a>'
+            '<a href="#global-gates">Always-required safety gates</a></nav>'
+            f'<h2 id="engagement-review">Engagement blockers ({len(cards)})</h2>'
+            '<p class="meta">Every engagement remains HOLD. '
+            'The original source blocker list stays visible.</p>'
+            + ("".join(cards) or '<p class="empty">No engagements recorded. '
+               'A client request alone does not create one.</p>')
+            + '<h2 id="request-review">Original client request history</h2>'
+            + f'<h3>Awaiting independent review ({len(pending_cards)})</h3>'
+            + ("".join(item[2] for item in pending_cards)
+               or '<p class="empty">No pending client requests.</p>')
+            + f'<details><summary>Decided request history ({len(decided_cards)})</summary>'
+            + ("".join(item[2] for item in decided_cards)
+               or '<p class="empty">No recorded request decisions.</p>')
+            + '</details>'
+            + '<section class="card" id="global-gates">'
+              '<h2>Always-required safety gates</h2>'
+              '<ol><li>Original client ownership and request provenance review</li>'
+              '<li>Exact, current, request-bound scope and independent operator decisions</li>'
+              '<li>Separately verified client consent and revocation checks at use</li>'
+              '<li>Source-owner, security and privacy review with explicit HUMAN GO</li></ol>'
+              '<p class="meta">These requirements are not verified by this '
+              'read-only page. Testing stays OFF at every recorded status.</p></section>'
+            + (f'<details><summary>Export and navigation</summary>'
+               f'<p><a href="/portal/{_e(plan.client_id)}/authorization-plan.json">'
+               'Download private plan-only review (JSON)</a> · '
+               f'<a href="/portal/{_e(plan.client_id)}">Back to client portal</a></p>'
+               '</details>'
+               if portal else
+               f'<details><summary>Export and navigation</summary>'
+               f'<p><a href="/clients/{_e(plan.client_id)}/authorization-plan.json">'
+               'Download private plan-only review (JSON)</a> · '
+               f'<a href="/clients/{_e(plan.client_id)}">Back to client dossier</a></p>'
+               '</details>')
+        )
+        return Response(_page(
+            "LightUp — Scope and safety", "scope" if portal else "clients",
+            body, auth, portal_client=client_id if portal else None,
+        ))
 
     def create_engagement(self, auth: AuthState, form: dict[str, str],
                           client_id: str) -> Response:
@@ -561,20 +1740,45 @@ class LightUpWebApp:
         from datetime import datetime, timedelta, timezone
 
         from ..engagements import ScopeDefinition
+        from ..capabilities import CapabilityState, get_capabilities
 
         def _csv(name: str) -> tuple[str, ...]:
             return tuple(part.strip() for part in form.get(name, "").split(",")
                          if part.strip())
 
-        max_risk = RiskLevel(int(form.get("max_risk", "3")))
-        if max_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
+        raw_max_risk = form.get("max_risk")
+        if raw_max_risk is None or not raw_max_risk.strip():
+            raise ValueError("maximum risk is required")
+        if raw_max_risk == str(int(RiskLevel.DESTRUCTIVE_LAB_ONLY)):
             raise ValueError("destructive simulation cannot be granted for client assets")
-        valid_days = max(1, min(365, int(form.get("valid_days", "30"))))
+        if raw_max_risk not in {"1", "2", "3", "4"}:
+            raise ValueError("maximum risk must be one of 1, 2, 3, or 4")
+        max_risk = RiskLevel(int(raw_max_risk))
+
+        raw_valid_days = form.get("valid_days")
+        if raw_valid_days is None or not raw_valid_days.strip():
+            raise ValueError("grant validity is required")
+        if not raw_valid_days.isascii() or not raw_valid_days.isdigit():
+            raise ValueError("grant validity must be a whole number of days")
+        valid_days = int(raw_valid_days)
+        if not 1 <= valid_days <= 365:
+            raise ValueError("grant validity must be between 1 and 365 days")
+        capabilities = _csv("capabilities")
+        permitted = {
+            cap.capability_id for cap in get_capabilities()
+            if cap.state is CapabilityState.PLANNING
+        }
+        if (not capabilities or len(set(capabilities)) != len(capabilities)
+                or any(cap not in permitted for cap in capabilities)):
+            raise ValueError("grant must explicitly name unique known planning capabilities")
+        approved_request_id = form.get("approved_request_id")
+        if type(approved_request_id) is not str or not approved_request_id.strip():
+            raise ValueError("one explicitly approved client request is required")
         now = datetime.now(timezone.utc)
         scope = ScopeDefinition(
             assets=_csv("assets"),
             max_risk=max_risk,
-            allowed_capabilities=_csv("capabilities"),
+            allowed_capabilities=capabilities,
             excluded_assets=_csv("excluded_assets"),
         )
         engagement = self.store.get_engagement(auth.context, engagement_id)
@@ -584,82 +1788,453 @@ class LightUpWebApp:
             reference=form.get("reference", ""),
             scope=scope, valid_from=now,
             valid_until=now + timedelta(days=valid_days),
+            approved_request_id=approved_request_id,
         )
         return _redirect(f"/clients/{engagement.client_id}")
 
     def assessments(self, auth: AuthState, form: dict[str, str]) -> Response:
+        """Operator-only human decision inbox; no request grants scan authority."""
         ctx = auth.context
-        csrf = self._csrf_field(auth)
-        requests = self.store.list_assessment_requests(ctx)
-        approvals = [a for a in self.store.list_risk_approvals(ctx)
-                     if a.status.value == "pending"]
-        request_cards = []
-        for r in requests:
-            client = self.store.get_client(ctx, r.client_id)
-            decision = ""
-            if r.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}:
-                decision = (
-                    f'<form class="inline" method="post" '
-                    f'action="/assessments/requests/{_e(r.request_id)}/decision">{csrf}'
-                    '<input type="hidden" name="decision" value="approve">'
-                    "<button>Approve</button></form> "
-                    f'<form class="inline" method="post" '
-                    f'action="/assessments/requests/{_e(r.request_id)}/decision">{csrf}'
-                    '<input type="hidden" name="decision" value="reject">'
-                    "<button class=\"secondary\">Reject</button></form>"
-                )
-            request_cards.append(
-                "<div class=\"card\"><div class=\"row\">"
-                f"<strong>{_e(client.name)}</strong>"
-                f"<span class=\"badge\">{_e(r.status.value)}</span></div>"
-                f"<p class=\"meta\">Requested risk: {_risk(r.requested_risk)} · "
-                f"mode {_e(r.requested_mode.value)}</p>"
-                "<details><summary>Requested assets & notes</summary>"
-                f"<p class=\"meta\">Assets: {_e(', '.join(r.requested_assets))}<br>"
-                f"Notes: {_e(r.notes) or '—'}</p></details>"
-                f"{decision}</div>"
+        requests = sorted(
+            self.store.list_assessment_requests(ctx),
+            key=lambda item: (item.created_at, item.request_id),
+        )
+        risk_reviews = self.store.list_risk_approvals(ctx)
+        allowed_risk_states = {"pending", "approved", "denied"}
+        if any(item.status.value not in allowed_risk_states for item in risk_reviews):
+            raise ValueError("unknown persisted risk decision state")
+        approvals = sorted(
+            (item for item in risk_reviews if item.status.value == "pending"),
+            key=lambda item: (item.created_at, item.approval_id),
+        )
+        decided_risk_reviews = sorted(
+            (item for item in risk_reviews if item.status.value in {"approved", "denied"}),
+            key=lambda item: (item.created_at, item.approval_id),
+            reverse=True,
+        )
+        # Resolve names once from original operator-visible tenant records.
+        # A mismatched engagement/client link must never be presented as trusted.
+        risk_clients = {
+            client.client_id: client.name for client in self.store.list_clients(ctx)
+        }
+        risk_engagements = {
+            engagement.engagement_id: engagement
+            for engagement in self.store.list_engagements(ctx)
+        }
+
+        def risk_context(item) -> str:
+            engagement = risk_engagements.get(item.engagement_id)
+            client_name = risk_clients.get(item.client_id)
+            if (engagement is None or engagement.client_id != item.client_id
+                    or client_name is None):
+                raise TenantIsolationError("risk review tenant linkage invalid")
+            return (
+                f'<a href="/clients/{_e(item.client_id)}">{_e(client_name)}</a>'
+                f' · {_e(engagement.name)}'
             )
+
+        pending_requests = []
+        decided_requests = []
+        # One chronological HUMAN queue across client requests and engagement
+        # risk elevations. Separate counters/history remain informational only.
+        pending_decisions = []
+        for request in requests:
+            client = self.store.get_client(ctx, request.client_id)
+            pending = request.status in {
+                RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            }
+            if request.status not in {
+                RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+                RequestStatus.APPROVED, RequestStatus.REJECTED,
+            }:
+                raise ValueError("unknown persisted HUMAN review state")
+            action = (
+                "Open deliberate human decision" if pending
+                else "View recorded human decision"
+            )
+            card = (
+                '<section class="card"><div class="row">'
+                f'<strong>Client assessment · {_e(client.name)}</strong>'
+                f'<span class="badge">{_e(request.status.value)}</span></div>'
+                f'<p class="meta">Submitted {_e(request.created_at)}'
+                + (f' · Decided {_e(request.decided_at)}'
+                   if request.decided_at else '')
+                + f' · Requested risk: {_risk(request.requested_risk)}'
+                f' · Mode {_e(request.requested_mode.value)}'
+                f' · By {_e(request.requested_by)}</p>'
+                '<details><summary>Requested systems and notes</summary>'
+                f'<p class="meta">Systems: {_e(", ".join(request.requested_assets))}</p>'
+                f'<p class="meta">Notes: {_e(request.notes) or "—"}</p></details>'
+                f'<a href="/assessments/requests/{_e(request.request_id)}/review">'
+                f'{action}</a> · '
+                f'<a href="/clients/{_e(request.client_id)}/authorization-plan">'
+                'Review client source and scope context</a></section>'
+            )
+            if pending:
+                pending_requests.append(card)
+                pending_decisions.append((
+                    request.created_at, request.request_id, "assessment", card,
+                ))
+            else:
+                # The pending worklist runs oldest-first; history remains newest-first.
+                decided_requests.insert(0, card)
+
         elevation_cards = []
-        for a in approvals:
-            elevation_cards.append(
-                "<div class=\"card\"><div class=\"row\">"
-                f"<strong>Risk elevation to {_risk(a.requested_risk)}</strong>"
-                "<span class=\"badge warn\">Step-up approval required</span></div>"
-                f"<p class=\"meta\">Engagement {_e(a.engagement_id)} · "
-                f"requested by {_e(a.requested_by)}</p>"
-                "<details><summary>Justification</summary>"
-                f"<p class=\"meta\">{_e(a.justification)}</p></details>"
-                f'<form class="inline" method="post" '
-                f'action="/assessments/elevations/{_e(a.approval_id)}/decision">{csrf}'
-                '<input type="hidden" name="decision" value="approve">'
-                "<button>Approve elevation</button></form> "
-                f'<form class="inline" method="post" '
-                f'action="/assessments/elevations/{_e(a.approval_id)}/decision">{csrf}'
-                '<input type="hidden" name="decision" value="deny">'
-                "<button class=\"secondary\">Deny</button></form></div>"
+        for approval in approvals:
+            card = (
+                '<section class="card"><div class="row">'
+                f'<strong>Risk elevation to {_risk(approval.requested_risk)}</strong>'
+                '<span class="badge warn">Human decision required</span></div>'
+                f'<p class="meta">{risk_context(approval)} · '
+                f'Engagement ID {_e(approval.engagement_id)} · '
+                f'Requested {_e(approval.created_at)} · '
+                f'By {_e(approval.requested_by)}</p>'
+                '<details><summary>Justification</summary>'
+                f'<p class="meta">{_e(approval.justification)}</p></details>'
+                f'<a href="/assessments/elevations/{_e(approval.approval_id)}/review">'
+                'Open deliberate risk review</a> · '
+                f'<a href="/clients/{_e(approval.client_id)}/authorization-plan">'
+                'Review client source and scope context</a></section>'
+            )
+            elevation_cards.append(card)
+            pending_decisions.append((
+                approval.created_at, approval.approval_id, "risk", card,
+            ))
+        # Preserve deterministic FIFO fairness even when two requests arrive
+        # at the same instant, without inventing urgency or scan authority.
+        pending_decisions.sort(key=lambda entry: (entry[0], entry[1], entry[2]))
+        risk_history_cards = []
+        for decision in decided_risk_reviews:
+            risk_history_cards.append(
+                '<section class="card"><div class="row">'
+                f'<strong>Risk elevation to {_risk(decision.requested_risk)}</strong>'
+                f'<span class="badge">{_e(decision.status.value)}</span></div>'
+                f'<p class="meta">{risk_context(decision)} · '
+                f'Engagement ID {_e(decision.engagement_id)} · '
+                f'Recorded by {_e(decision.decided_by or "Not recorded")} · '
+                f'At {_e(decision.decided_at or "Not recorded")}</p>'
+                '<p class="meta">This decision does not extend a scope grant '
+                'or authorize testing.</p>'
+                f'<a href="/assessments/elevations/{_e(decision.approval_id)}/review">'
+                'Open recorded risk decision</a></section>'
             )
         body = (
-            "<h1>Assessments</h1>"
-            "<p class=\"sub\">Nothing becomes active without a reviewed request, "
-            "a recorded authorization grant and an approved risk level.</p>"
-            "<h2>Assessment requests</h2>"
-            + ("".join(request_cards) or "<p class=\"empty\">No requests.</p>")
-            + "<h2>Pending risk elevations</h2>"
-            + ("".join(elevation_cards) or "<p class=\"empty\">No pending elevations.</p>")
+            '<h1>Human assessment decisions</h1>'
+            '<p class="sub">Review original client requests and risk elevations. '
+            'Every decision remains separate from any scope/authorization grant, current consent, '
+            'revocation-at-use and HUMAN GO. Active testing is locked.</p>'
+            '<div class="grid">'
+            f'<section class="card"><div class="kpi">{len(pending_requests)}</div>'
+            '<div class="kpi-label">Client requests awaiting review</div></section>'
+            f'<section class="card"><div class="kpi">{len(elevation_cards)}</div>'
+            '<div class="kpi-label">Risk elevations awaiting review</div></section>'
+            f'<section class="card"><div class="kpi">{len(decided_requests)}</div>'
+            '<div class="kpi-label">Recorded request decisions</div></section>'
+            f'<section class="card"><div class="kpi">{len(risk_history_cards)}</div>'
+            '<div class="kpi-label">Recorded risk decisions</div></section>'
+            '</div>'
+            f'<h2>One human-review queue ({len(pending_decisions)}) · oldest first</h2>'
+            '<p class="sub">Both original client assessment requests and '
+            'engagement risk elevations are ordered by submission time. '
+            'A HUMAN review here never creates a scope grant or permission to test.</p>'
+            + ("".join(entry[3] for entry in pending_decisions) or
+               '<p class="empty">No original requests or elevated-risk decisions '
+               'awaiting review.</p>')
+            + f'<details><summary>Decided request history ({len(decided_requests)})</summary>'
+            + ("".join(decided_requests) or
+               '<p class="empty">No previous human request decisions.</p>')
+            + '</details>'
+            + f'<details><summary>Decided risk-elevation history ({len(risk_history_cards)})</summary>'
+            + ("".join(risk_history_cards) or
+               '<p class="empty">No previous human risk decisions.</p>')
+            + '</details>'
+            + '<p class="meta">A human review is never independent client consent '
+            'or permission to contact a target. '
+            '<a href="/authorization-reviews">Open complete scope review worklist</a>.</p>'
         )
-        return Response(_page("LightUp — Assessments", "assessments", body, auth))
+        return Response(_page("LightUp — Human decisions", "assessments", body, auth))
+
+    def review_request_page(
+        self, auth: AuthState, form: dict[str, str], request_id: str,
+    ) -> Response:
+        ctx = auth.context
+        request = self.store.get_assessment_request(ctx, request_id)
+        client = self.store.get_client(ctx, request.client_id)
+        if request.status not in {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            RequestStatus.APPROVED, RequestStatus.REJECTED,
+        }:
+            raise ValueError("unknown original request decision state")
+        pending = request.status in {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+        }
+        controls = ""
+        if pending:
+            choices = []
+            for decision, heading, explanation, label in (
+                (
+                    "approve",
+                    "Continue to independent scope review",
+                    "This accepts the request for further HUMAN scope consideration "
+                    "only. It does not validate target ownership, issue a grant, "
+                    "verify consent or unlock assessment capabilities.",
+                    "Approve request for scope review only",
+                ),
+                (
+                    "reject",
+                    "Stop this request",
+                    "This records a rejection of the original request. "
+                    "No further testing or grant follows from this decision.",
+                    "Reject original request",
+                ),
+            ):
+                approval_only = (
+                    '<label class="review-ack">'
+                    '<input type="checkbox" name="approve_scope_boundary" '
+                    'value="understood" required>'
+                    '<span>I understand approval permits only another '
+                    'independent scope review. No target contact, capability '
+                    'or testing follows from this button.</span></label>'
+                    if decision == "approve" else ""
+                )
+                choices.append(
+                    '<form method="post" class="card decision-choice" '
+                    f'action="/assessments/requests/{_e(request_id)}/decision" '
+                    f'aria-labelledby="request-{decision}-heading">'
+                    f'{self._csrf_field(auth)}'
+                    f'<input type="hidden" name="decision" value="{decision}">'
+                    f'<h3 id="request-{decision}-heading">{_e(heading)}</h3>'
+                    f'<p>{_e(explanation)}</p>'
+                    '<label class="review-ack">'
+                    '<input type="checkbox" name="reviewed" value="yes" required>'
+                    '<span>I have reviewed the original client request, systems, '
+                    'testing mode, risk and notes shown above.</span></label>'
+                    f'{approval_only}'
+                    f'<button class="{"secondary" if decision == "reject" else ""}">'
+                    f'{_e(label)}</button></form>'
+                )
+            controls = (
+                '<section aria-labelledby="request-choice-heading">'
+                '<h2 id="request-choice-heading">3 · Record a HUMAN decision</h2>'
+                '<p class="sub">Choose one outcome deliberately. '
+                'The acknowledgements belong to this page only; the original '
+                'server-side role and scope authorization checks remain separate.</p>'
+                '<div class="decision-grid">'
+                + "".join(choices)
+                + '</div></section>'
+            )
+        decision_receipt = (
+            '<section class="card" aria-labelledby="request-decision-heading">'
+            '<h2 id="request-decision-heading">Recorded human decision</h2>'
+            f'<p>Outcome: <strong>{_e(request.status.value)}</strong></p>'
+            f'<p class="meta">Recorded by: {_e(request.decided_by or "Not recorded")} · '
+            f'At: {_e(request.decided_at or "Not recorded")}</p>'
+            '<p class="meta">This decision is not a scope grant, verified consent, '
+            'revocation-at-use proof or permission to test.</p></section>'
+            if not pending else ""
+        )
+        body = (
+            "<h1>Review client assessment request</h1>"
+            '<p class="sub">Read the original request, inspect the separate '
+            'authorization context, then record one HUMAN outcome. '
+            'Active testing remains locked.</p>'
+            '<section class="card decision-facts" aria-labelledby="request-facts-heading">'
+            '<h2 id="request-facts-heading">1 · Original client request</h2>'
+            f'<p><strong>Client:</strong> {_e(client.name)} · '
+            f'<strong>Status:</strong> {_e(request.status.value)}</p>'
+            f'<p><strong>Requested systems:</strong> '
+            f'{_e(", ".join(request.requested_assets) or "None listed")}</p>'
+            f'<p><strong>Testing mode:</strong> {_e(request.requested_mode.value)} · '
+            f'<strong>Risk:</strong> {_risk(request.requested_risk)}</p>'
+            f'<p><strong>Client request origin:</strong> {_e(request.requested_by)} · '
+            f'<strong>Submitted:</strong> {_e(request.created_at)}</p>'
+            f'<p><strong>Notes:</strong> {_e(request.notes) or "None"}</p>'
+            '</section>'
+            '<section class="card decision-boundaries" '
+            'aria-labelledby="request-boundaries-heading">'
+            '<h2 id="request-boundaries-heading">2 · Independent safety evidence</h2>'
+            '<p>Neither this request nor its approval proves the following:</p>'
+            '<ul><li>System ownership and an exact, current scope grant</li>'
+            '<li>Separate, verified client consent and a permitted risk level</li>'
+            '<li>Revocation checks at the time of any proposed action</li>'
+            '<li>Independent review and explicit HUMAN GO for execution</li></ul>'
+            f'<p><a href="/clients/{_e(request.client_id)}/authorization-plan">'
+            'Inspect original request, scope and grant context (plan-only)</a></p>'
+            '<p class="meta">These are open proof requirements, not completed '
+            'checks. No action against a system can start from this page.</p>'
+            '</section>'
+            + decision_receipt
+            + (controls or '<p class="empty">Decision already recorded; '
+               'no further decision is available here.</p>')
+            + '<p><a href="/assessments">Back to operator reviews</a></p>'
+        )
+        return Response(_page(
+            "LightUp — Review request", "assessments", body, auth,
+        ))
+
+    def _risk_review_record(self, ctx: AccessContext, approval_id: str):
+        """Resolve the source engagement before presenting or posting a review.
+
+        This is a WSGI defense-in-depth guard, not the atomic domain decision
+        invariant tracked separately in scope issue #1275.
+        """
+        decision = next(
+            (item for item in self.store.list_risk_approvals(ctx)
+             if item.approval_id == approval_id), None,
+        )
+        if decision is None:
+            raise KeyError("risk review not found")
+        engagement = self.store.get_engagement(ctx, decision.engagement_id)
+        if decision.client_id != engagement.client_id:
+            raise TenantIsolationError("risk approval tenant linkage invalid")
+        return decision, engagement
+
+    def review_elevation_page(
+        self, auth: AuthState, form: dict[str, str], approval_id: str,
+    ) -> Response:
+        ctx = auth.context
+        decision, engagement = self._risk_review_record(ctx, approval_id)
+        client = self.store.get_client(ctx, decision.client_id)
+        if decision.status.value not in {"pending", "approved", "denied"}:
+            raise ValueError("unknown original risk decision state")
+        pending = decision.status.value == "pending"
+        controls = ""
+        if pending:
+            choices = []
+            for choice, heading, explanation, label in (
+                (
+                    "approve",
+                    "Record risk-level acceptance only",
+                    "Accept the requested risk level for this independent HUMAN "
+                    "review. It cannot expand the recorded asset scope, renew "
+                    "a grant, verify client consent or authorize any test.",
+                    "Record risk-elevation approval only",
+                ),
+                (
+                    "deny",
+                    "Deny the requested elevation",
+                    "Leave the proposed higher risk unapproved. A denial "
+                    "does not change the original engagement scope or grant.",
+                    "Deny this risk elevation",
+                ),
+            ):
+                approval_only = (
+                    '<label class="review-ack">'
+                    '<input type="checkbox" name="approve_risk_boundary" '
+                    'value="understood" required>'
+                    '<span>I understand this risk decision does not widen '
+                    'the separately recorded scope grant or authorize '
+                    'assessment execution.</span></label>'
+                    if choice == "approve" else ""
+                )
+                choices.append(
+                    '<form method="post" class="card decision-choice" '
+                    f'action="/assessments/elevations/{_e(approval_id)}/decision" '
+                    f'aria-labelledby="risk-{choice}-heading">'
+                    f'{self._csrf_field(auth)}'
+                    f'<input type="hidden" name="decision" value="{choice}">'
+                    f'<h3 id="risk-{choice}-heading">{_e(heading)}</h3>'
+                    f'<p>{_e(explanation)}</p>'
+                    '<label class="review-ack">'
+                    '<input type="checkbox" name="reviewed" value="yes" required>'
+                    '<span>I reviewed the original engagement, requested '
+                    'elevated risk, requester and written justification.</span></label>'
+                    f'{approval_only}'
+                    f'<button class="{"secondary" if choice == "deny" else ""}">'
+                    f'{_e(label)}</button></form>'
+                )
+            controls = (
+                '<section aria-labelledby="risk-choice-heading">'
+                '<h2 id="risk-choice-heading">3 · Record a HUMAN risk decision</h2>'
+                '<p class="sub">This records only a risk-review outcome. '
+                'UI acknowledgements never replace original server-side '
+                'role, tenant, consent or grant enforcement.</p>'
+                '<div class="decision-grid">'
+                + "".join(choices)
+                + '</div></section>'
+            )
+        elevation_receipt = (
+            '<section class="card" aria-labelledby="elevation-decision-heading">'
+            '<h2 id="elevation-decision-heading">Recorded risk decision</h2>'
+            f'<p>Outcome: <strong>{_e(decision.status.value)}</strong></p>'
+            f'<p class="meta">Recorded by: {_e(decision.decided_by or "Not recorded")} · '
+            f'At: {_e(decision.decided_at or "Not recorded")}</p>'
+            '<p class="meta">A risk decision never widens a scope grant, '
+            'verifies consent or permits execution.</p></section>'
+            if not pending else ""
+        )
+        body = (
+            "<h1>Review proposed risk elevation</h1>"
+            '<p class="sub">Read the original justification, inspect separate '
+            'scope facts, then record one HUMAN risk outcome. '
+            'Capabilities remain locked.</p>'
+            '<section class="card decision-facts" aria-labelledby="risk-facts-heading">'
+            '<h2 id="risk-facts-heading">1 · Original risk request</h2>'
+            f'<p><strong>Client:</strong> {_e(client.name)} · '
+            f'<strong>Engagement:</strong> {_e(engagement.name)}</p>'
+            f'<p><strong>Status:</strong> {_e(decision.status.value)} · '
+            f'<strong>Requested risk:</strong> {_risk(decision.requested_risk)}</p>'
+            f'<p><strong>Requested by:</strong> {_e(decision.requested_by)}</p>'
+            f'<p><strong>Justification:</strong> {_e(decision.justification)}</p>'
+            '</section>'
+            '<section class="card decision-boundaries" '
+            'aria-labelledby="risk-boundaries-heading">'
+            '<h2 id="risk-boundaries-heading">2 · Scope remains independent</h2>'
+            '<p>Risk acceptance alone does not establish:</p>'
+            '<ul><li>An exact active asset scope or request-bound grant</li>'
+            '<li>Client consent for the proposed test and risk</li>'
+            '<li>Revocation status at any future action time</li>'
+            '<li>Independent source-owner review and explicit HUMAN GO</li></ul>'
+            '<p><a href="/clients/'
+            f'{_e(decision.client_id)}/authorization-plan">'
+            'Inspect this client’s request, scope and grant evidence (plan-only)</a></p>'
+            '<p class="meta">A recorded risk approval never permits target '
+            'contact or extends a scope window.</p>'
+            '</section>'
+            + elevation_receipt
+            + (controls or '<p class="empty">No pending risk decision remains.</p>')
+            + '<p><a href="/assessments">Back to operator reviews</a></p>'
+        )
+        return Response(_page(
+            "LightUp — Risk review", "assessments", body, auth,
+        ))
 
     def decide_request(self, auth: AuthState, form: dict[str, str],
                        request_id: str) -> Response:
-        approve = form.get("decision") == "approve"
-        self.store.review_assessment_request(auth.context, request_id, approve)
-        return _redirect("/assessments")
+        decision = form.get("decision")
+        if form.get("reviewed") != "yes":
+            raise ValueError("operator must explicitly confirm request review")
+        if decision not in {"approve", "reject"}:
+            raise ValueError("assessment decision must be exactly approve or reject")
+        if (decision == "approve"
+                and form.get("approve_scope_boundary") != "understood"):
+            raise ValueError(
+                "operator must acknowledge approval is for scope review only"
+            )
+        self.store.review_assessment_request(
+            auth.context, request_id, decision == "approve"
+        )
+        return _redirect(f"/assessments/requests/{request_id}/review")
 
     def decide_elevation(self, auth: AuthState, form: dict[str, str],
                          approval_id: str) -> Response:
-        approve = form.get("decision") == "approve"
-        self.store.decide_risk_elevation(auth.context, approval_id, approve)
-        return _redirect("/assessments")
+        decision = form.get("decision")
+        if form.get("reviewed") != "yes":
+            raise ValueError("operator must explicitly confirm risk review")
+        if decision not in {"approve", "deny"}:
+            raise ValueError("risk-elevation decision must be exactly approve or deny")
+        if (decision == "approve"
+                and form.get("approve_risk_boundary") != "understood"):
+            raise ValueError(
+                "operator must acknowledge risk approval does not grant scope"
+            )
+        # Fail closed for direct POSTs that bypass the review HTML. The original
+        # DomainStore still needs its separate same-transaction #1275 repair.
+        self._risk_review_record(auth.context, approval_id)
+        self.store.decide_risk_elevation(
+            auth.context, approval_id, decision == "approve"
+        )
+        return _redirect(f"/assessments/elevations/{approval_id}/review")
 
     # -- client portal --------------------------------------------------------
 
@@ -677,78 +2252,1622 @@ class LightUpWebApp:
     def portal(self, auth: AuthState, form: dict[str, str], client_id: str) -> Response:
         ctx = self._portal_context(auth, client_id)
         client = self.store.get_client(ctx, client_id)
-        findings = self.store.list_findings(ctx)
-        requests = self.store.list_assessment_requests(ctx)
+        # Both the operator's client dossier and tenant portal use the
+        # same explicit client-scoped evidence and relationship validation.
+        engagements, findings = self._client_scoped_evidence(ctx, client_id)
+        # Keep the overview minimal: raw scope assets belong only to the
+        # authenticated per-request receipt, not a default landing screen.
+        requests = self.store.list_assessment_requests(ctx, client_id)
+        if any(item.client_id != client_id for item in requests):
+            raise TenantIsolationError("cross-tenant portal overview denied")
+        ordered_requests = sorted(
+            requests, key=lambda item: (item.created_at, item.request_id),
+            reverse=True,
+        )
+        # Coverage is evidence about specific registered capabilities, not a
+        # confidence score. Surface its gaps before displaying any zero-finding
+        # or fixed-count KPI, using the same original tenant-bound store.
+        from ..coverage import CoverageReport, CoverageStatus
+
+        coverage_reports = []
+        for engagement in engagements:
+            stored = self.store.get_coverage(ctx, engagement.engagement_id)
+            report = CoverageReport.build({
+                capability: CoverageStatus(status)
+                for capability, status in stored.items()
+            })
+            coverage_reports.append((engagement, report))
+        coverage_counts = [report.counts() for _, report in coverage_reports]
+        assessed_domains = sum(counts["assessed"] for counts in coverage_counts)
+        partial_domains = sum(
+            counts["partially_assessed"] for counts in coverage_counts
+        )
+        unknown_domains = sum(counts["unknown"] for counts in coverage_counts)
+        unapproved_domains = sum(
+            counts["not_authorized"] for counts in coverage_counts
+        )
+        if not coverage_reports:
+            coverage_message = (
+                "No engagements or assessed capability coverage are recorded. "
+                "Zero findings cannot be interpreted as a clean bill of health."
+            )
+        elif unknown_domains:
+            coverage_message = (
+                "Some security domains have unknown coverage. Neither a low "
+                "finding count nor a recorded fix establishes their safety."
+            )
+        else:
+            coverage_message = (
+                "Coverage states are recorded, but they do not prove that "
+                "every system is safe or authorize additional testing."
+            )
+        coverage_overview = (
+            '<section class="card" aria-labelledby="coverage-summary-heading">'
+            '<span class="badge warn">Evidence, not a security score</span>'
+            '<h2 id="coverage-summary-heading">What has been assessed?</h2>'
+            f'<p>{_e(coverage_message)}</p>'
+            '<div class="grid">'
+            f'<div><strong>{assessed_domains}</strong><p class="meta">Assessed capability entries</p></div>'
+            f'<div><strong>{partial_domains}</strong><p class="meta">Partially assessed</p></div>'
+            f'<div><strong>{unknown_domains}</strong><p class="meta">Unknown coverage</p></div>'
+            f'<div><strong>{unapproved_domains}</strong><p class="meta">Not authorized</p></div>'
+            '</div>'
+            f'<p class="meta">Across {len(coverage_reports)} recorded engagement(s). '
+            'Counts represent registered capabilities per engagement, not tested '
+            'systems or verified ownership. Testing remains locked.</p>'
+            '<p><a href="#coverage-details">Review coverage by engagement</a></p>'
+            + (f'<p><a href="/portal/{_e(client_id)}/report#report-gap-heading">'
+               'Open the private HUMAN coverage-gap worklist</a></p>'
+               if unknown_domains or partial_domains or unapproved_domains else '')
+            + '</section>'
+        )
+        # Surface original scope-blocker facts on the client landing page.
+        # A current recorded grant is NOT proof of consent, revocation or GO;
+        # reuse the existing read-only authorization plan, never infer a permit.
+        from ..authorization_plan import build_client_authorization_plan
+
+        scope_plan = build_client_authorization_plan(self.store, ctx, client_id)
+        if (scope_plan.client_id != client_id
+                or scope_plan.state != "PLAN_ONLY"
+                or scope_plan.execution_allowed is not False):
+            raise TenantIsolationError("client scope summary is not tenant-safe")
+        known_engagement_ids = {item.engagement_id for item in engagements}
+        plan_engagement_ids = {item.engagement_id for item in scope_plan.engagements}
+        if (plan_engagement_ids != known_engagement_ids
+                or len(plan_engagement_ids) != len(scope_plan.engagements)):
+            raise TenantIsolationError("client scope summary engagement mismatch")
+        allowed_scope_states = {
+            "CURRENT", "EXPIRED", "NOT_YET_VALID", "NOT_RECORDED",
+        }
+        if any(
+            item.scope_record_state not in allowed_scope_states
+            or item.decision != "HOLD"
+            or item.execution_allowed is not False
+            for item in scope_plan.engagements
+        ):
+            raise ValueError("client scope summary is not fail-closed")
+        current_scope_count = sum(
+            item.scope_record_state == "CURRENT"
+            for item in scope_plan.engagements
+        )
+        pending_risk_count = sum(
+            item.pending_elevations for item in scope_plan.engagements
+        )
+        # Show the unresolved scope states first, keeping the overview short.
+        scope_preview = sorted(
+            scope_plan.engagements,
+            key=lambda item: (
+                item.scope_record_state == "CURRENT",
+                item.name.casefold(),
+                item.engagement_id,
+            ),
+        )[:3]
+        scope_rows = "".join(
+            '<section class="card"><div class="row">'
+            f'<strong>{_e(item.name)}</strong>'
+            f'<span class="badge warn">{_e(item.scope_record_state.replace("_", " ").lower())}</span></div>'
+            f'<p class="meta">Risk reviews awaiting a decision: {item.pending_elevations} · '
+            f'Steps still needed: {len(item.blockers)}</p>'
+            '<details><summary>Why testing is still locked</summary>'
+            '<ul>' + "".join(
+                f'<li>{_e(reason)}</li>' for reason in item.blockers
+            ) + '</ul></details>'
+            f'<p><a href="/portal/{_e(client_id)}/authorization-plan'
+            f'#engagement-{_e(item.engagement_id)}">'
+            'Read original grant details and every safety gate</a></p></section>'
+            for item in scope_preview
+        )
+        scope_board = (
+            '<section aria-labelledby="scope-board-heading">'
+            '<h2 id="scope-board-heading">Testing is not authorized yet</h2>'
+            f'<p class="sub">{current_scope_count} of {len(scope_plan.engagements)} '
+            'engagements have a recorded scope grant; '
+            f'{pending_risk_count} risk review(s) await a human decision. '
+            'A recorded grant alone does not prove that client consent is current ' 
+            'or that testing is allowed. Consent and revocation must be checked again ' 
+            'immediately before any action, and a human must give final approval. ' 
+            'Testing remains off.</p>'
+            + (scope_rows or
+               '<p class="empty">No engagements or scope grants recorded yet.</p>')
+            + (f'<p><a href="/portal/{_e(client_id)}/authorization-plan">'
+               'See all engagement blockers and the original authorization plan</a></p>'
+               if scope_plan.engagements else
+               f'<p><a href="/portal/{_e(client_id)}/authorization-plan">'
+               'Open the read-only authorization plan</a></p>')
+            + '</section>'
+        )
+
         fixed = sum(1 for f in findings if f.retest_status is RetestStatus.FIXED)
+        # Counters are for ORIGINAL, tenant-validated recorded findings only;
+        # unknown assessment coverage remains prominently shown above.
+        outstanding_findings = tuple(
+            item for item in findings if item.retest_status is not RetestStatus.FIXED
+        )
+        urgent_outstanding = sum(
+            item.severity.value in {"critical", "high"}
+            for item in outstanding_findings
+        )
+        recorded_regressions = sum(
+            item.retest_status is RetestStatus.REGRESSION
+            for item in outstanding_findings
+        )
+        # Surface actionable recorded evidence without hiding the required
+        # request, scope and coverage steps. Reuse the report's exact ordering,
+        # so the first three suggestions match the private HUMAN handoff.
+        human_followups = _human_follow_up_order(outstanding_findings)
+        follow_up_guidance = {
+            RetestStatus.REGRESSION: (
+                "Ask the responsible person to review the returning finding "
+                "and its originally proposed fix."
+            ),
+            RetestStatus.FIX_PENDING: (
+                "Assign a human owner to review the recorded proposed fix."
+            ),
+            RetestStatus.NOT_TESTED: (
+                "Review the proposed fix; any future retest needs new, "
+                "independent authorization."
+            ),
+        }
+        if any(
+            item.retest_status not in follow_up_guidance
+            for item in human_followups
+        ):
+            raise ValueError("unrecognized original follow-up state")
+        priority_items = "".join(
+            '<li><strong>' + _e(item.title) + '</strong>'
+            f'<p class="meta">{_e(item.severity.value)} severity · '
+            f'{_e(item.retest_status.value.replace("_", " "))}</p>'
+            f'<p>{_e(follow_up_guidance[item.retest_status])}</p>'
+            f'<p><a href="/portal/{_e(client_id)}/report#report-open-{index}">'
+            'Read recorded impact, proposed fix and retest evidence</a></p></li>'
+            for index, item in enumerate(human_followups[:3], 1)
+        )
+        follow_up_board = (
+            '<section class="card" aria-labelledby="follow-up-heading">'
+            '<span class="badge warn">Recorded findings · human review only</span>'
+            '<h2 id="follow-up-heading">First findings to review</h2>'
+            f'<p>{len(human_followups)} unresolved recorded finding(s); '
+            'regressions first, then severity. These records do not establish '
+            'current safety or authorize another test.</p>'
+            f'<ol>{priority_items}</ol>'
+            f'<p><a href="/portal/{_e(client_id)}/report#report-agenda-heading">'
+            'Open the full private follow-up report</a></p>'
+            + (f'<p><a href="/portal/{_e(client_id)}/report#report-index-heading">'
+               f'Jump to all {len(human_followups)} unresolved original findings</a></p>'
+               if len(human_followups) > 3 else '')
+            + '</section>'
+            if human_followups else ""
+        )
         request_rows = "".join(
-            "<div class=\"card\"><div class=\"row\">"
-            f"<strong>{_e(', '.join(r.requested_assets))}</strong>"
-            f"<span class=\"badge\">{_e(r.status.value)}</span></div>"
-            f"<p class=\"meta\">Requested risk: {_risk(r.requested_risk)}</p></div>"
-            for r in requests
-        ) or "<p class=\"empty\">No assessment requests yet.</p>"
+            '<section class="card"><div class="row">'
+            f'<strong>Request {_e(r.request_id[:8])}</strong>'
+            f'<span class="badge">{_e(r.status.value)}</span></div>'
+            f'<p class="meta">Submitted {_e(r.created_at)} · '
+            f'Requested risk: {_risk(r.requested_risk)}</p>'
+            f'<a href="/portal/{_e(client_id)}/requests/{_e(r.request_id)}">'
+            'View private request details and safety steps</a></section>'
+            for r in ordered_requests[:3]
+        ) or '<p class="empty">No assessment requests yet.</p>'
+        # One explicit next action at the top, derived only from persisted
+        # request state. This is navigation, never permission or scan readiness.
+        pending = sorted(
+            (
+                item for item in ordered_requests
+                if item.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+            ),
+            key=lambda item: (item.created_at, item.request_id),
+        )
+        if auth.is_operator:
+            action_title = "Review client requests"
+            action_details = (
+                "Operator view is read-only. Independent human decisions "
+                "happen in the operator review inbox."
+            )
+            action_url = "/assessments"
+            action_label = "Open operator decision inbox"
+        elif pending:
+            action_title = "An assessment request is awaiting review"
+            action_details = (
+                f"{len(pending)} request(s) still need an independent operator "
+                "decision. You can follow their private status. No testing "
+                "can begin from a submitted request."
+            )
+            action_url = (
+                f"/portal/{_e(client_id)}/requests/{_e(pending[0].request_id)}"
+            )
+            action_label = "Track the oldest waiting request"
+        elif ordered_requests and ordered_requests[0].status is RequestStatus.APPROVED:
+            action_title = "Request reviewed — scope still locked"
+            action_details = (
+                "An operator approved the request for scope review only. "
+                "The scope must still be validated. Current consent, a revocation "
+                "check immediately before any action, and separate human approval are also required. Testing is not available yet."
+            )
+            action_url = f"/portal/{_e(client_id)}/authorization-plan"
+            action_label = "Check the read-only authorization plan"
+        elif ordered_requests and ordered_requests[0].status is RequestStatus.REJECTED:
+            action_title = "Request rejected — prepare a separate request"
+            action_details = (
+                "A rejected request cannot support a scope grant. You may "
+                "prepare a new client-origin request for independent review."
+            )
+            action_url = (
+                f"/portal/{_e(client_id)}/requests/"
+                f"{_e(ordered_requests[0].request_id)}/new-draft"
+            )
+            action_label = "Review a new draft from rejected request details"
+        else:
+            action_title = "Start with a review request"
+            action_details = (
+                "Describe only systems you manage, choose a risk level and "
+                "review the draft. An operator must decide independently."
+            )
+            action_url = f"/portal/{_e(client_id)}#new-request"
+            action_label = "Prepare a security assessment request"
+        next_action = (
+            '<section class="card next-action" aria-labelledby="next-step-heading">'
+            '<span class="badge lock">Testing is not authorized</span>'
+            f'<h2 id="next-step-heading">{_e(action_title)}</h2>'
+            f'<p>{_e(action_details)}</p>'
+            f'<p><a href="{action_url}">{_e(action_label)}</a></p>'
+            '</section>'
+        )
+        # Explain the independent safety gates without implying any gate passed.
+        # This is static guidance, not a live authorization/progress indicator.
+        safety_gates = (
+            '<details id="assessment-safety-gates" class="card safety-gates">'
+            '<summary>Why a request does not start testing</summary>'
+            '<p>A request asks for a review; it is not permission to test.</p>'
+            '<ol>'
+            '<li><strong>Request and operator review.</strong> '
+            'An operator must independently review the submitted assets, risk and context.</li>'
+            '<li><strong>Written authorization and exact scope.</strong> '
+            'The owner, assets and time window must be verified separately. '
+            'A request or recorded grant alone is not proof of consent.</li>'
+            '<li><strong>Separate risk decision.</strong> '
+            'Risk approval is distinct from request acceptance and scope authorization; '
+            'one decision does not remove the other blockers.</li>'
+            '<li><strong>Action-time safety checks and HUMAN GO.</strong> '
+            'Current scope, consent and revocation must be checked again before any future action. '
+            'This portal does not start testing; execution remains OFF.</li>'
+            '</ol>'
+            '<p class="meta">These are distinct gates, not a progress indicator or proof '
+            'that any gate has passed.</p>'
+            '</details>'
+        )
+        # Three existing client tasks stay visible without scrolling through
+        # coverage, grants, and KPI cards. These are navigation only: every
+        # engagement remains HOLD and findings are recorded observations.
+        task_links = (
+            '<nav class="task-links" aria-label="Client task shortcuts">'
+            '<a href="#requests-history-heading"><strong>Requests</strong>'
+            f'<span>{len(pending)} awaiting human review · {len(requests)} total</span></a>'
+            '<a href="#scope-board-heading"><strong>Scope &amp; safety</strong>'
+            f'<span>{len(scope_plan.engagements)} engagement(s) · testing stays off</span></a>'
+            '<a href="#findings-heading"><strong>Recorded findings</strong>'
+            f'<span>{len(outstanding_findings)} need follow-up · '
+            f'{urgent_outstanding} critical/high</span></a>'
+            f'<a href="/portal/{_e(client_id)}/report"><strong>Private report</strong>'
+            '<span>Print-ready recorded evidence · no scan permission</span></a>'
+            '</nav>'
+        )
+        if auth.is_operator:
+            request_section = (
+                "<h2>Assessment request submissions</h2>"
+                "<p class=\"sub\">Read-only operator view. Only the client's "
+                "own signed-in users may submit an assessment request. "
+                "Review existing requests from the operator Assessments page.</p>"
+            )
+        else:
+            # The first client request is the primary task, not a form buried
+            # below coverage and statistics. After a request exists, the
+            # independent review/status task takes priority; further client
+            # submissions remain deliberately available as a secondary step.
+            request_form = (
+                '<p class="meta" id="request-steps">Step 1 of 2: describe '
+                'what you want reviewed. Nothing is tested or activated '
+                'by this request.</p>'
+                f'<form method="post" action="/portal/{_e(client_id)}/requests/preview" '
+                'aria-describedby="request-steps">'
+                f'{self._csrf_field(auth)}'
+                '<label for="request-assets">Systems you manage (separate with commas)</label>'
+                '<input id="request-assets" name="assets" autocomplete="off" required '
+                'aria-describedby="request-assets-help">'
+                '<p id="request-assets-help" class="meta">Only name systems you own or '
+                'are explicitly allowed to request a review for. This entry does not '
+                'verify ownership.</p>'
+                f'{_risk_choice_cards("request")}'
+                f'{_risk_choice_guide()}'
+                '<label for="request-notes">Context for the reviewer (optional)</label>'
+                '<textarea id="request-notes" name="notes" rows="3"></textarea>'
+                '<button type="submit">Review before sending</button>'
+                '<p class="meta">An operator must separately review the request. '
+                'Testing stays off until scope is validated, consent is current, revocation '
+                'is checked immediately before any action, and a human gives final approval.</p></form>'
+            )
+            if not ordered_requests:
+                request_section = (
+                    '<section id="new-request" class="card" '
+                    'aria-labelledby="request-heading">'
+                    '<h2 id="request-heading">Ask for a security assessment</h2>'
+                    + request_form + '</section>'
+                )
+            else:
+                request_section = (
+                    '<section id="new-request" aria-labelledby="another-request-heading">'
+                    '<h2 id="another-request-heading">Need a review of different systems?</h2>'
+                    '<p class="sub">Your recorded requests and independent decisions '
+                    'remain unchanged. Submit a separate request only when you '
+                    'need a different review; it will also require human approval.</p>'
+                    '<details class="card"><summary>Prepare another request</summary>'
+                    + request_form + '</details></section>'
+                )
+        show_first_request = not auth.is_operator and not ordered_requests
         body = (
             f"<h1>{_e(client.name)}</h1>"
-            "<p class=\"sub\">Your security posture, in plain terms.</p>"
-            "<div class=\"grid\">"
-            f"<div class=\"card\"><div class=\"kpi\">{len(findings)}</div>"
-            "<div class=\"kpi-label\">Findings</div></div>"
-            f"<div class=\"card\"><div class=\"kpi\">{fixed}</div>"
-            "<div class=\"kpi-label\">Confirmed fixed</div></div>"
-            f"<div class=\"card\"><div class=\"kpi\">{len(requests)}</div>"
-            "<div class=\"kpi-label\">Assessment requests</div></div>"
-            "</div>"
-            f"<h2>Findings</h2>{self._finding_cards(findings, portal=True)}"
-            "<h2>What has been assessed</h2>"
-            + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
-                       for e in self.store.list_engagements(ctx))
-               or "<p class=\"empty\">No engagements yet.</p>")
-            + f"<h2>Your assessment requests</h2>{request_rows}"
-            "<h2>Request an assessment</h2>"
-            "<div class=\"card\">"
-            f"<form method=\"post\" action=\"/portal/{_e(client_id)}/requests\">"
-            f"{self._csrf_field(auth)}"
-            "<label>Assets (comma-separated hostnames/systems you own)</label>"
-            "<input name=\"assets\" required>"
-            "<label>Requested risk level</label><select name=\"risk\">"
-            "<option value=\"1\">1 — Passive</option>"
-            "<option value=\"2\">2 — Low impact</option>"
-            "<option value=\"3\" selected>3 — Standard</option>"
-            "<option value=\"4\">4 — Elevated</option></select>"
-            "<label>Notes</label><textarea name=\"notes\" rows=\"3\"></textarea>"
-            "<button>Submit request</button>"
-            "<p class=\"meta\">Submitting a request starts a review. Active testing "
-            "begins only after you provide written authorization and an operator "
-            "approves scope and risk.</p></form></div>"
+            "<p class=\"sub\">Check the next review step, scope limits and recorded evidence. "
+            "Active testing is locked.</p>"
+            + next_action
+            + safety_gates
+            + task_links
+            + (request_section if show_first_request else "")
+            + follow_up_board
+            + coverage_overview
+            + scope_board
+            + '<details class="secondary-panel"><summary>Assessment counts · '
+              f'{len(findings)} findings · {len(requests)} requests</summary>'
+              '<div class="grid">'
+              f'<div class="card"><div class="kpi">{len(findings)}</div>'
+              '<div class="kpi-label">Findings</div></div>'
+              f'<div class="card"><div class="kpi">{fixed}</div>'
+              '<div class="kpi-label">Recorded fixed findings</div></div>'
+              f'<div class="card"><div class="kpi">{urgent_outstanding}</div>'
+              '<div class="kpi-label">Critical/high findings needing follow-up</div></div>'
+              f'<div class="card"><div class="kpi">{recorded_regressions}</div>'
+              '<div class="kpi-label">Recorded regressions needing follow-up</div></div>'
+              f'<div class="card"><div class="kpi">{len(requests)}</div>'
+              '<div class="kpi-label">Assessment requests</div></div>'
+              '</div></details>'
+            + ("" if show_first_request else request_section)
+            + '<details class="secondary-panel"><summary id="requests-history-heading">Recent requests · '
+              f'{len(requests)} total</summary>'
+            + f'<p><a href="/portal/{_e(client_id)}/requests">Open all {len(requests)} requests in the private inbox</a></p>'
+            + request_rows
+            + '</details>'
+            + f"<p><a href=\"/portal/{_e(client_id)}/authorization-plan\">"
+              "Review authorization plan (read-only)</a></p>"
+            + f'<h2 id="findings-heading">Recorded findings</h2>{self._finding_cards(findings, portal=True)}'
+            + '<details class="secondary-panel"><summary id="coverage-details">Coverage by engagement · '
+              f'{len(coverage_reports)} engagement(s)</summary>'
+            + ("".join(self._coverage_card(ctx, e.engagement_id, e.name, report)
+                       for e, report in coverage_reports)
+               or '<p class="empty">No engagements yet.</p>')
+            + '</details>'
         )
         return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
 
+    def portal_assessment_report_json(
+        self, auth: AuthState, form: dict[str, str], client_id: str,
+    ) -> Response:
+        """Download the same checked private HUMAN report, without target IDs."""
+        return self.portal_assessment_report(
+            auth, form, client_id, export_json=True,
+        )
+
+    def portal_assessment_report(
+        self, auth: AuthState, form: dict[str, str], client_id: str,
+        *, export_json: bool = False,
+    ) -> Response:
+        """Private printable or JSON HUMAN dossier; no execution authority."""
+        from ..authorization_plan import build_client_authorization_plan
+        from ..coverage import CoverageReport, CoverageStatus
+
+        viewer = self._portal_context(auth, client_id)
+        client = self.store.get_client(viewer, client_id)
+        engagements, findings = self._client_scoped_evidence(viewer, client_id)
+        requests = self.store.list_assessment_requests(viewer, client_id)
+        if any(request.client_id != client_id for request in requests):
+            raise TenantIsolationError("cross-tenant assessment report request")
+        request_states = {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            RequestStatus.APPROVED, RequestStatus.REJECTED,
+        }
+        if any(request.status not in request_states for request in requests):
+            raise ValueError("unrecognized original report request state")
+
+        # Original HUMAN scope plan is a hold-only read model. A current
+        # recorded grant does not authenticate consent or confer any action.
+        plan = build_client_authorization_plan(self.store, viewer, client_id)
+        if (plan.client_id != client_id or plan.state != "PLAN_ONLY"
+                or plan.execution_allowed is not False):
+            raise TenantIsolationError("assessment report authorization unsafe")
+        source_ids = {engagement.engagement_id for engagement in engagements}
+        planned_ids = {entry.engagement_id for entry in plan.engagements}
+        if (source_ids != planned_ids
+                or len(planned_ids) != len(plan.engagements)):
+            raise TenantIsolationError("assessment report scope source mismatch")
+        allowed_scope_states = {
+            "CURRENT", "EXPIRED", "NOT_YET_VALID", "NOT_RECORDED",
+        }
+        if any(
+            entry.decision != "HOLD"
+            or entry.execution_allowed is not False
+            or entry.scope_record_state not in allowed_scope_states
+            for entry in plan.engagements
+        ):
+            raise ValueError("assessment report cannot imply authorization")
+        # Stable source-local ordering makes identical recorded snapshots
+        # produce the same digest without exposing original source IDs.
+        ordered_scope_entries = sorted(
+            plan.engagements,
+            key=lambda entry: (entry.name.casefold(), entry.engagement_id),
+        )
+
+        finding_statuses = {
+            RetestStatus.REGRESSION: (
+                "Regression recorded", "Review changed impact first. "
+                "No new retest is authorized by this record.",
+            ),
+            RetestStatus.FIX_PENDING: (
+                "Fix pending", "Remediation is still a proposal or pending work, "
+                "not a verified security result.",
+            ),
+            RetestStatus.NOT_TESTED: (
+                "Retest not recorded", "No verified retest result is recorded.",
+            ),
+            RetestStatus.FIXED: (
+                "Recorded fixed", "This finding alone is marked fixed; "
+                "assessment coverage is not implied.",
+            ),
+        }
+        if any(f.retest_status not in finding_statuses for f in findings):
+            raise ValueError("unrecognized original report finding state")
+        human_actions = {
+            RetestStatus.REGRESSION: (
+                "Review this returning vulnerability with the responsible "
+                "human owner and reconsider the recorded proposed fix. "
+                "Any later retest requires separate authorization."
+            ),
+            RetestStatus.FIX_PENDING: (
+                "Assign a human remediation owner and review the proposed "
+                "fix. Do not mark this finding verified or resolved."
+            ),
+            RetestStatus.NOT_TESTED: (
+                "Review the recorded remediation and request separate "
+                "independently authorized verification if appropriate. "
+                "No retest result is currently recorded."
+            ),
+            RetestStatus.FIXED: (
+                "Preserve the original fix history; continue to check "
+                "coverage and independent scope boundaries."
+            ),
+        }
+        severity_order = {
+            "critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4,
+        }
+        follow_up = _human_follow_up_order(findings)
+        recorded_fixed = sorted(
+            (f for f in findings if f.retest_status is RetestStatus.FIXED),
+            key=lambda f: (
+                severity_order.get(f.severity.value, 5),
+                f.title.casefold(), f.impact or "", f.remediation or "",
+            ),
+        )
+        urgent = sum(f.severity.value in {"critical", "high"} for f in follow_up)
+        regressions = sum(
+            f.retest_status is RetestStatus.REGRESSION for f in follow_up
+        )
+        waiting_requests = sum(
+            r.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+            for r in requests
+        )
+        reviewed_requests = sum(r.status is RequestStatus.APPROVED for r in requests)
+        rejected_requests = sum(r.status is RequestStatus.REJECTED for r in requests)
+
+        coverage_cards = []
+        coverage_data = []
+        total_unknown = 0
+        total_partial = 0
+        for coverage_index, engagement in enumerate(sorted(
+            engagements, key=lambda item: (item.name.casefold(), item.engagement_id)
+        ), 1):
+            stored = self.store.get_coverage(viewer, engagement.engagement_id)
+            report = CoverageReport.build({
+                capability: CoverageStatus(status)
+                for capability, status in stored.items()
+            })
+            counts = report.counts()
+            coverage_data.append({
+                # Only a report-local navigation fragment; never a source ID.
+                "report_local_fragment": f"report-coverage-{coverage_index}",
+                "engagement": engagement.name,
+                "counts": counts,
+                "capabilities": [
+                    {"name": capability, "coverage": status.value}
+                    for capability, status in report.statuses
+                ],
+            })
+            total_unknown += counts["unknown"]
+            total_partial += counts["partially_assessed"]
+            rows = "".join(
+                '<tr>'
+                f'<th scope="row">{_e(capability)}</th>'
+                f'<td>{_e(status.value.replace("_", " "))}</td>'
+                '</tr>'
+                for capability, status in report.statuses
+            )
+            coverage_cards.append(
+                f'<section class="card report-section" id="report-coverage-{coverage_index}" tabindex="-1">'
+                f'<h3>{_e(engagement.name)}</h3>'
+                f'<p class="meta">{counts["assessed"]} assessed · '
+                f'{counts["partially_assessed"]} partial · '
+                f'{counts["unknown"]} unknown · '
+                f'{counts["not_authorized"]} not authorized capability entries</p>'
+                '<table class="report-table"><thead><tr>'
+                '<th scope="col">Registered capability</th>'
+                '<th scope="col">Recorded coverage</th></tr></thead><tbody>'
+                f'{rows}</tbody></table></section>'
+            )
+
+        # Read-only triage of original missing/partial/unauthorized capabilities.
+        # No missing row is auto-tested, inferred safe or assigned a grant.
+        gap_queue = sorted(
+            (
+                entry for entry in coverage_data
+                if entry["counts"]["unknown"]
+                or entry["counts"]["partially_assessed"]
+                or entry["counts"]["not_authorized"]
+            ),
+            key=lambda entry: (
+                -entry["counts"]["unknown"],
+                -entry["counts"]["partially_assessed"],
+                -entry["counts"]["not_authorized"],
+                entry["engagement"].casefold(),
+                entry["report_local_fragment"],
+            ),
+        )
+
+        def finding_card(f, ordinal: int, *, fixed: bool) -> str:
+            label, meaning = finding_statuses[f.retest_status]
+            anchor = f"report-{'fixed' if fixed else 'open'}-{ordinal}"
+            return (
+                f'<article class="card report-section" id="{_e(anchor)}" tabindex="-1">'
+                '<div class="row">'
+                f'<h3>{_e(f.title)}</h3>'
+                f'<span class="badge">{_e(label)}</span></div>'
+                f'<p class="meta">Recorded severity: {_e(f.severity.value)}</p>'
+                '<h4>Observed impact</h4>'
+                f'<p class="report-copy">{_e(f.impact or "Impact not recorded")}</p>'
+                '<h4>Proposed remediation</h4>'
+                f'<p class="report-copy">{_e(f.remediation or "No remediation recorded")}</p>'
+                '<h4>Recorded retest state</h4>'
+                f'<p>{_e(meaning)}</p>'
+                '<h4>Human follow-up</h4>'
+                f'<p>{_e(human_actions[f.retest_status])}</p></article>'
+            )
+
+        scope_cards = "".join(
+            f'<section class="card report-section" id="report-scope-{scope_index}" tabindex="-1">'
+            '<div class="row">'
+            f'<h3>{_e(entry.name)}</h3>'
+            '<span class="badge lock">HOLD · execution OFF</span></div>'
+            f'<p class="meta">Scope record: '
+            f'{_e(entry.scope_record_state.replace("_", " "))} · '
+            f'{entry.pending_elevations} risk review(s) pending</p>'
+            '<h4>Independent missing requirements</h4>'
+            '<ul>' + "".join(
+                f'<li>{_e(blocker)}</li>' for blocker in entry.blockers
+            ) + '</ul></section>'
+            for scope_index, entry in enumerate(ordered_scope_entries, 1)
+        )
+        request_summary = (
+            '<section class="card report-section">'
+            '<h2>1 · Original request status</h2>'
+            f'<p>{len(requests)} original client request(s) recorded: '
+            f'{waiting_requests} awaiting a HUMAN decision, '
+            f'{reviewed_requests} accepted for independent scope review only, '
+            f'{rejected_requests} rejected.</p>'
+            '<p class="meta">A request decision is not consent, a tested '
+            'asset inventory or an active grant. Private request details '
+            'remain in the authenticated request inbox.</p></section>'
+        )
+        # A reproducible *comparison* digest of recorded facts. It is not
+        # a signature, source-authentication claim or proof of consent.
+        import hashlib
+        import json
+
+        def finding_payload(f, *, report_local_fragment: str):
+            label, meaning = finding_statuses[f.retest_status]
+            return {
+                # Report-local navigation only; not a persisted finding ID,
+                # export authentication token or independently verified fact.
+                "report_local_fragment": report_local_fragment,
+                "title": f.title,
+                "severity": f.severity.value,
+                "recorded_impact": f.impact or "",
+                "proposed_remediation": f.remediation or "",
+                "retest_status": f.retest_status.value,
+                "human_label": label,
+                "human_meaning": meaning,
+                "recommended_human_follow_up": human_actions[f.retest_status],
+            }
+
+        # IDs, raw target assets, evidence references, permission
+        # tokens and client-request notes are intentionally omitted.
+        # This machine-readable handoff never makes an authority claim.
+        packet = {
+            "schema_version": 1,
+            "document_type": "private_recorded_assessment_handoff",
+            "client_name": client.name,
+            "authority": {
+                "state": "PLAN_ONLY",
+                "decision": "HOLD",
+                "execution_allowed": False,
+                "consent_verified": False,
+                "revocation_at_use_verified": False,
+                "independent_audit": False,
+                "complete_coverage_proven": False,
+                "verified_remediation_proven": False,
+                "signed_evidence": False,
+            },
+            "request_summary": {
+                "recorded_total": len(requests),
+                "awaiting_human_decision": waiting_requests,
+                "accepted_for_scope_review_only": reviewed_requests,
+                "rejected": rejected_requests,
+            },
+            "coverage": {
+                "unknown_capability_entries": total_unknown,
+                "partially_assessed_capability_entries": total_partial,
+                "human_gap_priority": [
+                    {
+                        "report_local_fragment": item["report_local_fragment"],
+                        "engagement": item["engagement"],
+                        "unknown": item["counts"]["unknown"],
+                        "partially_assessed": item["counts"]["partially_assessed"],
+                        "not_authorized": item["counts"]["not_authorized"],
+                        "state": "HUMAN_REVIEW_ONLY",
+                        "execution_allowed": False,
+                    }
+                    for item in gap_queue
+                ],
+                "engagements": coverage_data,
+            },
+            "findings": {
+                "first_human_actions": [
+                    {
+                        "report_local_priority": index,
+                        "report_local_fragment": f"report-open-{index}",
+                        "title": f.title,
+                        "severity": f.severity.value,
+                        "retest_status": f.retest_status.value,
+                        "recommended_human_follow_up": human_actions[f.retest_status],
+                    }
+                    for index, f in enumerate(follow_up[:3], 1)
+                ],
+                "open_human_follow_up": [
+                    finding_payload(f, report_local_fragment=f"report-open-{index}")
+                    for index, f in enumerate(follow_up, 1)
+                ],
+                "recorded_fixed_history": [
+                    finding_payload(f, report_local_fragment=f"report-fixed-{index}")
+                    for index, f in enumerate(recorded_fixed, 1)
+                ],
+                "recorded_regression_count": regressions,
+                "open_critical_high_count": urgent,
+            },
+            "scope_hold": [
+                {
+                    # Only report-local; scope permission is never inferred.
+                    "report_local_fragment": f"report-scope-{scope_index}",
+                    "engagement": entry.name,
+                    "scope_record_state": entry.scope_record_state,
+                    "pending_risk_reviews": entry.pending_elevations,
+                    "decision": "HOLD",
+                    "execution_allowed": False,
+                    "independent_blockers": list(entry.blockers),
+                }
+                for scope_index, entry in enumerate(ordered_scope_entries, 1)
+            ],
+            "notice": (
+                "Original tenant-scoped records only; not independently "
+                "audited, signed, complete coverage, verified remediation, "
+                "client consent, HUMAN GO or permission to contact targets."
+            ),
+        }
+        canonical_payload = json.dumps(
+            packet, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+        snapshot_digest = hashlib.sha256(canonical_payload).hexdigest()
+        if export_json:
+            # Self-excluding envelope: digest covers only canonical payload,
+            # so a second private reviewer can compare report snapshots
+            # without mistaking the hash for a trusted signer or authority.
+            envelope = {
+                "format_version": 1,
+                "digest": {
+                    "algorithm": "SHA-256",
+                    "scope": "canonical_utf8_payload_without_envelope",
+                    "value": snapshot_digest,
+                    "digitally_signed": False,
+                    "source_authenticated": False,
+                },
+                "payload": packet,
+            }
+            serialized = json.dumps(
+                envelope, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"), allow_nan=False,
+            ) + "\n"
+            return Response(
+                serialized, content_type="application/json; charset=utf-8",
+                extra_headers=[(
+                    "Content-Disposition",
+                    'attachment; filename="lightup-private-human-assessment.json"',
+                )],
+            )
+
+        first_actions = "".join(
+            '<li class="report-action">'
+            f'<strong>{_e(f.title)}</strong>'
+            f'<p class="meta">{_e(f.severity.value)} severity · '
+            f'{_e(finding_statuses[f.retest_status][0])}</p>'
+            f'<p>{_e(human_actions[f.retest_status])}</p>'
+            f'<a href="#report-open-{index}">Read the original finding '
+            'details in this report</a></li>'
+            for index, f in enumerate(follow_up[:3], 1)
+        )
+        def report_index_item(f, index: int, *, fixed: bool) -> str:
+            label, _ = finding_statuses[f.retest_status]
+            anchor = f"report-{'fixed' if fixed else 'open'}-{index}"
+            return (
+                f'<li><a href="#{_e(anchor)}">{_e(f.title)}</a> '
+                f'<span class="meta">— {_e(f.severity.value)} severity · '
+                f'{_e(label)}</span></li>'
+            )
+
+        # Every private original finding has a matching printable HTML
+        # heading and a report-local JSON fragment, in the same stable order.
+        # The index provides navigation even beyond the first three actions.
+        evidence_index = (
+            '<section class="card report-section report-index" '
+            'aria-labelledby="report-index-heading">'
+            '<h2 id="report-index-heading">All recorded findings · quick index</h2>'
+            '<p class="meta">Links stay inside this private report. They are '
+            'not stable finding identifiers, new test results or authorization.</p>'
+            f'<h3>Human follow-up needed ({len(follow_up)})</h3>'
+            + ('<ol>' + ''.join(
+                report_index_item(f, index, fixed=False)
+                for index, f in enumerate(follow_up, 1)
+            ) + '</ol>' if follow_up else
+               '<p class="empty">No unresolved findings recorded.</p>')
+            + f'<h3>Recorded fixed history ({len(recorded_fixed)})</h3>'
+            + ('<ol>' + ''.join(
+                report_index_item(f, index, fixed=True)
+                for index, f in enumerate(recorded_fixed, 1)
+            ) + '</ol>' if recorded_fixed else
+               '<p class="empty">No findings marked fixed.</p>')
+            + f'<h3 id="report-coverage-index-heading">Recorded capability coverage ({len(coverage_data)})</h3>'
+            + ('<ol>' + ''.join(
+                f'<li><a href="#report-coverage-{index}">{_e(entry["engagement"])}</a> '
+                '<span class="meta">— recorded capabilities; not complete safety proof</span></li>'
+                for index, entry in enumerate(coverage_data, 1)
+            ) + '</ol>' if coverage_data else
+               '<p class="empty">No engagement coverage recorded.</p>')
+            + f'<h3 id="report-scope-index-heading">Scope and execution HOLD ({len(ordered_scope_entries)})</h3>'
+            + ('<ol>' + ''.join(
+                f'<li><a href="#report-scope-{index}">{_e(entry.name)}</a> '
+                f'<span class="meta">— {_e(entry.scope_record_state.replace("_", " "))}; '
+                'execution remains OFF</span></li>'
+                for index, entry in enumerate(ordered_scope_entries, 1)
+            ) + '</ol>' if ordered_scope_entries else
+               '<p class="empty">No original scope records.</p>')
+            + '</section>'
+        )
+        gap_board = (
+            '<section class="card report-section report-gap" '
+            'aria-labelledby="report-gap-heading">'
+            '<span class="badge lock">Original coverage · HUMAN review only</span>'
+            '<h2 id="report-gap-heading">Coverage gaps to review first</h2>'
+            '<p>Unknown capability entries first, then partial and not-authorized '
+            'entries. These are registered capability counts, not measured '
+            'systems or new findings. A missing result is never safe.</p>'
+            + ('<ol>' + ''.join(
+                f'<li><a href="#{_e(item["report_local_fragment"])}">'
+                f'{_e(item["engagement"])}</a> '
+                f'<span class="meta">— {item["counts"]["unknown"]} unknown · '
+                f'{item["counts"]["partially_assessed"]} partial · '
+                f'{item["counts"]["not_authorized"]} not authorized</span>'
+                '<p class="meta">Human next step: review original scope and '
+                'coverage records. No autonomous retest or activation.</p></li>'
+                for item in gap_queue
+            ) + '</ol>' if gap_queue else
+               '<p class="empty">No recorded capability gap in the current '
+               'registered inventory. This does not establish complete testing '
+               'or system safety.</p>')
+            + '</section>'
+        )
+        agenda = (
+            '<section class="card report-section report-agenda" '
+            'aria-labelledby="report-agenda-heading">'
+            '<span class="badge lock">HUMAN action only · no automatic testing</span>'
+            '<h2 id="report-agenda-heading">First human follow-ups</h2>'
+            f'<p>{len(follow_up)} recorded finding(s) still need review. '
+            'The three items below are ordered by recorded regression first, '
+            'then severity. These are not new measurements or permissions.</p>'
+            + (f'<ol>{first_actions}</ol>' if first_actions else
+               '<p class="empty">No unresolved findings recorded. '
+               'Review the coverage and scope HOLD sections below '
+               'before making any safety claims.</p>')
+            + '</section>'
+        )
+        body = (
+            '<div class="print-controls">'
+            f'<p><a href="/portal/{_e(client_id)}">Back to client overview</a> · '
+            f'<a href="/portal/{_e(client_id)}/report.json">'
+            'Download private structured JSON handoff</a></p>'
+            '<p>Use your browser’s Print / Save as PDF command for this view. '
+            'Treat the PDF and JSON as sensitive client evidence, not as '
+            'authorization or an independently verified audit.</p>'
+            '</div>'
+            f'<h1>Recorded assessment handoff · {_e(client.name)}</h1>'
+            '<p class="sub">HUMAN review dossier · PLAN/LAB ONLY · '
+            'not an audit certificate or proof of testing permission.</p>'
+            '<section class="card report-section report-digest">'
+            '<h2>Recorded data snapshot fingerprint</h2>'
+            f'<p><code>{_e(snapshot_digest)}</code></p>'
+            '<p class="meta">SHA-256 of the canonical UTF-8 JSON payload '
+            '(excluding its download envelope). This lets reviewers compare '
+            'copies of unchanged recorded facts. It is not a digital signature, '
+            'proof of source authenticity, independent validation, '
+            'consent or permission to test.</p></section>'
+            '<section class="card report-boundary report-section" '
+            'id="report-safety-gates" aria-labelledby="report-safety-gates-heading">'
+            '<span class="badge lock">NO EXECUTION · original evidence only</span>'
+            '<h2 id="report-safety-gates-heading">What must happen before any future testing?</h2>'
+            '<p>This page reflects original tenant-scoped records at viewing time. '
+            'It is not signed, independently audited, a completion claim, verified '
+            'remediation, current consent or approval to scan. Unknown coverage '
+            'must not be treated as safe.</p>'
+            '<ol>'
+            '<li><strong>Request and operator review.</strong> '
+            'A submitted request asks for independent review; it does not grant permission to test.</li>'
+            '<li><strong>Written authorization and exact scope.</strong> '
+            'The owner, assets and time window must be verified separately. '
+            'A request or recorded grant alone is not proof of consent.</li>'
+            '<li><strong>Separate risk decision.</strong> '
+            'Risk approval is distinct from request acceptance and scope authorization; '
+            'one decision does not remove the other blockers.</li>'
+            '<li><strong>Action-time safety checks and HUMAN GO.</strong> '
+            'Current scope, consent and revocation must be checked again before any future action. '
+            'This report does not start testing; execution remains OFF.</li>'
+            '</ol>'
+            '<p class="meta">These are distinct gates, not a progress indicator or proof '
+            'that any gate has passed. This report authorizes no action.</p>'
+            '</section>'
+            + agenda
+            + gap_board
+            + evidence_index
+            + '<div class="grid report-kpis">'
+            f'<div class="card"><strong>{len(follow_up)}</strong>'
+            '<p class="meta">Findings needing human follow-up</p></div>'
+            f'<div class="card"><strong>{regressions}</strong>'
+            '<p class="meta">Recorded regressions</p></div>'
+            f'<div class="card"><strong>{urgent}</strong>'
+            '<p class="meta">Open critical/high severity</p></div>'
+            f'<div class="card"><strong>{total_unknown}</strong>'
+            '<p class="meta">Unknown capability entries</p></div>'
+            f'<div class="card"><strong>{total_partial}</strong>'
+            '<p class="meta">Partial capability entries</p></div>'
+            '</div>'
+            + request_summary
+            + '<section aria-labelledby="report-coverage-heading">'
+              '<h2 id="report-coverage-heading">2 · Recorded assessment coverage</h2>'
+              '<p>These are capability entries per engagement, not numbers '
+              'of systems assessed or an overall safety score.</p>'
+            + ("".join(coverage_cards) or
+               '<p class="empty">No engagements or capability assessments recorded. '
+               'Zero findings does not prove safety.</p>')
+            + '</section>'
+            + '<section aria-labelledby="report-findings-heading">'
+              '<h2 id="report-findings-heading">3 · Finding → impact → fix → retest</h2>'
+              '<p>Regressions first, then recorded severity. This is a '
+              'human worklist, not an automatic remediation or retest.</p>'
+            + ("".join(
+                finding_card(f, index, fixed=False)
+                for index, f in enumerate(follow_up, 1)
+            ) or
+               '<p class="empty">No unresolved findings recorded. '
+               'Check unknown or partial coverage before interpreting this.</p>')
+            + f'<h3>Recorded fixed finding history ({len(recorded_fixed)})</h3>'
+            + ("".join(
+                finding_card(f, index, fixed=True)
+                for index, f in enumerate(recorded_fixed, 1)
+            ) or
+               '<p class="empty">No findings marked fixed.</p>')
+            + '</section>'
+            + '<section aria-labelledby="report-hold-heading">'
+              '<h2 id="report-hold-heading">4 · Scope and execution HOLD</h2>'
+              '<p>A recorded request-bound grant is not independently '
+              'verified ownership, consent, revocation-at-use or HUMAN GO. '
+              'Every engagement remains on HOLD.</p>'
+            + (scope_cards or
+               '<p class="empty">No engagements or scope records exist.</p>')
+            + '</section>'
+            '<p class="meta report-footer">LightUp original records · '
+            'private HUMAN handoff · no execution authority · '
+            'review original sources before any independent decision.</p>'
+        )
+        return Response(_page(
+            f"LightUp — {client.name} recorded assessment report",
+            "portal", body, auth, portal_client=client_id,
+        ))
+
+    def portal_requests(
+        self, auth: AuthState, form: dict[str, str], client_id: str,
+    ) -> Response:
+        """Tenant-private task-first inbox; no decision or execution actions."""
+        viewer = self._portal_context(auth, client_id)
+        client = self.store.get_client(viewer, client_id)
+        requests = self.store.list_assessment_requests(viewer, client_id)
+        if any(item.client_id != client_id for item in requests):
+            raise TenantIsolationError("cross-tenant request list denied")
+        known_states = {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+            RequestStatus.APPROVED, RequestStatus.REJECTED,
+        }
+        if any(item.status not in known_states for item in requests):
+            raise ValueError("unrecognized persisted request state")
+        awaiting = sorted(
+            (
+                item for item in requests
+                if item.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+            ),
+            key=lambda item: (item.created_at, item.request_id),
+        )
+        decided = sorted(
+            (
+                item for item in requests
+                if item.status in {RequestStatus.APPROVED, RequestStatus.REJECTED}
+            ),
+            key=lambda item: (item.created_at, item.request_id),
+            reverse=True,
+        )
+        accepted_count = sum(
+            item.status is RequestStatus.APPROVED for item in decided
+        )
+        rejected_count = len(decided) - accepted_count
+
+        # The visible status is a real persisted HUMAN decision, never an
+        # inferred capability/grant. Keep raw source identifiers behind a
+        # disclosure and use the same checked receipt route for full details.
+        labels = {
+            RequestStatus.SUBMITTED: (
+                "Sent — awaiting operator", "An independent operator has not decided yet.",
+                "View submitted request receipt",
+            ),
+            RequestStatus.UNDER_REVIEW: (
+                "Under human review", "The operator is reviewing the request. Testing is locked.",
+                "Track human review",
+            ),
+            RequestStatus.APPROVED: (
+                "Accepted for scope review", "Only the request was approved. Scope, current "
+                "consent, revocation and HUMAN GO still require separate checks.",
+                "Read approval receipt and safety steps",
+            ),
+            RequestStatus.REJECTED: (
+                "Rejected — no scope authority", "The decision is final for this request. "
+                "Only a separate original client request may be reviewed again.",
+                "Read rejection receipt",
+            ),
+        }
+
+        def render_row(request) -> str:
+            title, next_step, open_label = labels[request.status]
+            receipt_url = (
+                f"/portal/{_e(client_id)}/requests/{_e(request.request_id)}"
+            )
+            outcome_link = (
+                f' <a href="/portal/{_e(client_id)}/authorization-plan">'
+                'Read separate scope and safety plan</a>'
+                if request.status is RequestStatus.APPROVED else ""
+            )
+            retry_link = (
+                f' <a href="{receipt_url}/new-draft">'
+                'Prepare a separate client-origin draft</a>'
+                if request.status is RequestStatus.REJECTED and not auth.is_operator
+                else ""
+            )
+            badge_type = (
+                "warn" if request.status is RequestStatus.REJECTED else
+                "lock" if request.status is RequestStatus.APPROVED else ""
+            )
+            decision_time = (
+                f' · Human decision: {_e(request.decided_at)}'
+                if request.decided_at else ""
+            )
+            return (
+                '<article class="card request-status">'
+                '<div class="row">'
+                f'<h3>{_e(title)}</h3>'
+                f'<span class="badge {badge_type}">{_e(request.status.value)}</span>'
+                '</div>'
+                f'<p class="meta">Submitted: {_e(request.created_at)}'
+                f'{decision_time} · Mode: {_e(request.requested_mode.value)}'
+                f' · Requested risk: {_risk(request.requested_risk)}</p>'
+                f'<p><strong>Next step:</strong> {_e(next_step)}</p>'
+                f'<p class="request-actions"><a href="{receipt_url}">'
+                f'{_e(open_label)}</a>{outcome_link}{retry_link}</p>'
+                '<details><summary>Show original request reference</summary>'
+                f'<p class="meta"><code>{_e(request.request_id)}</code></p>'
+                '</details></article>'
+            )
+
+        if auth.is_operator:
+            current_heading = "Review human decisions in the operator inbox"
+            current_body = (
+                "This portal is read-only for operators. Only an original "
+                "client session can submit another request."
+            )
+            current_link = '<a href="/assessments">Open operator decision inbox</a>'
+        elif awaiting:
+            current_heading = f"{len(awaiting)} request(s) awaiting human review"
+            current_body = (
+                "Your requests are recorded. Wait for an independent decision; "
+                "there is no scan or grant to activate here."
+            )
+            current_link = '<a href="#awaiting-requests">Track pending decisions</a>'
+        elif accepted_count:
+            current_heading = "Request review finished — check separate safety gates"
+            current_body = (
+                "At least one request was accepted for scope review only. "
+                "That is not approval to contact or test a system."
+            )
+            current_link = (
+                f'<a href="/portal/{_e(client_id)}/authorization-plan">'
+                'Open read-only scope and safety plan</a>'
+            )
+        elif rejected_count:
+            current_heading = "Previous requests were rejected"
+            current_body = (
+                "No request is awaiting review. A rejection cannot be reused "
+                "as permission. You may prepare a separate original request."
+            )
+            current_link = (
+                f'<a href="/portal/{_e(client_id)}#new-request">'
+                'Prepare a new request</a>'
+            )
+        else:
+            current_heading = "No assessment request recorded yet"
+            current_body = (
+                "Prepare a client-origin request and explicitly select its "
+                "systems, mode and risk. Human review is always separate."
+            )
+            current_link = (
+                f'<a href="/portal/{_e(client_id)}#new-request">'
+                'Prepare first request</a>'
+            )
+        body = (
+            '<h1>Assessment requests</h1>'
+            f'<p class="sub">{_e(client.name)} · Private request statuses. '
+            'No status is permission to scan.</p>'
+            '<section class="card next-action" aria-labelledby="inbox-next">'
+            '<span class="badge lock">PLAN ONLY · testing locked</span>'
+            f'<h2 id="inbox-next">{_e(current_heading)}</h2>'
+            f'<p>{_e(current_body)}</p>'
+            f'<p>{current_link}</p>'
+            '</section>'
+            '<nav class="inbox-jumps" aria-label="Request status groups">'
+            f'<a href="#awaiting-requests">Awaiting review ({len(awaiting)})</a>'
+            f'<a href="#reviewed-requests">Decided ({len(decided)})</a>'
+            '</nav>'
+            '<p class="meta">Human request decisions do not verify asset ownership, '
+            'independent client consent, a current request-bound grant, '
+            'revocation at use or HUMAN GO.</p>'
+            f'<h2 id="awaiting-requests">Awaiting human review ({len(awaiting)})</h2>'
+            '<p class="meta">Oldest first · the operator owns the next decision.</p>'
+            + ("".join(render_row(item) for item in awaiting)
+               or '<p class="empty">No requests are awaiting a decision.</p>')
+            + f'<h2 id="reviewed-requests">Human decisions ({len(decided)})</h2>'
+            + f'<p class="meta">{accepted_count} accepted for scope review only · '
+              f'{rejected_count} rejected. Newest decision first.</p>'
+            + ("".join(render_row(item) for item in decided)
+               or '<p class="empty">No human decisions are recorded yet.</p>')
+            + '<details><summary>Navigation and private status export</summary>'
+            f'<p><a href="/portal/{_e(client_id)}">Back to client overview</a> · '
+            f'<a href="/portal/{_e(client_id)}/requests.json">'
+            'Download private status index (JSON)</a></p>'
+            '<p class="meta">The export contains original request IDs and '
+            'timestamps, not verified authorization or permission to test.</p>'
+            '</details>'
+        )
+        return Response(_page(
+            "LightUp — Request inbox", "requests", body, auth,
+            portal_client=client_id,
+        ))
+
+    def portal_requests_json(
+        self, auth: AuthState, form: dict[str, str], client_id: str,
+    ) -> Response:
+        """Tenant-private original request status index, never scan authority.
+
+        Raw asset names, notes, request origins and grants are omitted from the
+        machine-readable overview. Details require an access-checked receipt.
+        """
+        import json
+        from datetime import datetime, timezone
+
+        viewer = self._portal_context(auth, client_id)
+        self.store.get_client(viewer, client_id)
+        requests = self.store.list_assessment_requests(viewer, client_id)
+        if any(item.client_id != client_id for item in requests):
+            raise TenantIsolationError("cross-tenant request status index denied")
+        ordered = sorted(
+            requests, key=lambda item: (item.created_at, item.request_id),
+            reverse=True,
+        )
+        awaiting = {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}
+        decided = {RequestStatus.APPROVED, RequestStatus.REJECTED}
+        if any(item.status not in awaiting | decided for item in ordered):
+            raise ValueError("unrecognized persisted request state")
+
+        payload = {
+            "format": "lightup-m0-request-index-v1",
+            "evaluated_at": datetime.now(timezone.utc).isoformat(),
+            "client_id": client_id,
+            "state": "PLAN_ONLY",
+            "counts": {
+                "total": len(ordered),
+                "awaiting_human_review": sum(
+                    item.status in awaiting for item in ordered
+                ),
+                "decided": sum(item.status in decided for item in ordered),
+            },
+            "requests": [
+                {
+                    "request_id": item.request_id,
+                    "status": item.status.value,
+                    "submitted_at": item.created_at,
+                    "reviewed_at": item.decided_at,
+                    "requested_risk": int(item.requested_risk),
+                    "status_receipt_url": (
+                        f"/portal/{client_id}/requests/{item.request_id}.json"
+                    ),
+                }
+                for item in ordered
+            ],
+            "authority": {
+                "engagement_grant_inferred": False,
+                "client_consent_verified": False,
+                "revocation_at_use_verified": False,
+                "human_go_verified": False,
+                "execution_allowed": False,
+            },
+            "disclaimer": (
+                "Unsigned tenant-private request index, not verified ownership, "
+                "scope authorization, consent or scan permission."
+            ),
+        }
+        body = json.dumps(
+            payload, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        ) + "\n"
+        return Response(
+            body, content_type="application/json; charset=utf-8",
+            extra_headers=[(
+                "Content-Disposition",
+                'attachment; filename="lightup-request-index.json"',
+            )],
+        )
+
+    def portal_request_receipt_json(
+        self, auth: AuthState, form: dict[str, str],
+        client_id: str, request_id: str,
+    ) -> Response:
+        """Private, per-request status receipt; never a consent/scan token."""
+        import json
+        from datetime import datetime, timezone
+
+        viewer = self._portal_context(auth, client_id)
+        request = self.store.get_assessment_request(viewer, request_id)
+        if request.client_id != client_id:
+            raise TenantIsolationError("cross-tenant request receipt denied")
+        awaiting = request.status in {
+            RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW,
+        }
+        payload = {
+            "format": "lightup-m0-request-status-v1",
+            "evaluated_at": datetime.now(timezone.utc).isoformat(),
+            "client_id": request.client_id,
+            "request_id": request.request_id,
+            "status": request.status.value,
+            "requested_assets": list(request.requested_assets),
+            "requested_mode": request.requested_mode.value,
+            "requested_risk": int(request.requested_risk),
+            "submitted_at": request.created_at,
+            "reviewed_at": request.decided_at,
+            "progress": _request_progress(request.status),
+            "next_step": (
+                "AWAIT_INDEPENDENT_OPERATOR_REVIEW"
+                if awaiting else
+                "REVIEW_SEPARATE_SCOPE_AND_CONSENT_GATES"
+                if request.status is RequestStatus.APPROVED else
+                "REQUEST_REJECTED_NO_SCOPE_AUTHORITY"
+            ),
+            "state": "PLAN_ONLY",
+            "authority": {
+                "engagement_grant_inferred": False,
+                "client_consent_verified": False,
+                "revocation_at_use_verified": False,
+                "human_go_verified": False,
+                "execution_allowed": False,
+            },
+            "disclaimer": "Unsigned private status, not a scan permit or consent receipt.",
+        }
+        body = json.dumps(
+            payload, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        ) + "\n"
+        return Response(
+            body, content_type="application/json; charset=utf-8",
+            extra_headers=[(
+                "Content-Disposition",
+                'attachment; filename="lightup-request-status.json"',
+            )],
+        )
+
+    def portal_request_receipt(
+        self, auth: AuthState, form: dict[str, str],
+        client_id: str, request_id: str,
+    ) -> Response:
+        # The original domain read enforces tenant ownership; the explicit
+        # route/client equality is a second boundary for operator portal views.
+        viewer = self._portal_context(auth, client_id)
+        request = self.store.get_assessment_request(viewer, request_id)
+        if request.client_id != client_id:
+            raise TenantIsolationError("cross-tenant request receipt denied")
+        # Every message comes only from the persisted original request state.
+        # Approval remains an approval of the REQUEST, not of target testing.
+        if request.status is RequestStatus.SUBMITTED:
+            status_title = "Request sent — awaiting review"
+            status_summary = "Your request is recorded. No human decision has been made yet."
+            next_step = "An independent operator must review the request."
+            safety_notice = (
+                "There is no operator decision, scope grant, verified consent, "
+                "revocation-at-use check or HUMAN GO. Testing remains locked."
+            )
+        elif request.status is RequestStatus.UNDER_REVIEW:
+            status_title = "Request under human review"
+            status_summary = "An operator is reviewing the request, not authorizing a scan."
+            next_step = "Wait for the independent decision before checking scope requirements."
+            safety_notice = (
+                "Review in progress is not approval, consent, a scope grant, "
+                "revocation-at-use proof or HUMAN GO. Testing remains locked."
+            )
+        elif request.status is RequestStatus.APPROVED:
+            status_title = "Request accepted for scope review"
+            status_summary = "The operator approved the request, not active testing."
+            next_step = (
+                "Read the separate scope and safety requirements. A current "
+                "request-bound grant, consent, revocation check and HUMAN GO "
+                "would still be required before any testing."
+            )
+            safety_notice = (
+                "Request approval is not a scope grant, independently verified "
+                "client consent, revocation-at-use proof or HUMAN GO. "
+                "Testing remains locked."
+            )
+        elif request.status is RequestStatus.REJECTED:
+            status_title = "Request rejected — testing remains locked"
+            status_summary = "This request cannot support a scope grant."
+            next_step = (
+                "If needed, prepare a separate client-origin draft and submit "
+                "it for its own independent review. The rejection remains recorded."
+            )
+            safety_notice = (
+                "A rejected request stays closed. No later consent or HUMAN GO "
+                "can turn this rejected request into a grant. Testing remains locked."
+            )
+        else:
+            raise ValueError("unrecognized persisted request decision")
+        if auth.is_operator:
+            next_href = "/assessments"
+            next_label = "Open operator decision inbox"
+            if request.status is RequestStatus.REJECTED:
+                next_step = (
+                    "Only the client can prepare a separate new request. "
+                    "This rejected decision stays recorded and cannot grant scope."
+                )
+        elif request.status is RequestStatus.REJECTED:
+            next_href = f"/portal/{client_id}/requests/{request_id}/new-draft"
+            next_label = "Prepare a separate new draft"
+        elif request.status is RequestStatus.APPROVED:
+            next_href = f"/portal/{client_id}/authorization-plan"
+            next_label = "Review the read-only scope and safety plan"
+        else:
+            next_href = f"/portal/{client_id}/requests"
+            next_label = "Track all request statuses"
+        stages = "".join(
+            '<li><strong>' + _e(step["label"]) + '</strong> '
+            '<span class="badge">' + _e(step["state"].replace("_", " ").lower())
+            + '</span><p class="meta">' + _e(step["explanation"]) + '</p></li>'
+            for step in _request_progress(request.status)
+        )
+        body = (
+            f'<h1>{_e(status_title)}</h1>'
+            f'<p class="sub">{_e(status_summary)} A request never starts a scan.</p>'
+            '<section class="card next-action" aria-labelledby="request-next-heading">'
+            '<span class="badge lock">PLAN ONLY · testing locked</span>'
+            '<h2 id="request-next-heading">What happens next?</h2>'
+            f'<p>{_e(next_step)}</p>'
+            f'<p><a href="{_e(next_href)}">{_e(next_label)}</a></p>'
+            '</section>'
+            '<section class="card" aria-labelledby="receipt-details-heading">'
+            '<h2 id="receipt-details-heading">Your recorded request</h2>'
+            '<div class="row">'
+            f'<strong>Request {_e(request.request_id)}</strong>'
+            f'<span class="badge">{_e(request.status.value)}</span></div>'
+            f'<p class="meta">Submitted: {_e(request.created_at)}'
+            + (f' · Decided: {_e(request.decided_at)}'
+               if request.decided_at else '')
+            + '</p>'
+            f'<p><strong>Requested risk:</strong> {_risk(request.requested_risk)}</p>'
+            '<details><summary>Show submitted systems and reviewer notes</summary>'
+            '<p><strong>Systems (ownership not verified)</strong></p>'
+            f'<p>{_e(", ".join(request.requested_assets))}</p>'
+            '<p><strong>Context for the reviewer</strong></p>'
+            f'<p>{_e(request.notes) if request.notes else "None recorded"}</p>'
+            '</details>'
+            '<p class="meta">' + _e(safety_notice) + '</p>'
+            '<details><summary>Five separate review and safety steps</summary>'
+            '<ol aria-label="Request review and authorization status">'
+            f'{stages}</ol></details>'
+            f'<p><a href="/portal/{_e(client_id)}/requests/{_e(request_id)}.json">'
+            'Download private request status JSON</a> · '
+            f'<a href="/portal/{_e(client_id)}/authorization-plan">'
+            'View authorization plan</a> · '
+            f'<a href="/portal/{_e(client_id)}">Back to portal</a></p>'
+            '</section>'
+        )
+        return Response(_page(
+            f"LightUp — {status_title}", "requests", body, auth,
+            portal_client=client_id,
+        ))
+
+    def portal_new_draft_from_rejection(
+        self, auth: AuthState, form: dict[str, str],
+        client_id: str, request_id: str,
+    ) -> Response:
+        """Reopen rejected client details as a *new*, unsent HUMAN-review draft.
+
+        This read-only GET never edits the rejected original or carries forward
+        an approval, consent, authorization grant, or tool activation.
+        """
+        if auth.is_operator or auth.context is None or auth.context.client_id != client_id:
+            return Response(_page(
+                "Forbidden", "", "<h1>Client session required</h1>", auth,
+            ), status="403 Forbidden")
+        original = self.store.get_assessment_request(auth.context, request_id)
+        if original.client_id != client_id:
+            raise TenantIsolationError("cross-tenant request draft denied")
+        if original.status is not RequestStatus.REJECTED:
+            raise ValueError("only rejected client requests can be copied into a new draft")
+
+        body = (
+            "<h1>Prepare a separate assessment request</h1>"
+            '<p class="sub">The previous request remains rejected. The values '
+            'below are a convenience only; check that you still manage each '
+            'system and deliberately choose the risk again.</p>'
+            '<section class="card">'
+            f'<p class="meta">Copied from rejected request {_e(request_id)} · '
+            f'Previously requested risk: {_risk(original.requested_risk)}</p>'
+            '<p class="meta">No new request exists yet. No prior decision, '
+            'consent, grant or permission transfers to this draft. Testing '
+            'remains locked.</p>'
+            f'<form method="post" action="/portal/{_e(client_id)}/requests/preview">'
+            f'{self._csrf_field(auth)}'
+            '<label for="retry-assets">Systems you manage (comma-separated)</label>'
+            f'<input id="retry-assets" name="assets" required autocomplete="off" '
+            f'value="{_e(", ".join(original.requested_assets))}" '
+            'aria-describedby="retry-assets-help">'
+            '<p id="retry-assets-help" class="meta">Remove anything you no longer '
+            'own or have explicit permission to request a review for. '
+            'Ownership is not verified here.</p>'
+            f'{_risk_choice_cards("retry")}'
+            f'{_risk_choice_guide()}'
+            '<label for="retry-notes">Context for the reviewer (optional)</label>'
+            f'<textarea id="retry-notes" name="notes" rows="3">'
+            f'{_e(original.notes)}</textarea>'
+            '<button>Review a new request before sending</button></form>'
+            f'<p><a href="/portal/{_e(client_id)}/requests/'
+            f'{_e(request_id)}">Back to rejected request</a></p>'
+            '</section>'
+        )
+        return Response(_page(
+            "LightUp — New assessment draft", "requests", body, auth,
+            portal_client=client_id,
+        ))
+
+    @staticmethod
+    def _parse_portal_request_fields(
+        form: dict[str, str],
+    ) -> tuple[tuple[str, ...], RiskLevel, str]:
+        assets = tuple(
+            part.strip() for part in form.get("assets", "").split(",")
+            if part.strip()
+        )
+        if not assets:
+            raise ValueError("at least one owned/reviewable system is required")
+        raw_risk = form.get("risk")
+        if raw_risk is None or raw_risk not in {"1", "2", "3", "4"}:
+            raise ValueError("a deliberate risk choice from 1 to 4 is required")
+        return assets, RiskLevel(int(raw_risk)), form.get("notes", "")
+
+    def portal_preview_request(
+        self, auth: AuthState, form: dict[str, str],
+        client_id: str,
+    ) -> Response:
+        # Preview is private and does not persist consent, request or grant.
+        if auth.is_operator or auth.context is None or auth.context.client_id != client_id:
+            return Response(_page("Forbidden", "",
+                                  "<h1>Client session required</h1>", auth),
+                            status="403 Forbidden")
+        try:
+            assets, risk, notes = self._parse_portal_request_fields(form)
+        except ValueError:
+            # This is a user-editable, non-authorizing preview. Preserve draft
+            # values locally in the authenticated HTML response, fully escaped;
+            # never persist invalid input or infer scan authority.
+            raw_assets = form.get("assets", "")
+            raw_notes = form.get("notes", "")
+            raw_risk = form.get("risk", "")
+            missing_assets = not any(
+                part.strip() for part in raw_assets.split(",")
+            )
+            invalid_risk = raw_risk not in {"1", "2", "3", "4"}
+            errors = []
+            if missing_assets:
+                errors.append('<li><a href="#fix-assets">Name at least one '
+                              'system you manage.</a></li>')
+            if invalid_risk:
+                errors.append('<li><a href="#fix-risk">Choose one of the four '
+                              'supported risk levels.</a></li>')
+            assets_attrs = (
+                ' aria-invalid="true" aria-describedby="fix-assets-error"'
+                if missing_assets else ""
+            )
+            body = (
+                '<h1>Check your assessment request</h1>'
+                '<div role="alert" class="error"><p>Some details need '
+                'attention. Follow the links to correct them:</p>'
+                f'<ul>{"".join(errors)}</ul></div>'
+                '<section class="card">'
+                '<p class="meta">Your draft is preserved below. No request '
+                'has been submitted and no testing has been activated.</p>'
+                f'<form method="post" action="/portal/{_e(client_id)}/requests/preview">'
+                f'{self._csrf_field(auth)}'
+                '<label for="fix-assets">Systems you manage (comma-separated)</label>'
+                f'<input id="fix-assets" name="assets" required '
+                f'value="{_e(raw_assets)}" autocomplete="off"{assets_attrs}>'
+                + ('<p id="fix-assets-error" class="error">A system is required.</p>'
+                   if missing_assets else '')
+                + _risk_choice_cards("fix", selected=raw_risk, invalid=invalid_risk)
+                + ('<p id="fix-risk-error" class="error">Choose a risk level.</p>'
+                   if invalid_risk else '')
+                + _risk_choice_guide()
+                + '<label for="fix-notes">Context for the reviewer (optional)</label>'
+                f'<textarea id="fix-notes" name="notes" rows="3">'
+                f'{_e(raw_notes)}</textarea>'
+                '<button>Review corrected request</button>'
+                '</form></section>'
+            )
+            return Response(_page(
+                "LightUp — Correct assessment request", "portal", body, auth,
+                portal_client=client_id,
+            ), status="400 Bad Request")
+
+        body = (
+            "<h1>Review your assessment request</h1>"
+            '<p class="sub">Step 2 of 2: check the details before sending '
+            'them for HUMAN review. No active test starts here.</p>'
+            '<section class="card">'
+            '<strong>Systems as entered (ownership not verified)</strong>'
+            f'<p>{_e(", ".join(assets))}</p>'
+            '<strong>Requested risk</strong>'
+            f'<p>{_risk(risk)}</p>'
+            '<strong>Notes for the operator</strong>'
+            f'<p>{_e(notes) if notes else "None"}</p>'
+            '<p class="meta">A submitted request is not permission to scan, '
+            'not a recorded scope grant and not verified consent. Additional '
+            'human review and safety gates are required.</p>'
+            f'<form method="post" action="/portal/{_e(client_id)}/requests">'
+            f'{self._csrf_field(auth)}'
+            f'<input type="hidden" name="assets" value="{_e(", ".join(assets))}">'
+            f'<input type="hidden" name="risk" value="{int(risk)}">'
+            f'<textarea name="notes" hidden>{_e(notes)}</textarea>'
+            '<button>Send request for human review</button></form>'
+            '<details><summary>Edit this request before sending</summary>'
+            '<p class="meta">Change the draft and review it again. Nothing '
+            'is submitted until you deliberately send the request.</p>'
+            f'<form method="post" action="/portal/{_e(client_id)}/requests/preview">'
+            f'{self._csrf_field(auth)}'
+            '<label for="preview-assets">Systems you manage</label>'
+            f'<input id="preview-assets" name="assets" required '
+            f'value="{_e(", ".join(assets))}" autocomplete="off">'
+            f'{_risk_choice_cards("preview", selected=str(int(risk)))}'
+            f'{_risk_choice_guide()}'
+            '<label for="preview-notes">Context for the reviewer (optional)</label>'
+            f'<textarea id="preview-notes" name="notes" rows="3">{_e(notes)}</textarea>'
+            '<button class="secondary">Update review</button>'
+            '</form></details>'
+            f'<p><a href="/portal/{_e(client_id)}">Back to portal</a></p>'
+            '</section>'
+        )
+        return Response(_page(
+            "LightUp — Review assessment request", "portal", body, auth,
+            portal_client=client_id,
+        ))
+
     def portal_submit_request(self, auth: AuthState, form: dict[str, str],
                               client_id: str) -> Response:
-        ctx = self._portal_context(auth, client_id)
-        assets = tuple(part.strip() for part in form.get("assets", "").split(",") if part.strip())
-        risk = RiskLevel(int(form.get("risk", "3")))
-        if risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
-            raise ValueError("destructive simulation cannot be requested from the portal")
-        self.store.submit_assessment_request(
+        # Client request provenance must come from the client's real session.
+        # Operator access to the portal is deliberately read-only.
+        if auth.is_operator or auth.context is None or auth.context.client_id != client_id:
+            return Response(_page("Forbidden", "",
+                                  "<h1>Client session required</h1>", auth),
+                            status="403 Forbidden")
+        ctx = auth.context
+        try:
+            assets, risk, notes = self._parse_portal_request_fields(form)
+        except ValueError:
+            # A malformed final POST must not silently discard a client's
+            # draft. Return to the existing authenticated correction flow;
+            # never catch domain authorization/provenance failures here.
+            return self.portal_preview_request(auth, form, client_id)
+        recorded = self.store.submit_assessment_request(
             ctx,
             requested_assets=assets,
             requested_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
             requested_risk=risk,
-            notes=form.get("notes", ""),
+            notes=notes,
         )
-        return _redirect(f"/portal/{client_id}")
+        return _redirect(
+            f"/portal/{client_id}/requests/{recorded.request_id}"
+        )
 
     # -- shared rendering ------------------------------------------------------
 
     def _coverage_card(self, ctx: AccessContext, engagement_id: str,
-                       engagement_name: str) -> str:
+                       engagement_name: str, report=None) -> str:
         from ..coverage import CoverageReport, CoverageStatus
 
-        stored = self.store.get_coverage(ctx, engagement_id)
-        report = CoverageReport.build(
-            {capability: CoverageStatus(status) for capability, status in stored.items()})
+        if report is None:
+            stored = self.store.get_coverage(ctx, engagement_id)
+            report = CoverageReport.build({
+                capability: CoverageStatus(status)
+                for capability, status in stored.items()
+            })
         counts = report.counts()
         known_rows = "".join(
             f"<br>{_e(capability)}: {_e(status.value)}"
@@ -773,35 +3892,181 @@ class LightUpWebApp:
         )
 
     def _finding_cards(self, findings, portal: bool = False) -> str:
+        """Read-only HUMAN fix queue from original, tenant-checked findings."""
         if not findings:
-            note = (" Zero findings with unknown coverage is not a clean bill of health;"
-                    " coverage reporting arrives with the assessment engine.")
-            return f"<p class=\"empty\">No findings recorded.{note if portal else ''}</p>"
-        cards = []
-        for f in findings:
-            retest_badge = {
-                RetestStatus.FIXED: "<span class=\"badge ok\">Fixed & verified</span>",
-                RetestStatus.REGRESSION: "<span class=\"badge lock\">Regression</span>",
-                RetestStatus.FIX_PENDING: "<span class=\"badge warn\">Fix pending</span>",
-                RetestStatus.NOT_TESTED: "<span class=\"badge\">Retest not run</span>",
-            }[f.retest_status]
-            evidence = ""
-            if not portal and f.evidence_ids:
-                evidence = (
-                    "<details><summary>Evidence references</summary><p class=\"meta\">"
-                    + "<br>".join(_e(e) for e in f.evidence_ids) + "</p></details>"
-                )
-            cards.append(
-                "<div class=\"card\"><div class=\"row\">"
-                f"<strong>{_e(f.title)}</strong>{retest_badge}</div>"
-                f"<p class=\"meta\">Severity {_e(f.severity.value)} · asset {_e(f.asset)}</p>"
-                "<details><summary>Impact</summary>"
-                f"<p>{_e(f.impact) or '—'}</p></details>"
-                "<details><summary>Fix</summary>"
-                f"<p>{_e(f.remediation)}</p></details>"
-                f"{evidence}</div>"
+            note = (
+                " Zero findings with unknown coverage is not a clean bill of "
+                "health. Recorded capability coverage and actual independent "
+                "verification must be checked separately."
             )
-        return "".join(cards)
+            return f'<p class="empty">No findings recorded.{note if portal else ""}</p>'
+
+        # These are recorded remediation and retest labels, not instructions
+        # to launch a retest, proof of coverage, or authority to act on targets.
+        review_copy = {
+            RetestStatus.REGRESSION: (
+                "Regression recorded",
+                "A finding has returned after a prior fix record. Review its "
+                "original impact and remediation before any separately "
+                "authorized future verification.",
+            ),
+            RetestStatus.FIX_PENDING: (
+                "Fix still pending",
+                "Review the proposed remediation and document the work "
+                "separately. No verified fix is implied by this status.",
+            ),
+            RetestStatus.NOT_TESTED: (
+                "Retest not recorded",
+                "There is no recorded retest result for this finding. Do not "
+                "treat a proposed remediation as verified.",
+            ),
+            RetestStatus.FIXED: (
+                "Recorded fixed",
+                "A recorded fix applies to this finding only. It is not proof "
+                "of complete coverage or permission to retest other systems.",
+            ),
+        }
+        status_badges = {
+            RetestStatus.REGRESSION: "lock",
+            RetestStatus.FIX_PENDING: "warn",
+            RetestStatus.NOT_TESTED: "",
+            RetestStatus.FIXED: "ok",
+        }
+        severity_priority = {
+            "critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4,
+        }
+
+        def attention_order(f):
+            return (
+                0 if f.retest_status is RetestStatus.REGRESSION else 1,
+                severity_priority.get(f.severity.value, 5),
+                f.title.casefold(),
+            )
+
+        needs_follow_up = sorted(
+            (f for f in findings if f.retest_status is not RetestStatus.FIXED),
+            key=attention_order,
+        )
+        marked_fixed = sorted(
+            (f for f in findings if f.retest_status is RetestStatus.FIXED),
+            key=attention_order,
+        )
+
+        def render_finding(f, index: int, *, fixed: bool) -> str:
+            if f.retest_status not in review_copy:
+                raise ValueError("unrecognized original finding retest state")
+            status_title, status_detail = review_copy[f.retest_status]
+            badge = status_badges[f.retest_status]
+            card_id = f"recorded-{'fixed' if fixed else 'open'}-{index}"
+            # Client landing pages keep affected systems and full impact/fix
+            # copy behind one user-opened disclosure. Operators can read the
+            # same structured flow immediately without changing access rights.
+            asset = (
+                '<details><summary>Reveal affected system</summary>'
+                f'<p class="meta">{_e(f.asset)}</p></details>'
+                if portal else
+                f'<p class="meta">Affected system: {_e(f.asset)}</p>'
+            )
+            evidence = (
+                '<details><summary>Original evidence references '
+                f'({len(f.evidence_ids)})</summary><ul>'
+                + "".join(f'<li><code>{_e(e)}</code></li>' for e in f.evidence_ids)
+                + '</ul></details>'
+                if not portal and f.evidence_ids else ""
+            )
+            steps = (
+                '<ol class="remediation-flow">'
+                '<li><strong>1 · Finding</strong>'
+                f'<p>{_e(f.title)} · {_e(f.severity.value)} severity</p></li>'
+                '<li><strong>2 · Impact</strong>'
+                f'<p>{_e(f.impact or "Impact not recorded")}</p></li>'
+                '<li><strong>3 · Fix to review</strong>'
+                f'<p>{_e(f.remediation or "Remediation not recorded")}</p></li>'
+                '<li><strong>4 · Retest evidence</strong>'
+                f'<p>{_e(status_title)}. {_e(status_detail)}</p></li></ol>'
+            )
+            flow = (
+                '<details class="finding-details">'
+                '<summary>Read finding → impact → fix → retest</summary>'
+                f'{steps}{evidence}</details>'
+                if portal else
+                f'{steps}{evidence}'
+            )
+            return (
+                f'<article class="card finding-card" id="{_e(card_id)}">'
+                '<div class="row">'
+                f'<h4>{_e(f.title)}</h4>'
+                f'<span class="badge {badge}">{_e(status_title)}</span></div>'
+                f'<p class="meta">Severity: {_e(f.severity.value)} · '
+                'Recorded observation only</p>'
+                f'<p><strong>Human next step:</strong> {_e(status_detail)}</p>'
+                f'{asset}{flow}</article>'
+            )
+
+        urgent_count = sum(
+            f.severity.value in {"critical", "high"} for f in needs_follow_up
+        )
+        regression_count = sum(
+            f.retest_status is RetestStatus.REGRESSION for f in needs_follow_up
+        )
+        if needs_follow_up:
+            first = needs_follow_up[0]
+            first_status, _ = review_copy[first.retest_status]
+            next_title = (
+                "Review recorded regression first"
+                if first.retest_status is RetestStatus.REGRESSION else
+                "Start with the highest-priority unresolved finding"
+            )
+            next_body = (
+                f"{first.title} · {first.severity.value} severity · "
+                f"{first_status}. The remediation and verification record "
+                "are available below; no automated retest is offered."
+            )
+            next_link = '<a href="#recorded-open-1">Open first recorded finding</a>'
+        else:
+            next_title = "No recorded finding currently needs follow-up"
+            next_body = (
+                "A clear finding queue does not mean all systems were "
+                "assessed or verified safe. Check recorded assessment coverage."
+            )
+            next_link = (
+                '<a href="#coverage-details">Review assessment coverage</a>'
+                if portal else
+                '<a href="/authorization-reviews">Review independent safety gates</a>'
+            )
+
+        return (
+            '<section class="card" aria-labelledby="finding-next-heading">'
+            '<span class="badge lock">Recorded findings · no automatic retest</span>'
+            f'<h3 id="finding-next-heading">{_e(next_title)}</h3>'
+            f'<p>{_e(next_body)}</p><p>{next_link}</p>'
+            '</section>'
+            '<div class="grid" aria-label="Recorded finding follow-up counts">'
+            f'<div class="card"><strong>{len(needs_follow_up)}</strong>'
+            '<p class="meta">Open findings needing HUMAN follow-up</p></div>'
+            f'<div class="card"><strong>{regression_count}</strong>'
+            '<p class="meta">Recorded regressions</p></div>'
+            f'<div class="card"><strong>{urgent_count}</strong>'
+            '<p class="meta">Open critical/high-severity findings</p></div>'
+            f'<div class="card"><strong>{len(marked_fixed)}</strong>'
+            '<p class="meta">Recorded fixed · coverage not inferred</p></div>'
+            '</div>'
+            '<p class="meta">Ordered by recorded regression first, then '
+            'severity. Fix instructions and retest labels are historical '
+            'records only; no target is contacted and no permission is granted.</p>'
+            f'<h3>Needs HUMAN follow-up ({len(needs_follow_up)})</h3>'
+            + ("".join(
+                render_finding(f, index, fixed=False)
+                for index, f in enumerate(needs_follow_up, 1)
+            ) or '<p class="empty">No recorded findings currently need follow-up. '
+                 'Check assessment coverage before drawing conclusions.</p>')
+            + f'<details><summary>Recorded fixed findings ({len(marked_fixed)})</summary>'
+            + ("".join(
+                render_finding(f, index, fixed=True)
+                for index, f in enumerate(marked_fixed, 1)
+            ) or '<p class="empty">No findings are marked fixed yet.</p>')
+            + '</details>'
+        )
 
 
 def create_app(store: DomainStore, security: WebSecurity | None = None) -> LightUpWebApp:

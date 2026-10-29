@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from .domain import AccessContext, DomainStore, FindingRecord, Role, TenantIsolationError
-from .finding_export import render_findings_csv
+from .finding_export_unicode_integrity import render_findings_csv_checked
 from .models import Finding
 
 
@@ -69,4 +69,6 @@ def render_client_findings_csv(
             remediation=record.remediation,
             retest_status=record.retest_status,
         ))
-    return render_findings_csv(findings)
+    # Inspect the entire authorized tenant batch before emitting any CSV.
+    # This opt-in preflight is now mandatory for this tenant-facing service.
+    return render_findings_csv_checked(findings)

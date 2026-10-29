@@ -64,3 +64,13 @@ Tool traces, capability lanes, model decisions and raw evidence are hidden under
 The risk selector must display plain-language impact. Selecting a higher level shows only the additional implications and approvals needed for that level.
 
 The UI must never be able to bypass backend policy.
+
+## Client portal: first-screen contract
+
+- Keep the persisted-state next action first. It must say who acts next and link to the real request, scope plan or private evidence page; it is navigation, never authorization.
+- Keep the four task shortcuts visible: requests, scope and safety, recorded findings, and the private report.
+- **Simplify:** place secondary assessment counts, recent request cards and per-engagement coverage detail in native, initially closed `<details>` disclosures. Keep their underlying records and links intact so the first screen does not become a stack of duplicate KPI cards.
+- **Keep:** the concise coverage summary, unknown/partial/not-authorized warnings, first findings needing HUMAN follow-up, current scope blockers and the explicit “testing locked” state visible. A collapsed detail view must never hide the primary safety boundary.
+- **Merge:** keep a single path to the full request inbox; the home-screen recent-request disclosure is a short preview, not a second full inbox.
+- Use text labels and native keyboard-operable disclosures, retain visible focus and 44px touch targets, and keep the same state/tenant checks. Do not use color, zero findings or a recorded fix as proof of safety.
+- The CSV export link is attached to the current anchored “Recorded findings” heading, so renaming UI copy cannot silently remove an existing user action.
