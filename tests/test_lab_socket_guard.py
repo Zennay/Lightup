@@ -431,6 +431,20 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                 self.assertNotIn("PRIVATE", err.getvalue())
                 scorer.assert_not_called()
 
+    def test_canary_rejects_silent_socket_guard_failure(self):
+        # All fixtures are fixed 127.0.0.1; no external socket is used.
+        from contextlib import nullcontext
+        with patch.object(lab_canary, "fixed_loopback_socket_boundary",
+                          return_value=nullcontext()):
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main([])
+        self.assertEqual(code, 2, "unchecked boundary must not report PASS")
+        self.assertEqual(json.loads(output.getvalue()), {
+            "status": "HOLD", "passed": False, "lab_only": True,
+            "external_target_authorized": False, "deployment_authorized": False,
+            "failure_stage": "setup",
+        })
+
     def test_valid_fixed_loopback_scorer_run_works_and_restores_socket(self):
         original = socket.socket.connect
         with redirect_stdout(io.StringIO()) as out:

@@ -10,6 +10,10 @@ import argparse
 import io
 import json
 import re
+import socket
+import ssl
+from types import SimpleNamespace
+from unittest.mock import patch
 from pathlib import Path
 import subprocess
 import sys
@@ -18,7 +22,8 @@ from urllib.parse import urlencode
 
 from lightup.capabilities import CapabilityState, get_capabilities
 from lightup.domain import DomainStore, Role
-from lightup.lab_socket_guard import PrivateLabArgumentParser, fixed_loopback_socket_boundary
+from lightup.lab_socket_guard import (LabSocketBoundaryError, PrivateLabArgumentParser,
+                                       fixed_loopback_socket_boundary)
 from lightup.lab_service_score import run_lab_service_inventory_score
 from lightup.lab_tls_score import run_lab_tls_baseline_score
 from lightup.lab_web_score import run_lab_web_baseline_score
@@ -86,6 +91,33 @@ def _require_loopback_plan_disabled(response: subprocess.CompletedProcess) -> No
             or len(capabilities) != len(set(capabilities))
             or capabilities != expected_capabilities):
         raise RuntimeError("Offline safety gate denied: non-executing loopback plan")
+
+
+def _verify_active_loopback_guard() -> bool:
+    """Deny a synthetic preconnected public peer before claiming guard PASS.
+
+    No actual external peer is opened: the raw socket is unconnected and
+    only its getpeername method is mocked. This makes a disabled guard
+    produce HOLD instead of silently emitting an optimistic PASS receipt.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        with patch.object(socket.socket, "getpeername",
+                          return_value=("203.0.113.5", 443)):
+            try:
+                probe.send(b"synthetic-probe")
+            except LabSocketBoundaryError:
+                pass
+            else:
+                raise RuntimeError("offline loopback socket guard inactive")
+    synthetic_tls = SimpleNamespace(
+        family=socket.AF_INET,
+        getpeername=lambda: ("203.0.113.5", 443),
+    )
+    try:
+        ssl.SSLSocket.write(synthetic_tls, b"synthetic-probe")
+    except LabSocketBoundaryError:
+        return True
+    raise RuntimeError("offline loopback TLS guard inactive")
 
 
 def _run_canary() -> int:
@@ -206,6 +238,7 @@ def _run_canary() -> int:
             raise RuntimeError("Offline safety gate denied: non-loopback shell bind")
 
         with fixed_loopback_socket_boundary():
+            guard_verified = _verify_active_loopback_guard()
             service_score, service_metrics = _score_component(
                 "service", run_lab_service_inventory_score,
                 Path(directory) / "service-labeval.db", "service", 1, 2, SERVICE_CHECKS
@@ -236,7 +269,7 @@ def _run_canary() -> int:
         "client_operator_route_denied": True,
         "cross_origin_request_denied": True,
         "non_loopback_refused": True,
-        "fixed_loopback_socket_boundary_enforced": True,
+        "fixed_loopback_socket_boundary_enforced": guard_verified,
         "temporary_state_removed": True,
         "lab_only": True,
         "external_target_authorized": False,
