@@ -5,7 +5,6 @@ Original archives and private three-file report stay outside this package.
 """
 from __future__ import annotations
 
-import csv
 import hashlib
 import io
 import json
@@ -16,29 +15,18 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 from .lab_score_portable_dashboard import render_portable_dashboard
 from .lab_score_history_html import (
-    build_history_review_summary, render_history_html, render_history_markdown,
+    build_history_review_summary, render_history_html,
 )
 from .lab_score_inspect import _private_dir_fd
 from .lab_score_portable_html_safety import admit_inert_html
+from .lab_score_portable_text_safety import (
+    csv_bytes as _csv_bytes, markdown_bytes, README, admit_text_exports,
+)
 from .lab_score_suite import _private_output_directory
 
 _SCHEMA = "lightup.lab-score-portable-human-review.v1"
 _FILENAME = "LightUp-SYNTHETIC-OFFLINE-REVIEW.zip"
 _MAX_ZIP_BYTES = 2 * 1024 * 1024
-
-
-def _csv_bytes(summary: dict[str, Any]) -> bytes:
-    text = io.StringIO()
-    writer = csv.writer(text, lineterminator="\n")
-    writer.writerow(("previous_index", "current_index", "status",
-                     "independent_evaluations", "score_stable"))
-    for pair in summary["pairs"]:
-        writer.writerow((
-            pair["previous_index"], pair["current_index"],
-            "PASS" if pair["passed"] else "HOLD",
-            pair["independent_evaluations"], pair["score_stable"],
-        ))
-    return text.getvalue().encode("utf-8")
 
 
 def _files(report: dict[str, Any]) -> dict[str, bytes]:
@@ -51,17 +39,8 @@ def _files(report: dict[str, Any]) -> dict[str, bytes]:
             json.dumps(summary, sort_keys=True, indent=2, allow_nan=False) + "\n"
         ).encode("utf-8"),
         "review.csv": _csv_bytes(summary),
-        "review.md": render_history_markdown(report).encode("utf-8"),
-        "README.txt": (
-            "LightUp synthetic fixed-loopback offline review, HUMAN only.\n"
-            "Open index.html for global PASS/HOLD, priorities and pair navigation.\n"
-            "Scriptless, offline, source-free display; no network/authorization.\n"
-            "A PASS means only local consistency, NEVER external authority.\n"
-            "HTML may show first-party allowlisted numeric scorer changes.\n"
-            "CSV/JSON/Markdown omit raw numeric metric values.\n"
-            "Private source archives, saved receipt bindings and source IDs "
-            "are NOT included. ZIP hashes prove transport integrity only.\n"
-        ).encode("utf-8"),
+        "review.md": markdown_bytes(summary),
+        "README.txt": README,
     }
     manifest = {
         "schema": _SCHEMA,
@@ -94,6 +73,7 @@ def save_portable_review(
     """
     reverify_original_private_report()
     files = _files(report)
+    admit_text_exports(build_history_review_summary(report), files)
     # A source-free ZIP must be inert at *creation*, not just on receipt.
     # Refuse renderer regressions before establishing any output directory.
     admit_inert_html(files["index.html"])

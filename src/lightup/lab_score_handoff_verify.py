@@ -16,6 +16,9 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo, BadZipFile
 
 from .lab_score_inspect import _artifact_fd, _private_dir_fd
 from .lab_score_portable_html_safety import admit_inert_html
+from .lab_score_portable_text_safety import admit_text_exports
+from .lab_score_compare import _SCORE_FIELDS
+from .lab_score_suite import _EXPECTED_FINDINGS
 
 _SCHEMA = "lightup.lab-score-portable-human-review.v1"
 _SUMMARY_SCHEMA = "lightup.lab-score-private-review-summary.v1"
@@ -71,6 +74,48 @@ def _validate_summary(summary: dict[str, Any]) -> None:
     if (len(seen) != count or
             summary["passed"] != all(p["passed"] for p in summary["pairs"])):
         raise ValueError("contradictory global result")
+    # Unsigned metadata cannot turn attacker-controlled values into review priorities
+    # or Markdown/CSV active payloads. Re-derive the archive HOLD queue from pairs.
+    expected: dict[int, dict[str, int]] = {
+        idx: {"pairs": 0, "reuse": 0, "drift": 0}
+        for idx in range(1, n + 1)
+    }
+    for pair in summary["pairs"]:
+        if pair["passed"]:
+            continue
+        for idx in (pair["previous_index"], pair["current_index"]):
+            expected[idx]["pairs"] += 1
+            expected[idx]["reuse"] += not pair["independent_evaluations"]
+            expected[idx]["drift"] += not pair["score_stable"]
+    queue = [
+        {"index": idx, "hold_pairs": counts["pairs"],
+         "reused_evidence_pairs": counts["reuse"],
+         "score_drift_pairs": counts["drift"]}
+        for idx, counts in sorted(
+            expected.items(), key=lambda p: (-p[1]["pairs"], p[0]))
+        if counts["pairs"]
+    ]
+    if summary.get("archive_review_queue") != queue:
+        raise ValueError("contradictory anonymous archive priorities")
+    hotspots = summary.get("capability_hotspots")
+    if not isinstance(hotspots, list) or len(hotspots) > len(_EXPECTED_FINDINGS):
+        raise ValueError("invalid scorer hotspots")
+    used = set()
+    for item in hotspots:
+        if not isinstance(item, dict):
+            raise ValueError("invalid scorer hotspot")
+        capability = item.get("capability")
+        metrics = item.get("metrics")
+        affected = item.get("affected_pairs")
+        if (type(capability) is not str or capability not in _EXPECTED_FINDINGS
+                or capability in used or type(affected) is not int
+                or not 1 <= affected <= sum(not p["passed"] for p in summary["pairs"])
+                or not isinstance(metrics, list) or not metrics
+                or metrics != sorted(set(metrics))
+                or any(type(metric) is not str or metric not in _SCORE_FIELDS
+                       for metric in metrics)):
+            raise ValueError("untrusted scorer label or hotspot")
+        used.add(capability)
     if any(summary.get(field) is not False
            for field in ("authorization_granted", "external_targets_contacted",
                          "deployment")):
@@ -175,6 +220,7 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
     # enforce inert, local-only HTML for the files a HUMAN will open.
     admit_inert_html(payloads["index.html"])
     admit_inert_html(payloads["history.html"])
+    admit_text_exports(summary, payloads)
     return result, payloads
 
 
