@@ -473,13 +473,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--html-output-dir",
                         help="new exclusive 0700 directory for private 0600 history.html")
     parser.add_argument("--verify-html-output-dir",
-                        help="read-only comparison of a private review to original archives")
+                        help="reverify existing private HTML, receipt and JSON against originals; "
+                             "allows source-free review-json and review-markdown output")
     args = parser.parse_args(argv)
     if args.html_output_dir is not None and args.verify_html_output_dir is not None:
         parser.error("create and verify must be separate operations")
-    if (args.html_output_dir is not None or args.verify_html_output_dir is not None) and (
+    if args.html_output_dir is not None and (
             args.format != "html" or args.compare_history is None):
-        parser.error("saved HTML options require --compare-history and --format html")
+        parser.error("saving a private review requires --compare-history and --format html")
+    if args.verify_html_output_dir is not None and (
+            args.format not in ("html", "review-json", "review-markdown")
+            or args.compare_history is None):
+        parser.error("verifying a private review requires --compare-history and "
+                     "--format html, review-json or review-markdown")
     if args.format in ("csv", "html", "review-json", "review-markdown") and args.compare_history is None:
         parser.error("CSV/HTML/review export applies only to --compare-history")
     try:
@@ -516,6 +522,32 @@ def main(argv: list[str] | None = None) -> int:
                 rejected["archive_index"] = index
             print(json.dumps(rejected, sort_keys=True), file=sys.stderr)
         return 2
+    # Machine/human exports from a *saved* report must verify the entire
+    # original private HTML + JSON + receipt transaction first. Merely
+    # re-running a score comparison must never certify a tampered old bundle.
+    # Do not emit even an opening line on stdout until all checks succeed.
+    if args.verify_html_output_dir is not None and args.format in (
+            "review-json", "review-markdown"):
+        try:
+            html = render_history_html(result)
+            summary = build_history_review_summary(result)
+            review_dir = Path(args.verify_html_output_dir).expanduser()
+            if not review_dir.is_absolute():
+                review_dir = anchor / review_dir
+            _refuse_review_source_overlap(roots, review_dir)
+            binding = _private_source_binding(roots, html, summary)
+            verify_private_review(
+                review_dir, html, binding, summary,
+                lambda: _private_source_binding(roots, html, summary),
+            )
+        except Exception:
+            if args.format == "review-json":
+                print(json.dumps({"schema": "lightup.lab-score-private-review-summary.v1",
+                                  "passed": False}), file=sys.stderr)
+            else:
+                print("LightUp synthetic calibration: HOLD; saved review not verified.",
+                      file=sys.stderr)
+            return 2
     if args.format == "review-markdown":
         try:
             brief = render_history_markdown(result)

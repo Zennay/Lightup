@@ -310,7 +310,15 @@ re-verifies the original private localhost archives and prints an offline Markdo
 review brief: prioritized anonymous archive HOLD counts, evidence-reuse/drift,
 fixed scorer hotspots and every pairwise status. Genuine HOLD is reviewable
 with exit 2; corrupt originals yield no partial output, just a source-free
-refusal on stderr. There is no write, authenticated chronology, authorization,
+refusal on stderr. To export only after independently re-verifying the original private
+three-file review bundle, add `--verify-html-output-dir PRIVATE_REVIEW_DIR`
+to either `--format review-markdown` or `--format review-json`.
+This verifies the stored HTML, JSON summary, source-bound receipt and every
+original private archive before emitting any stdout. A tampered report or
+altered archive yields a source-free HOLD/exit 2 and no partial export.
+The existing saved review directory remains unchanged.
+
+There is no write, authenticated chronology, authorization,
 external target, scanning, consent, dispatch or deployment capability.
 
 ### Read-only verification of a previously saved review

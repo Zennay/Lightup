@@ -52,3 +52,52 @@ class ReviewMarkdownTests(unittest.TestCase):
     def test_invalid_report_refused_before_any_render(self):
         with self.assertRaises(ValueError):
             render_history_markdown({"schema": cal.HISTORY_SCHEMA, "archives_checked": 2, "pairs": []})
+
+class PersistedReviewExportTests(unittest.TestCase):
+    """Saved bundle is fully verified before any source-free output."""
+
+    @staticmethod
+    def call(roots, fmt, dest, verify=True):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = cal.main(["--compare-history", *map(str, roots),
+                             "--format", fmt,
+                             "--verify-html-output-dir" if verify else "--html-output-dir",
+                             str(dest)])
+        return code, out.getvalue(), err.getvalue()
+
+    def test_verified_export_is_read_only_and_tampering_fails_closed(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(2)]
+            for root in roots:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            dest = Path(base)/"saved-review"
+            self.assertEqual(self.call(roots, "html", dest, False), (0, "", ""))
+            before = {p.name:(p.stat().st_ino,p.stat().st_mtime_ns,p.read_bytes()) for p in dest.iterdir()}
+            for fmt in ("review-json", "review-markdown"):
+                code, out, err = self.call(roots, fmt, dest)
+                self.assertEqual((code, err), (0, ""))
+                self.assertNotIn(base, out)
+                self.assertIn("passed" if fmt == "review-json" else "PASS", out)
+            after = {p.name:(p.stat().st_ino,p.stat().st_mtime_ns,p.read_bytes()) for p in dest.iterdir()}
+            self.assertEqual(before, after)
+            (dest/"history.html").write_text("tampered HTML")
+            for fmt in ("review-json", "review-markdown"):
+                code, out, err = self.call(roots, fmt, dest)
+                self.assertEqual((code, out), (2, ""))
+                self.assertIn("false" if fmt == "review-json" else "HOLD", err)
+                self.assertNotIn(base, err)
+
+    def test_altered_original_returns_no_partial_export(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(2)]
+            for root in roots:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            dest = Path(base)/"saved-review"
+            self.assertEqual(self.call(roots, "html", dest, False)[0], 0)
+            (roots[0]/"report.json").write_bytes(b"corrupted original")
+            for fmt in ("review-json", "review-markdown"):
+                code, out, err = self.call(roots, fmt, dest)
+                self.assertEqual((code, out), (2, ""))
+                self.assertTrue(err)
+                self.assertNotIn(base, err)
