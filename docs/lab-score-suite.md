@@ -99,6 +99,14 @@ and evidence verification as `lightup-lab-score-inspect`. The comparator
 does **not** start fixtures/workers, access network targets, write artifacts,
 or grant execution authority.
 
+A readable local-operator report is available with `--format text` on the
+same `lightup-lab-score-compare` command. The existing JSON response stays
+the default. Text identifies PASS/HOLD, distinct versus reused evaluations,
+per-capability evidence counts, and exact changes to allowlisted metrics.
+Private source paths, record identifiers, payloads and hashes are excluded.
+Both formats return exit code 2 for drift or reused evaluations. This is
+synthetic fixed-loopback calibration, **not** review, consent, or authority.
+
 The output compares nine bounded first-party scoring metrics for service,
 TLS and HTTP, excludes timing jitter, and flags exact evaluation-digest reuse.
 A copied bundle or same directory is not an independent repeat, so returns

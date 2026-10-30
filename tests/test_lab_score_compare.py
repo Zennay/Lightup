@@ -1,13 +1,15 @@
 """Focused verification of private saved fixed-loopback score comparison."""
 from __future__ import annotations
 import json
+import io
+from contextlib import redirect_stdout
 import os
 import stat
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from lightup.lab_score_compare import compare_score_runs, main
+from lightup.lab_score_compare import compare_score_runs, main, render_score_review
 from lightup.lab_score_inspect import inspect_score_run
 from lightup.lab_score_suite import run_lab_score_suite
 
@@ -28,6 +30,62 @@ class SavedLabScoreCompareTests(unittest.TestCase):
             self.assertTrue(result["score_stable"])
             self.assertEqual(len(result["capabilities"]),3)
             self.assertFalse(result["authorization_granted"])
+
+    def test_real_text_operator_cli_and_unchanged_json(self):
+        with tempfile.TemporaryDirectory() as temp:
+            a, b = Path(temp)/"PRIVATE-baseline", Path(temp)/"PRIVATE-candidate"
+            self.assertTrue(run_lab_score_suite(a)["passed"])
+            self.assertTrue(run_lab_score_suite(b)["passed"])
+            output = io.StringIO()
+            with redirect_stdout(output):
+                code = main(["--baseline-dir", str(a), "--candidate-dir", str(b),
+                             "--format", "text"])
+            text = output.getvalue()
+            self.assertEqual(code, 0)
+            self.assertIn("score comparison: PASS", text)
+            self.assertIn("service_inventory: PASS", text)
+            self.assertIn("tls_baseline: PASS", text)
+            self.assertIn("http_baseline: PASS", text)
+            self.assertIn("Authority: none", text)
+            self.assertNotIn(temp, text)
+            self.assertNotIn("PRIVATE-", text)
+            self.assertNotIn("record_sha256", text)
+            output = io.StringIO()
+            with redirect_stdout(output):
+                code = main(["--baseline-dir", str(a), "--candidate-dir", str(b)])
+            self.assertEqual(code, 0)
+            self.assertTrue(json.loads(output.getvalue())["passed"])
+            output = io.StringIO()
+            with redirect_stdout(output):
+                code = main(["--baseline-dir", str(a), "--candidate-dir", str(a),
+                             "--format", "text"])
+            self.assertEqual(code, 2)
+            self.assertEqual(output.getvalue(), "")
+
+    def test_text_review_safely_shows_drift_and_reused_evaluations(self):
+        report = {
+            "passed": False, "score_stable": False,
+            "independent_evaluations": False,
+            "capabilities": {
+                name: {
+                    "distinct_evaluation": name != "service_inventory",
+                    "baseline_evidence_count": 2,
+                    "candidate_evidence_count": 2,
+                    "changed_metrics": (
+                        {"valid_findings": {"baseline": 1, "candidate": 0}}
+                        if name == "tls_baseline" else {}
+                    ),
+                } for name in ("service_inventory", "tls_baseline", "http_baseline")
+            },
+        }
+        text = render_score_review(report)
+        self.assertIn("comparison: HOLD", text)
+        self.assertIn("Evaluations: reused; calibration: changed", text)
+        self.assertIn("service_inventory: HOLD", text)
+        self.assertIn("tls_baseline: HOLD", text)
+        self.assertIn("valid_findings: 1 -> 0", text)
+        self.assertIn("http_baseline: PASS", text)
+        self.assertNotIn("record_sha256", text)
 
     def test_host_umask_keeps_persisted_evidence_owner_private(self):
         # Reproduce the 0022 CI runner before the producer creates SQLite.

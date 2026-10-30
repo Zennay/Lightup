@@ -65,6 +65,27 @@ def compare_score_runs(baseline_dir: str | Path, candidate_dir: str | Path) -> d
     }
 
 
+def render_score_review(report: dict[str, Any]) -> str:
+    """Produce a private-safe human-readable calibration summary."""
+    status = "PASS" if report["passed"] else "HOLD"
+    identity = "distinct" if report["independent_evaluations"] else "reused"
+    lines = [
+        f"LightUp synthetic score comparison: {status}",
+        f"Evaluations: {identity}; calibration: {'stable' if report['score_stable'] else 'changed'}",
+    ]
+    for name in _EXPECTED_FINDINGS:
+        item = report["capabilities"][name]
+        changed = item["changed_metrics"]
+        flag = "PASS" if item["distinct_evaluation"] and not changed else "HOLD"
+        lines.append(f"{name}: {flag}; evidence {item['baseline_evidence_count']} -> {item['candidate_evidence_count']}")
+        for metric in _SCORE_FIELDS:
+            if metric in changed:
+                delta = changed[metric]
+                lines.append(f"  {metric}: {delta['baseline']} -> {delta['candidate']}")
+    lines.append("Authority: none; localhost fixtures only; no external assessment.")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="lightup-lab-score-compare",
@@ -72,6 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--baseline-dir", required=True)
     parser.add_argument("--candidate-dir", required=True)
+    parser.add_argument("--format", choices=("json", "text"), default="json")
     args = parser.parse_args(argv)
     try:
         report = compare_score_runs(args.baseline_dir, args.candidate_dir)
@@ -80,7 +102,10 @@ def main(argv: list[str] | None = None) -> int:
             "schema": SCHEMA, "passed": False, "error_type": type(exc).__name__,
         }, sort_keys=True), file=sys.stderr)
         return 2
-    print(json.dumps(report, indent=2, sort_keys=True))
+    if args.format == "text":
+        print(render_score_review(report))
+    else:
+        print(json.dumps(report, indent=2, sort_keys=True))
     return 0 if report["passed"] else 2
 
 
