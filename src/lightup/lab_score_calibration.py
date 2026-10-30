@@ -27,6 +27,7 @@ from .lab_score_review_store import (save_private_review, verify_private_review,
 from .lab_score_handoff import save_portable_review
 from .lab_score_portable_unpack import unpack_portable_review, verify_unpacked_portable_review
 from .lab_score_handoff_verify import verify_portable_review
+from .lab_score_portable_focus import render_portable_focus
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
@@ -481,7 +482,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--format", choices=("json", "text", "csv", "html", "review-json", "review-markdown", "review-csv"),
                         default="text")
     parser.add_argument("--focus-archive-index", type=int, metavar="N",
-                        help="show original archive N in source-free review exports")
+                        help="show anonymous original archive N in history or "
+                             "portable read-only HUMAN verifier")
     parser.add_argument("--html-output-dir",
                         help="new exclusive 0700 directory for private 0600 history.html")
     parser.add_argument("--verify-html-output-dir",
@@ -530,13 +532,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.unpack_output_dir is not None:
         parser.error("--unpack-output-dir requires --unpack-portable-review")
     if args.verify_portable_review is not None:
-        if (args.format not in ("text", "json") or args.focus_archive_index is not None
+        if (args.format not in ("text", "json")
                 or args.html_output_dir is not None
                 or args.verify_html_output_dir is not None
                 or args.portable_review_output_dir is not None):
             parser.error("portable review verification is standalone and read-only")
         try:
-            verified = verify_portable_review(args.verify_portable_review)
+            verified = verify_portable_review(
+                args.verify_portable_review,
+                focus_archive_index=args.focus_archive_index)
         except Exception:
             if args.format == "json":
                 print(json.dumps({
@@ -564,6 +568,10 @@ def main(argv: list[str] | None = None) -> int:
             receipt = {key: verified[key] for key in keys}
             receipt["schema"] = "lightup.lab-score-portable-verification-receipt.v1"
             receipt["portable_schema"] = verified["schema"]
+            if "focused_archive" in verified:
+                receipt["focused_archive"] = verified["focused_archive"]
+                receipt["focused_archive_untrusted_legacy_claim"] = (
+                    not verified["history_content_validated"])
             print(json.dumps(receipt, sort_keys=True, allow_nan=False))
             return 0 if verified["review_status"] == "PASS" else 2
         print("LightUp portable HUMAN review: TRANSPORT VERIFIED; "
@@ -573,6 +581,11 @@ def main(argv: list[str] | None = None) -> int:
               + verified["review_status"] + ".")
         if verified["legacy_read_only_triage"]:
             print(verified["legacy_read_only_triage"])
+        if "focused_archive" in verified:
+            print(render_portable_focus(
+                verified["focused_archive"],
+                global_status=verified["review_status"],
+                legacy=not verified["history_content_validated"]))
         return 0 if verified["review_status"] == "PASS" else 2
     if args.focus_archive_index is not None and (
             args.compare_history is None or args.format not in

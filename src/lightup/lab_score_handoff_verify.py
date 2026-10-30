@@ -19,6 +19,7 @@ from .lab_score_portable_html_safety import admit_inert_html
 from .lab_score_portable_dashboard import render_portable_dashboard
 from .lab_score_portable_history import render_portable_history
 from .lab_score_portable_legacy_triage import legacy_triage
+from .lab_score_portable_focus import build_portable_focus
 from .lab_score_portable_text_safety import admit_text_exports
 from .lab_score_compare import _SCORE_FIELDS
 from .lab_score_suite import _EXPECTED_FINDINGS
@@ -267,7 +268,15 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
     return result, payloads
 
 
-def verify_portable_review(path: str | Path) -> dict[str, Any]:
-    """No-network, no-write ZIP integrity verification; no source authority."""
-    result, _ = _validated_portable_review(path)
+def verify_portable_review(
+    path: str | Path, *, focus_archive_index: int | None = None
+) -> dict[str, Any]:
+    """No-network, no-write ZIP integrity and optional original-pair focus."""
+    result, files = _validated_portable_review(path)
+    if focus_archive_index is not None:
+        # The complete source-free summary has already been admitted and
+        # checked against the ZIP's first-party HTML/CSV/Markdown in v3.
+        # A focus does not change global status or elevate legacy trust.
+        result["focused_archive"] = build_portable_focus(
+            _decode_json(files["review.json"]), focus_archive_index)
     return result

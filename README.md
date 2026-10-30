@@ -223,7 +223,16 @@ synthetic `lightup.lab-score-portable-verification-receipt.v1`, with distinct
 0; actual/legacy HOLD or malformed transport exits 2. Invalid ZIPs emit a
 minimal machine-readable HOLD receipt with `transport_integrity: false`;
 legacy read-only triage prose and private source identifiers are never copied
-to JSON. This output is **not** an original source signature or release grant.
+to JSON. For anonymous per-archive triage, the *same read-only* receiver supports
+`--focus-archive-index N` together with either text or JSON. It checks
+the whole ZIP before selecting **all** original pairs involving N, ordered
+HOLD first, with synthetic evidence-reuse/drift reasons. It never replaces
+the **global** HOLD/PASS status and never authenticates original sources.
+The machine receipt includes `focused_archive` and
+`focused_archive_untrusted_legacy_claim` when requested; legacy v1/v2
+focus remains explicitly untrusted and globally HOLD, with no HTML output.
+Indices outside the admitted 1–8 source-free archive range are rejected.
+This output is **not** an original source signature or release grant.
 Keep the ZIP in a 0700 directory as a 0600 file for this local checker.
 
 To open a verified portable HUMAN ZIP as scriptless files without manual ZIP
