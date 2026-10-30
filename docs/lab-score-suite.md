@@ -399,3 +399,16 @@ HTML printed. Tampered sources/receipts return HOLD with empty stdout. Focus
 is not allowed with `--html-output-dir` because saved original private
 reports are intentionally canonical and unfocused. The existing nonfocused
 saved HTML verification still prints its original VERIFIED status.
+
+
+### Browse original archives inside one saved offline HTML report
+
+The canonical `--format html` report, including the exclusive
+`--html-output-dir` owner-private three-file bundle, now includes a
+script-free **Browse original archives** section. Every one of the 2–8
+verified original archives has a keyboard-accessible native `details` panel
+with all involving pair statuses, evidence independence, score stability and
+links to the original HOLD explanations. Anchor navigation works without
+JavaScript, network requests, logins or new source data. Panels with no local
+HOLD still coexist with the unchanged global HOLD result and all-pair matrix.
+This remains source-free synthetic localhost evidence, not a grant or release.

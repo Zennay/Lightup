@@ -153,3 +153,10 @@ global matrix and unchanged overall HOLD status. Add
 `--verify-html-output-dir EXISTING_PRIVATE_REVIEW_DIR` to verify the saved
 canonical private review before emitting focused HTML; focused HTML cannot
 replace the saved canonical report.
+
+
+The canonical saved offline `history.html` now has built-in keyboard-accessible
+per-archive navigation for all 2–8 verified original archives: native
+`details` panels show pairwise evidence independence, stability, PASS/HOLD,
+and local HOLD links without scripts or network. Focused one-archive exports
+are still available separately and the global review verdict is unchanged.

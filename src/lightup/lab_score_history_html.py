@@ -213,6 +213,50 @@ def render_history_html(report: dict[str, Any], focus_index: int | None = None) 
             "</tr></thead><tbody>" + "".join(focus_rows) +
             "</tbody></table></div></section>"
         )
+    # Native <details> lets the operator browse any original archive in one
+    # saved static HTML artifact. No JavaScript, network or new authority.
+    archive_browser = ""
+    if focus_index is None:
+        archive_cards = []
+        for archive in range(1, n + 1):
+            selected = [(i, j, ok) for (i, j), ok in lookup.items()
+                        if archive in (i, j)]
+            selected.sort(key=lambda item: (item[2], item[0], item[1]))
+            count = sum(not ok for _, _, ok in selected)
+            overview = f"Archive {archive}: {count} HOLD of {len(selected)} comparisons"
+            detail_rows = []
+            for i, j, ok in selected:
+                independent, stable = flags[i, j]
+                action = (f"<a href='#pair-{i}-{j}'>Read HOLD details</a>"
+                          if not ok else "—")
+                detail_rows.append(
+                    f"<tr><th scope='row'>{i} versus {j}</th>"
+                    f"<td>{'PASS' if ok else 'HOLD'}</td>"
+                    f"<td>{'yes' if independent else 'no'}</td>"
+                    f"<td>{'yes' if stable else 'no'}</td>"
+                    f"<td>{action}</td></tr>"
+                )
+            archive_cards.append(
+                f"<details id='archive-{archive}'><summary>{overview}</summary>"
+                "<div class='table-scroll' role='region' tabindex='0' "
+                f"aria-label='Original archive {archive} comparisons'><table>"
+                f"<caption>Comparisons involving archive {archive}</caption>"
+                "<thead><tr><th scope='col'>Original pair</th>"
+                "<th scope='col'>Result</th><th scope='col'>Independent evidence</th>"
+                "<th scope='col'>Score stable</th><th scope='col'>Details</th>"
+                "</tr></thead><tbody>" + "".join(detail_rows) +
+                "</tbody></table></div></details>"
+            )
+        archive_browser = (
+            "<section aria-labelledby='archive-browser-title'>"
+            "<h2 id='archive-browser-title'>Browse original archives</h2>"
+            "<p>Select any archive to inspect its original comparisons. "
+            "The complete global PASS/HOLD result and matrix stay unchanged.</p>"
+            "<nav aria-label='Archive navigation'>" +
+            " ".join(f"<a href='#archive-{i}'>Archive {i}</a>"
+                     for i in range(1, n + 1)) +
+            "</nav>" + "".join(archive_cards) + "</section>"
+        )
     status = "PASS" if report.get("passed") is True else "HOLD"
     css = """body{font:16px/1.55 system-ui,sans-serif;max-width:880px;margin:2rem auto;padding:0 1rem;color:#152332;background:#fff}
 h1,h2,h3{line-height:1.25}table{width:100%;border-collapse:collapse;margin:1.5rem 0}
@@ -224,6 +268,10 @@ th{background:#edf2f7}a{color:#064f9e}a:focus-visible{outline:3px solid #0758b5}
 footer{border-top:1px solid #9ba9b8;margin-top:2rem;padding-top:1rem;font-size:.9rem}
 .table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
 .table-scroll:focus-visible{outline:3px solid #0758b5}
+details{border:1px solid #9ba9b8;margin:.75rem 0;padding:.5rem 1rem}
+summary{cursor:pointer;font-weight:700;padding:.3rem 0}
+summary:focus-visible,nav a:focus-visible{outline:3px solid #0758b5}
+nav[aria-label='Archive navigation']{display:flex;gap:.8rem;flex-wrap:wrap}
 @media(prefers-color-scheme:dark){body{background:#131b24;color:#f1f5fa}th{background:#293746}
 a{color:#a3d0ff}.pass{color:#8ee9aa;border-color:#8ee9aa}.hold{color:#ffb7a7;border-color:#ffb7a7}
 .unused{color:#a8b4c0}}"""
@@ -238,7 +286,7 @@ a{color:#a3d0ff}.pass{color:#8ee9aa;border-color:#8ee9aa}.hold{color:#ffb7a7;bor
             + f"{len(pairs)} original archive pairs.</p>"
             + "<p>All sources are private fixed-loopback lab fixtures. "
             + "PASS does not authorize external assessment or deployment.</p>"
-            + attention + focus_panel
+            + attention + focus_panel + archive_browser
             + "<h2>All-pairs review</h2><div class='table-scroll' role='region' tabindex='0' aria-label='Original archive comparison matrix'><table><caption>Original synthetic "
             + "calibration comparisons</caption><thead>" + rows[0] + "</thead>"
             + "<tbody>" + "".join(rows[1:]) + "</tbody></table></div>"

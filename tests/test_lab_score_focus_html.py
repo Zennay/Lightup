@@ -68,3 +68,50 @@ class FocusedHtmlTests(unittest.TestCase):
                 code, html, err = invoke(roots, index)
                 self.assertEqual((code, html), (2, ""))
                 self.assertIn("HOLD", err)
+
+    def test_canonical_offline_browser_navigates_all_archives_without_scripts(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(4)]
+            for root in roots[:3]:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            shutil.copytree(roots[0], roots[3])
+            code, html, err = invoke(roots)
+            self.assertEqual((code, err), (2, ""))
+            self.assertIn("Overall: HOLD", html)
+            self.assertIn("Browse original archives", html)
+            self.assertIn("role='region' tabindex='0'", html)
+            for archive in range(1, 5):
+                self.assertIn(f"href='#archive-{archive}'", html)
+                self.assertIn(f"<details id='archive-{archive}'>", html)
+                self.assertIn(f"Comparisons involving archive {archive}", html)
+            self.assertIn("Archive 3: 0 HOLD of 3 comparisons", html)
+            self.assertIn("Archive 4: 1 HOLD of 3 comparisons", html)
+            self.assertIn("href='#pair-1-4'>Read HOLD details", html)
+            self.assertIn("href='#pair-1-4' aria-label=", html)
+            self.assertEqual(html.count("<details id='archive-"), 4)
+            self.assertIn("Original archive comparison matrix", html)
+            for forbidden in (base, "sha256", "<script", "http://", "https://"):
+                self.assertNotIn(forbidden, html)
+
+    def test_canonical_saved_browser_reverifies_private_bundle_read_only(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(2)]
+            for root in roots:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            dest = Path(base)/"review"
+            self.assertEqual(invoke(roots, saved=dest, create=True), (0, "", ""))
+            original = {p.name:(p.stat().st_ino,p.stat().st_mtime_ns,p.read_bytes())
+                        for p in dest.iterdir()}
+            code, text, err = invoke(roots, saved=dest)
+            self.assertEqual((code, err), (0, ""))
+            self.assertIn("VERIFIED; original comparison PASS", text)
+            self.assertEqual(original,
+                             {p.name:(p.stat().st_ino,p.stat().st_mtime_ns,p.read_bytes())
+                              for p in dest.iterdir()})
+            saved_html = (dest/"history.html").read_text()
+            self.assertIn("Browse original archives", saved_html)
+            (dest/"history.html").write_text("altered")
+            code, text, err = invoke(roots, saved=dest)
+            self.assertEqual((code, text), (2, ""))
+            self.assertIn("HOLD", err)
+            self.assertNotIn(base, err)
