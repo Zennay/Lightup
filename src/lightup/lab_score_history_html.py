@@ -134,12 +134,15 @@ def render_history_html(report: dict[str, Any], focus_index: int | None = None) 
                                    key=lambda pair: (-len(pair[1]["pairs"]), pair[0])):
         if not info["pairs"]:
             continue
-        first_i, first_j = min(info["pairs"])
         metrics = ", ".join(sorted(info["metrics"]))
+        links = ", ".join(
+            f"<a href='#pair-{i}-{j}'>Review {i} versus {j}</a>"
+            for i, j in sorted(info["pairs"])
+        )
         hotspot_rows.append(
             "<tr><th scope='row'>" + escape(capability) + "</th>"
             + f"<td>{len(info['pairs'])}</td><td>{escape(metrics)}</td>"
-            + f"<td><a href='#pair-{first_i}-{first_j}'>Review {first_i} versus {first_j}</a></td></tr>"
+            + f"<td>{links}</td></tr>"
         )
     archive_rows = []
     ordered_archives = sorted(archive_issues.items(),
@@ -148,11 +151,15 @@ def render_history_html(report: dict[str, Any], focus_index: int | None = None) 
         if not issue["pairs"]:
             continue
         first_i, first_j = min(issue["pairs"])
+        links = [f"<a href='#pair-{first_i}-{first_j}'>First HOLD pair {first_i} versus {first_j}</a>"]
+        links.extend(f"<a href='#pair-{i}-{j}'>Also {i} versus {j}</a>"
+                     for i, j in sorted(issue["pairs"])
+                     if (i, j) != (first_i, first_j))
         archive_rows.append(
             f"<tr><th scope='row'>Archive {index}</th>"
             + f"<td>{len(issue['pairs'])}</td>"
             + f"<td>{issue['reused']}</td><td>{issue['drift']}</td>"
-            + f"<td><a href='#pair-{first_i}-{first_j}'>First HOLD pair {first_i} versus {first_j}</a></td></tr>"
+            + f"<td>{', '.join(links)}</td></tr>"
         )
     archive_queue = (
         "<h3>Archive review queue</h3>"

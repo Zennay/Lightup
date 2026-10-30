@@ -160,3 +160,8 @@ per-archive navigation for all 2–8 verified original archives: native
 `details` panels show pairwise evidence independence, stability, PASS/HOLD,
 and local HOLD links without scripts or network. Focused one-archive exports
 are still available separately and the global review verdict is unchanged.
+
+
+The offline review priorities and first-party scorer hotspots link to *all*
+affected original HOLD comparisons in the same private static HTML page, so
+multi-archive regressions can be triaged without rerunning CLI exports.

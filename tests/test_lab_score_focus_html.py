@@ -115,3 +115,48 @@ class FocusedHtmlTests(unittest.TestCase):
             self.assertEqual((code, text), (2, ""))
             self.assertIn("HOLD", err)
             self.assertNotIn(base, err)
+
+    def test_archive_queue_has_links_to_every_original_hold(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(4)]
+            for root in roots[:2]:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            shutil.copytree(roots[0], roots[2])
+            shutil.copytree(roots[0], roots[3])
+            code, html, err = invoke(roots)
+            self.assertEqual((code, err), (2, ""))
+            self.assertIn("First HOLD pair 1 versus 3</a>, "
+                          "<a href='#pair-1-4'>Also 1 versus 4", html)
+            self.assertIn("First HOLD pair 1 versus 3</a>, "
+                          "<a href='#pair-3-4'>Also 3 versus 4", html)
+            self.assertIn("Archive 1: 2 HOLD of 3 comparisons", html)
+            self.assertIn("Archive 3: 2 HOLD of 3 comparisons", html)
+            self.assertIn("Overall: HOLD", html)
+            self.assertNotIn(base, html)
+
+    def test_scorer_hotspot_has_links_to_all_changed_pairs(self):
+        from lightup.lab_score_history_html import render_history_html
+        pairs = [
+            {"previous_index":1, "current_index":2, "passed":True,
+             "independent_evaluations":True, "score_stable":True},
+            {"previous_index":1, "current_index":3, "passed":False,
+             "independent_evaluations":True, "score_stable":False},
+            {"previous_index":2, "current_index":3, "passed":False,
+             "independent_evaluations":True, "score_stable":False},
+        ]
+        holds = [{
+            "previous_index":i, "current_index":3, "independent_evaluations":True,
+            "score_stable":False,
+            "metric_deltas":[{"capability":"http_baseline",
+                              "metric":"coverage_assessed", "previous":i, "current":3}]
+        } for i in (1,2)]
+        report = {"schema":cal.HISTORY_SCHEMA, "archives_checked":3,
+                  "pairs_checked":3, "pairs":pairs, "pairwise_holds":holds,
+                  "passed":False, "independent_evaluations":True, "score_stable":False}
+        html = render_history_html(report)
+        self.assertIn("<td>2</td><td>coverage_assessed</td>"
+                      "<td><a href='#pair-1-3'>Review 1 versus 3</a>, "
+                      "<a href='#pair-2-3'>Review 2 versus 3</a></td>", html)
+        self.assertIn("First HOLD pair 1 versus 3</a>, "
+                      "<a href='#pair-2-3'>Also 2 versus 3</a>", html)
+        self.assertNotIn("<script", html)

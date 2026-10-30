@@ -412,3 +412,15 @@ links to the original HOLD explanations. Anchor navigation works without
 JavaScript, network requests, logins or new source data. Panels with no local
 HOLD still coexist with the unchanged global HOLD result and all-pair matrix.
 This remains source-free synthetic localhost evidence, not a grant or release.
+
+
+### Direct links for every original regression
+
+The saved private HTML review queue and first-party score-drift hotspot table
+now link to **every** affected original HOLD pair, rather than displaying only
+one example. Archive queue links remain sorted by original pair ordinal,
+with a distinguished first HOLD and numbered additional comparisons. Scorer
+hotspot links are similarly ordered. The links resolve only to in-document
+source-free findings; all original archives and pairs are still verified,
+the global HOLD remains unchanged, and neither a reviewer identity nor a
+permission/target/release authority is introduced.
