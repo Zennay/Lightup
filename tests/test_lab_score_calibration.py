@@ -213,6 +213,33 @@ class CalibrationTests(unittest.TestCase):
             finally:
                 os.chdir(previous_cwd)
 
+    def test_comparator_resolves_pair_under_one_working_directory(self):
+        from lightup import lab_score_compare as compare
+        from lightup.lab_score_suite import run_lab_score_suite
+        with tempfile.TemporaryDirectory() as base:
+            saved = Path(base) / "saved"
+            saved.mkdir(mode=0o700)
+            self.assertTrue(run_lab_score_suite(saved / "baseline")["passed"])
+            self.assertTrue(run_lab_score_suite(saved / "candidate")["passed"])
+            original = Path.cwd()
+            old_abspath = compare.os.path.abspath
+            invocations = []
+            def cwd_shift_after_first_resolution(value):
+                result = old_abspath(value)
+                invocations.append(str(value))
+                if len(invocations) == 1:
+                    os.chdir(base)
+                return result
+            try:
+                os.chdir(saved)
+                with patch.object(compare.os.path, "abspath",
+                                  side_effect=cwd_shift_after_first_resolution):
+                    report = compare.compare_score_runs("baseline", "candidate")
+                self.assertTrue(report["passed"])
+                self.assertEqual(invocations, [])
+            finally:
+                os.chdir(original)
+
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:
             with patch.object(cal, "run_lab_score_suite", return_value={"passed": False}) as fn:

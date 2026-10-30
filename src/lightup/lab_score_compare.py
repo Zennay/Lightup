@@ -30,8 +30,12 @@ def compare_score_runs(baseline_dir: str | Path, candidate_dir: str | Path) -> d
     baseline_path, candidate_path = Path(baseline_dir).expanduser(), Path(candidate_dir).expanduser()
     if ".." in baseline_path.parts or ".." in candidate_path.parts:
         raise ValueError("parent traversal rejected")
-    baseline_dir = Path(os.path.abspath(baseline_path))
-    candidate_dir = Path(os.path.abspath(candidate_path))
+    # Capture process-wide cwd exactly once. Resolving the baseline and
+    # candidate separately with abspath() can still race another thread's
+    # chdir between the two calls.
+    anchor = Path.cwd()
+    baseline_dir = baseline_path if baseline_path.is_absolute() else anchor / baseline_path
+    candidate_dir = candidate_path if candidate_path.is_absolute() else anchor / candidate_path
     baseline = inspect_score_run(baseline_dir, include_metrics=True)
     candidate = inspect_score_run(candidate_dir, include_metrics=True)
     # Both inputs were opened and validated without following links. Reject
