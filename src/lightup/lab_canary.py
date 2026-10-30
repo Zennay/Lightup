@@ -35,6 +35,8 @@ from lightup.lab_canary_history import (compare_private_canary_handoffs,
                                         render_private_canary_history_html)
 from lightup.lab_canary_history_store import (save_private_history_snapshot,
                                                verify_private_history_snapshot)
+from lightup.lab_canary_workroom import (export_private_history_workroom,
+                                        verify_private_history_workroom)
 from lightup.webapp import create_app
 from lightup.webapp.__main__ import _loopback
 
@@ -392,7 +394,51 @@ def main(argv: list[str] | None = None) -> int:
                         help="new owner-private snapshot of synthetic comparison")
     parser.add_argument("--verify-private-history-output-dir", metavar="EXISTING_DIR",
                         help="read-only validation of a saved history snapshot")
+    parser.add_argument("--export-private-history-workroom", metavar="NEW_ZIP",
+                        help="exclusively create a private source-free offline HUMAN ZIP")
+    parser.add_argument("--private-history-snapshots", nargs="+",
+                        metavar="ORIGINAL_DIR", help="2-8 already verified private reports")
+    parser.add_argument("--verify-private-history-workroom", metavar="ZIP",
+                        help="read-only source-free ZIP admission; no extraction")
     args = parser.parse_args(argv)  # No caller-supplied target is supported.
+    if args.export_private_history_workroom is not None or args.verify_private_history_workroom is not None:
+        if (args.format == "html" or args.private_report_dir is not None
+                or args.verify_private_report_dir is not None
+                or args.compare_private_report_dirs is not None
+                or args.private_history_output_dir is not None
+                or args.verify_private_history_output_dir is not None
+                or (args.export_private_history_workroom is not None and
+                    args.verify_private_history_workroom is not None)
+                or (args.verify_private_history_workroom is not None and
+                    args.private_history_snapshots is not None)
+                or (args.export_private_history_workroom is not None and
+                    args.private_history_snapshots is None)):
+            parser.error("portable workroom requires one isolated private operation")
+        try:
+            if args.export_private_history_workroom is not None:
+                result = export_private_history_workroom(
+                    args.private_history_snapshots, args.export_private_history_workroom)
+            else:
+                result = verify_private_history_workroom(args.verify_private_history_workroom)
+        except Exception:
+            result = {
+                "schema": "lightup.m1.source-free-private-history-workroom.v1",
+                "transport_integrity": False, "review_status": "HOLD",
+                "source_authenticated": False, "consent_authenticated": False,
+                "authorization_granted": False, "external_target_authorized": False,
+                "deployment": False, "human_review_only": True,
+                "synthetic_loopback_only": True,
+            }
+        if args.format == "json":
+            print(json.dumps(result, sort_keys=True, allow_nan=False))
+        else:
+            print("LightUp synthetic offline HUMAN workroom: " + result["review_status"]
+                  + "; source-free ZIP " + ("VERIFIED" if result["transport_integrity"]
+                                            else "NOT VERIFIED")
+                  + "; no original source authentication, consent, target or deploy authority.")
+        return 0 if result["transport_integrity"] and result["review_status"] == "PASS" else 2
+    if args.private_history_snapshots is not None:
+        parser.error("original history snapshots require workroom export")
     if args.verify_private_history_output_dir is not None:
         if (args.compare_private_report_dirs is not None
                 or args.private_report_dir is not None

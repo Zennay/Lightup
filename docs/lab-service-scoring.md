@@ -188,6 +188,41 @@ snapshot remains **unsigned and unauthenticated**: never treat its JSON,
 HTML or manifest as client permission, evidence authenticity, source identity,
 independent reviewer acceptance, security sign-off, or deployment approval.
 
+## Portable, independently verifiable offline HUMAN review workroom
+
+The installed M1 safety canary also creates one bounded, self-contained,
+**source-free** review ZIP from 2–8 original owner-private history snapshots:
+
+```sh
+lightup-lab-safety-canary --export-private-history-workroom /private/NEW-M1.zip --private-history-snapshots /private/HISTORY-01 /private/HISTORY-02 --format json
+lightup-lab-safety-canary --verify-private-history-workroom /private/NEW-M1.zip --format json
+```
+
+The producer performs full first-party descriptor-pinned source verification,
+reads the exact original bytes once, rejects duplicate physical source
+directories and pre-existing/symlink ZIP destinations, then creates a
+**new 0600** reproducible ZIP. The workroom includes scriptless `index.html`
+linking to anonymous 01..08 `history.html` views; their corresponding
+private source-free JSON, HTML and unsigned manifests; a README and a
+transport hash manifest. Original source paths, customer evidence, scope,
+passwords, logs and IDs are never exported. HOLD stays HOLD globally.
+
+The independent verifier never extracts or executes the ZIP: it imposes
+limits on ZIP size, entry count, paths, permissions, compression and
+per-entry size; rejects duplicate/unexpected members, altered bytes,
+bogus original snapshot metrics, HTML approval forgeries even after hashes
+are recomputed, and changed index labels; then returns one anonymous
+machine-readable PASS/HOLD transport receipt with all source/authorization/
+consent/deployment flags false. A semantic HOLD returns exit 2 even when
+bytes are verified, while a truly unverified ZIP returns
+`transport_integrity=false`. No external targets or scripts run.
+
+This ZIP and its manifests are deliberately **unsigned**. Their integrity
+cannot authenticate the original source, operator, client consent, independent
+reviewer, assessment authorization or release. Only synthetic localhost
+observations may be used. Do not treat any local PASS as permission to
+scan, authenticate evidence, or deploy a service.
+
 ## Exact first-party scorer contracts
 
 The offline gate now rejects a scorer even if it claims `passed=true`

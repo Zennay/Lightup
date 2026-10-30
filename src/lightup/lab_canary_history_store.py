@@ -143,8 +143,8 @@ def save_private_history_snapshot(destination: str, result: dict) -> Path:
     return target
 
 
-def verify_private_history_snapshot(directory: str) -> dict:
-    """Descriptor-pinned, no-follow, read-only byte and semantic validation."""
+def _read_private_history_snapshot(directory: str) -> tuple[dict, dict[str, bytes], tuple[int, int]]:
+    """Read verified original files from pinned descriptors, without TOCTOU reread."""
     raw = Path(directory).expanduser()
     if ".." in raw.parts:
         raise ValueError("parent traversal in snapshot")
@@ -188,12 +188,18 @@ def verify_private_history_snapshot(directory: str) -> dict:
         result = _validate_history(_strict_json(files["history.json"]))
         if files["history.html"] != render_private_canary_history_html(result).encode():
             raise ValueError("forged passive HTML even with rehashed manifest")
-        return {
+        receipt = {
             "schema": VERIFICATION, "transport_integrity": True,
             "review_status": result["review_status"],
             "synthetic_loopback_only": True, "source_authenticated": False,
             "consent_authenticated": False, "authorization_granted": False,
             "external_target_authorized": False, "deployment": False,
         }
+        return receipt, files, (root.st_dev, root.st_ino)
     finally:
         os.close(fd)
+
+
+def verify_private_history_snapshot(directory: str) -> dict:
+    """Read-only owner-private validated metadata without original content."""
+    return _read_private_history_snapshot(directory)[0]
