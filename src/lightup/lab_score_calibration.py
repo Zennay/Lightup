@@ -16,8 +16,10 @@ from pathlib import Path
 from typing import Any
 
 from .lab_score_compare import (
-    _SCORE_FIELDS, compare_score_runs, render_score_review,
+    _SCORE_FIELDS, _compare_inspected_score_runs, compare_score_runs,
+    render_score_review,
 )
+from .lab_score_inspect import inspect_score_run
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
@@ -202,15 +204,24 @@ def _compare_verified_archive_pair(
     previous: Path, current: Path,
     old_hashes: dict[str, dict[str, str]],
     current_hashes: dict[str, dict[str, str]],
+    previous_score: dict[str, Any] | None = None,
+    current_score: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compare candidates using already checked original source snapshots.
 
     The caller MUST reverify original private sources and receipts after the
     full comparison. This function grants neither provenance nor authority.
     """
-    comparison = compare_score_runs(
-        previous / "candidate", current / "candidate",
-    )
+    if previous_score is not None and current_score is not None:
+        # History calls reuse one already inspected candidate per archive.
+        # As with the original comparator, the archives must be distinct.
+        if os.path.samefile(previous / "candidate", current / "candidate"):
+            raise ValueError("same archived candidate")
+        comparison = _compare_inspected_score_runs(previous_score, current_score)
+    else:
+        comparison = compare_score_runs(
+            previous / "candidate", current / "candidate",
+        )
     # Verifying two root receipts does not guarantee the archives are
     # independent: one can reuse the other's *baseline* while selecting a
     # new candidate. Reject repeated original evidence anywhere across all
@@ -300,7 +311,7 @@ def compare_saved_calibration_history(
         if ".." in path.parts:
             raise ValueError("parent traversal rejected")
         roots.append(path if path.is_absolute() else anchor / path)
-    identities, source_bindings = [], []
+    identities, source_bindings, inspected_candidates = [], [], []
     # Admit each original root once, without exposing input paths or artifacts.
     for index, root in enumerate(roots, 1):
         try:
@@ -308,6 +319,9 @@ def compare_saved_calibration_history(
             if verify_saved_calibration(root)["passed"] is not True:
                 raise ValueError("archived source refused")
             source_bindings.append(_source_hashes(root))
+            inspected_candidates.append(
+                inspect_score_run(root / "candidate", include_metrics=True)
+            )
         except Exception:
             raise _HistoryArchiveError(index) from None
     adjacent = []
@@ -321,7 +335,8 @@ def compare_saved_calibration_history(
             # original digests. The final whole-history recheck below
             # invalidates every result if any source changed mid-comparison.
             pair = _compare_verified_archive_pair(
-                roots[i], roots[j], source_bindings[i], source_bindings[j]
+                roots[i], roots[j], source_bindings[i], source_bindings[j],
+                inspected_candidates[i], inspected_candidates[j]
             )
             summary = pair["comparison"]
             compared += 1

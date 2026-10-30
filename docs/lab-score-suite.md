@@ -212,8 +212,12 @@ Each of the 2–8 original archives and its eight private SHA-256 source
 bindings is verified once at admission and once again at completion; pairwise
 comparison reuses the admitted private snapshots rather than repeatedly
 rehashing them. Validation cost for original sources now scales linearly
-with archived sessions, not 28 repeated original verifications; changed
-source bytes or swapped roots still yield HOLD with no partial CSV.
+with archived sessions, not 28 repeated original verifications. Each
+already-verified candidate SQLite observation is also inspected only once,
+not reloaded for each of the 28 candidate comparisons. All-pairs results
+retain the original independent per-pair scoring semantics; the post-pass
+source binding and private receipt checks reject changed evidence or
+swapped roots before writing any CSV.
 When an original archive fails admission or final read-only verification,
 text/CSV stderr identifies its 1-based argument position only; JSON
 returns the same `archive_index` and a false `passed` value. No user path,

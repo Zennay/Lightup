@@ -42,6 +42,17 @@ def compare_score_runs(baseline_dir: str | Path, candidate_dir: str | Path) -> d
     # self-comparison before presenting a false independent repeat.
     if os.path.samefile(baseline_dir, candidate_dir):
         raise ValueError("baseline and candidate are the same saved run")
+    return _compare_inspected_score_runs(baseline, candidate)
+
+
+def _compare_inspected_score_runs(
+    baseline: dict[str, Any], candidate: dict[str, Any],
+) -> dict[str, Any]:
+    """Compare previously inspected local score summaries without filesystem I/O.
+
+    Callers remain responsible for validating the original source, checking
+    that distinct inputs are used, and revalidating source bytes at completion.
+    """
     comparison: dict[str, dict[str, Any]] = {}
     repeat_independent = True
     score_stable = True

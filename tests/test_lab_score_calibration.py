@@ -577,6 +577,47 @@ class CalibrationTests(unittest.TestCase):
             self.assertIn("archive 2 not verified", err.getvalue())
             self.assertNotIn(base, err.getvalue())
 
+    def test_history_inspects_each_candidate_once_not_per_pair(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(4)]
+            for root in roots:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            with patch.object(cal, "inspect_score_run",
+                              wraps=cal.inspect_score_run) as inspect, patch.object(
+                cal, "compare_score_runs",
+                wraps=cal.compare_score_runs
+            ) as pair_compare:
+                result = cal.compare_saved_calibration_history(roots)
+            self.assertTrue(result["passed"])
+            self.assertEqual(result["pairs_checked"], 6)
+            self.assertEqual(inspect.call_count, 4)
+            # Two candidate comparisons per root: initial + final receipt.
+            # History performs its six comparisons without re-opening SQLite.
+            self.assertEqual(pair_compare.call_count, 8)
+
+    def test_cached_history_matches_individual_source_bound_pair_comparisons(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(3)]
+            for root in roots:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            shutil.rmtree(roots[2])
+            shutil.copytree(roots[0], roots[2])
+            report = cal.compare_saved_calibration_history(roots)
+            self.assertFalse(report["passed"])
+            for pair in report["pairs"]:
+                old = roots[pair["previous_index"]-1]
+                latest = roots[pair["current_index"]-1]
+                independent = cal.compare_saved_calibrations(old, latest)
+                self.assertEqual(pair["passed"], independent["passed"])
+                self.assertEqual(
+                    pair["independent_evaluations"],
+                    independent["comparison"]["independent_evaluations"]
+                )
+                self.assertEqual(
+                    pair["score_stable"], independent["comparison"]["score_stable"]
+                )
+
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:
             with patch.object(cal, "run_lab_score_suite", return_value={"passed": False}) as fn:
