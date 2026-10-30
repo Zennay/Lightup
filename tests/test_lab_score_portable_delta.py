@@ -346,6 +346,10 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         changed = deepcopy(original)
         changed['review_status'] = 'PASS'
         cases.append(changed)
+        for invalid_reason in ([], {}):
+            changed = deepcopy(original)
+            changed['actions'][0]['reason'] = invalid_reason
+            cases.append(changed)
         for idx, value in enumerate(cases):
             for fmt in formats:
                 with self.subTest(case=idx, fmt=fmt), self.assertRaises(ValueError):

@@ -59,7 +59,7 @@ def admit_human_actions(data: dict) -> list[dict]:
         p, c = row["anonymous_previous"], row["anonymous_current"]
         if (
             origin not in ("baseline", "candidate")
-            or reason not in _REASONS
+            or type(reason) is not str or reason not in _REASONS
             or type(p) is not int or type(c) is not int
             or not 1 <= p < c <= 8
             or row["human_action"] != _REASONS[reason]
