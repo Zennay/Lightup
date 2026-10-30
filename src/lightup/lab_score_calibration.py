@@ -510,7 +510,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
     if args.publish_queue_workroom is not None or args.verify_queue_workroom is not None:
-        if (args.queue_workroom_dir is None or args.format != "text"
+        if (args.queue_workroom_dir is None
+                or args.format not in (("text",) if args.publish_queue_workroom is not None
+                                       else ("text", "csv", "review-csv"))
                 or args.review_queue or args.focus_pair is not None
                 or args.focus_archive_index is not None or args.html_output_dir is not None
                 or args.unpack_output_dir is not None or args.unpacked_review_dir is not None
@@ -527,8 +529,14 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:
             print("LightUp HUMAN offline queue: HOLD; workroom not verified.", file=sys.stderr)
             return 2
-        print("LightUp HUMAN offline queue: FILES VERIFIED; original source NOT authenticated; "
-              "status " + result["review_status"] + ".")
+        if args.format in ("csv", "review-csv"):
+            outputs = render_queue_csv(result["review_queue"],
+                                       global_status=result["review_status"])
+            name = "queue_pairs.csv" if args.format == "review-csv" else "queue_archives.csv"
+            sys.stdout.write(outputs[name].decode("utf-8"))
+        else:
+            print("LightUp HUMAN offline queue: FILES VERIFIED; original source NOT authenticated; "
+                  "status " + result["review_status"] + ".")
         return 0 if result["review_status"] == "PASS" else 2
     if args.queue_workroom_dir is not None:
         parser.error("--queue-workroom-dir requires queue workroom mode")

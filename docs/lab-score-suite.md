@@ -506,3 +506,14 @@ a caller cannot label the overall result PASS while any original comparison
 is HOLD, forge one pair's PASS against its actual replay/drift flags, or mark
 a source-free human queue as identity authenticated. The bound is enforced
 again at presentation time, in addition to required canonical ZIP admission.
+
+Offline reviewers can reexport CSV **from a saved, original ZIP-bound workroom**
+without creating or modifying any file. Use
+`--verify-queue-workroom SOURCE.zip --queue-workroom-dir EXISTING_DIR --format review-csv`
+for the full original HOLD-first pair queue or `--format csv` for archive
+priorities. This succeeds only after the exact existing v1/v2 files are
+checked against the complete original synthetic ZIP in two pinned read-only
+passes, then revalidating that ZIP. A legacy v1 room can thus be consumed by
+newer CSV tools without mutating its three original files. A corrupted saved
+file returns HOLD with **no stdout CSV**, even if an unsigned manifest digest
+was recomputed. All exports carry global status and explicit false authority.

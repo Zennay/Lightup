@@ -136,6 +136,21 @@ def validate_portable_queue(queue: dict[str, Any], global_status: str) -> None:
         if pair['review_status'] != expected or pair['hold_reasons'] != reasons:
             raise ValueError('contradictory pair outcome')
         holds += expected == 'HOLD'
+    # A sender could hide an original HOLD by dropping that pair and updating
+    # the unauthenticated counters. Require the COMPLETE n*(n-1)/2 comparison
+    # matrix for exactly 2..8 ordinal archives before any renderer displays it.
+    archive_count = max(max(a, b) for a, b in seen)
+    complete = {(a, b) for a in range(1, archive_count + 1)
+                for b in range(a + 1, archive_count + 1)}
+    if archive_count < 2 or seen != complete:
+        raise ValueError('missing or duplicate original archive comparison')
+    ordered = sorted(pairs, key=lambda p: (
+        p['review_status'] != 'HOLD',
+        'evidence_reused' not in p['hold_reasons'],
+        'score_drift' not in p['hold_reasons'],
+        p['previous_index'], p['current_index']))
+    if pairs != ordered:
+        raise ValueError('HUMAN queue is not HOLD-first canonical order')
     if (holds != queue['hold_pairs'] or len(pairs)-holds != queue['pass_pairs']
             or (global_status == 'PASS' and holds)):
         raise ValueError('local HOLD cannot be promoted to global PASS')

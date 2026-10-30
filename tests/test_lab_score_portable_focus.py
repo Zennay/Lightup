@@ -318,6 +318,30 @@ class FocusedPortableReviewTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     renderer(forgery, global_status="HOLD")
 
+    def test_renderers_require_complete_canonical_original_pair_matrix(self):
+        from copy import deepcopy
+        from lightup.lab_score_handoff_verify import verify_portable_review
+        from lightup.lab_score_portable_queue import render_portable_queue_html
+        from lightup.lab_score_queue_csv import render_queue_csv
+        queue = verify_portable_review(self.archive, review_queue=True)["review_queue"]
+        for renderer in (render_portable_queue_html, render_queue_csv):
+            # Drop the only original replay HOLD and recalculate every
+            # untrusted summary. A truncated matrix must still be rejected.
+            missing = deepcopy(queue)
+            missing["pairs"].pop(0)
+            missing["pairs_checked"] -= 1
+            missing["hold_pairs"] = 0
+            missing["pass_pairs"] = len(missing["pairs"])
+            missing["archive_priorities"] = []
+            with self.subTest(renderer=renderer.__name__, error="missing original HOLD"):
+                with self.assertRaises(ValueError):
+                    renderer(missing, global_status="PASS")
+            swapped = deepcopy(queue)
+            swapped["pairs"][0], swapped["pairs"][1] = swapped["pairs"][1], swapped["pairs"][0]
+            with self.subTest(renderer=renderer.__name__, error="HOLD not first"):
+                with self.assertRaises(ValueError):
+                    renderer(swapped, global_status="HOLD")
+
     def test_direct_csv_queue_verifies_zip_and_remains_globally_hold(self):
         import csv
         from io import StringIO
@@ -331,6 +355,44 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertTrue(all(p["global_status"] == "HOLD" and
                             p["authorization_granted"] == "false" for p in rows))
         self.assertNotIn(str(self.root), output)
+
+    def test_saved_queue_workroom_reexports_both_csvs_after_source_reinspection(self):
+        import csv
+        from io import StringIO
+        room = self.root / "saved-export-v2"
+        self.assertEqual(invoke("--publish-queue-workroom", self.archive,
+                                "--queue-workroom-dir", room)[0], 2)
+        for mode, filename, expected_count in (("review-csv", "queue_pairs.csv", 6),
+                                               ("csv", "queue_archives.csv", 2)):
+            code, raw, error = invoke("--verify-queue-workroom", self.archive,
+                                      "--queue-workroom-dir", room,
+                                      "--format", mode)
+            self.assertEqual((code, error), (2, ""))
+            self.assertEqual(raw.encode("utf-8"), (room / filename).read_bytes())
+            rows = list(csv.DictReader(StringIO(raw)))
+            self.assertEqual(len(rows), expected_count)
+            self.assertTrue(all(row["global_status"] == "HOLD" for row in rows))
+            self.assertNotIn(str(self.root), raw)
+        # v1 has no saved CSV members; the same source is still reverified
+        # and the canonical CSV is derived only after complete v1 reinspection.
+        old = self.root / "saved-export-v1"
+        old.mkdir(mode=0o700)
+        from lightup.lab_score_queue_workroom import _payloads
+        for name, data in _payloads(self.archive, version=1)[1].items():
+            target = old / name
+            target.write_bytes(data)
+            target.chmod(0o600)
+        code, raw, error = invoke("--verify-queue-workroom", self.archive,
+                                  "--queue-workroom-dir", old,
+                                  "--format", "review-csv")
+        self.assertEqual((code, error), (2, ""))
+        self.assertEqual(len(list(csv.DictReader(StringIO(raw)))), 6)
+        (room / "queue_pairs.csv").write_text("=HYPERLINK(unsafe)\n")
+        code, raw, error = invoke("--verify-queue-workroom", self.archive,
+                                  "--queue-workroom-dir", room,
+                                  "--format", "review-csv")
+        self.assertEqual((code, raw), (2, ""))
+        self.assertIn("not verified", error)
 
     def test_queue_workroom_rechecks_original_after_reading_files(self):
         from unittest.mock import patch
