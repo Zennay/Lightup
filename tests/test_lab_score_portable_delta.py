@@ -215,6 +215,59 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
             run('--verify-comparison-workroom',self.hold,self.passing,
                 '--comparison-output-dir',self.root/'missing','--include-actions')
 
+    def test_human_source_briefs_direct_saved_and_holding_original(self):
+        room=self.root/'action-brief-room'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',room,'--include-actions')
+        self.assertEqual((code,err),(2,''))
+        before={p.name:p.read_bytes() for p in room.iterdir()}
+        for fmt in ('actions-brief-markdown','actions-brief-html'):
+            direct=run('--compare-portable-reviews',self.hold,self.passing,
+                       '--format',fmt)
+            saved=run('--verify-comparison-workroom',self.hold,self.passing,
+                      '--comparison-output-dir',room,'--export-comparison',
+                      '--format',fmt)
+            self.assertEqual(direct,saved)
+            self.assertEqual((direct[0],direct[2]),(2,''))
+            self.assertIn('NOT_VERIFIED',direct[1])
+            self.assertIn('GLOBAL STATUS HOLD',direct[1])
+            self.assertIn('Baseline',direct[1])
+            self.assertIn('Candidate',direct[1])
+            self.assertNotIn(str(self.root),direct[1])
+            if fmt.endswith('html'):
+                admit_inert_html(direct[1].encode())
+                for dest in ('baseline','candidate','independent'):
+                    self.assertIn("id='"+dest+"'",direct[1])
+            else:
+                self.assertIn('Anonymous pair',direct[1])
+                self.assertIn('- [ ]',direct[1])
+        self.assertEqual(before,{p.name:p.read_bytes() for p in room.iterdir()})
+        (room/'actions.csv').write_text('forged approval not selected')
+        for fmt in ('actions-brief-markdown','actions-brief-html'):
+            status,output,error=run('--verify-comparison-workroom',
+                    self.hold,self.passing,'--comparison-output-dir',room,
+                    '--export-comparison','--format',fmt)
+            self.assertEqual((status,output),(2,''))
+            self.assertIn('not verified',error)
+
+    def test_human_brief_refuses_untrusted_actions_before_render(self):
+        from lightup.lab_score_action_brief import render_action_brief
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_review_actions import build_review_actions
+        data=build_review_actions(
+            compare_portable_review_transports(str(self.hold),str(self.passing)),
+            str(self.hold),str(self.passing))
+        for fmt in ('actions-brief-markdown','actions-brief-html'):
+            with self.subTest(fmt=fmt):
+                changed=json.loads(json.dumps(data))
+                changed['actions'][-1]['completion']='APPROVED'
+                with self.assertRaises(ValueError):
+                    render_action_brief(changed,fmt)
+                changed=json.loads(json.dumps(data))
+                changed['actions'][0]['anonymous_previous']='=<script>'
+                with self.assertRaises(ValueError):
+                    render_action_brief(changed,fmt)
+
     def test_export_requires_original_source_and_saved_private_room(self):
         with self.assertRaises(SystemExit):
             run('--compare-portable-reviews',self.hold,self.passing,

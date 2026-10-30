@@ -483,3 +483,25 @@ spreadsheet triage; HTML uses inert offline CSP. All actions are **HUMAN-only,
 NOT_VERIFIED**, and neither an unsigned transport hash nor a local PASS grants
 original source identity, legal scope, security review, remediation approval,
 external target contact, or deployment.
+
+### Offline HUMAN original-source review brief (M1, existing PR #1717)
+
+To produce a source-bound, read-only HUMAN action brief from two canonical
+first-party synthetic ZIPs, use:
+
+```sh
+lightup-lab-score-calibrate --compare-portable-reviews BASELINE.zip CANDIDATE.zip --format actions-brief-markdown
+lightup-lab-score-calibrate --compare-portable-reviews BASELINE.zip CANDIDATE.zip --format actions-brief-html
+```
+
+The Markdown is a copyable HUMAN checklist, and the HTML is an inert printable
+baseline/candidate brief with reasons for the original HOLD pairs and an
+independent source/security/privacy review gate. To reconstruct the same brief
+from an existing private five- or eight-file workroom, add
+`--verify-comparison-workroom BASELINE.zip CANDIDATE.zip --comparison-output-dir EXISTING_ROOM --export-comparison`
+in place of `--compare-portable-reviews`. Every saved room member and both
+original ZIPs must be read-only reverified first. The new brief is an
+**additive projection**: saved legacy v1 and v2 manifests/HTML/CSV bytes are
+unchanged. No action is marked complete; both synthetic transports retain
+independent anonymous ordinals; any original HOLD remains HOLD; the output
+does not authenticate sources, consent, reviewer qualifications or grants.
