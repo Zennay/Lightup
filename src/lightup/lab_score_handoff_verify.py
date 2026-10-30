@@ -19,7 +19,9 @@ from .lab_score_portable_html_safety import admit_inert_html
 from .lab_score_portable_dashboard import render_portable_dashboard
 from .lab_score_portable_history import render_portable_history
 from .lab_score_portable_legacy_triage import legacy_triage
-from .lab_score_portable_focus import build_portable_focus, build_portable_pair
+from .lab_score_portable_focus import (
+    InvalidPortableSelection, build_portable_focus, build_portable_pair,
+)
 from .lab_score_portable_text_safety import admit_text_exports
 from .lab_score_compare import _SCORE_FIELDS
 from .lab_score_suite import _EXPECTED_FINDINGS
@@ -279,13 +281,20 @@ def verify_portable_review(
     result, files = _validated_portable_review(path)
     if focus_archive_index is not None and focus_pair is not None:
         raise ValueError("choose only one portable focus")
-    if focus_pair is not None:
-        result["focused_pair"] = build_portable_pair(
-            _decode_json(files["review.json"]), *focus_pair)
-    if focus_archive_index is not None:
-        # The complete source-free summary has already been admitted and
-        # checked against the ZIP's first-party HTML/CSV/Markdown in v3.
-        # A focus does not change global status or elevate legacy trust.
-        result["focused_archive"] = build_portable_focus(
-            _decode_json(files["review.json"]), focus_archive_index)
+    if focus_pair is not None or focus_archive_index is not None:
+        try:
+            if focus_pair is not None:
+                result["focused_pair"] = build_portable_pair(
+                    _decode_json(files["review.json"]), *focus_pair)
+            else:
+                result["focused_archive"] = build_portable_focus(
+                    _decode_json(files["review.json"]), focus_archive_index)
+        except InvalidPortableSelection:
+            # An invalid operator ordinal is NOT corrupted ZIP transport.
+            # Preserve verified immutable transport identity while failing
+            # selection closed, with no local PASS or auth promoted.
+            result["selection_valid"] = False
+            result["review_status"] = "HOLD"
+        else:
+            result["selection_valid"] = True
     return result

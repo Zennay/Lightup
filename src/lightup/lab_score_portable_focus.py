@@ -9,17 +9,21 @@ from __future__ import annotations
 from typing import Any
 
 
+class InvalidPortableSelection(ValueError):
+    """A verified source-free transport has no such original ordinal selection."""
+
+
 def build_portable_focus(summary: dict[str, Any], index: int) -> dict[str, Any]:
     n = summary["archives_checked"]
     if type(index) is not int or not 1 <= index <= n:
-        raise ValueError("focused archive index out of 1-based anonymous range")
+        raise InvalidPortableSelection("focused archive index out of 1-based anonymous range")
     relevant = sorted(
         (p for p in summary["pairs"]
          if index in (p["previous_index"], p["current_index"])),
         key=lambda p: (p["passed"], p["previous_index"], p["current_index"]),
     )
     if len(relevant) != n - 1:
-        raise ValueError("incomplete original focused archive comparisons")
+        raise InvalidPortableSelection("incomplete original focused archive comparisons")
     pairs = []
     for p in relevant:
         reasons = []
@@ -72,10 +76,10 @@ def build_portable_pair(summary: dict[str, Any], previous: int, current: int) ->
     n = summary["archives_checked"]
     if (type(previous) is not int or type(current) is not int
             or not 1 <= previous < current <= n):
-        raise ValueError("pair ordinals require 1 <= previous < current <= archives")
+        raise InvalidPortableSelection("pair ordinals require 1 <= previous < current <= archives")
     matches = [p for p in summary["pairs"] if (p["previous_index"], p["current_index"]) == (previous, current)]
     if len(matches) != 1:
-        raise ValueError("original pair not found exactly once")
+        raise InvalidPortableSelection("original pair not found exactly once")
     pair = matches[0]
     reasons = []
     if not pair["independent_evaluations"]:

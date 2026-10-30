@@ -575,6 +575,8 @@ def main(argv: list[str] | None = None) -> int:
             receipt["schema"] = "lightup.lab-score-portable-verification-receipt.v1"
             receipt["portable_schema"] = verified["schema"]
             receipt["portable_transport_sha256"] = verified["portable_transport_sha256"]
+            if "selection_valid" in verified:
+                receipt["selection_valid"] = verified["selection_valid"]
             if "focused_archive" in verified:
                 receipt["focused_archive"] = verified["focused_archive"]
                 receipt["focused_archive_untrusted_legacy_claim"] = (
@@ -592,6 +594,9 @@ def main(argv: list[str] | None = None) -> int:
               + verified["review_status"] + ".")
         print("Verified source-free ZIP SHA-256: " + verified["portable_transport_sha256"]
               + "; this is NOT original evidence or source authentication.")
+        if verified.get("selection_valid") is False:
+            print("Requested anonymous pair/archive selection INVALID; verified ZIP "
+                  "transport unchanged; selection HOLD; no pair admitted.")
         if verified["legacy_read_only_triage"]:
             print(verified["legacy_read_only_triage"])
         if "focused_archive" in verified:
