@@ -275,6 +275,7 @@ def compare_saved_calibration_history(
     identities = [_archived_root_identity(root) for root in roots]
     source_bindings = [_source_hashes(root) for root in roots]
     adjacent = []
+    pairwise_holds = []
     independent, stable, all_passed = True, True, True
     compared = 0
     for i in range(len(roots)):
@@ -285,6 +286,15 @@ def compare_saved_calibration_history(
             independent &= summary["independent_evaluations"] is True
             stable &= summary["score_stable"] is True
             all_passed &= pair["passed"] is True
+            if pair["passed"] is not True:
+                # Report only 1-based positions and allowlisted Boolean
+                # reasons. Original IDs, paths and SHA digests stay private.
+                pairwise_holds.append({
+                    "previous_index": i + 1,
+                    "current_index": j + 1,
+                    "independent_evaluations": summary["independent_evaluations"],
+                    "score_stable": summary["score_stable"],
+                })
             if j == i + 1:
                 adjacent.append({
                     "previous_index": i + 1,
@@ -307,6 +317,7 @@ def compare_saved_calibration_history(
         "independent_evaluations": bool(independent),
         "score_stable": bool(stable),
         "adjacent": adjacent,
+        "pairwise_holds": pairwise_holds,
         "authorization_granted": False,
         "external_targets_contacted": False,
         "deployment": False,
@@ -359,6 +370,14 @@ def main(argv: list[str] | None = None) -> int:
             for item in result["adjacent"]:
                 state = "PASS" if item["passed"] else "HOLD"
                 print(f"Archive {item['previous_index']} -> {item['current_index']}: {state}")
+            for item in result["pairwise_holds"]:
+                reasons = []
+                if not item["independent_evaluations"]:
+                    reasons.append("reused original evidence")
+                if not item["score_stable"]:
+                    reasons.append("score drift")
+                reason = ", ".join(reasons) or "verification HOLD"
+                print(f"Archive {item['previous_index']} -> {item['current_index']}: HOLD ({reason})")
             print("Authority: none; localhost fixtures only; no external assessment.")
         else:
             labels = ("previous and current"

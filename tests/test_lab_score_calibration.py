@@ -380,6 +380,7 @@ class CalibrationTests(unittest.TestCase):
             self.assertEqual((report["archives_checked"], report["pairs_checked"]),
                              (3, 3))
             self.assertEqual(len(report["adjacent"]), 2)
+            self.assertEqual(report["pairwise_holds"], [])
             self.assertFalse(report["authorization_granted"])
             self.assertNotIn(base, out.getvalue())
             self.assertNotIn("sha256", out.getvalue())
@@ -403,7 +404,18 @@ class CalibrationTests(unittest.TestCase):
             self.assertFalse(result["independent_evaluations"])
             self.assertTrue(all(item["passed"] for item in result["adjacent"]))
             self.assertEqual(result["pairs_checked"], 3)
+            self.assertEqual(result["pairwise_holds"], [{
+                "previous_index": 1, "current_index": 3,
+                "independent_evaluations": False, "score_stable": True,
+            }])
             self.assertNotIn(base, out.getvalue())
+            text_out = io.StringIO()
+            with redirect_stdout(text_out):
+                self.assertEqual(cal.main(["--compare-history", str(first),
+                                           str(second), str(third)]), 2)
+            self.assertIn("Archive 1 -> 3: HOLD (reused original evidence)",
+                          text_out.getvalue())
+            self.assertNotIn(base, text_out.getvalue())
             err = io.StringIO()
             with redirect_stderr(err), redirect_stdout(io.StringIO()):
                 self.assertEqual(cal.main(["--compare-history", str(first)]), 2)
