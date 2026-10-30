@@ -380,7 +380,17 @@ def run_lab_score_suite(output_dir: str | Path) -> dict[str, Any]:
     for name, scorer in scorers:
         database_file = f"{name}.sqlite3"
         try:
-            raw_result = scorer(directory / database_file)
+            # The host umask is often 0022 (including the CI runner). Reserve
+            # an owner-only inode before SQLite opens its evidence database,
+            # avoiding even a transient world-readable first-party artifact.
+            database_path = directory / database_file
+            fd = os.open(
+                database_path,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+            )
+            os.close(fd)
+            raw_result = scorer(database_path)
             if not isinstance(raw_result, dict):
                 raise TypeError("scorer returned a non-object result")
             summaries[name] = _summarize_result(name, database_file, raw_result)

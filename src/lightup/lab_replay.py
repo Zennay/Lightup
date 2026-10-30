@@ -15,6 +15,7 @@ import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlsplit
 from typing import Any
 
 from .domain import AccessContext, DomainStore, Role
@@ -40,6 +41,44 @@ CREATE TABLE IF NOT EXISTS replay_receipts (
  receipt_sha256 TEXT PRIMARY KEY, receipt_json TEXT NOT NULL
 );
 """
+
+
+# The current synthetic replay engine is pinned to these physical tables.
+# A view or foreign table must not masquerade as a durable evidence store.
+_EXPECTED_LINEAGE_TABLES = {
+    "state.sqlite3": frozenset({"capability_leases", "evidence", "lab_evaluations", "runs"}),
+    "domain.sqlite3": frozenset({"assessment_requests", "authorization_grants", "clients", "coverage_entries", "credentials", "engagements", "findings", "login_failures", "prospects", "risk_approvals", "sessions", "users"}),
+    "replay-ledger.sqlite3": frozenset({"replay_events", "replay_evidence", "replay_receipts"}),
+}
+
+
+def _open_checked_lineage_database(bundle: Path, name: str) -> sqlite3.Connection:
+    # A missing file must never be silently recreated by a verifier.
+    uri = (bundle / name).absolute().as_uri() + "?mode=ro"
+    connection = sqlite3.connect(uri, uri=True)
+    try:
+        connection.execute("PRAGMA query_only=ON")
+        connection.execute("PRAGMA trusted_schema=OFF")
+        if connection.execute("PRAGMA quick_check").fetchone() != ("ok",):
+            raise RuntimeError("replay SQLite integrity check failed")
+        schema = connection.execute("SELECT type,name,sql FROM sqlite_schema").fetchall()
+        tables = {item_name for kind, item_name, _sql in schema if kind == "table"}
+        if (
+            tables != _EXPECTED_LINEAGE_TABLES[name]
+            or any(kind not in {"table", "index"} for kind, _item_name, _sql in schema)
+            or any(
+                kind == "table" and (
+                    not isinstance(sql, str)
+                    or sql.lstrip().upper().startswith("CREATE VIRTUAL TABLE")
+                )
+                for kind, _item_name, sql in schema
+            )
+        ):
+            raise RuntimeError("replay SQLite schema is not canonical")
+        return connection
+    except Exception:
+        connection.close()
+        raise
 
 
 def _canonical(value: Any) -> bytes:
@@ -300,79 +339,236 @@ def _require_private_artifact(path: Path, *, directory: bool) -> os.stat_result:
     return info
 
 
+def _check_store_path_components(path: Path) -> None:
+    """Fail closed on replaceable ancestors; /tmp-style sticky dirs are safe."""
+    for candidate in (*reversed(path.parents), path):
+        try:
+            info = os.lstat(candidate)
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode):
+            raise PermissionError("store path must not contain symlink components")
+        if not stat.S_ISDIR(info.st_mode):
+            raise PermissionError("store path components must be directories")
+        if candidate == path:
+            continue
+        mode = stat.S_IMODE(info.st_mode)
+        sticky_temp_dirs = {Path("/tmp"), Path("/var/tmp"), Path("/dev/shm")}
+        is_root_owned_sticky_temp = (
+            candidate in sticky_temp_dirs and info.st_uid == 0 and bool(mode & stat.S_ISVTX)
+        )
+        if mode & 0o022 and not is_root_owned_sticky_temp:
+            raise PermissionError("store path ancestor must not be group/other writable")
+
+
 def _prepare_store_dir(raw_path: str) -> Path:
     path = Path(os.path.abspath(Path(raw_path).expanduser()))
-    # Do not let a symlinked parent silently redirect a supposedly private store.
-    for candidate in (*reversed(path.parents), path):
-        try:
-            info = os.lstat(candidate)
-        except FileNotFoundError:
-            continue
-        if stat.S_ISLNK(info.st_mode):
-            raise PermissionError("store path must not contain symlink components")
+    # Check both sides of mkdir: non-sticky writable ancestors can replace a
+    # private child between operations. Only a root-owned sticky directory
+    # (typically /tmp) is an acceptable shared-writable ancestor.
+    _check_store_path_components(path)
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    for candidate in (*reversed(path.parents), path):
-        try:
-            info = os.lstat(candidate)
-        except FileNotFoundError:
-            continue
-        if stat.S_ISLNK(info.st_mode):
-            raise PermissionError("store path must not contain symlink components")
-    info = _require_private_artifact(path, directory=True)
-    return path.resolve()
+    _check_store_path_components(path)
+    _require_private_artifact(path, directory=True)
+    # Do not resolve the path after validation: resolve() would follow every
+    # component again and reopen a symlink-substitution window.
+    return path
 
 
 def _verify_database_lineage(bundle: Path, receipt: dict[str, Any]) -> None:
     raw_receipt = _canonical(receipt)
     digest = _sha(raw_receipt)
-    with sqlite3.connect(bundle / "replay-ledger.sqlite3") as ledger:
-        row = ledger.execute("SELECT receipt_json FROM replay_receipts WHERE receipt_sha256=?", (digest,)).fetchone()
-        if row is None or row[0] != raw_receipt.decode("utf-8"):
-            raise RuntimeError("ledger receipt mismatch")
-        events = set()
-        for event_id, event_type, raw in ledger.execute("SELECT event_id,event_type,payload_json FROM replay_events"):
+    receipt_json = raw_receipt.decode("utf-8")
+    with _open_checked_lineage_database(bundle, "replay-ledger.sqlite3") as ledger:
+        stored_receipts = ledger.execute(
+            "SELECT receipt_sha256,receipt_json FROM replay_receipts"
+        ).fetchall()
+        if stored_receipts != [(digest, receipt_json)]:
+            raise RuntimeError("ledger receipt set mismatch")
+        event_payloads: dict[str, tuple[str, dict[str, Any]]] = {}
+        for event_id, event_type, raw in ledger.execute(
+            "SELECT event_id,event_type,payload_json FROM replay_events"
+        ):
             payload = json.loads(raw)
-            if _canonical(payload).decode("utf-8") != raw or _sha(_canonical({"event_type": event_type, "payload": payload})) != event_id:
+            if (not isinstance(payload, dict)
+                    or _canonical(payload).decode("utf-8") != raw
+                    or _sha(_canonical({"event_type": event_type, "payload": payload})) != event_id):
                 raise RuntimeError("replay event integrity check failed")
-            events.add(event_id)
-        evidence = set()
-        for sha, kind, profile, raw in ledger.execute("SELECT evidence_sha256,evidence_kind,profile_id,payload_json FROM replay_evidence"):
+            event_payloads[event_id] = (event_type, payload)
+        evidence: set[tuple[str, str, str]] = set()
+        for sha, kind, profile, raw in ledger.execute(
+            "SELECT evidence_sha256,evidence_kind,profile_id,payload_json FROM replay_evidence"
+        ):
             payload = json.loads(raw)
-            if _canonical(payload).decode("utf-8") != raw or _sha(raw.encode("utf-8")) != sha:
+            if (not isinstance(payload, dict)
+                    or _canonical(payload).decode("utf-8") != raw
+                    or _sha(raw.encode("utf-8")) != sha):
                 raise RuntimeError("evidence payload integrity check failed")
             evidence.add((sha, kind, profile))
-    refs = {item["event_id"] for item in receipt["profiles"]}
-    refs.add(receipt["remediation"]["event_id"])
-    refs.update(item["event_id"] for item in receipt["retests"])
-    if not refs.issubset(events):
-        raise RuntimeError("receipt references a missing event")
+
+    expected_events: dict[str, tuple[str, dict[str, Any]]] = {}
     for item in receipt["profiles"]:
-        if (item["evidence_sha256"], "baseline", item["profile_id"]) not in evidence:
-            raise RuntimeError("baseline receipt references missing evidence")
+        expected_events[item["event_id"]] = (
+            "baseline", {key: value for key, value in item.items() if key != "event_id"}
+        )
+    remediation = receipt["remediation"]
+    expected_events[remediation["event_id"]] = (
+        "remediation", {key: value for key, value in remediation.items() if key != "event_id"}
+    )
+    for item in receipt["retests"]:
+        expected_events[item["event_id"]] = (
+            "retest", {key: value for key, value in item.items() if key != "event_id"}
+        )
+    expected_event_count = len(receipt["profiles"]) + 1 + len(receipt["retests"])
+    if len(expected_events) != expected_event_count or set(event_payloads) != set(expected_events):
+        raise RuntimeError("replay event set does not match receipt")
+    for event_id, expected in expected_events.items():
+        if event_payloads[event_id] != expected:
+            raise RuntimeError("replay event payload does not match receipt")
+
+    expected_evidence = {
+        (item["evidence_sha256"], "baseline", item["profile_id"])
+        for item in receipt["profiles"]
+    }
+    expected_evidence.update(
+        (item["retest_evidence_sha256"], "retest", "hardened")
+        for item in receipt["retests"]
+    )
+    if evidence != expected_evidence:
+        raise RuntimeError("evidence payload set does not match receipt")
     for item in receipt["retests"]:
         if ((item["baseline_evidence_sha256"], "baseline", "exposed") not in evidence
                 or (item["retest_evidence_sha256"], "retest", "hardened") not in evidence):
             raise RuntimeError("retest receipt references missing evidence")
-    if set(receipt["remediation"]["finding_keys"]) != {item["finding_key"] for item in receipt["retests"]}:
+    if set(receipt["remediation"]["finding_keys"]) != {
+        item["finding_key"] for item in receipt["retests"]
+    }:
         raise RuntimeError("remediation and retest finding sets disagree")
-    state_ids = set()
-    with sqlite3.connect(bundle / "state.sqlite3") as state:
-        rows = state.execute("SELECT evidence_id,sha256,kind,metadata_json FROM evidence WHERE source='lightup.lab_replay'")
-        for evidence_id, sha, kind, raw_meta in rows:
+
+    expected_state_evidence = {
+        (item["evidence_sha256"], "fixture-baseline-observation",
+         item["profile_id"], item["fixture_sha256"], None)
+        for item in receipt["profiles"]
+    }
+    expected_state_evidence.update(
+        (item["retest_evidence_sha256"], "fixture-retest-observation",
+         "hardened", None, item["finding_key"])
+        for item in receipt["retests"]
+    )
+    state_ids: set[str] = set()
+    state_records: list[tuple[str, str, str, str | None, str | None]] = []
+    exposed_evidence_ids: list[str] = []
+    baseline_run_ids: dict[str, str] = {}
+    retest_run_ids: set[str] = set()
+    producer_run_ids: set[str] = set()
+    producer_assets_by_run: dict[str, str] = {}
+    exposed_sha = next(
+        item["evidence_sha256"] for item in receipt["profiles"]
+        if item["profile_id"] == "exposed"
+    )
+    with _open_checked_lineage_database(bundle, "state.sqlite3") as state:
+        rows = state.execute(
+            "SELECT evidence_id,run_id,capability_id,kind,source,sha256,metadata_json "
+            "FROM evidence"
+        ).fetchall()
+        for evidence_id, run_id, capability_id, kind, source, sha, raw_meta in rows:
+            if source not in {"lightup.lab_replay", "lab-http-baseline"}:
+                raise RuntimeError("StateStore contains unexpected evidence source")
+            if capability_id != http_baseline.CAPABILITY_ID:
+                raise RuntimeError("StateStore evidence capability does not match fixture catalog")
             meta = json.loads(raw_meta)
-            ekind = {"fixture-baseline-observation": "baseline", "fixture-retest-observation": "retest"}.get(kind)
-            if ekind is None or (sha, ekind, meta.get("profile_id")) not in evidence:
-                raise RuntimeError("StateStore evidence has no canonical payload")
+            if (not isinstance(meta, dict)
+                    or _canonical(meta).decode("utf-8") != raw_meta):
+                raise RuntimeError("StateStore evidence metadata is invalid or non-canonical")
+            if source == "lab-http-baseline":
+                if kind != "http-baseline-observation" or meta.get("is_lab") != "true":
+                    raise RuntimeError("StateStore producer evidence is invalid")
+                asset = meta.get("asset")
+                try:
+                    parsed_asset = urlsplit(asset) if isinstance(asset, str) else None
+                    valid_loopback_asset = (
+                        parsed_asset is not None
+                        and parsed_asset.scheme == "http"
+                        and parsed_asset.hostname == "127.0.0.1"
+                        and parsed_asset.port is not None
+                        and parsed_asset.path == "/"
+                        and not parsed_asset.query
+                        and not parsed_asset.fragment
+                        and parsed_asset.username is None
+                        and parsed_asset.password is None
+                    )
+                except ValueError:
+                    valid_loopback_asset = False
+                if not valid_loopback_asset:
+                    raise RuntimeError("StateStore producer evidence target is not the loopback fixture")
+                if run_id in producer_run_ids:
+                    raise RuntimeError("StateStore producer evidence run is duplicated")
+                producer_run_ids.add(run_id)
+                producer_assets_by_run[run_id] = asset
+                continue
+            if kind == "fixture-baseline-observation":
+                if set(meta) != {"profile_id", "fixture_sha256"}:
+                    raise RuntimeError("baseline StateStore metadata is invalid")
+                profile_id = meta["profile_id"]
+                if profile_id in baseline_run_ids:
+                    raise RuntimeError("StateStore baseline profile has duplicate run evidence")
+                baseline_run_ids[profile_id] = run_id
+                record = (sha, kind, profile_id, meta["fixture_sha256"], None)
+                if sha == exposed_sha and profile_id == "exposed":
+                    exposed_evidence_ids.append(evidence_id)
+            elif kind == "fixture-retest-observation":
+                if set(meta) != {"profile_id", "finding_key"}:
+                    raise RuntimeError("retest StateStore metadata is invalid")
+                retest_run_ids.add(run_id)
+                record = (sha, kind, meta["profile_id"], None, meta["finding_key"])
+            else:
+                raise RuntimeError("StateStore contains unexpected fixture evidence")
+            state_records.append(record)
             state_ids.add(evidence_id)
-    with sqlite3.connect(bundle / "domain.sqlite3") as domain:
-        findings = domain.execute("SELECT evidence_ids_json,retest_status FROM findings").fetchall()
+    expected_profile_ids = {item["profile_id"] for item in receipt["profiles"]}
+    if set(baseline_run_ids) != expected_profile_ids or "exposed" not in baseline_run_ids:
+        raise RuntimeError("StateStore baseline run set does not match receipt")
+    if len(set(baseline_run_ids.values())) != len(baseline_run_ids):
+        raise RuntimeError("StateStore baseline profiles share a run identity")
+    if producer_run_ids != set(baseline_run_ids.values()):
+        raise RuntimeError("StateStore producer evidence run set does not match baseline receipt")
+    exposed_asset = producer_assets_by_run[baseline_run_ids["exposed"]]
+    if retest_run_ids != {baseline_run_ids["exposed"]}:
+        raise RuntimeError("StateStore retest evidence is not bound to exposed baseline run")
+    if (len(state_records) != len(expected_state_evidence)
+            or set(state_records) != expected_state_evidence):
+        raise RuntimeError("StateStore evidence set does not match receipt")
+    if len(exposed_evidence_ids) != 1:
+        raise RuntimeError("exposed baseline evidence identity is ambiguous")
+
+    expected_checks = {item["check_id"] for item in receipt["retests"]}
+    title_to_check = {
+        title: (check_id, severity.value, impact, fix)
+        for check_id, _header, title, severity, impact, fix
+        in http_baseline.BASELINE_CHECKS
+    }
+    with _open_checked_lineage_database(bundle, "domain.sqlite3") as domain:
+        findings = domain.execute(
+            "SELECT title,evidence_ids_json,retest_status,severity,asset,impact,remediation FROM findings"
+        ).fetchall()
     if len(findings) != len(receipt["retests"]):
         raise RuntimeError("finding/retest counts disagree")
-    for raw_ids, status in findings:
+    actual_checks = []
+    for title, raw_ids, status, severity, asset, impact, remediation in findings:
+        catalog_row = title_to_check.get(title)
+        if catalog_row is None:
+            raise RuntimeError("domain finding is not present in the fixture catalog")
+        check_id = catalog_row[0]
+        if (severity, impact, remediation) != catalog_row[1:] or asset != exposed_asset:
+            raise RuntimeError("domain finding source content does not match the fixture")
+        actual_checks.append(check_id)
         ids = json.loads(raw_ids)
-        if status != "fixed" or not ids or any(item not in state_ids for item in ids):
+        if status != "fixed" or ids != [exposed_evidence_ids[0]] or any(
+            item not in state_ids for item in ids
+        ):
             raise RuntimeError("durable finding evidence lineage is incomplete")
-
+    if len(actual_checks) != len(expected_checks) or set(actual_checks) != expected_checks:
+        raise RuntimeError("domain finding set does not match retest receipt")
 
 def _verify_existing_bundle(path: Path, receipt_bytes: bytes, digest: str) -> None:
     # Idempotent reuse must not turn a formerly private receipt public after a
@@ -416,7 +612,14 @@ def main(argv: list[str] | None = None) -> int:
             if destination.exists() or destination.is_symlink():
                 _verify_existing_bundle(destination, receipt_bytes, digest)
             else:
+                # Recheck store custody at the publication boundary, then
+                # validate the installed bundle after the atomic rename.
+                _check_store_path_components(store_dir)
+                _require_private_artifact(store_dir, directory=True)
                 os.replace(stage, destination)
+                _check_store_path_components(store_dir)
+                _require_private_artifact(store_dir, directory=True)
+                _verify_existing_bundle(destination, receipt_bytes, digest)
             print(json.dumps({
                 "outcome": receipt["outcome"], "receipt_sha256": digest,
                 "store_path": str(destination),

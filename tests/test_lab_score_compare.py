@@ -1,6 +1,8 @@
 """Focused verification of private saved fixed-loopback score comparison."""
 from __future__ import annotations
 import json
+import os
+import stat
 import shutil
 import tempfile
 import unittest
@@ -26,6 +28,21 @@ class SavedLabScoreCompareTests(unittest.TestCase):
             self.assertTrue(result["score_stable"])
             self.assertEqual(len(result["capabilities"]),3)
             self.assertFalse(result["authorization_granted"])
+
+    def test_host_umask_keeps_persisted_evidence_owner_private(self):
+        # Reproduce the 0022 CI runner before the producer creates SQLite.
+        with tempfile.TemporaryDirectory() as temporary:
+            previous = os.umask(0o022)
+            try:
+                output = Path(temporary) / "ci-style"
+                report = run_lab_score_suite(output)
+            finally:
+                os.umask(previous)
+            self.assertTrue(report["passed"], report)
+            for capability in ("service_inventory", "tls_baseline", "http_baseline"):
+                self.assertEqual(stat.S_IMODE(
+                    (output / f"{capability}.sqlite3").stat().st_mode), 0o600)
+            self.assertTrue(inspect_score_run(output)["passed"])
 
     def test_reused_bundle_not_independent(self):
         with tempfile.TemporaryDirectory() as temporary:
