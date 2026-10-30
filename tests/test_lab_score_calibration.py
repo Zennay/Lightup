@@ -240,6 +240,75 @@ class CalibrationTests(unittest.TestCase):
             finally:
                 os.chdir(original)
 
+    def test_compare_two_private_saved_calibrations_without_producers(self):
+        with tempfile.TemporaryDirectory() as base:
+            older, newer = Path(base)/"older", Path(base)/"newer"
+            self.assertTrue(cal.run_lab_score_calibration(older)["passed"])
+            self.assertTrue(cal.run_lab_score_calibration(newer)["passed"])
+            original = {(str(f), f.stat().st_mtime_ns) for root in (older,newer)
+                        for f in root.rglob("*")}
+            with patch.object(cal,"run_lab_score_suite",
+                              side_effect=AssertionError("scorer re-executed")):
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    code = cal.main(["--compare-calibrations",str(older),str(newer),
+                                     "--format","json"])
+            self.assertEqual(code,0)
+            report = json.loads(output.getvalue())
+            self.assertTrue(report["passed"])
+            self.assertTrue(report["comparison"]["independent_evaluations"])
+            self.assertEqual(report["saved_runs"],["previous","current"])
+            self.assertEqual(report["comparison_mode"],"archived_calibrations")
+            self.assertNotIn(base,output.getvalue())
+            self.assertEqual(original,{(str(f), f.stat().st_mtime_ns)
+                                      for root in (older,newer) for f in root.rglob("*")})
+
+    def test_archive_comparison_rejects_tampering_and_duplicate_runs(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as base:
+            older, newer = Path(base)/"older", Path(base)/"newer"
+            self.assertTrue(cal.run_lab_score_calibration(older)["passed"])
+            shutil.copytree(older,newer)
+            output=io.StringIO()
+            with redirect_stdout(output):
+                code=cal.main(["--compare-calibrations",str(older),str(newer),
+                               "--format","json"])
+            self.assertEqual(code,2)
+            duplicate=json.loads(output.getvalue())
+            self.assertFalse(duplicate["passed"])
+            self.assertFalse(duplicate["comparison"]["independent_evaluations"])
+            shutil.rmtree(newer)
+            self.assertTrue(cal.run_lab_score_calibration(newer)["passed"])
+            (newer/"report.json").write_bytes(b"corrupted")
+            output,err=io.StringIO(),io.StringIO()
+            with redirect_stdout(output),redirect_stderr(err):
+                code=cal.main(["--compare-calibrations",str(older),str(newer)])
+            self.assertEqual(code,2)
+            self.assertEqual(output.getvalue(),"")
+            self.assertIn("HOLD",err.getvalue())
+            self.assertNotIn(base,err.getvalue())
+
+    def test_archive_comparison_rejects_root_replacement_mid_read(self):
+        with tempfile.TemporaryDirectory() as base:
+            previous, current = Path(base)/"previous", Path(base)/"current"
+            alternate = Path(base)/"alternate"
+            self.assertTrue(cal.run_lab_score_calibration(previous)["passed"])
+            self.assertTrue(cal.run_lab_score_calibration(current)["passed"])
+            self.assertTrue(cal.run_lab_score_calibration(alternate)["passed"])
+            actual = cal.compare_score_runs
+            calls = []
+            def replace_before_final_compare(*args):
+                calls.append(1)
+                if len(calls) == 3:
+                    current.rename(Path(base)/"old-current")
+                    alternate.rename(current)
+                return actual(*args)
+            with patch.object(cal, "compare_score_runs",
+                              side_effect=replace_before_final_compare):
+                with self.assertRaisesRegex(ValueError, "archive substituted"):
+                    cal.compare_saved_calibrations(previous, current)
+            self.assertEqual(len(calls), 3)
+
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:
             with patch.object(cal, "run_lab_score_suite", return_value={"passed": False}) as fn:

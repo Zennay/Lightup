@@ -156,6 +156,68 @@ def run_lab_score_calibration(output_dir: str | Path) -> dict[str, Any]:
     return verify_saved_calibration(root)
 
 
+def _archived_root_identity(root: Path) -> tuple[int | str, ...]:
+    """Pin a saved root and its private receipt across offline comparisons."""
+    root_fd = _private_dir_fd(root)
+    try:
+        root_info = os.fstat(root_fd)
+        receipt_fd = _artifact_fd(root_fd, "report.json", 65536)
+        try:
+            info = os.fstat(receipt_fd)
+            raw = os.pread(receipt_fd, 65537, 0)
+            after = os.fstat(receipt_fd)
+            # Reading an archived receipt may legitimately advance atime.
+            # Compare only immutable identity/content metadata.
+            if ((info.st_dev, info.st_ino, info.st_size,
+                 info.st_mtime_ns, info.st_ctime_ns, info.st_mode,
+                 info.st_uid) !=
+                (after.st_dev, after.st_ino, after.st_size,
+                 after.st_mtime_ns, after.st_ctime_ns, after.st_mode,
+                 after.st_uid)):
+                raise ValueError("saved archive receipt changed")
+        finally:
+            os.close(receipt_fd)
+        return (root_info.st_dev, root_info.st_ino,
+                root_info.st_mtime_ns, root_info.st_ctime_ns,
+                info.st_dev, info.st_ino, info.st_mtime_ns, info.st_ctime_ns,
+                info.st_size, hashlib.sha256(raw).hexdigest())
+    finally:
+        os.close(root_fd)
+
+
+def compare_saved_calibrations(
+    previous_dir: str | Path, current_dir: str | Path,
+) -> dict[str, Any]:
+    """Compare two archived calibrations after verifying *both* root receipts.
+
+    A standalone score comparison is not enough: the saved source-file hashes
+    of each archived calibration must independently match its private receipt.
+    """
+    paths = (Path(previous_dir).expanduser(), Path(current_dir).expanduser())
+    if any(".." in path.parts for path in paths):
+        raise ValueError("parent traversal rejected")
+    anchor = Path.cwd()
+    previous, current = (
+        path if path.is_absolute() else anchor / path for path in paths
+    )
+    identities = (_archived_root_identity(previous),
+                  _archived_root_identity(current))
+    old = verify_saved_calibration(previous)
+    latest = verify_saved_calibration(current)
+    if old["passed"] is not True or latest["passed"] is not True:
+        raise ValueError("archived calibration refused")
+    comparison = compare_score_runs(
+        previous / "candidate", current / "candidate",
+    )
+    if identities != (_archived_root_identity(previous),
+                      _archived_root_identity(current)):
+        raise ValueError("saved archive substituted during comparison")
+    result = _receipt(comparison)
+    result["saved_runs"] = ["previous", "current"]
+    result["comparison_mode"] = "archived_calibrations"
+    return result
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="lightup-lab-score-calibrate",
@@ -166,10 +228,15 @@ def main(argv: list[str] | None = None) -> int:
                       help="new private directory (never overwrites existing files)")
     mode.add_argument("--verify-output-dir",
                       help="read-only reinspection of a saved calibration; no scorers")
+    mode.add_argument("--compare-calibrations", nargs=2,
+                      metavar=("PREVIOUS", "CURRENT"),
+                      help="compare two fully verified private saved calibrations offline")
     parser.add_argument("--format", choices=("json", "text"), default="text")
     args = parser.parse_args(argv)
     try:
-        if args.verify_output_dir is not None:
+        if args.compare_calibrations is not None:
+            result = compare_saved_calibrations(*args.compare_calibrations)
+        elif args.verify_output_dir is not None:
             result = verify_saved_calibration(args.verify_output_dir)
         else:
             result = run_lab_score_calibration(args.output_dir)
@@ -184,7 +251,10 @@ def main(argv: list[str] | None = None) -> int:
                   file=sys.stderr)
         return 2
     if args.format == "text":
-        print("LightUp saved synthetic calibrations: baseline and candidate")
+        labels = ("previous and current"
+                  if args.compare_calibrations is not None
+                  else "baseline and candidate")
+        print(f"LightUp saved synthetic calibrations: {labels}")
         print(render_score_review(result["comparison"]))
     else:
         print(json.dumps(result, indent=2, sort_keys=True))

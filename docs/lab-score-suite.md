@@ -167,3 +167,17 @@ local diagnosis but is **not** a successful calibration. Inputs are the
 output directory only: no target address, client scope, scan, external
 request, grant, dispatch, remediation or release is accepted. This is
 synthetic local calibration, not authorization or independent review.
+
+## Compare two saved calibrations across sessions (offline)
+
+`lightup-lab-score-calibrate --compare-calibrations PREVIOUS_PRIVATE_DIR CURRENT_PRIVATE_DIR`
+verifies both saved calibration roots, including their private source-file
+SHA-256 receipts, *before* comparing their two candidate observations.
+The output is a bounded text PASS/HOLD summary by default or private-safe
+JSON with `--format json`. No source paths, run IDs, evidence payloads,
+signatures, or private digests are emitted. Reused/copy-pasted evaluations
+are HOLD even with identical score metrics, and missing, corrupted, or
+replaced saved roots are refused. The archive roots are opened read-only
+and checked for substitution during the comparison; no scorers, workers,
+model providers, network targets, approvals, or deployments are invoked.
+This only compares first-party fixed 127.0.0.1 lab calibration results.
