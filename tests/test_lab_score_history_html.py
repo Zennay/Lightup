@@ -27,6 +27,8 @@ class HistoryHtmlTests(unittest.TestCase):
             self.assertIn("<caption>Original synthetic calibration comparisons</caption>", html)
             self.assertIn("<strong>Overall: PASS</strong>", html)
             self.assertIn("3 verified archives, 3 original archive pairs", html)
+            self.assertIn("0 HOLD pairs; 0 with original evidence reuse; 0 with score drift", html)
+            self.assertIn("No first-party score-drift hotspots", html)
             self.assertIn("Content-Security-Policy", html)
             self.assertIn("connect-src 'none'", html)
             self.assertNotIn("<script", html)
@@ -50,9 +52,65 @@ class HistoryHtmlTests(unittest.TestCase):
             self.assertIn("<strong>Overall: HOLD</strong>", html)
             self.assertIn("href='#pair-1-3'", html)
             self.assertIn("Original evidence reused", html)
+            self.assertIn("1 HOLD pairs; 1 with original evidence reuse; 0 with score drift", html)
             self.assertIn("Archive 1 versus 3: HOLD", html)
             self.assertNotIn(base, html)
             self.assertNotIn("sha256", html)
+
+    def test_readable_score_drift_hotspots_link_to_original_pairs(self):
+        pairs = [{"previous_index": i, "current_index": j,
+                  "passed": (i, j) == (1, 2)}
+                 for i, j in ((1, 2), (1, 3), (2, 3))]
+        report = {
+            "schema": cal.HISTORY_SCHEMA, "archives_checked": 3,
+            "passed": False, "pairs": pairs,
+            "pairwise_holds": [
+                {"previous_index": 1, "current_index": 3,
+                 "independent_evaluations": True, "score_stable": False,
+                 "metric_deltas": [
+                     {"capability": "http_baseline", "metric": "coverage_assessed",
+                      "previous": 3, "current": 4},
+                     {"capability": "http_baseline", "metric": "scope_violations",
+                      "previous": 0, "current": 1},
+                     {"capability": "PRIVATE", "metric": "SECRET",
+                      "previous": 20, "current": 999}]},
+                {"previous_index": 2, "current_index": 3,
+                 "independent_evaluations": False, "score_stable": False,
+                 "metric_deltas": [
+                     {"capability": "http_baseline", "metric": "coverage_assessed",
+                      "previous": 4, "current": 2},
+                     {"capability": "tls_baseline", "metric": "policy_violations",
+                      "previous": 0, "current": 1}]},
+            ],
+        }
+        html = render_history_html(report)
+        self.assertIn("2 HOLD pairs; 1 with original evidence reuse; 2 with score drift", html)
+        self.assertIn("First-party score-drift hotspots", html)
+        self.assertIn("<td>2</td><td>coverage_assessed, scope_violations</td>", html)
+        self.assertIn("<td>1</td><td>policy_violations</td>", html)
+        self.assertIn("href='#pair-1-3'>Review 1 versus 3", html)
+        self.assertIn("href='#pair-2-3'>Review 2 versus 3", html)
+        self.assertNotIn("PRIVATE", html)
+        self.assertNotIn("SECRET", html)
+        self.assertNotIn("<script", html)
+
+    def test_incomplete_or_duplicate_hold_details_refuse_report(self):
+        report = {"schema": cal.HISTORY_SCHEMA, "archives_checked": 2,
+                  "passed": False,
+                  "pairs": [{"previous_index": 1, "current_index": 2, "passed": False}],
+                  "pairwise_holds": []}
+        with self.assertRaises(ValueError):
+            render_history_html(report)
+        pair = {"previous_index": 1, "current_index": 2,
+                "independent_evaluations": False,
+                "score_stable": True, "metric_deltas": []}
+        report["pairwise_holds"] = [pair, pair]
+        with self.assertRaises(ValueError):
+            render_history_html(report)
+        report["pairwise_holds"] = [pair]
+        report["passed"] = True
+        with self.assertRaises(ValueError):
+            render_history_html(report)
 
     def test_rejects_invalid_source_without_writing_partial_html(self):
         with tempfile.TemporaryDirectory() as base:

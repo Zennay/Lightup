@@ -57,13 +57,23 @@ def render_history_html(report: dict[str, Any]) -> str:
                 cells.append(f"<td>{badge}</td>")
         rows.append("<tr>" + "".join(cells) + "</tr>")
     problems = []
+    seen_holds: set[tuple[int, int]] = set()
+    hotspots: dict[str, dict[str, set[Any]]] = {
+        capability: {"pairs": set(), "metrics": set()}
+        for capability in _EXPECTED_FINDINGS
+    }
+    reused_pairs, drift_pairs = 0, 0
     for item in report.get("pairwise_holds", []):
         if not isinstance(item, dict):
             raise ValueError("invalid hold")
         i, j = item.get("previous_index"), item.get("current_index")
         if (type(i) is not int or type(j) is not int
-                or not 1 <= i < j <= n or lookup.get((i, j)) is not False):
+                or not 1 <= i < j <= n or lookup.get((i, j)) is not False
+                or (i, j) in seen_holds):
             raise ValueError("invalid hold position")
+        seen_holds.add((i, j))
+        reused_pairs += item.get("independent_evaluations") is False
+        drift_pairs += item.get("score_stable") is False
         reasons = []
         if item.get("independent_evaluations") is False:
             reasons.append("Original evidence reused")
@@ -78,6 +88,8 @@ def render_history_html(report: dict[str, Any]) -> str:
             capability, metric = delta.get("capability"), delta.get("metric")
             if capability not in _EXPECTED_FINDINGS or metric not in _SCORE_FIELDS:
                 continue
+            hotspots[capability]["pairs"].add((i, j))
+            hotspots[capability]["metrics"].add(metric)
             details.append("<li><strong>" + escape(capability) + " / "
                            + escape(metric) + "</strong>: "
                            + _number(delta.get("previous")) + " → "
@@ -86,6 +98,32 @@ def render_history_html(report: dict[str, Any]) -> str:
                         + "<p>" + "; ".join(reasons) + "</p>"
                         + ("<ul>" + "".join(details) + "</ul>" if details else "")
                         + "</section>")
+    if seen_holds != {pair for pair, passed in lookup.items() if not passed}:
+        raise ValueError("incomplete or mismatched HOLD details")
+    if type(report.get("passed")) is not bool or report["passed"] != all(lookup.values()):
+        raise ValueError("inconsistent overall calibration status")
+    hotspot_rows = []
+    for capability, info in sorted(hotspots.items(),
+                                   key=lambda pair: (-len(pair[1]["pairs"]), pair[0])):
+        if not info["pairs"]:
+            continue
+        first_i, first_j = min(info["pairs"])
+        metrics = ", ".join(sorted(info["metrics"]))
+        hotspot_rows.append(
+            "<tr><th scope='row'>" + escape(capability) + "</th>"
+            + f"<td>{len(info['pairs'])}</td><td>{escape(metrics)}</td>"
+            + f"<td><a href='#pair-{first_i}-{first_j}'>Review {first_i} versus {first_j}</a></td></tr>"
+        )
+    attention = (
+        "<h2>Review priorities</h2>"
+        + f"<p>{len(seen_holds)} HOLD pairs; {reused_pairs} with original evidence reuse; "
+        + f"{drift_pairs} with score drift.</p>"
+        + ("<table><caption>First-party score-drift hotspots</caption><thead><tr>"
+           "<th scope='col'>Capability</th><th scope='col'>Affected pairs</th>"
+           "<th scope='col'>Changed metrics</th><th scope='col'>First review</th>"
+           "</tr></thead><tbody>" + "".join(hotspot_rows) + "</tbody></table>"
+           if hotspot_rows else "<p>No first-party score-drift hotspots.</p>")
+    )
     status = "PASS" if report.get("passed") is True else "HOLD"
     css = """body{font:16px/1.55 system-ui,sans-serif;max-width:880px;margin:2rem auto;padding:0 1rem;color:#152332;background:#fff}
 h1,h2,h3{line-height:1.25}table{width:100%;border-collapse:collapse;margin:1.5rem 0}
@@ -109,6 +147,7 @@ a{color:#a3d0ff}.pass{color:#8ee9aa;border-color:#8ee9aa}.hold{color:#ffb7a7;bor
             + f"{len(pairs)} original archive pairs.</p>"
             + "<p>All sources are private fixed-loopback lab fixtures. "
             + "PASS does not authorize external assessment or deployment.</p>"
+            + attention
             + "<h2>All-pairs review</h2><table><caption>Original synthetic "
             + "calibration comparisons</caption><thead>" + rows[0] + "</thead>"
             + "<tbody>" + "".join(rows[1:]) + "</tbody></table>"
