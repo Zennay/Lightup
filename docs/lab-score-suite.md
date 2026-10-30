@@ -235,3 +235,20 @@ changes when available. No identifiers, private paths, original evidence,
 digests, arbitrary source keys or active assessment permissions. A checked
 but failing comparison still prints bounded CSV and exits 2; invalid input
 prints a generic HOLD on stderr and does not emit a partial CSV.
+
+
+### Completely offline visual history review
+
+Use `lightup-lab-score-calibrate --compare-history ARCHIVE1 ARCHIVE2
+[ARCHIVE3 ... ARCHIVE8] --format html > private-review.html` to create a
+standalone browser-readable all-pairs matrix. The page includes a clear
+PASS/HOLD overview, accessible table captions and row/column headings,
+and anchored details for every failed pair, including non-adjacent replay
+and allowlisted first-party score deltas. This is generated from the
+already-verified original sources, not a replay of worker tasks. It uses
+no scripts, external fonts, images, network requests, target identifiers,
+private paths, evidence digests or credential data. Inline styles and an
+offline Content-Security-Policy prevent loading external assets.
+An invalid archived input produces only a private-safe stderr HOLD and
+no partial HTML. Open the file locally; do not publish its contents or
+misinterpret synthetic PASS as permission to assess real assets.
