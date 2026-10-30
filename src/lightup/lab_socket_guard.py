@@ -64,6 +64,17 @@ _boundary_lock = threading.RLock()
 
 
 @contextmanager
+def serialized_lab_invocation():
+    """Hold the shared lock across preflight and scoring in a combined canary.
+
+    A second same-process scorer cannot activate process-global Popen/socket
+    patches while another combined canary is still running its preflight.
+    """
+    with _boundary_lock:
+        yield
+
+
+@contextmanager
 def fixed_loopback_socket_boundary():
     """Run one entire fixed-loopback lab scope with serialized guard lifetime.
 
@@ -72,7 +83,7 @@ def fixed_loopback_socket_boundary():
     restore unprotected socket APIs while another guarded scorer is active.
     This is still not an OS sandbox or safe for a multi-tenant server.
     """
-    with _boundary_lock:
+    with serialized_lab_invocation():
         with _scoped_fixed_loopback_socket_boundary():
             yield
 

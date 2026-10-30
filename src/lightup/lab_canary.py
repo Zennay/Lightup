@@ -23,7 +23,8 @@ from urllib.parse import urlencode
 from lightup.capabilities import CapabilityState, get_capabilities
 from lightup.domain import DomainStore, Role
 from lightup.lab_socket_guard import (LabSocketBoundaryError, PrivateLabArgumentParser,
-                                       fixed_loopback_socket_boundary)
+                                       fixed_loopback_socket_boundary,
+                                       serialized_lab_invocation)
 from lightup.lab_service_score import run_lab_service_inventory_score
 from lightup.lab_tls_score import run_lab_tls_baseline_score
 from lightup.lab_web_score import run_lab_web_baseline_score
@@ -157,7 +158,15 @@ def _verify_active_child_process_guard(directory: Path) -> bool:
     raise RuntimeError("offline child process boundary inactive")
 
 
-def _run_canary() -> int:
+def _run_canary() -> dict:
+    # Serialize the complete preflight + private fixture lifecycle.
+    # Otherwise another scorer's global Popen patch can deny this run's
+    # legitimate local scope/plan child before its own guard is acquired.
+    with serialized_lab_invocation():
+        return _run_single_canary()
+
+
+def _run_single_canary() -> dict:
     denied = subprocess.run(
         [sys.executable, "-m", "lightup.cli", "scope-check", "8.8.8.8"],
         capture_output=True, text=True, check=False,

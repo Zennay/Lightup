@@ -646,6 +646,54 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
         self.assertEqual(result["failure_stage"], "setup")
         self.assertIs(result["external_target_authorized"], False)
 
+    def test_parallel_combined_canaries_do_not_block_each_others_setup(self):
+        # Another invocation's preflight uses a local Python child. It must
+        # not run while the first scorer temporarily denies all unapproved
+        # process launches in this same process.
+        import threading
+        import time
+        from unittest.mock import patch
+        first_entered = threading.Event()
+        release_first = threading.Event()
+        results = []
+        failures = []
+        original_score = lab_canary._score_component
+
+        def hold_first_score(*args, **kwargs):
+            if threading.current_thread().name == "first-canary":
+                if not first_entered.is_set():
+                    first_entered.set()
+                    if not release_first.wait(5):
+                        raise AssertionError("synthetic scorer wait timeout")
+            return original_score(*args, **kwargs)
+
+        def run_canary():
+            try:
+                results.append(lab_canary._run_canary())
+            except BaseException as error:
+                failures.append(error)
+
+        with patch.object(lab_canary, "_score_component",
+                          side_effect=hold_first_score):
+            first = threading.Thread(target=run_canary, name="first-canary")
+            second = threading.Thread(target=run_canary, name="second-canary")
+            first.start()
+            try:
+                self.assertTrue(first_entered.wait(4))
+                second.start()
+                time.sleep(0.15)
+            finally:
+                release_first.set()
+                first.join(12)
+                if second.ident is not None:
+                    second.join(12)
+        self.assertFalse(first.is_alive())
+        self.assertFalse(second.is_alive())
+        self.assertEqual(failures, [])
+        self.assertEqual(len(results), 2)
+        self.assertTrue(all(item["status"] == "PASS" for item in results))
+        self.assertTrue(all(item["temporary_state_removed"] for item in results))
+
     def test_parallel_real_service_scorers_keep_original_socket_hooks(self):
         # Same-process concurrency, unlike the separate-process CLI proof.
         # Four real owned-loopback scorers must each return valid evidence.
