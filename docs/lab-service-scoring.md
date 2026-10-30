@@ -99,6 +99,32 @@ Failures return code 2 in both modes, without private exception content.
 The `--format` option cannot select a network target or source dataset.
 Neither receipt grants any external-target, deployment or release authority.
 
+## Private, source-free offline safety-canary handoff
+
+For an owner-private, operator-readable synthetic M1 receipt, run:
+
+```sh
+lightup-lab-safety-canary --private-report-dir /private/NEW-DIRECTORY
+lightup-lab-safety-canary --verify-private-report-dir /private/NEW-DIRECTORY --format json
+```
+
+The first command runs the existing fixed-loopback canary and creates only a
+**new** non-overwriting directory (0700) containing `canary.json`,
+`operator.txt`, and a digest-bound `manifest.json` (0600 each). The manifest
+is written last, so a missing manifest means an incomplete handoff. The
+second command does **not** rerun any scorer: it performs descriptor-pinned,
+no-follow, strict-schema and local byte-integrity checks, returning PASS or
+HOLD. Extra files, altered bytes, unsafe authority flags, unexpected keys,
+symlinks, and non-private file permissions are refused. No external target
+is contacted by the reader.
+
+The manifest is **not signed**. A matching digest establishes only local
+byte consistency, **not** independent source authenticity, operator identity,
+consent, client authorization, security approval, or deployment clearance.
+A failed save or verification exits 2 with a privacy-minimal HOLD receipt.
+Creation and verification options are mutually exclusive. These offline
+reports contain only first-party synthetic localhost observations.
+
 ## Exact first-party scorer contracts
 
 The offline gate now rejects a scorer even if it claims `passed=true`

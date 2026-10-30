@@ -28,6 +28,8 @@ from lightup.lab_socket_guard import (LabSocketBoundaryError, PrivateLabArgument
 from lightup.lab_service_score import run_lab_service_inventory_score
 from lightup.lab_tls_score import run_lab_tls_baseline_score
 from lightup.lab_web_score import run_lab_web_baseline_score
+from lightup.lab_canary_handoff import (save_private_canary_handoff,
+                                        verify_private_canary_handoff)
 from lightup.webapp import create_app
 from lightup.webapp.__main__ import _loopback
 
@@ -374,7 +376,34 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--format", choices=("json", "text"), default="json",
                         help="Output one machine-readable JSON receipt or a private-safe summary")
+    parser.add_argument("--private-report-dir", metavar="NEW_DIR",
+                        help="new owner-private offline synthetic receipt directory; never overwrites")
+    parser.add_argument("--verify-private-report-dir", metavar="EXISTING_DIR",
+                        help="read-only local integrity; never source authentication")
     args = parser.parse_args(argv)  # No caller-supplied target is supported.
+    if args.private_report_dir is not None and args.verify_private_report_dir is not None:
+        parser.error("choose create OR verify for private handoff")
+    if args.verify_private_report_dir is not None:
+        try:
+            verified = verify_private_canary_handoff(args.verify_private_report_dir)
+        except Exception:
+            verified = {
+                "schema": "lightup.m1.synthetic-canary-handoff-verification.v1",
+                "transport_integrity": False, "source_authenticated": False,
+                "consent_authenticated": False, "authorization_granted": False,
+                "deployment": False, "synthetic_loopback_only": True,
+                "review_status": "HOLD",
+            }
+            code = 2
+        else:
+            code = 0 if verified["review_status"] == "PASS" else 2
+        if args.format == "json":
+            print(json.dumps(verified, sort_keys=True))
+        else:
+            print("LightUp synthetic private handoff: " + verified["review_status"]
+                  + "; local bytes " + ("VERIFIED" if verified["transport_integrity"] else "NOT VERIFIED")
+                  + "; source/consent NOT authenticated; NO external target/deployment authority.")
+        return code
     exit_code = 0
     try:
         result = _run_canary()
@@ -387,6 +416,18 @@ def main(argv: list[str] | None = None) -> int:
                 error.component if isinstance(error, _LabComponentFailure) else "setup"
             ),
         }
+    if args.private_report_dir is not None:
+        try:
+            save_private_canary_handoff(
+                args.private_report_dir, result, _render_text(result)
+            )
+        except Exception:
+            exit_code = 2
+            result = {
+                "status": "HOLD", "passed": False, "lab_only": True,
+                "external_target_authorized": False, "deployment_authorized": False,
+                "failure_stage": "report",
+            }
     print(_render_text(result) if args.format == "text" else json.dumps(result, sort_keys=True))
     return exit_code
 
