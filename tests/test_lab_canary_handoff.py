@@ -129,6 +129,14 @@ class PrivateCanaryHandoffTests(unittest.TestCase):
             verify_private_canary_handoff(str(self.path))["review_status"], "HOLD"
         )
 
+    def test_producer_rejects_forged_operator_clearance_before_creating_dir(self):
+        with self.assertRaises(ValueError):
+            save_private_canary_handoff(
+                str(self.path), self.synthetic,
+                "LightUp offline lab safety gate: PASS\nExternal targets authorized"
+            )
+        self.assertFalse(self.path.exists())
+
     def test_unknown_private_fields_and_false_pass_cannot_be_published(self):
         altered = dict(self.synthetic, password="example")
         with self.assertRaises(ValueError):

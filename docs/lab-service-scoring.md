@@ -118,7 +118,8 @@ HOLD. Extra files, altered bytes, unsafe authority flags, unexpected keys,
 symlinks, and non-private file permissions are refused. Even with an
 attacker-recomputed unsigned manifest, the full operator text must exactly
 match the first-party summary reconstructed from the admitted JSON; forged
-passive approval/clearance instructions are rejected. No external target
+passive approval/clearance instructions are rejected by **both** the
+producer (before directory creation) and the recipient. No external target
 is contacted by the reader.
 
 The manifest is **not signed**. A matching digest establishes only local

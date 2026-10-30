@@ -116,10 +116,12 @@ def save_private_canary_handoff(destination: str, result: dict, summary: str) ->
     caller paths in exceptions printed by the CLI.
     """
     receipt = _admit_receipt(result)
-    if type(summary) is not str or len(summary) > 3000 or not summary.startswith(
-        "LightUp offline lab safety gate:"
-    ):
-        raise ValueError("invalid operator summary")
+    # The creator is no exception: an unsafe caller must not publish
+    # a manifest-valid offline operator artifact with forged clearance text.
+    # This is a pure formatter; no scorer or network call is made here.
+    from lightup.lab_canary import _render_text
+    if type(summary) is not str or summary != _render_text(result):
+        raise ValueError("noncanonical operator summary")
     raw = Path(destination).expanduser()
     if ".." in raw.parts or raw.name in ("", ".", ".."):
         raise ValueError("unsafe private destination")
