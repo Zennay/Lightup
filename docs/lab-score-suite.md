@@ -266,7 +266,10 @@ lightup-lab-score-calibrate --compare-history ARCHIVE1 ARCHIVE2 --format html --
 The original archives are fully reverified before a new private destination
 directory is created. The output is `NEW_PRIVATE_REVIEW/history.html`
 inside a new owner-only 0700 directory; the atomically published HTML
-has mode 0600 and will never overwrite an existing report. Symlinked
+has mode 0600 and will never overwrite an existing report. After publishing,
+LightUp opens the saved file through its pinned private directory and compares
+the actual bytes and inode to the approved report; tampering at publication
+returns HOLD and removes the altered file instead of claiming success. Symlinked
 ancestors and parent traversal are refused. Corrupted originals produce
 a source-safe HOLD and create no report. Valid but nonindependent original
 archives create a private HOLD review and exit 2; the report remains

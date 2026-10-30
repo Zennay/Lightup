@@ -425,6 +425,44 @@ def _save_history_html(directory: str | Path, html: str) -> None:
             # overwrite another writer's destination.
             os.link(temp, "history.html", src_dir_fd=root_fd,
                     dst_dir_fd=root_fd, follow_symlinks=False)
+            # The read-only artifact inspector rejects multiple hardlinks.
+            # Drop the staging name first; keep its inode identity so failed
+            # verification can only remove our own published destination.
+            source = os.stat(temp, dir_fd=root_fd, follow_symlinks=False)
+            os.unlink(temp, dir_fd=root_fd)
+            try:
+                # A successful link is not enough: the target may be
+                # substituted or altered before the tool reports success.
+                published_fd = _artifact_fd(root_fd, "history.html", 1024 * 1024)
+                try:
+                    before = os.fstat(published_fd)
+                    persisted = os.pread(published_fd, 1024 * 1024 + 1, 0)
+                    after = os.fstat(published_fd)
+                    link = os.stat("history.html", dir_fd=root_fd,
+                                   follow_symlinks=False)
+                    if (persisted != html.encode("utf-8")
+                            or (before.st_dev, before.st_ino) !=
+                               (source.st_dev, source.st_ino)
+                            or (before.st_dev, before.st_ino, before.st_size,
+                                before.st_mtime_ns, before.st_ctime_ns) !=
+                               (after.st_dev, after.st_ino, after.st_size,
+                                after.st_mtime_ns, after.st_ctime_ns)
+                            or (link.st_dev, link.st_ino) !=
+                               (after.st_dev, after.st_ino)):
+                        raise ValueError("private report changed at publication")
+                finally:
+                    os.close(published_fd)
+            except Exception:
+                # Remove only our own linked inode. Do not delete a path
+                # substituted by some other writer.
+                try:
+                    link = os.stat("history.html", dir_fd=root_fd,
+                                   follow_symlinks=False)
+                    if (source.st_dev, source.st_ino) == (link.st_dev, link.st_ino):
+                        os.unlink("history.html", dir_fd=root_fd)
+                except FileNotFoundError:
+                    pass
+                raise
             os.fsync(root_fd)
         finally:
             try:

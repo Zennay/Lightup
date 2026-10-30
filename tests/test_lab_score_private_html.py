@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
+from unittest.mock import patch
 from lightup import lab_score_calibration as cal
 
 
@@ -42,6 +43,30 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
             self.assertIn("not saved", err)
             self.assertNotIn(base, err)
             self.assertEqual(report.read_bytes(), content)
+
+    def test_post_link_tamper_is_detected_and_report_removed(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            original_link = cal.os.link
+            def mutate_published_report(*args, **kwargs):
+                original_link(*args, **kwargs)
+                if len(args) > 1 and args[1] == "history.html":
+                    fd = os.open("history.html", os.O_WRONLY,
+                                 dir_fd=kwargs["dst_dir_fd"])
+                    try:
+                        os.write(fd, b"CORRUPTED")
+                    finally:
+                        os.close(fd)
+            dest = Path(base)/"tampered-review"
+            with patch.object(cal.os, "link",
+                              side_effect=mutate_published_report):
+                code, out, err = self.invoke(roots, dest)
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("HTML review not saved", err)
+            self.assertNotIn(base, err)
+            self.assertFalse((dest/"history.html").exists())
+            self.assertFalse((dest/".history.html.tmp").exists())
 
     def test_corrupt_source_refuses_to_create_report(self):
         with tempfile.TemporaryDirectory() as base:
