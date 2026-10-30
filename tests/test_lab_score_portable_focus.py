@@ -258,6 +258,36 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual((code, err), (2, ""))
         self.assertIn("FILES VERIFIED", out)
 
+    def test_failed_queue_publication_rolls_back_only_owned_files_and_allows_retry(self):
+        from unittest.mock import patch
+        from lightup import lab_score_queue_workroom as workroom
+        directory = self.root / "queue-failed-then-retry"
+        with patch.object(workroom, "verify_queue_workroom",
+                          side_effect=ValueError("simulated recipient readback failure")):
+            with self.assertRaises(ValueError):
+                workroom.publish_queue_workroom(self.archive, directory)
+        self.assertFalse(directory.exists())
+        code, out, err = invoke("--publish-queue-workroom", self.archive,
+                                "--queue-workroom-dir", directory)
+        self.assertEqual((code, err), (2, ""))
+        self.assertIn("FILES VERIFIED", out)
+
+    def test_queue_publication_failure_preserves_unowned_local_file(self):
+        from unittest.mock import patch
+        from lightup import lab_score_queue_workroom as workroom
+        directory = self.root / "queue-failed-with-human-file"
+        def competing_writer(_source, destination):
+            extra = Path(destination) / "human-note.txt"
+            extra.write_text("human-local-note")
+            extra.chmod(0o600)
+            raise ValueError("simulated independent writer")
+        with patch.object(workroom, "verify_queue_workroom", side_effect=competing_writer):
+            with self.assertRaises(ValueError):
+                workroom.publish_queue_workroom(self.archive, directory)
+        self.assertTrue(directory.is_dir())
+        self.assertEqual({file.name for file in directory.iterdir()}, {"human-note.txt"})
+        self.assertEqual((directory / "human-note.txt").read_text(), "human-local-note")
+
     def test_queue_workroom_rechecks_original_after_reading_files(self):
         from unittest.mock import patch
         from lightup import lab_score_queue_workroom as workroom

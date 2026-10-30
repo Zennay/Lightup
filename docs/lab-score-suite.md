@@ -486,3 +486,10 @@ Previously saved three-file **v1** workrooms remain read-only reopenable: the
 receiver chooses v1 or v2 from the strictly allowed pinned directory inventory,
 then recomputes the matching canonical representation from the same verified
 original ZIP. New publication always uses the five-file v2 representation.
+
+If publication fails after allocating the new private directory, the writer
+rolls back only its own inode-verified outputs. It also removes the newly
+created directory **only if it is still the same inode and empty**, so an
+ordinary retry can reuse that path without manual cleanup. Unexpected files
+added by an independent local writer are never deleted. Reopening remains
+read-only and unchanged; no original source, approval or grant is modified.

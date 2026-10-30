@@ -150,6 +150,17 @@ def publish_queue_workroom(archive: str | Path, destination: str | Path) -> dict
                         os.unlink(name, dir_fd=fd)
                 except FileNotFoundError:
                     pass
+            # On publication failure, do not strand a new empty 0700
+            # directory that prevents a legitimate retry at the same path.
+            # Never remove another writer's objects or a substituted path.
+            try:
+                original = os.fstat(fd)
+                current = os.stat(root, follow_symlinks=False)
+                if ((original.st_dev, original.st_ino) ==
+                    (current.st_dev, current.st_ino) and not os.listdir(fd)):
+                    os.rmdir(root)
+            except OSError:
+                pass  # best effort; never mask the original failure
             raise
     finally:
         os.close(fd)
