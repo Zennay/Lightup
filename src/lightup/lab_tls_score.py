@@ -18,7 +18,8 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from .lab_socket_guard import PrivateLabArgumentParser, fixed_loopback_socket_boundary
+from .lab_socket_guard import (PrivateLabArgumentParser, fixed_loopback_socket_boundary,
+                               trusted_local_openssl)
 from .lab_score_contract import TLS_CHECKS, require_first_party_score
 
 from .ai.orchestration import ToolCall, ToolExecutor, ToolRegistry
@@ -44,9 +45,7 @@ _HANDSHAKES_PER_RUN = 5
 
 def _create_self_signed_certificate(directory: Path) -> tuple[Path, Path]:
     """Create a short-lived self-signed certificate with a loopback IP SAN."""
-    openssl = shutil.which("openssl")
-    if openssl is None:
-        raise RuntimeError("openssl is required to create the local TLS fixture")
+    openssl = trusted_local_openssl()
 
     key_path = directory / "fixture-key.pem"
     cert_path = directory / "fixture-cert.pem"
@@ -75,6 +74,9 @@ def _create_self_signed_certificate(directory: Path) -> tuple[Path, Path]:
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        # Never inherit operator-provided OpenSSL config/module/loader paths.
+        # The fixed local certificate needs no child environment variables.
+        env={},
         timeout=15,
         check=False,
     )

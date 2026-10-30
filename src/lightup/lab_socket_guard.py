@@ -9,6 +9,7 @@ import argparse
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
@@ -34,6 +35,24 @@ def _require_fixed_loopback_address(sock: socket.socket, address: object) -> Non
             or type(address[1]) is not int
             or not 0 <= address[1] <= 65535):
         raise LabSocketBoundaryError("Offline lab socket must use fixed IPv4 loopback")
+
+
+def trusted_local_openssl() -> str:
+    """Use only the root-owned system OpenSSL binary, not a PATH shadow."""
+    candidate = shutil.which("openssl")
+    if candidate is None:
+        raise LabSocketBoundaryError("Trusted local TLS tool unavailable")
+    try:
+        binary = Path(candidate).resolve(strict=True)
+        metadata = binary.stat()
+    except (OSError, RuntimeError):
+        raise LabSocketBoundaryError("Trusted local TLS tool unavailable") from None
+    if (str(binary) not in {"/usr/bin/openssl", "/bin/openssl"}
+            or not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_uid != 0
+            or metadata.st_mode & 0o022):
+        raise LabSocketBoundaryError("Untrusted local TLS tool")
+    return str(binary)
 
 
 @contextmanager
@@ -138,8 +157,11 @@ def fixed_loopback_socket_boundary():
             type(token) is str for token in argv
         ):
             return False
-        openssl = shutil.which("openssl")
-        if openssl is None or argv[0] != openssl:
+        try:
+            openssl = trusted_local_openssl()
+        except LabSocketBoundaryError:
+            return False
+        if argv[0] != openssl:
             return False
         key, cert = Path(argv[7]), Path(argv[9])
         root = key.parent
@@ -158,13 +180,14 @@ def fixed_loopback_socket_boundary():
         ]
 
     def guarded_popen(*args, **kwargs):
+        # Restrict not just the command but also child environment, streams,
+        # and process attributes. No ambient OpenSSL/provider/loader settings
+        # or arbitrary Popen knobs are permitted in the fixed scorer.
         if (len(args) != 1 or not approved_local_certificate_command(args[0])
-                or kwargs.get("shell") not in (None, False)
-                or kwargs.get("executable") is not None
-                or kwargs.get("cwd") is not None
-                or kwargs.get("env") is not None
-                or kwargs.get("preexec_fn") is not None
-                or kwargs.get("pass_fds", ()) != ()):
+                or set(kwargs) != {"stdin", "stdout", "stderr", "env"}
+                or type(kwargs.get("env")) is not dict or kwargs["env"]
+                or any(kwargs[key] != subprocess.DEVNULL
+                       for key in ("stdin", "stdout", "stderr"))):
             raise LabSocketBoundaryError("Offline lab refuses unapproved child process")
         grant = validated_popen.set(True)
         try:
@@ -180,7 +203,7 @@ def fixed_loopback_socket_boundary():
         # Popen call. Independently validate that low-level command as well.
         if (not validated_popen.get()
                 or type(path) is not str or type(argv) is not list
-                or path != argv[0]
+                or path != argv[0] or type(env) is not dict or env
                 or not approved_local_certificate_command(argv)):
             raise LabSocketBoundaryError("Offline lab refuses unapproved child process")
         return original_spawn(path, argv, env, **kwargs)
@@ -188,7 +211,7 @@ def fixed_loopback_socket_boundary():
     def guarded_spawnp(path, argv, env, **kwargs):
         if (not validated_popen.get()
                 or type(path) is not str or type(argv) is not list
-                or path != argv[0]
+                or path != argv[0] or type(env) is not dict or env
                 or not approved_local_certificate_command(argv)):
             raise LabSocketBoundaryError("Offline lab refuses unapproved child process")
         return original_spawnp(path, argv, env, **kwargs)

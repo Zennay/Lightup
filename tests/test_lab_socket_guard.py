@@ -226,19 +226,69 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                 "subjectAltName=IP:127.0.0.1", "-addext",
                 "basicConstraints=critical,CA:FALSE",
             ]
+            child_kwargs = {
+                "stdin": subprocess.DEVNULL,
+                "stdout": subprocess.DEVNULL,
+                "stderr": subprocess.DEVNULL,
+                "env": {},
+            }
             with patch.object(subprocess, "Popen", return_value="allowed") as original:
                 with fixed_loopback_socket_boundary():
-                    self.assertEqual(subprocess.Popen(valid), "allowed")
+                    self.assertEqual(subprocess.Popen(valid, **child_kwargs), "allowed")
                     for index, value in ((1, "s_client"), (7, "/tmp/PRIVATE-key.pem"),
                                          (15, "subjectAltName=DNS:public.example"),
                                          (17, "basicConstraints=CA:TRUE")):
                         attempt = list(valid)
                         attempt[index] = value
                         with self.subTest(index=index), self.assertRaises(LabSocketBoundaryError):
-                            subprocess.Popen(attempt)
-                    with self.assertRaises(LabSocketBoundaryError):
-                        subprocess.Popen(valid, shell=True)
-                original.assert_called_once_with(valid)
+                            subprocess.Popen(attempt, **child_kwargs)
+                    for bad in (
+                        {**child_kwargs, "env": {"OPENSSL_CONF": "/tmp/unsafe.conf"}},
+                        {**child_kwargs, "stderr": subprocess.PIPE},
+                        {**child_kwargs, "shell": True},
+                        {**child_kwargs, "start_new_session": True},
+                    ):
+                        with self.subTest(keys=tuple(bad)), self.assertRaises(LabSocketBoundaryError):
+                            subprocess.Popen(valid, **bad)
+                original.assert_called_once_with(valid, **child_kwargs)
+
+    def test_tls_cert_generation_refuses_path_shadowed_openssl(self):
+        import os
+        import stat
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory(prefix="lightup-untrusted-binary-") as root:
+            fake = Path(root) / "openssl"
+            fake.write_text("#!/bin/sh\nexit 0\n")
+            fake.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+            with patch.dict(os.environ, {"PATH": root}), patch.object(
+                lab_tls_score.subprocess, "run"
+            ) as run:
+                with self.assertRaises(RuntimeError):
+                    lab_tls_score._create_self_signed_certificate(Path(root))
+                run.assert_not_called()
+
+    def test_cert_generator_uses_only_empty_child_environment(self):
+        import os
+        import subprocess
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        with TemporaryDirectory(prefix="lightup-tls-lab-") as d:
+            with patch.dict(os.environ, {
+                "OPENSSL_CONF": "/tmp/private-injected.conf",
+                "OPENSSL_MODULES": "/tmp/private-module-dir",
+                "LD_PRELOAD": "/tmp/private-hook.so",
+            }), patch.object(lab_tls_score.subprocess, "run") as run:
+                def synthetic_child(command, **kwargs):
+                    Path(command[7]).write_bytes(b"synthetic-key")
+                    Path(command[9]).write_bytes(b"synthetic-cert")
+                    return subprocess.CompletedProcess(command, 0)
+                run.side_effect = synthetic_child
+                lab_tls_score._create_self_signed_certificate(Path(d))
+                self.assertEqual(run.call_args.kwargs["env"], {})
+                self.assertEqual(run.call_args.kwargs["stdin"], subprocess.DEVNULL)
+                self.assertEqual(run.call_args.kwargs["stdout"], subprocess.DEVNULL)
+                self.assertEqual(run.call_args.kwargs["stderr"], subprocess.DEVNULL)
 
     def test_preconnected_socket_receive_paths_check_peer_before_io(self):
         # Synthetic peer identities; no public socket ever opened.
