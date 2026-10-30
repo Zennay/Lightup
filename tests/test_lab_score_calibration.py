@@ -31,9 +31,11 @@ class CalibrationTests(unittest.TestCase):
             self.assertEqual(report["saved_runs"], ["baseline", "candidate"])
             self.assertFalse(report["authorization_granted"])
             self.assertNotIn(base, out.getvalue())
-            self.assertEqual({p.name for p in root.iterdir()}, {"baseline", "candidate"})
+            self.assertEqual({p.name for p in root.iterdir()}, {"baseline", "candidate", "report.json"})
             for p in (root, root/"baseline", root/"candidate"):
                 self.assertEqual(stat.S_IMODE(p.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE((root/"report.json").stat().st_mode), 0o600)
+            self.assertEqual(json.loads((root/"report.json").read_text()), report)
             for name in ("baseline", "candidate"):
                 d = root/name
                 self.assertTrue(inspect_score_run(d)["passed"])
@@ -64,7 +66,7 @@ class CalibrationTests(unittest.TestCase):
             root = Path(base) / "private"
             self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
             before = {(p.name, p.stat().st_ino, p.stat().st_mtime_ns)
-                      for d in root.iterdir() for p in d.iterdir()}
+                      for d in root.iterdir() if d.is_dir() for p in d.iterdir()}
             with patch.object(cal, "run_lab_score_suite",
                               side_effect=AssertionError("producer invoked")):
                 out = io.StringIO()
@@ -78,7 +80,7 @@ class CalibrationTests(unittest.TestCase):
             self.assertNotIn(base, out.getvalue())
             self.assertEqual(before, {
                 (p.name, p.stat().st_ino, p.stat().st_mtime_ns)
-                for d in root.iterdir() for p in d.iterdir()
+                for d in root.iterdir() if d.is_dir() for p in d.iterdir()
             })
 
     def test_verify_rejects_tampering_and_symlinked_saved_runs(self):
@@ -102,6 +104,34 @@ class CalibrationTests(unittest.TestCase):
             self.assertEqual(out.getvalue(), "")
             self.assertIn("HOLD", err.getvalue())
             self.assertNotIn(base, err.getvalue())
+
+    def test_calibration_receipt_tamper_fails_closed(self):
+        with tempfile.TemporaryDirectory() as base:
+            root = Path(base)/"calibration"
+            self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            receipt = root/"report.json"
+            raw = json.loads(receipt.read_text())
+            raw["passed"] = False
+            receipt.write_text(json.dumps(raw, indent=2, sort_keys=True)+"\n")
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                status = cal.main(["--verify-output-dir", str(root)])
+            self.assertEqual(status, 2)
+            self.assertEqual(out.getvalue(), "")
+            self.assertIn("HOLD", err.getvalue())
+            self.assertNotIn(base, err.getvalue())
+
+    def test_missing_or_symlinked_receipt_refused(self):
+        with tempfile.TemporaryDirectory() as base:
+            root = Path(base)/"calibration"
+            self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            receipt = root/"report.json"
+            receipt.rename(Path(base)/"moved.json")
+            with self.assertRaises(ValueError):
+                cal.verify_saved_calibration(root)
+            receipt.symlink_to(Path(base)/"moved.json")
+            with self.assertRaises(OSError):
+                cal.verify_saved_calibration(root)
 
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:

@@ -130,6 +130,9 @@ Treat the output directory as local evidence storage. The SQLite databases are d
 `lightup-lab-score-calibrate --output-dir ./new-private-calibration`
 creates a fresh 0700 parent plus two separate 0700 saved-run directories
 (`baseline/` and `candidate/`), each with four 0600 reports/evidence stores.
+After both saves are independently inspected, a private 0600 root `report.json`
+receipt is published atomically without overwrite. This stores the bounded,
+non-authorizing score comparison (not raw evidence or a signed attestation).
 It then *reopens and verifies* both stored results with the existing
 pinned/immutable read-only inspector and compares the nine first-party
 metrics. The final default private-safe text report contains verified
@@ -141,9 +144,12 @@ interfaces are unchanged.
 For read-only follow-up on saved baseline and candidate evidence, use
 `lightup-lab-score-calibrate --verify-output-dir ./existing-private-calibration`.
 This option never starts scorers or changes saved files, checks the owner-private
-root and exact two-child layout without following symlinks, and reuses the
-same pinned read-only artifact inspector and metric comparison. A missing,
-symlinked, extra, modified or non-private saved entry causes generic HOLD.
+root, exact two saved-run children and one owner-only root receipt without
+following symlinks. It reuses the pinned read-only artifact inspector and
+recomputes the result, requiring an exact canonical-byte match against the
+root receipt. A missing, symlinked, extra, modified or non-private saved
+entry or altered receipt causes generic HOLD; the receipt cannot authorize
+real-world actions or prove original evidence authenticity.
 `--output-dir` and `--verify-output-dir` are mutually exclusive.
 
 Any failed scorer, bad stored evidence, alias, score drift or pre-existing

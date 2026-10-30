@@ -14,42 +14,14 @@ from pathlib import Path
 from typing import Any
 
 from .lab_score_compare import compare_score_runs, render_score_review
-from .lab_score_inspect import _private_dir_fd
-from .lab_score_suite import _private_output_directory, run_lab_score_suite
+from .lab_score_inspect import _private_dir_fd, _artifact_fd
+from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
 
 SCHEMA = "lightup.lab-score-calibration.v1"
 
 
-def verify_saved_calibration(output_dir: str | Path) -> dict[str, Any]:
-    """Reopen both private saved runs without executing any fixture/worker."""
-    root = Path(output_dir).expanduser()
-    fd = _private_dir_fd(root)  # pinned, owner-private, no-follow ancestors
-    try:
-        original = os.fstat(fd)
-        if set(os.listdir(fd)) != {"baseline", "candidate"}:
-            raise ValueError("unexpected saved calibration entries")
-        children = {}
-        for name in ("baseline", "candidate"):
-            entry = os.stat(name, dir_fd=fd, follow_symlinks=False)
-            if (not stat.S_ISDIR(entry.st_mode) or entry.st_uid != os.geteuid()
-                    or stat.S_IMODE(entry.st_mode) & 0o077):
-                raise PermissionError("unsafe saved calibration subdirectory")
-            children[name] = (entry.st_dev, entry.st_ino, entry.st_mtime_ns,
-                              entry.st_ctime_ns)
-        comparison = compare_score_runs(root / "baseline", root / "candidate")
-        after = os.fstat(fd)
-        if ((original.st_dev, original.st_ino, original.st_mtime_ns,
-             original.st_ctime_ns) !=
-            (after.st_dev, after.st_ino, after.st_mtime_ns, after.st_ctime_ns)
-                or set(os.listdir(fd)) != {"baseline", "candidate"}):
-            raise ValueError("saved calibration changed")
-        for name in children:
-            entry = os.stat(name, dir_fd=fd, follow_symlinks=False)
-            if children[name] != (entry.st_dev, entry.st_ino, entry.st_mtime_ns,
-                                  entry.st_ctime_ns):
-                raise ValueError("saved calibration subdirectory changed")
-    finally:
-        os.close(fd)
+def _receipt(comparison: dict[str, Any]) -> dict[str, Any]:
+    """Public-safe result, never an attestation or authorization."""
     return {
         "schema": SCHEMA,
         "passed": comparison["passed"],
@@ -59,6 +31,66 @@ def verify_saved_calibration(output_dir: str | Path) -> dict[str, Any]:
         "external_targets_contacted": False,
         "deployment": False,
     }
+
+
+def _receipt_bytes(result: dict[str, Any]) -> bytes:
+    return (json.dumps(result, indent=2, sort_keys=True, allow_nan=False)
+            + "\n").encode("utf-8")
+
+
+def verify_saved_calibration(output_dir: str | Path) -> dict[str, Any]:
+    """Reopen both private saved runs without executing any fixture/worker."""
+    root = Path(output_dir).expanduser()
+    fd = _private_dir_fd(root)  # pinned, owner-private, no-follow ancestors
+    try:
+        original = os.fstat(fd)
+        if set(os.listdir(fd)) != {"baseline", "candidate", "report.json"}:
+            raise ValueError("unexpected saved calibration entries")
+        receipt_fd = _artifact_fd(fd, "report.json", 65536)
+        try:
+            receipt_before = os.fstat(receipt_fd)
+            receipt_raw = os.pread(receipt_fd, 65537, 0)
+        finally:
+            os.close(receipt_fd)
+        children = {}
+        for name in ("baseline", "candidate"):
+            entry = os.stat(name, dir_fd=fd, follow_symlinks=False)
+            if (not stat.S_ISDIR(entry.st_mode) or entry.st_uid != os.geteuid()
+                    or stat.S_IMODE(entry.st_mode) & 0o077):
+                raise PermissionError("unsafe saved calibration subdirectory")
+            children[name] = (entry.st_dev, entry.st_ino, entry.st_mtime_ns,
+                              entry.st_ctime_ns)
+        comparison = compare_score_runs(root / "baseline", root / "candidate")
+        result = _receipt(comparison)
+        if receipt_raw != _receipt_bytes(result):
+            raise ValueError("calibration receipt differs from saved evidence")
+        receipt_fd = _artifact_fd(fd, "report.json", 65536)
+        try:
+            receipt_after = os.fstat(receipt_fd)
+            if ((receipt_before.st_ino, receipt_before.st_dev,
+                 receipt_before.st_mtime_ns, receipt_before.st_ctime_ns,
+                 receipt_before.st_size) !=
+                (receipt_after.st_ino, receipt_after.st_dev,
+                 receipt_after.st_mtime_ns, receipt_after.st_ctime_ns,
+                 receipt_after.st_size)
+                    or os.pread(receipt_fd, 65537, 0) != receipt_raw):
+                raise ValueError("calibration receipt changed during inspection")
+        finally:
+            os.close(receipt_fd)
+        after = os.fstat(fd)
+        if ((original.st_dev, original.st_ino, original.st_mtime_ns,
+             original.st_ctime_ns) !=
+            (after.st_dev, after.st_ino, after.st_mtime_ns, after.st_ctime_ns)
+                or set(os.listdir(fd)) != {"baseline", "candidate", "report.json"}):
+            raise ValueError("saved calibration changed")
+        for name in children:
+            entry = os.stat(name, dir_fd=fd, follow_symlinks=False)
+            if children[name] != (entry.st_dev, entry.st_ino, entry.st_mtime_ns,
+                                  entry.st_ctime_ns):
+                raise ValueError("saved calibration subdirectory changed")
+    finally:
+        os.close(fd)
+    return result
 
 
 def run_lab_score_calibration(output_dir: str | Path) -> dict[str, Any]:
@@ -71,6 +103,12 @@ def run_lab_score_calibration(output_dir: str | Path) -> dict[str, Any]:
         saved = run_lab_score_suite(root / name)
         if saved.get("passed") is not True:
             raise ValueError("synthetic calibration failed")
+    comparison = compare_score_runs(root / "baseline", root / "candidate")
+    receipt = _receipt(comparison)
+    if receipt["passed"] is not True:
+        raise ValueError("synthetic calibration drift or reused evaluation")
+    # Atomic, owner-only and no-overwrite; partial failed runs have no receipt.
+    _write_report(root, receipt)
     return verify_saved_calibration(root)
 
 
