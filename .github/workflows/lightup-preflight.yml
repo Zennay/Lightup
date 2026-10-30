@@ -53,15 +53,27 @@ jobs:
         run: |
           python scripts/check_safety_canaries.py
           python scripts/check_safety_canaries.py
-      - name: Replay loopback fixtures and persist deterministic evidence
+      - name: Replay loopback fixtures twice and prove deterministic receipt
         env:
           PYTHONPATH: src
         run: |
           set -euo pipefail
           store_dir="$RUNNER_TEMP/lightup-lab-fixtures-${{ github.run_id }}-${{ matrix.python }}"
-          python -m lightup.lab_replay --store-dir "$store_dir"
+          repeat_store_dir="$RUNNER_TEMP/lightup-lab-fixtures-${{ github.run_id }}-${{ matrix.python }}-repeat"
+          first_output="$RUNNER_TEMP/lightup-lab-first-${{ github.run_id }}-${{ matrix.python }}.json"
+          reuse_output="$RUNNER_TEMP/lightup-lab-reuse-${{ github.run_id }}-${{ matrix.python }}.json"
+          python -m lightup.lab_replay --store-dir "$store_dir" | tee "$first_output"
+          python -m lightup.lab_replay --store-dir "$store_dir" | tee "$reuse_output"
+          cmp "$first_output" "$reuse_output"
+          echo "Same-store content-addressed reuse preserved the complete CLI receipt."
+          python -m lightup.lab_replay --store-dir "$repeat_store_dir"
           receipt="$(find "$store_dir" -mindepth 2 -maxdepth 2 -type f -name receipt.json -print -quit)"
+          repeat_receipt="$(find "$repeat_store_dir" -mindepth 2 -maxdepth 2 -type f -name receipt.json -print -quit)"
           test -n "$receipt"
+          test -n "$repeat_receipt"
+          cmp "$receipt" "$repeat_receipt"
+          cmp "${receipt%.json}.sha256" "${repeat_receipt%.json}.sha256"
+          echo "Independent fixture replays produced identical receipt and checksum."
       - uses: actions/upload-artifact@v4
         with:
           name: lightup-lab-fixture-receipt-${{ github.run_id }}-${{ matrix.python }}
