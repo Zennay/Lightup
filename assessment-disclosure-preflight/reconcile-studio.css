@@ -1,0 +1,59 @@
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#192735;background:#f3f5f9;color-scheme:light}
+*{box-sizing:border-box}body{margin:0;line-height:1.55}header{background:#172c40;color:#fff;padding:2.1rem max(1.2rem,calc((100% - 1120px)/2))}
+header h1{margin:.15rem 0;font-size:clamp(1.65rem,3.7vw,2.5rem)}header p{max-width:910px}.eyebrow{letter-spacing:.12em;font-size:.75rem;font-weight:750}
+main{max-width:1150px;margin:1.5rem auto;padding:0 1.2rem 3rem}section{background:#fff;border:1px solid #cbd5df;border-radius:.7rem;padding:1.25rem;margin:1rem 0}
+h2{font-size:1.27rem;margin:0 0 .7rem}h3{font-size:1.08rem;margin:.1rem 0}h4{font-size:1rem;margin:0 0 .5rem}h5{font-size:.86rem;margin:1rem 0 .15rem}
+p{margin:.5rem 0}.warning{border-left:6px solid #996521;background:#fff8eb}.hint{font-size:.92rem;color:#495d70}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.9rem}
+label{display:flex;flex-direction:column;gap:.45rem;font-weight:650}input,select,textarea,button{font:inherit}
+input[type=file],input[type=search],select,textarea{padding:.65rem;border:1px solid #8ba0b4;border-radius:.42rem;background:#fff;color:#172c40;width:100%}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid #ff9e40;outline-offset:2px}
+textarea{resize:vertical;min-height:4.6rem}
+button{padding:.7rem 1.15rem;border:0;border-radius:.42rem;background:#11658b;color:white;font-weight:750;cursor:pointer}
+button:hover{background:#074d72}.secondary{background:#566579}.secondary:hover{background:#394959}button:disabled{background:#8695a0;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:1rem}#notice{padding:.7rem 1rem;border:1px solid #bac8d6;border-radius:.4rem}
+#notice[data-status=hold]{border-color:#b04c35;background:#fff3ef}
+.stats{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0}.stats span{font-size:.88rem;padding:.35rem .6rem;background:#e7eff5;border-radius:.35rem}
+.entries{display:grid;gap:1rem;margin-top:1.2rem}.case{border:1px solid #c7d4df;border-radius:.65rem;padding:1.05rem;background:#fbfdff}
+.pill{font-size:.86rem;font-weight:750;color:#275b48}.pill[data-kind=different]{color:#815422}
+.comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.review{border:1px solid #d0dce5;border-radius:.48rem;padding:.85rem;min-width:0;background:white}
+.review h4{border-bottom:1px solid #d8e0e8;padding-bottom:.5rem}.notes{white-space:pre-wrap;overflow-wrap:anywhere;color:#33485a}
+.controls{margin-top:1rem;display:grid;grid-template-columns:minmax(180px,1fr) minmax(240px,2fr);gap:1rem}
+.sticky{position:sticky;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:.7rem;border:1px solid #adbfce;border-radius:.5rem;background:#f0f6fb;padding:.9rem;margin-top:1.1rem}
+footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
+@media(max-width:720px){.comparison,.controls{grid-template-columns:1fr}.sticky{flex-direction:column;align-items:stretch}}
+@media print{body{background:white}.warning,.case,section{break-inside:avoid}.sticky,button,input,select,textarea{display:none!important}header{background:white;color:#000;padding:0}.comparison{grid-template-columns:1fr 1fr}}
+
+/* Confidential native-compatible finalization stays visually separate from review. */
+.finalize{margin-top:1.2rem;padding:1.2rem;border:1px solid #8aa9ba;border-radius:.6rem;background:#f0f6fa}
+.finalize h3{font-size:1.15rem;margin:0 0 .6rem}
+.finalize code{overflow-wrap:anywhere}
+#sealStatus{margin-top:.9rem;border-left:3px solid #58778b;padding:.6rem .8rem;background:#fff}
+.finalize .grid{margin-top:1rem}
+.resume{border-top:1px solid #cad6df;margin-top:1rem;padding-top:1rem}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* HUMAN final-result preview: every ordinal shown, notes collapsed by default. */
+.final-preview{display:grid;gap:.65rem;max-height:28rem;overflow:auto;padding:.3rem;margin-top:1rem;border:1px solid #b4c6d5;border-radius:.45rem;background:#fff}
+.outcome{padding:.75rem 1rem;background:#fff;border:1px solid #d0dce6;border-radius:.38rem;overflow-wrap:anywhere}
+.outcomeTitle{font-weight:750;margin:.2rem 0}.outcomeTitle[data-mode=hold]{color:#8a4f21}
+.outcomeTitle[data-mode=selected]{color:#246153}
+.outcomeKind{font-size:.82rem;color:#607286}
+.outcome details{margin:.65rem 0 0;padding:.65rem;border:1px solid #dce3ed;background:#f6f8fa;border-radius:.4rem}
+.outcome summary{cursor:pointer;font-weight:700}
+.outcome details .notes{margin:.45rem 0;white-space:pre-wrap;overflow-wrap:anywhere}
+@media print{.final-preview{max-height:none;overflow:visible}.outcome details:not([open]) .notes{display:none}}
+
+
+/* Session-local reversible HUMAN choices. No change can bypass A/B export gate. */
+.historybar{display:flex;flex-wrap:wrap;gap:.65rem;margin:1rem 0 .45rem}
+.historybar button{flex:1 1 220px}
+#historyStatus{padding:.65rem .8rem;background:#ecf2f7;border-left:3px solid #59849b;border-radius:.25rem;margin:.5rem 0}
+@media(max-width:720px){.historybar{flex-direction:column}.historybar button{width:100%}}
+
+/* Read-only private handoff receiver stays visually distinct from editing. */
+#receiveTitle{color:#254960}
+#receiveStatus{display:block;margin:.8rem 0;padding:.7rem;border-left:3px solid #6388a1;background:#f2f6fa}
+#receiveSaved{background:#21597b}
+#receiveSaved:hover{background:#16425e}

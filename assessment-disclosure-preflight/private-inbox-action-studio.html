@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp PRIVATE HUMAN action Studio</title>
+<link rel="stylesheet" href="./private-inbox-action-studio.css">
+<script src="./private-inbox-action-studio.js" defer></script>
+</head>
+<body>
+<header>
+<p class="eyebrow">LightUp / PRIVATE local-only HUMAN discussion</p>
+<h1>Inbox follow-up Studio</h1>
+<p>Import the complete original <code>PRIVATE-inbox-actions-template.csv</code> created by the native <code>private_inbox_actions.py prepare</code>. Work locally on all original slot ordinals and export a full source-bound HUMAN CSV for native <code>finalize</code>. Nothing is uploaded, sent, saved in browser storage, or used to scan a target.</p>
+<p class="warning"><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</strong> A proposed discussion role is NOT a real assignment. “Discussion complete” is explicitly NO RELEASE. Source byte hashes and browser exports do not authenticate findings, reviewers, identity, source, consent, authorization or remediation. Independent reviews and HUMAN GO remain mandatory.</p>
+</header>
+<main>
+<section class="panel" aria-labelledby="import-heading">
+<h2 id="import-heading">1. Load exact PRIVATE action worksheet</h2>
+<label for="upload">Original native six-column HUMAN actions template or a previously exported complete edited CSV (128 KiB maximum).</label>
+<input id="upload" type="file" accept=".csv,text/csv">
+<p id="message" role="status" aria-live="polite">No original HUMAN action sheet loaded. Nothing will be exported without its entire source-ordered rows.</p>
+<p class="privacy">Loading a new sheet clears the complete in-memory previous draft. The original path and source board digest are not displayed or transmitted.</p>
+</section>
+<section class="panel" id="editor" hidden aria-labelledby="edit-heading">
+<h2 id="edit-heading">2. Edit proposed HUMAN follow-up</h2>
+<div class="actions"><label for="filter">Show slots</label>
+<select id="filter"><option value="ALL">All original slots</option><option value="OPEN">Unreviewed / needs input</option><option value="PROGRESS">In progress</option><option value="DISCUSSION">Discussion complete, NO RELEASE</option></select>
+<span id="counter" aria-live="polite"></span></div>
+<div class="bulk-tools" aria-labelledby="bulk-heading">
+<h3 id="bulk-heading">Bulk-propose HUMAN stage or discussion role</h3>
+<div class="bulk-fields"><label for="bulk-status">Stage for visible slots<select id="bulk-status"><option value="">Leave unchanged</option><option value="UNREVIEWED">UNREVIEWED</option><option value="NEEDS_INPUT">NEEDS_INPUT</option><option value="IN_PROGRESS">IN_PROGRESS</option><option value="DISCUSSION_COMPLETE_NO_RELEASE">DISCUSSION_COMPLETE_NO_RELEASE</option></select></label>
+<label for="bulk-role">Proposed role for visible slots<select id="bulk-role"><option value="">Leave unchanged</option><option value="UNASSIGNED">UNASSIGNED</option><option value="SECURITY">SECURITY</option><option value="PRIVACY">PRIVACY</option><option value="CLIENT_OPERATIONS">CLIENT_OPERATIONS</option><option value="PLATFORM">PLATFORM</option></select></label></div>
+<div class="actions"><button id="bulk-apply" type="button" disabled>Apply to visible slots</button><button id="bulk-undo" type="button" class="secondary" disabled>Undo last bulk change</button><span id="bulk-visible-count" aria-live="polite"></span></div>
+<p id="bulk-message" role="status" aria-live="polite">Bulk changes are HUMAN-only. The whole batch is refused if any row would violate the original worksheet rules.</p>
+</div>
+<div id="cards" class="cards"></div>
+<section class="revision-compare" aria-labelledby="revision-heading">
+<h3 id="revision-heading">Compare saved HUMAN revisions</h3>
+<p>Choose a previous complete HUMAN action CSV and compare it with the current in-memory draft. Both files must carry the same original board SHA and complete source-ordered slot membership. Question and next-action text is never shown or exported by this comparison.</p>
+<label for="prior-upload">Prior saved HUMAN action worksheet (.csv)</label>
+<input id="prior-upload" type="file" accept=".csv,text/csv">
+<div class="actions"><button id="compare-revisions" type="button" disabled>Compare prior vs current draft</button><button id="clear-comparison" type="button" class="secondary" disabled>Clear comparison</button></div>
+<p id="revision-status" role="status" aria-live="polite">Choose a prior complete HUMAN CSV after loading the current worksheet.</p>
+<div id="revision-results" hidden>
+<p id="revision-summary"></p>
+<ul id="revision-breakdown"></ul>
+<div class="revision-table-scroll"><table><thead><tr><th>Slot</th><th>Changed fields</th><th>Prior stage</th><th>Current stage</th><th>Prior role</th><th>Current role</th><th>Question changed</th><th>Next action changed</th></tr></thead><tbody id="revision-rows"></tbody></table></div>
+<div class="actions"><button id="revision-export" type="button">Export privacy-minimal revision delta CSV</button><button id="revision-print" type="button" class="secondary">Download scriptless private HTML delta</button></div>
+<p class="privacy">The delta contains field names, ordinal slots, HUMAN stage/role values and yes/no text-change flags only. It omits private notes, source hashes, source filenames and identities. "Prior/current" is operator-supplied ordering, not authenticated chronology; this comparison is not source authentication, consent, remediation or authorization.</p>
+</div>
+</section>
+<p class="privacy">Filters only hide cards; exports ALWAYS preserve all original slots and their original sequence. Browser notes are not persisted automatically. Do not use this app on shared machines for real sensitive HUMAN text.</p>
+<div class="actions">
+<button id="export" type="button">3. Prepare complete PRIVATE HUMAN CSV preview</button>
+<button id="clear" type="button" class="secondary">Clear entire PRIVATE session</button>
+</div>
+<p id="export-message" role="status" aria-live="polite"></p>
+<div id="export-preview" class="export-preview" hidden aria-labelledby="export-preview-heading">
+<h3 id="export-preview-heading">Confirm full original-order export</h3>
+<p id="export-preview-summary"></p>
+<ul id="export-preview-breakdown"></ul>
+<p class="privacy">This preview shows aggregate counts only, not private question/action text. The CSV still contains all original source-ordered HUMAN rows, including filtered-out slots. Review the private cards before confirming; the export is unsigned and non-authorizing.</p>
+<div class="actions"><button id="confirm-export" type="button" disabled>Confirm and download full CSV</button><button id="cancel-export" type="button" class="secondary">Cancel preview</button></div>
+</div>
+</section>
+<section class="panel">
+<h2>4. Native source-bound finalization (separate owner operation)</h2>
+<p>Place the downloaded CSV in owner-controlled 0600 storage, then use <code>private_inbox_actions.py finalize --board ORIGINAL_PRIVATE_BOARD.json --human-csv EDITED_HUMAN.csv --private-output-dir PRIVATE_NEW_DIRECTORY</code>. Native admission re-reads the unchanged complete original board, checks its exact byte-bound SHA, each original ordinal, valid HUMAN statuses and notes, and publishes only PRIVATE 0600 output. <code>reopen</code> verifies those exact local PRIVATE results later.</p>
+<p>Browser export is NOT an approval, proof of disk persistence, source owner permission, release, authenticated consent or a cryptographic signature.</p>
+</section>
+</main><footer>LightUp PRIVATE HUMAN Action Studio · source-free original slot metadata only · no network, scanner, model, localStorage or remote upload.</footer>
+</body>
+</html>
