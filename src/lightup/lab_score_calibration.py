@@ -29,6 +29,7 @@ from .lab_score_portable_unpack import unpack_portable_review, verify_unpacked_p
 from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_portable_focus import render_portable_focus, render_portable_pair
 from .lab_score_portable_queue import render_portable_queue, render_portable_queue_html
+from .lab_score_review_delta import compare_portable_review_transports, render_comparison
 from .lab_score_queue_csv import render_queue_csv
 from .lab_score_queue_triage import (render_human_triage_plan, render_human_triage_html,
                                      render_human_triage_csv, render_human_focus_html)
@@ -487,6 +488,9 @@ def main(argv: list[str] | None = None) -> int:
                       help="create source-free offline HUMAN review room")
     mode.add_argument("--verify-queue-workroom", metavar="ZIP",
                       help="read-only reread saved HUMAN review room vs original ZIP")
+    mode.add_argument("--compare-portable-reviews", nargs=2,
+                      metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
+                      help="compare two complete synthetic source-free HUMAN ZIPs; never clears original HOLD")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
     parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "triage-csv", "review-csv"),
@@ -514,6 +518,28 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--unpack-output-dir",
                         help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
+    if args.compare_portable_reviews is not None:
+        if (args.format not in ("text", "json", "csv", "html")
+                or args.focus_pair is not None
+                or args.focus_archive_index is not None
+                or args.review_queue or args.include_triage
+                or args.queue_workroom_dir is not None
+                or args.html_output_dir is not None
+                or args.verify_html_output_dir is not None
+                or args.portable_review_output_dir is not None
+                or args.unpacked_review_dir is not None
+                or args.unpack_output_dir is not None):
+            parser.error("two-ZIP HUMAN comparison requires only --format text|json|csv|html")
+        try:
+            comparison = compare_portable_review_transports(
+                *args.compare_portable_reviews)
+            output = render_comparison(comparison, args.format)
+        except Exception:
+            print("LightUp HUMAN offline comparison: HOLD; original ZIPs not verified.",
+                  file=sys.stderr)
+            return 2
+        sys.stdout.write(output)
+        return 0 if comparison["review_status"] == "PASS" else 2
     if args.publish_queue_workroom is not None or args.verify_queue_workroom is not None:
         if (args.queue_workroom_dir is None
                 or args.format not in (("text",) if args.publish_queue_workroom is not None

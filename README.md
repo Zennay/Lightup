@@ -377,3 +377,20 @@ ZIP. Unknown originals, altered saved files, contradictory status claims,
 remote HTML navigation and active scripts are refused; zero partial output.
 The CLI only prints to stdout; human-directed saved copies should use
 owner-private storage and `umask 077`. No security authority is created.
+
+### Two original source-free ZIPs: HUMAN comparison, never remediation proof
+
+`lightup-lab-score-calibrate --compare-portable-reviews BASELINE_PRIVATE.zip
+CANDIDATE_PRIVATE.zip --format html` creates an inert printable **synthetic
+HUMAN count comparison**; formats `text`, `json` and formula-safe `csv`
+are also supported. Each canonical synthetic v3 ZIP is independently
+re-admitted *twice* and compared to its own original complete anonymous pair
+matrix. The original HOLD status survives even if the second ZIP locally
+passes; a source/identity/consent/security/privacy/release grant is **never**
+inferred. Anonymous original ordinals across different ZIPs are not matched:
+counts changing (including if the number of archives changes) do **not**
+prove the same originals, successful remediation or independent evidence.
+The report exposes only anonymous totals and unsigned transport SHA-256,
+never original private source paths or findings. A missing, corrupted,
+identical or changed ZIP refuses all partial output. No external targets,
+scans, state changes or deployments are performed.
