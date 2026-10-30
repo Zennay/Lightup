@@ -95,24 +95,32 @@ def verify_unpacked_portable_review(archive: str | Path, directory: str | Path) 
     result, payloads = _validated_portable_review(archive)
     fd = _private_dir_fd(directory)
     try:
-        if set(os.listdir(fd)) != set(payloads):
-            raise ValueError("offline workspace inventory changed")
-        for name, expected in sorted(payloads.items()):
-            reader = _artifact_fd(fd, name, len(expected))
-            try:
-                before = os.fstat(reader)
-                data = os.pread(reader, len(expected)+1, 0)
-                after = os.fstat(reader)
-                link = os.stat(name, dir_fd=fd, follow_symlinks=False)
-                if (data != expected or before.st_size != len(expected)
-                        or (before.st_dev, before.st_ino, before.st_size,
-                            before.st_mtime_ns, before.st_ctime_ns) !=
-                           (after.st_dev, after.st_ino, after.st_size,
-                            after.st_mtime_ns, after.st_ctime_ns)
-                        or (link.st_dev, link.st_ino) != (after.st_dev, after.st_ino)):
-                    raise ValueError("offline review changed during inspection")
-            finally:
-                os.close(reader)
+        identities: dict[str, tuple[int, int, int, int, int]] = {}
+        # Repeat a complete pinned-descriptor inspection before claiming a
+        # read-only VERIFIED. A file changed after its first inspection must
+        # not be accidentally accepted as still part of a consistent set.
+        for attempt in range(2):
+            if set(os.listdir(fd)) != set(payloads):
+                raise ValueError("offline workspace inventory changed")
+            for name, expected in sorted(payloads.items()):
+                reader = _artifact_fd(fd, name, len(expected))
+                try:
+                    before = os.fstat(reader)
+                    data = os.pread(reader, len(expected)+1, 0)
+                    after = os.fstat(reader)
+                    link = os.stat(name, dir_fd=fd, follow_symlinks=False)
+                    identity = (after.st_dev, after.st_ino, after.st_size,
+                                after.st_mtime_ns, after.st_ctime_ns)
+                    if (data != expected or before.st_size != len(expected)
+                            or (before.st_dev, before.st_ino, before.st_size,
+                                before.st_mtime_ns, before.st_ctime_ns) != identity
+                            or (link.st_dev, link.st_ino) != identity[:2]
+                            or (attempt == 1 and identities[name] != identity)):
+                        raise ValueError("offline review changed during inspection")
+                    if attempt == 0:
+                        identities[name] = identity
+                finally:
+                    os.close(reader)
         if set(os.listdir(fd)) != set(payloads):
             raise ValueError("offline review changed during inspection")
     finally:

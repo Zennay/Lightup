@@ -178,3 +178,26 @@ class UnpackPortableReviewTests(unittest.TestCase):
             target.chmod(0o600)
             self.assertEqual(cli("--verify-unpacked-review", archive,
                                  "--unpacked-review-dir", workspace)[0], 0)
+
+    def test_reopen_refuses_a_file_mutated_after_first_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            sources, saved = self.original_pair(base)
+            archive = self.zip_from_originals(base, sources, saved, "portable")
+            workspace = base / "review"
+            self.assertEqual(cli("--unpack-portable-review", archive,
+                                 "--unpack-output-dir", workspace)[0], 0)
+            original = unpack._artifact_fd
+            changed = [False]
+            def mutate_after_first_read(dirfd, name, maximum):
+                if name == "history.html" and not changed[0]:
+                    (workspace / "README.txt").write_bytes(b"SYNTHETIC MUTATION AFTER FIRST READ")
+                    changed[0] = True
+                return original(dirfd, name, maximum)
+            with patch.object(unpack, "_artifact_fd", side_effect=mutate_after_first_read):
+                status, output, error = cli("--verify-unpacked-review", archive,
+                                            "--unpacked-review-dir", workspace)
+            self.assertTrue(changed[0])
+            self.assertEqual((status, output), (2, ""))
+            self.assertIn("HOLD", error)
+            self.assertNotIn(str(base), error)
