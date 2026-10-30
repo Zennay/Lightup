@@ -31,6 +31,7 @@ from .lab_score_portable_focus import render_portable_focus, render_portable_pai
 from .lab_score_portable_queue import render_portable_queue, render_portable_queue_html
 from .lab_score_review_delta import (compare_portable_review_transports, render_comparison,
                                      publish_private_comparison, verify_private_comparison)
+from .lab_score_review_actions import build_review_actions, render_review_actions
 from .lab_score_queue_csv import render_queue_csv
 from .lab_score_queue_triage import (render_human_triage_plan, render_human_triage_html,
                                      render_human_triage_csv, render_human_focus_html)
@@ -497,7 +498,7 @@ def main(argv: list[str] | None = None) -> int:
                       help="read-only reinspection of existing owner-private five-file HUMAN two-ZIP room")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
-    parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "triage-csv", "review-csv"),
+    parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "triage-csv", "review-csv", "actions-json", "actions-csv", "actions-html"),
                         default="text")
     parser.add_argument("--focus-archive-index", type=int, metavar="N",
                         help="show anonymous original archive N in history or "
@@ -529,7 +530,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.compare_portable_reviews is not None or args.verify_comparison_workroom is not None:
         if (args.format not in (("text",) if (args.comparison_output_dir is not None
                                            and not args.export_comparison)
-                                else ("text", "json", "csv", "html"))
+                                else ("text", "json", "csv", "html",
+                                      "actions-json", "actions-csv", "actions-html"))
                 or (args.verify_comparison_workroom is not None
                     and args.comparison_output_dir is None)
                 or (args.export_comparison and
@@ -552,7 +554,11 @@ def main(argv: list[str] | None = None) -> int:
                 if args.export_comparison:
                     # Reconstruct canonical original-derived bytes, never reopen
                     # a mutable saved output pathname after full verification.
-                    output = render_comparison(comparison, args.format)
+                    if args.format.startswith("actions-"):
+                        actions=build_review_actions(comparison, *args.verify_comparison_workroom)
+                        output=render_review_actions(actions, args.format)
+                    else:
+                        output = render_comparison(comparison, args.format)
                 else:
                     output = ("LightUp HUMAN offline comparison: five saved files "
                               "reverified; no remediation or authorization.\n")
@@ -564,7 +570,11 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 comparison = compare_portable_review_transports(
                     *args.compare_portable_reviews)
-                output = render_comparison(comparison, args.format)
+                if args.format.startswith("actions-"):
+                    actions=build_review_actions(comparison, *args.compare_portable_reviews)
+                    output=render_review_actions(actions, args.format)
+                else:
+                    output = render_comparison(comparison, args.format)
         except Exception:
             print("LightUp HUMAN offline comparison: HOLD; original ZIPs not verified.",
                   file=sys.stderr)

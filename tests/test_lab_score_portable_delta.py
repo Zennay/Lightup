@@ -182,3 +182,58 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             run('--verify-comparison-workroom',self.hold,self.passing,
                 '--comparison-output-dir',self.root/'missing','--format','html')
+
+    def test_original_hold_action_plan_is_source_bound_and_human_only(self):
+        """The old original replay stays actionable even after candidate PASS."""
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        for fmt in ('actions-json','actions-csv','actions-html'):
+            code,out,err=run('--compare-portable-reviews',
+                             self.hold,self.passing,'--format',fmt)
+            self.assertEqual((code,err),(2,''))
+            self.assertNotIn(str(self.root),out)
+            if fmt=='actions-json':
+                data=json.loads(out)
+                self.assertEqual(data['review_status'],'HOLD')
+                self.assertEqual(data['hold_action_rows'],1)
+                self.assertEqual(len(data['actions']),2)
+                self.assertEqual(data['actions'][0]['transport'],'baseline')
+                self.assertEqual(data['actions'][0]['reason'],'evidence_reused')
+                self.assertEqual(data['actions'][0]['human_action'],
+                                 'RECAPTURE_INDEPENDENT_SYNTHETIC_ORIGINALS')
+                self.assertEqual(data['actions'][1]['transport'],
+                                 'both_independent_origins')
+                self.assertFalse(data['same_originals_proven'])
+                self.assertFalse(data['authorization_granted'])
+                self.assertFalse(data['remediation_verified'])
+            elif fmt=='actions-csv':
+                rows=list(csv.DictReader(io.StringIO(out)))
+                self.assertEqual(len(rows),2)
+                self.assertTrue(all(row['completion']=='NOT_VERIFIED'
+                                    and row['authorization_granted']=='false'
+                                    for row in rows))
+                self.assertEqual(rows[0]['reason'],'evidence_reused')
+            else:
+                admit_inert_html(out.encode())
+                self.assertIn('GLOBAL STATUS HOLD',out)
+                self.assertIn('baseline',out)
+                self.assertNotIn('<script',out)
+
+    def test_saved_room_rebuilds_human_action_plan_and_rejects_other_tampering(self):
+        room=self.root/'safe-action-source-room'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',room)
+        self.assertEqual((code,err),(2,''))
+        original={p.name:p.read_bytes() for p in room.iterdir()}
+        for fmt in ('actions-json','actions-csv','actions-html'):
+            status,content,err=run('--verify-comparison-workroom',
+                                   self.hold,self.passing,'--comparison-output-dir',room,
+                                   '--export-comparison','--format',fmt)
+            self.assertEqual((status,err),(2,''))
+            self.assertTrue(content)
+        self.assertEqual(original,{p.name:p.read_bytes() for p in room.iterdir()})
+        (room/'comparison.html').write_text('tampered even when JSON actions requested')
+        code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                         '--comparison-output-dir',room,
+                         '--export-comparison','--format','actions-json')
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)

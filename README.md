@@ -434,3 +434,28 @@ unrequested saved artifact, added file or missing private room fails closed
 with **zero output**. The original 28-pair baseline HOLD is never cleared
 by the candidate's local PASS, and no original identities, consent, research
 authority, target grants or deployment are inferred.
+
+### Cross-ZIP HUMAN follow-up actions (original HOLDs only)
+
+`lightup-lab-score-calibrate --compare-portable-reviews BASELINE_PRIVATE.zip
+CANDIDATE_PRIVATE.zip --format actions-json` generates a source-free,
+**HOLD-first, HUMAN-only** original-pair action plan. Equivalent
+`--format actions-csv` gives a formula-safe spreadsheet task list and
+`--format actions-html` renders an inert print/keyboard-friendly review page.
+Each HOLD is assigned to its own original anonymous transport and pair, with
+synthetic independent recapture or isolated scorer-drift reinspection as the
+next HUMAN task; the final row always requires independent review of both
+original private sources and their scope/permission boundaries. No ordinal
+from a baseline is matched to any candidate ordinal, even if both transports
+contain eight archives. Every action is NOT_VERIFIED and has **false**
+authorization and remediation flags. These actions cannot mark a HOLD solved.
+
+For an already-saved five-file comparison room, use
+`--verify-comparison-workroom BASELINE_PRIVATE.zip CANDIDATE_PRIVATE.zip
+--comparison-output-dir EXISTING_OWNER_PRIVATE_DIR --export-comparison
+--format actions-html` (or `actions-json` / `actions-csv`). Reverification
+first checks both original synthetic ZIPs and **all five** private files
+against their original bound bytes; then it derives the action plan from
+source again. Altering an unrequested saved member still fails closed with
+no action output. The prior five-file manifest/schema and outputs are
+unchanged. These exports do not contact external systems or grant approval.
