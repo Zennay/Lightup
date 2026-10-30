@@ -72,6 +72,7 @@ def fixed_loopback_socket_boundary():
     original_sendfile = socket.socket.sendfile
     original_listen = socket.socket.listen
     original_accept = socket.socket.accept
+    original_raw_accept = getattr(socket.socket, "_accept", None)
     original_getaddrinfo = socket.getaddrinfo
 
     def connect(sock, address):
@@ -109,6 +110,20 @@ def fixed_loopback_socket_boundary():
             client.close()
             raise
         return client, peer
+
+    def raw_accept(sock):
+        # CPython's public accept() eventually delegates to _accept(); a
+        # direct invocation otherwise sidesteps the public API policy.
+        require_loopback_listener(sock)
+        fd, peer = original_raw_accept(sock)
+        try:
+            _require_fixed_loopback_address(sock, peer)
+        except BaseException:
+            # Raw _accept returns an OS descriptor, not a socket object.
+            # Close a rejected descriptor so nothing escapes this boundary.
+            os.close(fd)
+            raise
+        return fd, peer
 
     def sendto(sock, *args):
         if len(args) not in (2, 3):
@@ -326,6 +341,8 @@ def fixed_loopback_socket_boundary():
         ):
             if hasattr(os, name):
                 stack.enter_context(patch.object(os, name, refuse_process))
+        if original_raw_accept is not None:
+            stack.enter_context(patch.object(socket.socket, "_accept", raw_accept))
         stack.enter_context(patch.multiple(socket.socket, **raw_receivers))
         stack.enter_context(patch.multiple(ssl.SSLSocket, **tls_overrides))
         stack.enter_context(patch.object(

@@ -86,6 +86,40 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                 self.assertEqual(address, ("127.0.0.1", 40001))
             good_client.close.assert_not_called()
 
+    def test_low_level_accept_refuses_prebound_public_listener_before_os_io(self):
+        from types import SimpleNamespace
+        if not hasattr(socket.socket, "_accept"):
+            self.skipTest("No Python raw _accept primitive available")
+        listener = SimpleNamespace(
+            family=socket.AF_INET,
+            getsockname=lambda: ("0.0.0.0", 47111),
+        )
+        with patch.object(socket.socket, "_accept",
+                          return_value=(7777, ("127.0.0.1", 55555))) as raw:
+            with fixed_loopback_socket_boundary():
+                with self.assertRaises(LabSocketBoundaryError):
+                    socket.socket._accept(listener)
+            raw.assert_not_called()
+
+    def test_low_level_accept_closes_rejected_public_peer_fd(self):
+        import os
+        from types import SimpleNamespace
+        if not hasattr(socket.socket, "_accept"):
+            self.skipTest("No Python raw _accept primitive available")
+        listener = SimpleNamespace(
+            family=socket.AF_INET,
+            getsockname=lambda: ("127.0.0.1", 47111),
+        )
+        with patch.object(socket.socket, "_accept",
+                          return_value=(7777, ("203.0.113.5", 55555))) as raw, patch.object(
+            os, "close", return_value=None
+        ) as close:
+            with fixed_loopback_socket_boundary():
+                with self.assertRaises(LabSocketBoundaryError):
+                    socket.socket._accept(listener)
+            raw.assert_called_once()
+            close.assert_called_once_with(7777)
+
     def test_preconnected_socket_send_paths_refuse_non_loopback_peer(self):
         # Synthetic peer only: never open a real external connection.
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -523,6 +557,28 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                 self.assertEqual(raised.exception.code, 2)
                 self.assertNotIn("PRIVATE", err.getvalue())
                 scorer.assert_not_called()
+
+    def test_canary_rejects_silent_raw_accept_guard_failure(self):
+        from contextlib import contextmanager
+        if not hasattr(socket.socket, "_accept"):
+            self.skipTest("No raw accept method on this runtime")
+        real = lab_canary.fixed_loopback_socket_boundary
+
+        @contextmanager
+        def missing_raw_accept_interceptor():
+            with real():
+                with patch.object(socket.socket, "_accept",
+                                  side_effect=TypeError("synthetic raw-accept call")):
+                    yield
+
+        with patch.object(lab_canary, "fixed_loopback_socket_boundary",
+                          side_effect=missing_raw_accept_interceptor):
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main([])
+        self.assertEqual(code, 2)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["failure_stage"], "setup")
 
     def test_canary_rejects_silent_listener_guard_failure(self):
         from contextlib import contextmanager

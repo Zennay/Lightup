@@ -116,7 +116,9 @@ def _verify_active_loopback_guard() -> bool:
         family=socket.AF_INET,
         getsockname=lambda: ("0.0.0.0", 45678),
     )
-    for method in ("listen", "accept"):
+    for method in ("listen", "accept", "_accept"):
+        if not hasattr(socket.socket, method):
+            continue
         try:
             getattr(socket.socket, method)(synthetic_listener)
         except LabSocketBoundaryError:
