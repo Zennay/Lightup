@@ -272,6 +272,29 @@ class SourceFreePrivateHistoryWorkroomTests(unittest.TestCase):
         self.assertEqual(self.zipfile.read_bytes(), other.read_bytes())
         self.assertNotIn(str(self.root).encode(), self.zipfile.read_bytes())
 
+    def test_zip_trailing_or_prefixed_unlisted_secret_bytes_refused(self):
+        self.export()
+        actual = self.zipfile.read_bytes()
+        for mutated in (
+            actual + b"UNLISTED ORIGINAL PRIVATE SOURCE PAYLOAD",
+            b"UNLISTED PRIVATE ORIGINAL PAYLOAD" + actual,
+        ):
+            self.zipfile.write_bytes(mutated)
+            self.zipfile.chmod(0o600)
+            target = self.root / "no-private-unpack"
+            code, receipt, raw = self.invoke(
+                "--unpack-private-history-workroom", self.zipfile,
+                "--private-workroom-output-dir", target, "--format", "json")
+            self.assertEqual(code, 2)
+            self.assertIs(receipt["transport_integrity"], False)
+            self.assertEqual(receipt["review_status"], "HOLD")
+            self.assertFalse(target.exists())
+            self.assertNotIn("UNLISTED ORIGINAL", raw)
+        self.zipfile.write_bytes(actual)
+        self.zipfile.chmod(0o600)
+        self.assertTrue(verify_private_history_workroom(
+            str(self.zipfile))["transport_integrity"])
+
     def test_rehashed_readme_approval_forgery_not_accepted(self):
         import stat
         self.export()

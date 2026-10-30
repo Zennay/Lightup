@@ -210,7 +210,9 @@ passwords, logs and IDs are never exported. HOLD stays HOLD globally.
 
 The independent verifier never extracts or executes the ZIP: it imposes
 limits on ZIP size, entry count, paths, permissions, compression and
-per-entry size; rejects duplicate/unexpected members, altered bytes,
+per-entry size; rejects noncanonical ZIP framing (including hidden
+self-extracting preambles, arbitrary appended secrets, directory gaps,
+entry extras or comments), duplicate/unexpected members, altered bytes,
 bogus original snapshot metrics, HTML *and README approval forgeries*
 even after unsigned hashes are recomputed, and changed index labels;
 then returns one anonymous

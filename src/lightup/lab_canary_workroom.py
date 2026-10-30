@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import stat
+import struct
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 from .lab_canary_handoff import _strict_json, _private_write
@@ -161,6 +162,48 @@ def export_private_history_workroom(source_dirs: list[str], output: str) -> dict
         raise
 
 
+def _admit_exact_zip_frame(raw: bytes, entries: list[ZipInfo], comment: bytes) -> None:
+    """Reject unlisted source bytes in ZIP preambles, gaps, comments or trailers.
+
+    zipfile accepts self-extracting stubs and trailing material by design.
+    A source-free deliverable must have no uninterpreted byte region.
+    """
+    if len(raw) < 22 or comment or raw[-22:-18] != b"PK\x05\x06":
+        raise ValueError("noncanonical portable ZIP ending")
+    (_, disk, central_disk, disk_count, total_count, size, start, comment_len) = (
+        struct.unpack_from("<4s4H2IH", raw, len(raw) - 22))
+    if (disk or central_disk or comment_len or disk_count != total_count
+            or total_count != len(entries) or start + size != len(raw) - 22):
+        raise ValueError("unexpected ZIP directory framing")
+    cursor = 0
+    for entry in sorted(entries, key=lambda item: item.header_offset):
+        if cursor != entry.header_offset or raw[cursor:cursor+4] != b"PK\x03\x04":
+            raise ValueError("hidden local ZIP preamble/gap")
+        flags, method = struct.unpack_from("<HH", raw, cursor + 6)
+        name_size, extra_size = struct.unpack_from("<HH", raw, cursor + 26)
+        name = entry.filename.encode("ascii")
+        if (flags or entry.flag_bits or method != ZIP_DEFLATED
+                or name_size != len(name) or extra_size
+                or raw[cursor+30:cursor+30+name_size] != name):
+            raise ValueError("noncanonical ZIP local header")
+        cursor += 30 + name_size + entry.compress_size
+    if cursor != start:
+        raise ValueError("unlisted ZIP source material before central directory")
+    cursor = start
+    for entry in entries:
+        if raw[cursor:cursor+4] != b"PK\x01\x02":
+            raise ValueError("unexpected central directory padding")
+        name_size, extra_size, comment_size = struct.unpack_from("<HHH", raw, cursor+28)
+        name = entry.filename.encode("ascii")
+        if (name_size != len(name) or extra_size or comment_size
+                or entry.extra or entry.comment
+                or raw[cursor+46:cursor+46+name_size] != name):
+            raise ValueError("noncanonical central directory metadata")
+        cursor += 46 + name_size
+    if cursor != len(raw) - 22:
+        raise ValueError("hidden source bytes in ZIP directory")
+
+
 def _read_private_history_workroom(path: str) -> tuple[dict, dict[str, bytes]]:
     """Pinned and validated bounded ZIP bytes; never re-read source after check."""
     original = Path(path).expanduser()
@@ -182,6 +225,7 @@ def _read_private_history_workroom(path: str) -> tuple[dict, dict[str, bytes]]:
     from io import BytesIO
     with ZipFile(BytesIO(raw)) as archive:
         names = archive.namelist()
+        _admit_exact_zip_frame(raw, archive.infolist(), archive.comment)
         if len(names) != len(set(names)):
             raise ValueError("duplicate original ZIP entry")
         header = archive.getinfo("transport-manifest.json")
