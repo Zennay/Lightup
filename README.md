@@ -128,4 +128,4 @@ The output directory must be new; saved runs can later be verified read-only wit
 
 Compare two independently saved loopback lab score runs offline with `lightup-lab-score-compare --baseline-dir RUN_A --candidate-dir RUN_B` (see [operator guide](docs/lab-score-suite.md)); comparison does not execute an assessment or grant authority.
 For a private-safe human-readable review, add `--format text` (JSON remains the default).
-For automatic two-run localhost calibration plus saved evidence verification, use `lightup-lab-score-calibrate --output-dir NEW_PRIVATE_DIR` (text by default, `--format json` optional); this never authorizes external assessment.
+For automatic two-run localhost calibration plus saved evidence verification, use `lightup-lab-score-calibrate --output-dir NEW_PRIVATE_DIR` (text by default, `--format json` optional); this never authorizes external assessment. Revisit both saved runs without rerunning fixtures with `--verify-output-dir EXISTING_PRIVATE_DIR`.

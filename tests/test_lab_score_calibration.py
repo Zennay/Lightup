@@ -59,6 +59,50 @@ class CalibrationTests(unittest.TestCase):
             self.assertIn("HOLD", err.getvalue())
             self.assertNotIn(base, err.getvalue())
 
+    def test_reopen_saved_calibration_without_running_producers(self):
+        with tempfile.TemporaryDirectory() as base:
+            root = Path(base) / "private"
+            self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            before = {(p.name, p.stat().st_ino, p.stat().st_mtime_ns)
+                      for d in root.iterdir() for p in d.iterdir()}
+            with patch.object(cal, "run_lab_score_suite",
+                              side_effect=AssertionError("producer invoked")):
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    status = cal.main(["--verify-output-dir", str(root),
+                                       "--format", "json"])
+            self.assertEqual(status, 0)
+            report = json.loads(out.getvalue())
+            self.assertTrue(report["passed"])
+            self.assertEqual(report["saved_runs"], ["baseline", "candidate"])
+            self.assertNotIn(base, out.getvalue())
+            self.assertEqual(before, {
+                (p.name, p.stat().st_ino, p.stat().st_mtime_ns)
+                for d in root.iterdir() for p in d.iterdir()
+            })
+
+    def test_verify_rejects_tampering_and_symlinked_saved_runs(self):
+        with tempfile.TemporaryDirectory() as base:
+            root = Path(base)/"private"
+            self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            (root/"EXTRA").write_text("unexpected")
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                status = cal.main(["--verify-output-dir", str(root)])
+            self.assertEqual(status, 2)
+            self.assertEqual(out.getvalue(), "")
+            self.assertNotIn(base, err.getvalue())
+            (root/"EXTRA").unlink()
+            (root/"candidate").rename(Path(base)/"outside")
+            (root/"candidate").symlink_to(Path(base)/"outside", target_is_directory=True)
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                status = cal.main(["--verify-output-dir", str(root)])
+            self.assertEqual(status, 2)
+            self.assertEqual(out.getvalue(), "")
+            self.assertIn("HOLD", err.getvalue())
+            self.assertNotIn(base, err.getvalue())
+
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:
             with patch.object(cal, "run_lab_score_suite", return_value={"passed": False}) as fn:

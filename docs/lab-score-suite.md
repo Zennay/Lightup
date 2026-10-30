@@ -138,6 +138,14 @@ run IDs, record hashes or evidence content. Use `--format json` for
 structured non-authorizing output; the legacy score-suite and comparator
 interfaces are unchanged.
 
+For read-only follow-up on saved baseline and candidate evidence, use
+`lightup-lab-score-calibrate --verify-output-dir ./existing-private-calibration`.
+This option never starts scorers or changes saved files, checks the owner-private
+root and exact two-child layout without following symlinks, and reuses the
+same pinned read-only artifact inspector and metric comparison. A missing,
+symlinked, extra, modified or non-private saved entry causes generic HOLD.
+`--output-dir` and `--verify-output-dir` are mutually exclusive.
+
 Any failed scorer, bad stored evidence, alias, score drift or pre-existing
 output directory yields exit 2 rather than a false PASS. Existing files
 are never overwritten; partial first-party data is retained privately for
