@@ -70,6 +70,11 @@ def _paths(first: str, second: str, directory: str) -> Path:
     sources = [Path(os.path.abspath(Path(p).expanduser())) for p in (first, second)]
     target = Path(os.path.abspath(Path(directory).expanduser()))
     for source in sources:
+        # An alias can defeat lexical source/workroom overlap checks and can
+        # be redirected after the original ZIP has been inspected. Keep the
+        # private packet bound to direct, non-symlink original source paths.
+        if Path(os.path.realpath(source)) != source:
+            raise ValueError("symbolic original ZIP source path rejected")
         if (target == source or target == source.parent
                 or target in source.parents or source in target.parents):
             raise ValueError("HUMAN focus workroom overlaps original evidence")

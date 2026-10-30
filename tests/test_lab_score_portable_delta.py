@@ -273,6 +273,29 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
             self.assertFalse(root.exists())
             self.assertIn('not verified',err)
 
+    def test_private_human_room_rejects_symbolic_original_zip_aliases(self):
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)), str(self.hold), str(self.passing))
+        row = actions['actions'][0]
+        selection = f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        alias_file = self.root / 'alias-to-original.zip'
+        alias_file.symlink_to(self.hold)
+        alias_parent = self.root / 'alias-to-original-parent'
+        alias_parent.symlink_to(self.hold.parent, target_is_directory=True)
+        for index, alias in enumerate((alias_file, alias_parent / self.hold.name)):
+            for operation in ('--publish-batch-focus', '--publish-action-focus'):
+                room = self.root / f'alias-rejected-{index}-{operation[2:]}'
+                flags = (['--focus-batch', selection] if operation == '--publish-batch-focus'
+                         else ['--focus-action', 'baseline',
+                               row['anonymous_previous'], row['anonymous_current']])
+                code, out, err = run(operation, alias, self.passing,
+                                     '--focus-room-dir', room, *flags)
+                self.assertEqual((code, out), (2, ''))
+                self.assertIn('not verified', err)
+                self.assertFalse(room.exists())
+
     def test_count_delta_never_closes_old_hold(self):
         status,out,err=run('--compare-portable-reviews',
                            self.hold,self.passing,'--format','json')
