@@ -311,6 +311,35 @@ class CalibrationTests(unittest.TestCase):
                 for item in report["comparison"]["capabilities"].values()))
             self.assertNotIn(base,str(report))
 
+    def test_archive_comparison_refuses_source_change_after_score_read(self):
+        # Both archives pass full receipt verification before comparison;
+        # a later changed child artifact must never yield archived PASS.
+        with tempfile.TemporaryDirectory() as base:
+            previous, current = Path(base)/"previous", Path(base)/"current"
+            self.assertTrue(cal.run_lab_score_calibration(previous)["passed"])
+            self.assertTrue(cal.run_lab_score_calibration(current)["passed"])
+            actual = cal.compare_score_runs
+            calls = []
+            def change_after_score_read(*args):
+                report = actual(*args)
+                calls.append(1)
+                if len(calls) == 3:
+                    (current/"candidate"/"http_baseline.sqlite3").write_bytes(b"modified")
+                return report
+            out, err = io.StringIO(), io.StringIO()
+            with patch.object(cal, "compare_score_runs",
+                              side_effect=change_after_score_read):
+                with redirect_stdout(out), redirect_stderr(err):
+                    status = cal.main(["--compare-calibrations",
+                                       str(previous), str(current),
+                                       "--format", "json"])
+            self.assertEqual(status, 2)
+            self.assertEqual(out.getvalue(), "")
+            self.assertEqual(json.loads(err.getvalue()),
+                             {"schema": cal.SCHEMA, "passed": False})
+            self.assertNotIn(base, err.getvalue())
+            self.assertEqual(len(calls), 3)
+
     def test_archive_comparison_rejects_root_replacement_mid_read(self):
         with tempfile.TemporaryDirectory() as base:
             previous, current = Path(base)/"previous", Path(base)/"current"

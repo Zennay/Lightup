@@ -171,8 +171,13 @@ synthetic local calibration, not authorization or independent review.
 ## Compare two saved calibrations across sessions (offline)
 
 `lightup-lab-score-calibrate --compare-calibrations PREVIOUS_PRIVATE_DIR CURRENT_PRIVATE_DIR`
-verifies both saved calibration roots, including their private source-file
-SHA-256 receipts, *before* comparing their two candidate observations.
+
+The command verifies both saved calibration roots, including their private
+source-file SHA-256 receipts, *before* comparing candidate observations.
+It snapshots all eight original source digests before the comparison and
+checks the same bytes and both private receipts again afterward. Any
+persistent source drift returns a path-free HOLD; unchanged root metadata
+or receipt inode alone does not establish source consistency.
 The output is a bounded text PASS/HOLD summary by default or private-safe
 JSON with `--format json`. No source paths, run IDs, evidence payloads,
 signatures, or private digests are emitted. Reused/copy-pasted evaluations

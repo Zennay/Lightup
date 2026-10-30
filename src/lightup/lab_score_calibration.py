@@ -206,6 +206,11 @@ def compare_saved_calibrations(
     latest = verify_saved_calibration(current)
     if old["passed"] is not True or latest["passed"] is not True:
         raise ValueError("archived calibration refused")
+    # Snapshot all eight original private source bindings *before* calculating
+    # the cross-archive score. Root/receipt identity alone cannot detect a
+    # modified artifact within an unchanged child directory.
+    old_hashes = _source_hashes(previous)
+    current_hashes = _source_hashes(current)
     comparison = compare_score_runs(
         previous / "candidate", current / "candidate",
     )
@@ -213,8 +218,6 @@ def compare_saved_calibrations(
     # independent: one can reuse the other's *baseline* while selecting a
     # new candidate. Reject repeated original evidence anywhere across all
     # four runs, without exposing the private source SHA-256 digests.
-    old_hashes = _source_hashes(previous)
-    current_hashes = _source_hashes(current)
     previous_sources = {
         digest for run in old_hashes.values() for digest in run.values()
     }
@@ -234,6 +237,15 @@ def compare_saved_calibrations(
     if identities != (_archived_root_identity(previous),
                       _archived_root_identity(current)):
         raise ValueError("saved archive substituted during comparison")
+    # Verify post-comparison bytes and their original receipts, not only the
+    # root metadata. An archived source can change after its first successful
+    # validation without modifying the calibration root or receipt inode.
+    if (old_hashes != _source_hashes(previous)
+            or current_hashes != _source_hashes(current)):
+        raise ValueError("saved archive evidence changed during comparison")
+    if (verify_saved_calibration(previous)["passed"] is not True
+            or verify_saved_calibration(current)["passed"] is not True):
+        raise ValueError("saved archive failed post-comparison verification")
     result = _receipt(comparison)
     result["saved_runs"] = ["previous", "current"]
     result["comparison_mode"] = "archived_calibrations"
