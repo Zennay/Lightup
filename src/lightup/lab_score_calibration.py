@@ -34,6 +34,7 @@ from .lab_score_review_delta import (compare_portable_review_transports, render_
                                      publish_private_comparison, verify_private_comparison)
 from .lab_score_review_actions import build_review_actions, render_review_actions
 from .lab_score_action_focus import render_action_focus
+from .lab_score_action_batch import render_human_batch
 from .lab_score_focus_workroom import publish_private_focus, verify_private_focus
 from .lab_score_queue_csv import render_queue_csv
 from .lab_score_queue_triage import (render_human_triage_plan, render_human_triage_html,
@@ -507,10 +508,12 @@ def main(argv: list[str] | None = None) -> int:
                       help="reverify private HUMAN HOLD pair room against both originals")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
-    parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "triage-csv", "review-csv", "actions-json", "actions-csv", "actions-html", "actions-brief-markdown", "actions-brief-html", "actions-focus-json", "actions-focus-text", "actions-focus-html"),
+    parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "triage-csv", "review-csv", "actions-json", "actions-csv", "actions-html", "actions-brief-markdown", "actions-brief-html", "actions-focus-json", "actions-focus-text", "actions-focus-html", "actions-batch-json", "actions-batch-markdown", "actions-batch-html"),
                         default="text")
     parser.add_argument("--focus-room-dir", metavar="DIR",
                         help="new/existing private source-local HOLD review room")
+    parser.add_argument("--focus-batch", metavar="SOURCE:PREVIOUS-CURRENT,...",
+                        help="select at most 16 existing original HOLD pairs for a HUMAN packet")
     parser.add_argument("--focus-action", nargs=3, metavar=("TRANSPORT", "PREVIOUS", "CURRENT"),
                         help="read-only single original source-local HOLD pair")
     parser.add_argument("--focus-archive-index", type=int, metavar="N",
@@ -551,7 +554,7 @@ def main(argv: list[str] | None = None) -> int:
                                        ("text", "actions-focus-json", "actions-focus-text", "actions-focus-html"))
                 or any((args.include_actions, args.include_briefs, args.export_comparison,
                         args.focus_archive_index is not None, args.focus_pair is not None,
-                        args.review_queue, args.include_triage,
+                        args.focus_batch is not None, args.review_queue, args.include_triage,
                         args.comparison_output_dir is not None,
                         args.queue_workroom_dir is not None,
                         args.html_output_dir is not None,
@@ -591,12 +594,19 @@ def main(argv: list[str] | None = None) -> int:
                                            and not args.export_comparison)
                                 else ("text", "json", "csv", "html",
                                       "actions-json", "actions-csv", "actions-html", "actions-brief-markdown", "actions-brief-html",
-                                      "actions-focus-json", "actions-focus-text", "actions-focus-html"))
+                                      "actions-focus-json", "actions-focus-text", "actions-focus-html",
+                                      "actions-batch-json", "actions-batch-markdown", "actions-batch-html"))
                 or (args.verify_comparison_workroom is not None
                     and args.comparison_output_dir is None)
                 or (args.export_comparison and
                     (args.verify_comparison_workroom is None
                      or args.comparison_output_dir is None))
+                or (args.focus_batch is not None and
+                    (args.focus_action is not None
+                     or args.format not in ("actions-batch-json", "actions-batch-markdown", "actions-batch-html")
+                     or (args.comparison_output_dir is not None and not args.export_comparison)))
+                or (args.focus_batch is None and
+                    args.format in ("actions-batch-json", "actions-batch-markdown", "actions-batch-html"))
                 or (args.focus_action is not None and
                     (args.format not in ("actions-focus-json", "actions-focus-text", "actions-focus-html")
                      or (args.comparison_output_dir is not None and not args.export_comparison)))
@@ -626,7 +636,9 @@ def main(argv: list[str] | None = None) -> int:
                     # a mutable saved output pathname after full verification.
                     if args.format.startswith("actions-"):
                         actions=build_review_actions(comparison, *args.verify_comparison_workroom)
-                        output=(render_action_focus(actions, *args.focus_action, args.format)
+                        output=(render_human_batch(actions, args.focus_batch, args.format)
+                                if args.focus_batch is not None else
+                                render_action_focus(actions, *args.focus_action, args.format)
                                 if args.focus_action is not None else
                                 render_action_brief(actions, args.format)
                                 if args.format.startswith("actions-brief-")
@@ -650,7 +662,9 @@ def main(argv: list[str] | None = None) -> int:
                     *args.compare_portable_reviews)
                 if args.format.startswith("actions-"):
                     actions=build_review_actions(comparison, *args.compare_portable_reviews)
-                    output=(render_action_focus(actions, *args.focus_action, args.format)
+                    output=(render_human_batch(actions, args.focus_batch, args.format)
+                                if args.focus_batch is not None else
+                                render_action_focus(actions, *args.focus_action, args.format)
                                 if args.focus_action is not None else
                                 render_action_brief(actions, args.format)
                                 if args.format.startswith("actions-brief-")
@@ -663,6 +677,8 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         sys.stdout.write(output)
         return 0 if comparison["review_status"] == "PASS" else 2
+    if args.focus_batch is not None:
+        parser.error("--focus-batch requires a two-ZIP comparison")
     if args.focus_action is not None:
         parser.error("--focus-action requires a two-ZIP comparison")
     if args.publish_queue_workroom is not None or args.verify_queue_workroom is not None:

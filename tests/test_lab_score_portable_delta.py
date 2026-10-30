@@ -151,6 +151,79 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
             self.assertFalse(room.exists())
             self.assertIn("not verified", err)
 
+    def test_selected_human_batch_real_zip_roundtrip(self):
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        items = build_review_actions(compare_portable_review_transports(
+            str(self.hold),str(self.passing)),str(self.hold),str(self.passing))
+        row = items['actions'][0]
+        selected = f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        room = self.root/'original-batch-workroom'
+        self.assertEqual(run('--compare-portable-reviews',self.hold,self.passing,
+                             '--comparison-output-dir',room,'--include-actions')[0],2)
+        saved = {p.name:p.read_bytes() for p in room.iterdir()}
+        for fmt in ('actions-batch-json','actions-batch-markdown','actions-batch-html'):
+            direct = run('--compare-portable-reviews',self.hold,self.passing,
+                         '--focus-batch',selected,'--format',fmt)
+            reopened = run('--verify-comparison-workroom',self.hold,self.passing,
+                           '--comparison-output-dir',room,'--export-comparison',
+                           '--focus-batch',selected,'--format',fmt)
+            self.assertEqual(direct,reopened)
+            self.assertEqual((direct[0],direct[2]),(2,''))
+            self.assertNotIn(str(self.root),direct[1])
+            if fmt.endswith('json'):
+                packet=json.loads(direct[1])
+                self.assertEqual(packet['selected_pair_count'],1)
+                self.assertFalse(packet['authorization_granted'])
+            if fmt.endswith('html'):
+                admit_inert_html(direct[1].encode())
+        self.assertEqual(saved,{p.name:p.read_bytes() for p in room.iterdir()})
+        for malformed in ('candidate:1-2',selected+','+selected,'baseline:01-2',
+                          'baseline:1-1','baseline:1-9',selected+';<script>'):
+            code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                             '--focus-batch',malformed,'--format','actions-batch-json')
+            self.assertEqual((code,out),(2,''))
+            self.assertIn('not verified',err)
+        (room/'actions.csv').write_text('fake approval')
+        code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                         '--comparison-output-dir',room,'--export-comparison',
+                         '--focus-batch',selected,'--format','actions-batch-json')
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)
+
+    def test_batch_multiple_canonical_original_holds(self):
+        from copy import deepcopy
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_action_batch import render_human_batch
+        original=build_review_actions(compare_portable_review_transports(
+            str(self.hold),str(self.passing)),str(self.hold),str(self.passing))
+        row=original['actions'][0]
+        self.assertEqual(row['reason'],'evidence_reused')
+        second=dict(row,anonymous_previous=1,anonymous_current=2,reason='score_drift',
+                    human_action='REVIEW_ISOLATED_SYNTHETIC_SCORER_DRIFT')
+        combined=deepcopy(original)
+        combined['actions'].insert(1,second)
+        combined['hold_action_rows']+=1
+        select=f"baseline:1-2,baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        packet=json.loads(render_human_batch(combined,select,'actions-batch-json'))
+        self.assertEqual(packet['selected_pair_count'],2)
+        self.assertEqual(packet['global_review_status'],'HOLD')
+        self.assertEqual(packet['selected_original_pairs'][0]['hold_reasons'],
+                         ['evidence_reused'])
+        for fmt in ('actions-batch-markdown','actions-batch-html'):
+            result=render_human_batch(combined,select,fmt)
+            self.assertIn('NOT_VERIFIED',result)
+            if fmt.endswith('html'):
+                admit_inert_html(result.encode())
+        self.assertFalse(packet['authorization_granted'])
+        bad=deepcopy(combined)
+        bad['review_status']='PASS'
+        with self.assertRaises(ValueError):
+            render_human_batch(bad,select,'actions-batch-json')
+        with self.assertRaises(ValueError):
+            render_human_batch(combined,select+','+select,'actions-batch-json')
+
     def test_count_delta_never_closes_old_hold(self):
         status,out,err=run('--compare-portable-reviews',
                            self.hold,self.passing,'--format','json')
