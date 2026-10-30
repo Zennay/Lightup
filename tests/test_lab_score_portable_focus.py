@@ -164,6 +164,18 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertIn("Review archive 1: 1 HOLD pairs", raw)
         self.assertNotIn(str(self.root), raw)
 
+    def test_queue_html_inert_and_global_hold_preserved(self):
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        code, html, err = invoke("--verify-portable-review", self.archive,
+                                 "--review-queue", "--format", "html")
+        self.assertEqual((code, err), (2, ""))
+        admit_inert_html(html.encode("utf-8"))
+        self.assertIn("GLOBAL STATUS HOLD", html)
+        self.assertIn("Pair 1-4", html)
+        self.assertLess(html.index("Pair 1-4"), html.index("Pair 1-2"))
+        self.assertNotIn("<script", html)
+        self.assertNotIn(str(self.root), html)
+
     def test_queue_rejects_tampered_transport_before_pair_projection(self):
         evil = self.root / "queue-tampered"
         evil.mkdir(mode=0o700)
@@ -217,6 +229,11 @@ class FocusedPortableReviewTests(unittest.TestCase):
                                   "--review-queue", "--format", "json")
         self.assertEqual((status, err), (2, ""))
         legacy_queue = json.loads(raw)
+        status, html, err = invoke("--verify-portable-review", legacy_zip,
+                                   "--review-queue", "--format", "html")
+        self.assertEqual(status, 2)
+        self.assertEqual(html, "")
+        self.assertIn("HTML NOT admitted", err)
         self.assertTrue(legacy_queue["review_queue_untrusted_legacy_claim"])
         self.assertFalse(legacy_queue["history_content_validated"])
         self.assertEqual(legacy_queue["review_status"], "HOLD")

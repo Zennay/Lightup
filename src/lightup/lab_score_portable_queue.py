@@ -58,3 +58,45 @@ def render_portable_queue(queue: dict[str, Any], *,
         lines.append(f"{prefix}{index}. pair {pair['previous_index']}-{pair['current_index']}: "
                      f"{pair['review_status']}; reasons: {reasons}.")
     return "\n".join(lines)
+
+
+def render_portable_queue_html(queue: dict[str, Any], *, global_status: str) -> str:
+    """Offline inert HTML from an already admitted canonical v3 ZIP only."""
+    if global_status not in ("PASS", "HOLD"):
+        raise ValueError("invalid global status")
+    from .lab_score_portable_html_safety import admit_inert_html
+    archives = "".join(
+        f"<tr><th scope='row'>Archive {a['index']}</th>"
+        f"<td>{a['hold_pairs']}</td><td>{a['reused_evidence_pairs']}</td>"
+        f"<td>{a['score_drift_pairs']}</td></tr>"
+        for a in queue["archive_priorities"])
+    pairs = "".join(
+        f"<tr><th scope='row'>Pair {p['previous_index']}-{p['current_index']}</th>"
+        f"<td>{p['review_status']}</td><td>{', '.join(p['hold_reasons']) or 'none'}</td></tr>"
+        for p in queue["pairs"])
+    html = ("<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+            "<meta http-equiv='Content-Security-Policy' "
+            "content=\"default-src 'none'; style-src 'unsafe-inline'\">"
+            "<title>LightUp offline review queue</title>"
+            "<style>body{font:1rem/1.5 system-ui;max-width:60rem;margin:2rem auto;"
+            "padding:0 1rem}table{width:100%;border-collapse:collapse;margin:1rem 0}"
+            "td,th{border:1px solid;padding:.6rem;text-align:left}</style>"
+            "</head><body><main id='content'><h1>Synthetic HUMAN review queue</h1>"
+            f"<p><strong>GLOBAL STATUS {global_status}</strong>. "
+            "One local PASS never clears a global HOLD.</p>"
+            f"<p>{queue['pairs_checked']} original pairs, {queue['hold_pairs']} HOLD. "
+            "Original source is NOT authenticated. HUMAN review only; "
+            "no consent, target contact, grants, scans or deployment.</p>"
+            "<section><h2>Archives needing review</h2><table>"
+            "<caption>Original archive priorities</caption><thead><tr>"
+            "<th scope='col'>Archive</th><th scope='col'>HOLD pairs</th>"
+            "<th scope='col'>Replay</th><th scope='col'>Drift</th>"
+            f"</tr></thead><tbody>{archives}</tbody></table></section>"
+            "<section><h2>Every original pair</h2><table>"
+            "<caption>HOLD-first comparison queue</caption><thead><tr>"
+            "<th scope='col'>Pair</th><th scope='col'>Status</th>"
+            f"<th scope='col'>Reasons</th></tr></thead><tbody>{pairs}</tbody>"
+            "</table></section></main></body></html>")
+    admit_inert_html(html.encode("utf-8"))
+    return html

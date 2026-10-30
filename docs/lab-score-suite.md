@@ -447,3 +447,10 @@ queues are labelled untrusted and **always HOLD**, never HTML review authority.
 Malformed/extra-byte ZIPs fail closed before any queue is emitted. The queue
 is only for HUMAN local triage; it cannot authorize scans, consent, grants,
 or deployment.
+
+A third read-only display, `--review-queue --format html`, prints an accessible
+scriptless browser document **only from canonical v3** source-free receipts.
+It keeps the global HOLD, all pair priorities and the non-authorization text.
+A legacy unsigned v1/v2 review can never emit HTML, even with matching digests.
+The command does not write to disk or access external targets. Save stdout
+only in an owner-private 0600 file if a permanent offline copy is needed.
