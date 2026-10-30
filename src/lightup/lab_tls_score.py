@@ -92,12 +92,28 @@ def _serve_fixture(
     server_context: ssl.SSLContext,
     expected_connections: int,
     accepted: list[int],
+    stop_requested: threading.Event,
 ) -> None:
     """Serve only the expected local handshakes; tolerate client trust rejection."""
     for _ in range(expected_connections):
-        try:
-            client, _peer = listener.accept()
-        except (OSError, socket.timeout):
+        # Short accept polls allow an early producer failure to stop this
+        # fixture before the enclosing network guard is removed. Retain
+        # the original 8-second per-handshake upper bound.
+        deadline = time.monotonic() + 8.0
+        while not stop_requested.is_set():
+            if time.monotonic() >= deadline:
+                return
+            try:
+                client, _peer = listener.accept()
+                break
+            except socket.timeout:
+                continue
+            except OSError:
+                return
+        else:
+            return
+        if stop_requested.is_set():
+            client.close()
             return
         accepted.append(1)
         try:
@@ -140,155 +156,165 @@ def _unprotected_run_lab_tls_baseline_score(state_path: str | Path = "lightup-la
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
             listener.bind((LOOPBACK, 0))
             listener.listen(_HANDSHAKES_PER_RUN)
-            listener.settimeout(8.0)
+            listener.settimeout(0.2)
             host, port = listener.getsockname()
             if host != LOOPBACK:
                 raise RuntimeError("TLS fixture did not bind exclusively to loopback")
 
             accepted: list[int] = []
+            stop_requested = threading.Event()
             server_thread = threading.Thread(
                 target=_serve_fixture,
-                args=(listener, server_context, _HANDSHAKES_PER_RUN, accepted),
+                args=(listener, server_context, _HANDSHAKES_PER_RUN,
+                      accepted, stop_requested),
                 daemon=True,
             )
             server_thread.start()
-
-            scenario = LabScenario(
-                scenario_id=SCENARIO_ID,
-                name="TLS baseline against an owned self-signed loopback fixture",
-                targets=(LOOPBACK,),
-                expected_findings=(
-                    ExpectedFinding(
-                        identifier=EXPECTED_CHECK,
-                        title="Self-signed certificate chain is not trusted",
-                        capability_id=tls_baseline.CAPABILITY_ID,
-                        severity=Severity.MEDIUM.value,
+            try:
+                scenario = LabScenario(
+                    scenario_id=SCENARIO_ID,
+                    name="TLS baseline against an owned self-signed loopback fixture",
+                    targets=(LOOPBACK,),
+                    expected_findings=(
+                        ExpectedFinding(
+                            identifier=EXPECTED_CHECK,
+                            title="Self-signed certificate chain is not trusted",
+                            capability_id=tls_baseline.CAPABILITY_ID,
+                            severity=Severity.MEDIUM.value,
+                        ),
                     ),
-                ),
-            )
-            state = StateStore(state_path)
-            registry = ToolRegistry()
-            tls_baseline.register(registry)
-            executor = ToolExecutor(registry, state)
-            harness = LabEvaluationHarness(engine_version=ENGINE_VERSION)
-            context = harness.start_run(scenario)
-            call = ToolCall(
-                tool_id=tls_baseline.TOOL_ID,
-                asset=LOOPBACK,
-                arguments=(("host", LOOPBACK), ("port", int(port))),
-            )
+                )
+                state = StateStore(state_path)
+                registry = ToolRegistry()
+                tls_baseline.register(registry)
+                executor = ToolExecutor(registry, state)
+                harness = LabEvaluationHarness(engine_version=ENGINE_VERSION)
+                context = harness.start_run(scenario)
+                call = ToolCall(
+                    tool_id=tls_baseline.TOOL_ID,
+                    asset=LOOPBACK,
+                    arguments=(("host", LOOPBACK), ("port", int(port))),
+                )
 
-            started = time.monotonic()
-            observations = (
-                executor.execute(context, call),
-                executor.execute(context, call),
-            )
-            runtime = round(time.monotonic() - started, 4)
-            default_trust_rejected = _default_trust_rejects_fixture(int(port))
-            server_thread.join(timeout=10.0)
-            server_completed = not server_thread.is_alive() and len(accepted) == _HANDSHAKES_PER_RUN
+                started = time.monotonic()
+                observations = (
+                    executor.execute(context, call),
+                    executor.execute(context, call),
+                )
+                runtime = round(time.monotonic() - started, 4)
+                default_trust_rejected = _default_trust_rejects_fixture(int(port))
+                server_thread.join(timeout=10.0)
+                server_completed = not server_thread.is_alive() and len(accepted) == _HANDSHAKES_PER_RUN
 
-            first_issues = _issue_ids(observations[0])
-            second_issues = _issue_ids(observations[1])
-            first_metadata = dict(observations[0].metadata)
-            second_metadata = dict(observations[1].metadata)
-            protocols = (first_metadata.get("protocol", ""), second_metadata.get("protocol", ""))
-            ciphers = (first_metadata.get("cipher", ""), second_metadata.get("cipher", ""))
-            repeat_stable = (
-                first_issues == second_issues
-                and protocols[0] == protocols[1]
-                and ciphers[0] == ciphers[1]
-            )
-            expected = scenario.expected_findings or ()
-            valid, invalid, missed = score_findings(expected, first_issues)
+                first_issues = _issue_ids(observations[0])
+                second_issues = _issue_ids(observations[1])
+                first_metadata = dict(observations[0].metadata)
+                second_metadata = dict(observations[1].metadata)
+                protocols = (first_metadata.get("protocol", ""), second_metadata.get("protocol", ""))
+                ciphers = (first_metadata.get("cipher", ""), second_metadata.get("cipher", ""))
+                repeat_stable = (
+                    first_issues == second_issues
+                    and protocols[0] == protocols[1]
+                    and ciphers[0] == ciphers[1]
+                )
+                expected = scenario.expected_findings or ()
+                valid, invalid, missed = score_findings(expected, first_issues)
 
-            evidence_ids = tuple(item.evidence_id for item in observations)
-            evidence_rows = tuple(state.get_evidence(item) for item in evidence_ids)
-            evidence_ok = len(set(evidence_ids)) == 2 and all(
-                row.run_id == context.run_id
-                and row.capability_id == tls_baseline.CAPABILITY_ID
-                and row.kind == "tls-baseline-observation"
-                and row.source == tls_baseline.TOOL_ID
-                and dict(row.metadata).get("is_lab") == "true"
-                for row in evidence_rows
-            )
-            exact_ground_truth = (
-                first_issues == (EXPECTED_CHECK,) and second_issues == (EXPECTED_CHECK,)
-            )
-            modern_protocol = all(protocol in {"TLSv1.2", "TLSv1.3"} for protocol in protocols)
-            strong_cipher = all(
-                cipher
-                and cipher != "unknown"
-                and not any(marker in cipher.upper() for marker in _WEAK_CIPHER_MARKERS)
-                for cipher in ciphers
-            )
+                evidence_ids = tuple(item.evidence_id for item in observations)
+                evidence_rows = tuple(state.get_evidence(item) for item in evidence_ids)
+                evidence_ok = len(set(evidence_ids)) == 2 and all(
+                    row.run_id == context.run_id
+                    and row.capability_id == tls_baseline.CAPABILITY_ID
+                    and row.kind == "tls-baseline-observation"
+                    and row.source == tls_baseline.TOOL_ID
+                    and dict(row.metadata).get("is_lab") == "true"
+                    for row in evidence_rows
+                )
+                exact_ground_truth = (
+                    first_issues == (EXPECTED_CHECK,) and second_issues == (EXPECTED_CHECK,)
+                )
+                modern_protocol = all(protocol in {"TLSv1.2", "TLSv1.3"} for protocol in protocols)
+                strong_cipher = all(
+                    cipher
+                    and cipher != "unknown"
+                    and not any(marker in cipher.upper() for marker in _WEAK_CIPHER_MARKERS)
+                    for cipher in ciphers
+                )
 
-            metrics = EvaluationMetrics(
-                valid_findings=valid,
-                invalid_findings=invalid,
-                missed_findings=missed,
-                coverage_assessed=1,
-                coverage_unknown=0,
-                evidence_quality=1.0 if evidence_ok else 0.0,
-                reproducibility=1.0 if repeat_stable else 0.0,
-                scope_violations=0,
-                policy_violations=0,
-                human_interventions=0,
-                tool_calls=len(observations),
-                runtime_seconds=runtime,
-            )
-            record = harness.record(
-                scenario,
-                context,
-                metrics,
-                notes=(
-                    "Ground truth is the hand-maintained untrusted-certificate-chain check. "
-                    "The self-signed certificate is generated ephemerally for 127.0.0.1; "
-                    "the score is not evidence of external target authorization."
-                ),
-                evidence_ids=evidence_ids,
-            )
-            record_id = state.add_lab_evaluation(record.to_dict())
-            persisted = state.get_lab_evaluation(record_id)
+                metrics = EvaluationMetrics(
+                    valid_findings=valid,
+                    invalid_findings=invalid,
+                    missed_findings=missed,
+                    coverage_assessed=1,
+                    coverage_unknown=0,
+                    evidence_quality=1.0 if evidence_ok else 0.0,
+                    reproducibility=1.0 if repeat_stable else 0.0,
+                    scope_violations=0,
+                    policy_violations=0,
+                    human_interventions=0,
+                    tool_calls=len(observations),
+                    runtime_seconds=runtime,
+                )
+                record = harness.record(
+                    scenario,
+                    context,
+                    metrics,
+                    notes=(
+                        "Ground truth is the hand-maintained untrusted-certificate-chain check. "
+                        "The self-signed certificate is generated ephemerally for 127.0.0.1; "
+                        "the score is not evidence of external target authorization."
+                    ),
+                    evidence_ids=evidence_ids,
+                )
+                record_id = state.add_lab_evaluation(record.to_dict())
+                persisted = state.get_lab_evaluation(record_id)
 
-            checks = {
-                "fixture_bound_to_loopback": host == LOOPBACK and scenario.targets == (LOOPBACK,),
-                "server_completed_expected_handshakes": server_completed,
-                "self_signed_chain_reported_untrusted": exact_ground_truth,
-                "default_trust_store_rejects_self_signed_fixture": default_trust_rejected,
-                "modern_tls_protocol_negotiated": modern_protocol,
-                "strong_cipher_negotiated": strong_cipher,
-                "repeat_observation_matches": repeat_stable,
-                "evidence_lineage_verified": evidence_ok,
-                "persisted_record_readback": (
-                    persisted["record_id"] == record_id
-                    and persisted["run_id"] == context.run_id
-                    and persisted["evidence_ids"] == list(evidence_ids)
-                ),
-            }
-            score = persisted["metrics"]
-            passed = (
-                all(checks.values())
-                and score["valid_findings"] == 1
-                and score["invalid_findings"] == 0
-                and score["missed_findings"] == 0
-                and score["policy_violations"] == 0
-                and score["reproducibility"] == 1.0
-                and score["evidence_quality"] == 1.0
-            )
-            return {
-                "passed": passed,
-                "scenario_id": SCENARIO_ID,
-                "run_id": context.run_id,
-                "fixture_host": LOOPBACK,
-                "fixture_port": int(port),
-                "observed_protocols": list(protocols),
-                "observed_ciphers": list(ciphers),
-                "observed_issues": [list(first_issues), list(second_issues)],
-                "checks": checks,
-                "evaluation_record_id": record_id,
-                "evaluation": persisted,
-            }
+                checks = {
+                    "fixture_bound_to_loopback": host == LOOPBACK and scenario.targets == (LOOPBACK,),
+                    "server_completed_expected_handshakes": server_completed,
+                    "self_signed_chain_reported_untrusted": exact_ground_truth,
+                    "default_trust_store_rejects_self_signed_fixture": default_trust_rejected,
+                    "modern_tls_protocol_negotiated": modern_protocol,
+                    "strong_cipher_negotiated": strong_cipher,
+                    "repeat_observation_matches": repeat_stable,
+                    "evidence_lineage_verified": evidence_ok,
+                    "persisted_record_readback": (
+                        persisted["record_id"] == record_id
+                        and persisted["run_id"] == context.run_id
+                        and persisted["evidence_ids"] == list(evidence_ids)
+                    ),
+                }
+                score = persisted["metrics"]
+                passed = (
+                    all(checks.values())
+                    and score["valid_findings"] == 1
+                    and score["invalid_findings"] == 0
+                    and score["missed_findings"] == 0
+                    and score["policy_violations"] == 0
+                    and score["reproducibility"] == 1.0
+                    and score["evidence_quality"] == 1.0
+                )
+                return {
+                    "passed": passed,
+                    "scenario_id": SCENARIO_ID,
+                    "run_id": context.run_id,
+                    "fixture_host": LOOPBACK,
+                    "fixture_port": int(port),
+                    "observed_protocols": list(protocols),
+                    "observed_ciphers": list(ciphers),
+                    "observed_issues": [list(first_issues), list(second_issues)],
+                    "checks": checks,
+                    "evaluation_record_id": record_id,
+                    "evaluation": persisted,
+                }
+
+            finally:
+                stop_requested.set()
+                # A TLS handshake can take up to 5 seconds. Keep the
+                # scoped loopback guard active until this owned thread stops.
+                server_thread.join(timeout=6.0)
+                if server_thread.is_alive():
+                    raise RuntimeError("Offline TLS fixture thread did not stop")
 
 
 

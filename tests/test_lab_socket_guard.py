@@ -646,6 +646,30 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
         self.assertEqual(result["failure_stage"], "setup")
         self.assertIs(result["external_target_authorized"], False)
 
+    def test_tls_fixture_worker_cleanup_when_observation_fails(self):
+        # The owned TLS server thread must stop while the in-process loopback
+        # boundary remains active, including an early producer exception.
+        import threading
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from lightup.ai.orchestration import ToolExecutor
+        existing = {id(t) for t in threading.enumerate()}
+        with TemporaryDirectory(prefix="lightup-tls-failure-cleanup-") as folder:
+            with patch.object(
+                ToolExecutor, "execute",
+                side_effect=RuntimeError("synthetic producer error"),
+            ):
+                with self.assertRaises(RuntimeError):
+                    lab_tls_score.run_lab_tls_baseline_score(
+                        Path(folder) / "state.db"
+                    )
+        live = [
+            t for t in threading.enumerate()
+            if id(t) not in existing and t.is_alive()
+            and "_serve_fixture" in t.name
+        ]
+        self.assertEqual(live, [], "TLS fixture thread escaped scorer failure")
+
     def test_canary_rejects_silent_socket_guard_failure(self):
         # All fixtures are fixed 127.0.0.1; no external socket is used.
         from contextlib import nullcontext
