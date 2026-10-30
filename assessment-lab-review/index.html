@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · Offline Lab Review Desk</title>
+<style>
+:root{color-scheme:light dark;--bg:#10151c;--panel:#18212b;--ink:#edf3f8;--muted:#aab8c7;--line:#344252;--accent:#8dc9ff;--warn:#ffd48a;--danger:#ffb1ad}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.shell{max-width:1120px;margin:0 auto;padding:24px}
+header{border-bottom:1px solid var(--line)}
+h1{font-size:clamp(1.6rem,4vw,2.4rem);line-height:1.15;margin:0 0 12px}
+h2{font-size:1.2rem;margin:0 0 12px}
+h3{font-size:1.05rem;margin:0 0 10px;overflow-wrap:anywhere}
+p{margin:8px 0}
+.muted{color:var(--muted)}
+.status-pill{display:inline-block;border:1px solid var(--warn);color:var(--warn);padding:3px 9px;border-radius:999px;font-size:.85rem;font-weight:700}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin:18px 0}
+.warning{border-left:4px solid var(--warn)}
+.warning strong{color:var(--warn)}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+label{display:block;font-weight:650;margin-bottom:6px}
+input[type=file],input[type=search],select,textarea{display:block;width:100%;font:inherit;color:var(--ink);background:#0d1218;border:1px solid #617184;border-radius:8px;padding:10px}
+textarea{min-height:90px;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{font:inherit;font-weight:700;padding:10px 14px;border:1px solid #617184;border-radius:9px;background:#253546;color:var(--ink);cursor:pointer}
+button.primary{background:#c4e4ff;color:#102030;border-color:#c4e4ff}
+button:disabled{opacity:.45;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+#status{padding:12px;border-radius:8px;border:1px solid var(--line);margin-top:14px;overflow-wrap:anywhere}
+#status[data-kind=error]{border-color:var(--danger);color:var(--danger)}
+#status[data-kind=success]{border-color:#85d6ae;color:#85d6ae}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.stat{padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:.9rem}
+#finding-list{display:grid;gap:14px;margin-top:16px}
+.finding{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.finding-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.severity{font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--line);border-radius:6px;padding:2px 7px}
+.severity[data-value=critical],.severity[data-value=high]{color:var(--danger);border-color:var(--danger)}
+.severity[data-value=medium]{color:var(--warn);border-color:var(--warn)}
+.target{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere;color:var(--muted)}
+.detail{margin:10px 0;overflow-wrap:anywhere}
+.detail strong{display:block;font-size:.88rem;color:var(--muted);margin-bottom:2px}
+.note-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(180px,1fr);gap:12px;margin-top:14px}
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
+.empty{padding:20px;border:1px dashed var(--line);border-radius:10px;color:var(--muted)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:640px){.shell{padding:16px}.panel{padding:14px}.note-grid{grid-template-columns:1fr}.actions button{width:100%}}
+</style>
+</head>
+<body>
+<header><div class="shell">
+  <h1>Offline assessment lab review desk</h1>
+  <span class="status-pill">HUMAN REVIEW ONLY · HOLD</span>
+  <p class="muted">Review an existing isolated-lab result without running tools, contacting targets, calling models or granting authority.</p>
+</div></header>
+<main class="shell">
+  <section class="panel warning" aria-labelledby="safety-title">
+    <h2 id="safety-title">Safety and source claims</h2>
+    <p><strong>Imported data is untrusted.</strong> The source is not authenticated, ground truth is not verified, consent is not checked, and no authorization, dispatch or release is granted here.</p>
+    <p>Zero findings and incomplete coverage do not establish safety. The desk never uploads or saves the source automatically. Only files you explicitly download leave this page.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="import-title">
+    <h2 id="import-title">1. Import the existing result</h2>
+    <div class="controls">
+      <div>
+        <label for="source-file">Private isolated-lab result JSON</label>
+        <input id="source-file" type="file" accept=".json,application/json">
+        <p class="muted">Maximum 8 MiB. Exact UTF-8 bytes are held in memory for source binding.</p>
+      </div>
+      <div>
+        <label for="resume-file">Optional previous human review return</label>
+        <input id="resume-file" type="file" accept=".json,application/json" disabled>
+        <p class="muted">Resume is all-or-nothing and requires the exact same source bytes.</p>
+      </div>
+    </div>
+    <div id="status" role="status" aria-live="polite" data-kind="info">No source loaded. Select one private result to begin.</div>
+    <div id="source-stats" class="stats" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="review-title">
+    <h2 id="review-title">2. Review and filter findings</h2>
+    <div class="controls">
+      <div>
+        <label for="severity-filter">Severity</label>
+        <select id="severity-filter"><option value="all">All severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select>
+      </div>
+      <div>
+        <label for="endpoint-filter">Endpoint</label>
+        <select id="endpoint-filter"><option value="all">All endpoints</option></select>
+      </div>
+      <div>
+        <label for="text-filter">Search findings</label>
+        <input id="text-filter" type="search" placeholder="Finding, check ID, impact, fix…">
+      </div>
+    </div>
+    <div class="controls" style="margin-top:14px">
+      <div>
+        <label for="stage">Human review stage</label>
+        <select id="stage"><option value="triage">Triage</option><option value="evidence_review">Evidence review</option><option value="follow_up">Follow-up preparation</option><option value="ready_for_human_review">Ready for human review</option></select>
+      </div>
+      <div>
+        <label for="reviewer-role">Reviewer role</label>
+        <select id="reviewer-role"><option value="lab_operator">Lab operator</option><option value="security_reviewer">Security reviewer</option><option value="privacy_reviewer">Privacy reviewer</option><option value="product_owner">Product owner</option></select>
+      </div>
+    </div>
+    <div id="finding-list" aria-live="polite"><div class="empty">Import an admitted result to show its finding cards.</div></div>
+  </section>
+
+  <section class="panel" aria-labelledby="export-title">
+    <h2 id="export-title">3. Explicit downloads</h2>
+    <p class="muted">The summary omits source identifiers and targets. The private return binds human notes to the exact input digest but omits raw findings, target values and evidence IDs.</p>
+    <div class="actions">
+      <button id="export-return" class="primary" type="button" disabled>Download human-only review return</button>
+      <button id="export-summary" type="button" disabled>Download privacy-minimal summary</button>
+      <button id="clear" type="button">Clear source and notes</button>
+    </div>
+  </section>
+</main>
+<footer><div class="shell">
+  <p>Offline by design: no remote assets, network calls, browser storage, worker dispatch, scan, grant, retest, remediation or deployment. SHA-256 proves byte identity only, not source authenticity or authorization.</p>
+</div></footer>
+<script>
+(function () {
+  "use strict";
+  const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
+  const MAX_RETURN_BYTES = 1024 * 1024;
+  const SEVERITIES = ["critical", "high", "medium", "low", "info"];
+  const COVERAGE = ["assessed", "partially_assessed", "not_applicable", "not_authorized", "unknown"];
+  const RETEST = ["not_tested", "fixed", "fix_pending", "regression"];
+  const STAGES = ["triage", "evidence_review", "follow_up", "ready_for_human_review"];
+  const ROLES = ["lab_operator", "security_reviewer", "privacy_reviewer", "product_owner"];
+  const REQUIRED_SOURCE_KEYS = ["run_id", "scenario_id", "targets", "plan", "denied", "elevation_requests", "findings", "coverage", "evaluation", "report_markdown"];
+  const OPTIONAL_SOURCE_KEYS = ["review", "review_skipped"];
+  const INT_METRICS = ["valid_findings", "invalid_findings", "missed_findings", "coverage_assessed", "coverage_unknown", "scope_violations", "policy_violations", "human_interventions", "tool_calls"];
+  const RATIO_METRICS = ["evidence_quality", "reproducibility", "remediation_quality", "retest_correctness", "false_positive_rate"];
+  const OTHER_METRICS = ["runtime_seconds", "compute_cost_usd"];
+  const sourceInput = document.getElementById("source-file");
+  const resumeInput = document.getElementById("resume-file");
+  const severityFilter = document.getElementById("severity-filter");
+  const endpointFilter = document.getElementById("endpoint-filter");
+  const textFilter = document.getElementById("text-filter");
+  const stageInput = document.getElementById("stage");
+  const roleInput = document.getElementById("reviewer-role");
+  const statusNode = document.getElementById("status");
+  const statsNode = document.getElementById("source-stats");
+  const listNode = document.getElementById("finding-list");
+  const exportReturnButton = document.getElementById("export-return");
+  const exportSummaryButton = document.getElementById("export-summary");
+  let state = null;
+  let followUps = new Map();
+  let sourceReadIntent = 0;
+  let resumeReadIntent = 0;
+
+  function fail() { throw new Error("not admitted"); }
+  function isObject(value) { return value !== null && typeof value === "object" && !Array.isArray(value); }
+  function exactKeys(value, required, optional) {
+    if (!isObject(value)) fail();
+    const keys = Object.keys(value);
+    const allowed = required.concat(optional || []);
+    if (!required.every(function (key) { return Object.prototype.hasOwnProperty.call(value, key); })) fail();
+    if (!keys.every(function (key) { return allowed.indexOf(key) !== -1; })) fail();
+    return value;
+  }
+  function boundedArray(value, max, min) {
+    if (!Array.isArray(value) || value.length > max || value.length < (min || 0)) fail();
+    return value;
+  }
+  function boundedText(value, max, nonempty) {
+    if (typeof value !== "string" || value.length > max || (nonempty && !value.trim())) fail();
+    return value;
+  }
+  function boundedInteger(value, max) {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > (max || 1000000000)) fail();
+    return value;
+  }
+  function boundedNumber(value, min, max) {
+    if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) fail();
+    return value;
+  }
+  function boundedTree(value, depth, budget) {
+    budget.count -= 1;
+    if (budget.count < 0 || depth > 64) fail();
+    if (Array.isArray(value)) {
+      if (value.length > 100000) fail();
+      value.forEach(function (item) { boundedTree(item, depth + 1, budget); });
+    } else if (isObject(value)) {
+      Object.keys(value).forEach(function (key) {
+        boundedText(key, 1024, false);
+        boundedTree(value[key], depth + 1, budget);
+      });
+    } else if (typeof value === "string") {
+      boundedText(value, 200000, false);
+    } else if (typeof value === "number") {
+      if (!Number.isFinite(value)) fail();
+      if (Number.isInteger(value) && Math.abs(value) > 1000000000000) fail();
+    } else if (value !== null && typeof value !== "boolean") {
+      fail();
+    }
+  }
+
+  function parseStrictJson(input) {
+    let cursor = 0;
+    let nodes = 0;
+    function whitespace() {
+      while (cursor < input.length && (input[cursor] === " " || input[cursor] === "\n" || input[cursor] === "\r" || input[cursor] === "\t")) cursor += 1;
+    }
+    function stringToken() {
+      const start = cursor;
+      if (input[cursor] !== '"') fail();
+      cursor += 1;
+      while (cursor < input.length) {
+        const ch = input[cursor];
+        const code = input.charCodeAt(cursor);
+        if (ch === '"') {
+          cursor += 1;
+          return JSON.parse(input.slice(start, cursor));
+        }
+        if (ch === "\\") {
+          cursor += 1;
+          if (cursor >= input.length) fail();
+          const escaped = input[cursor];
+          cursor += 1;
+          if (escaped === "u") {
+            if (!/^[0-9a-fA-F]{4}$/.test(input.slice(cursor, cursor + 4))) fail();
+            cursor += 4;
+          } else if ('"\\/bfnrt'.indexOf(escaped) === -1) {
+            fail();
+          }
+          continue;
+        }
+        if (code < 0x20) fail();
+        cursor += 1;
+      }
+      fail();
+    }
+    function numberToken() {
+      const start = cursor;
+      if (input[cursor] === "-") cursor += 1;
+      if (input[cursor] === "0") {
+        cursor += 1;
+      } else {
+        if (input[cursor] < "1" || input[cursor] > "9") fail();
+        while (input[cursor] >= "0" && input[cursor] <= "9") cursor += 1;
+      }
+      if (input[cursor] === ".") {
+        cursor += 1;
+        if (input[cursor] < "0" || input[cursor] > "9") fail();
+        while (input[cursor] >= "0" && input[cursor] <= "9") cursor += 1;
+      }
+      if (input[cursor] === "e" || input[cursor] === "E") {
+        cursor += 1;
+        if (input[cursor] === "+" || input[cursor] === "-") cursor += 1;
+        if (input[cursor] < "0" || input[cursor] > "9") fail();
+        while (input[cursor] >= "0" && input[cursor] <= "9") cursor += 1;
+      }
+      const value = Number(input.slice(start, cursor));
+      if (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value))) fail();
+      return value;
+    }
+    function value(depth) {
+      whitespace();
+      nodes += 1;
+      if (depth > 64 || nodes > 200000 || cursor >= input.length) fail();
+      const ch = input[cursor];
+      if (ch === "{") {
+        cursor += 1;
+        whitespace();
+        const output = Object.create(null);
+        if (input[cursor] === "}") { cursor += 1; return output; }
+        while (true) {
+          whitespace();
+          const key = stringToken();
+          if (Object.prototype.hasOwnProperty.call(output, key)) fail();
+          whitespace();
+          if (input[cursor] !== ":") fail();
+          cursor += 1;
+          output[key] = value(depth + 1);
+          whitespace();
+          if (input[cursor] === "}") { cursor += 1; return output; }
+          if (input[cursor] !== ",") fail();
+          cursor += 1;
+        }
+      }
+      if (ch === "[") {
+        cursor += 1;
+        whitespace();
+        const output = [];
+        if (input[cursor] === "]") { cursor += 1; return output; }
+        while (true) {
+          output.push(value(depth + 1));
+          whitespace();
+          if (input[cursor] === "]") { cursor += 1; return output; }
+          if (input[cursor] !== ",") fail();
+          cursor += 1;
+        }
+      }
+      if (ch === '"') return stringToken();
+      if (input.slice(cursor, cursor + 4) === "true") { cursor += 4; return true; }
+      if (input.slice(cursor, cursor + 5) === "false") { cursor += 5; return false; }
+      if (input.slice(cursor, cursor + 4) === "null") { cursor += 4; return null; }
+      if (ch === "-" || (ch >= "0" && ch <= "9")) return numberToken();
+      fail();
+    }
+    const result = value(0);
+    whitespace();
+    if (cursor !== input.length) fail();
+    return result;
+  }
+
+  function validateSource(source) {
+    const root = exactKeys(source, REQUIRED_SOURCE_KEYS, OPTIONAL_SOURCE_KEYS);
+    boundedTree(root, 0, {count: 200000});
+    boundedText(root.run_id, 256, true);
+    boundedText(root.scenario_id, 256, true);
+    boundedArray(root.targets, 16, 1).forEach(function (target) { boundedText(target, 2048, true); });
+
+    boundedArray(root.plan, 128, 0).forEach(function (call) {
+      const item = exactKeys(call, ["tool_id", "asset", "arguments"]);
+      boundedText(item.tool_id, 256, true);
+      boundedText(item.asset, 2048, false);
+      if (!isObject(item.arguments) || Object.keys(item.arguments).length > 128) fail();
+    });
+    boundedArray(root.denied, 256, 0).forEach(function (denial) {
+      const item = exactKeys(denial, ["tool_id", "reason"]);
+      boundedText(item.tool_id, 256, true);
+      boundedText(item.reason, 2048, true);
+    });
+    boundedArray(root.elevation_requests, 256, 0).forEach(function (item) { boundedText(item, 2048, false); });
+
+    const findings = boundedArray(root.findings, 2048, 0);
+    findings.forEach(function (finding) {
+      const item = exactKeys(finding, ["finding", "severity", "impact", "fix", "retest", "check_id", "capability_id", "target", "evidence_ids"]);
+      boundedText(item.finding, 10000, false);
+      if (SEVERITIES.indexOf(item.severity) === -1 || typeof item.severity !== "string") fail();
+      boundedText(item.impact, 20000, false);
+      boundedText(item.fix, 20000, false);
+      if (RETEST.indexOf(item.retest) === -1 || typeof item.retest !== "string") fail();
+      boundedText(item.check_id, 256, true);
+      boundedText(item.capability_id, 256, true);
+      boundedText(item.target, 2048, true);
+      boundedArray(item.evidence_ids, 64, 0).forEach(function (ref) { boundedText(ref, 512, true); });
+    });
+
+    const coverage = exactKeys(root.coverage, ["domains", "counts", "clean_bill_of_health", "note"]);
+    if (!isObject(coverage.domains) || Object.keys(coverage.domains).length > 256) fail();
+    const derived = Object.create(null);
+    COVERAGE.forEach(function (key) { derived[key] = 0; });
+    Object.keys(coverage.domains).forEach(function (key) {
+      boundedText(key, 256, true);
+      const status = coverage.domains[key];
+      if (COVERAGE.indexOf(status) === -1 || typeof status !== "string") fail();
+      derived[status] += 1;
+    });
+    const counts = exactKeys(coverage.counts, COVERAGE);
+    COVERAGE.forEach(function (key) {
+      boundedInteger(counts[key]);
+      if (counts[key] !== derived[key]) fail();
+    });
+    if (coverage.clean_bill_of_health !== null && coverage.clean_bill_of_health !== false) fail();
+    boundedText(coverage.note, 2048, false);
+
+    const evaluation = exactKeys(root.evaluation, ["record_id", "scenario_id", "run_id", "engine_version", "model_bindings", "metrics", "created_at", "notes"]);
+    ["record_id", "scenario_id", "run_id", "engine_version", "created_at"].forEach(function (key) { boundedText(evaluation[key], 256, true); });
+    if (evaluation.scenario_id !== root.scenario_id || evaluation.run_id !== root.run_id) fail();
+    boundedText(evaluation.notes, 10000, false);
+    boundedArray(evaluation.model_bindings, 64, 0).forEach(function (pair) {
+      boundedArray(pair, 2, 2);
+      boundedText(pair[0], 256, true);
+      boundedText(pair[1], 512, true);
+    });
+    const metrics = exactKeys(evaluation.metrics, INT_METRICS.concat(RATIO_METRICS, OTHER_METRICS));
+    INT_METRICS.forEach(function (key) { boundedInteger(metrics[key]); });
+    RATIO_METRICS.forEach(function (key) { boundedNumber(metrics[key], 0, 1); });
+    OTHER_METRICS.forEach(function (key) { boundedNumber(metrics[key], 0, 1000000000); });
+    boundedText(root.report_markdown, 200000, false);
+
+    if (Object.prototype.hasOwnProperty.call(root, "review")) {
+      if (Object.prototype.hasOwnProperty.call(root, "review_skipped")) fail();
+      const review = exactKeys(root.review, ["findings", "report", "model_bindings"]);
+      const reviewed = boundedArray(review.findings, 2048, 0);
+      if (reviewed.length !== findings.length) fail();
+      reviewed.forEach(function (candidate, index) {
+        const item = exactKeys(candidate, ["finding", "severity", "verdict", "remediation_advice"]);
+        boundedText(item.finding, 10000, false);
+        if (item.finding !== findings[index].finding || item.severity !== findings[index].severity) fail();
+        if (SEVERITIES.indexOf(item.severity) === -1 || typeof item.severity !== "string") fail();
+        boundedText(item.verdict, 10000, false);
+        boundedText(item.remediation_advice, 20000, false);
+      });
+      boundedText(review.report, 200000, false);
+      if (!isObject(review.model_bindings) || Object.keys(review.model_bindings).length > 64) fail();
+      Object.keys(review.model_bindings).forEach(function (key) {
+        boundedText(key, 256, true);
+        boundedText(review.model_bindings[key], 512, true);
+      });
+    }
+    if (Object.prototype.hasOwnProperty.call(root, "review_skipped")) boundedText(root.review_skipped, 2048, false);
+    return root;
+  }
+
+  async function sha256(raw) {
+    if (!window.crypto || !window.crypto.subtle || !window.TextEncoder || !window.TextDecoder) fail();
+    const digest = await window.crypto.subtle.digest("SHA-256", raw);
+    return Array.from(new Uint8Array(digest)).map(function (byte) { return byte.toString(16).padStart(2, "0"); }).join("");
+  }
+  function severityCounts(findings) {
+    const counts = Object.create(null);
+    SEVERITIES.forEach(function (key) { counts[key] = 0; });
+    findings.forEach(function (item) { counts[item.severity] += 1; });
+    return counts;
+  }
+  function setStatus(message, kind) {
+    statusNode.textContent = message;
+    statusNode.dataset.kind = kind || "info";
+  }
+  function make(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+  function detail(parent, label, value, className) {
+    const row = make("div", "detail" + (className ? " " + className : ""));
+    row.appendChild(make("strong", "", label));
+    row.appendChild(make("div", "", value === null || value === undefined ? "—" : String(value)));
+    parent.appendChild(row);
+  }
+  function setButtons() {
+    const loaded = Boolean(state);
+    resumeInput.disabled = !loaded;
+    exportReturnButton.disabled = !loaded;
+    exportSummaryButton.disabled = !loaded;
+  }
+  function renderStats() {
+    statsNode.replaceChildren();
+    if (!state) return;
+    const findings = state.source.findings;
+    const counts = severityCounts(findings);
+    const items = [
+      "Findings: " + findings.length,
+      "Coverage assessed: " + state.source.coverage.counts.assessed,
+      "Coverage unknown: " + state.source.coverage.counts.unknown,
+      "Source authenticated: no",
+      "Authorization granted: no",
+      "Follow-up questions: " + Array.from(followUps.values()).filter(function (v) { return v.question.trim(); }).length
+    ];
+    items.forEach(function (label) { statsNode.appendChild(make("span", "stat", label)); });
+    const countText = SEVERITIES.map(function (key) { return key + " " + counts[key]; }).join(" · ");
+    statsNode.appendChild(make("span", "stat", countText));
+  }
+  function renderEndpointOptions() {
+    endpointFilter.replaceChildren();
+    endpointFilter.appendChild(make("option", "", "All endpoints"));
+    endpointFilter.options[0].value = "all";
+    const targets = Array.from(new Set(state ? state.source.findings.map(function (f) { return f.target; }) : []));
+    targets.sort().forEach(function (target) {
+      const option = make("option", "", target);
+      option.value = target;
+      endpointFilter.appendChild(option);
+    });
+  }
+  function renderFindings() {
+    listNode.replaceChildren();
+    if (!state) {
+      listNode.appendChild(make("div", "empty", "Import an admitted result to show its finding cards."));
+      return;
+    }
+    const query = textFilter.value.trim().toLowerCase();
+    const severity = severityFilter.value;
+    const endpoint = endpointFilter.value;
+    const matches = [];
+    state.source.findings.forEach(function (finding, index) {
+      if (severity !== "all" && finding.severity !== severity) return;
+      if (endpoint !== "all" && finding.target !== endpoint) return;
+      const haystack = [finding.finding, finding.impact, finding.fix, finding.target, finding.check_id, finding.capability_id].join(" ").toLowerCase();
+      if (query && haystack.indexOf(query) === -1) return;
+      matches.push({finding:finding,index:index});
+    });
+    if (!matches.length) {
+      listNode.appendChild(make("div", "empty", "No findings match these filters. The source result itself is unchanged."));
+      return;
+    }
+    matches.forEach(function (entry) {
+      const f = entry.finding;
+      const card = make("article", "finding");
+      const head = make("div", "finding-head");
+      head.appendChild(make("span", "severity", f.severity));
+      head.lastChild.dataset.value = f.severity;
+      head.appendChild(make("h3", "", (entry.index + 1) + ". " + f.finding));
+      card.appendChild(head);
+      detail(card, "Endpoint declared by source", f.target, "target");
+      detail(card, "Impact", f.impact);
+      detail(card, "Recorded fix", f.fix);
+      detail(card, "Retest state", f.retest);
+      detail(card, "Check / capability", f.check_id + " / " + f.capability_id);
+      detail(card, "Evidence references (IDs only)", f.evidence_ids.join(", ") || "None recorded");
+      const current = followUps.get(entry.index) || {question:"",disposition:"open"};
+      const noteGrid = make("div", "note-grid");
+      const questionWrap = make("div");
+      const label = make("label", "", "Human follow-up question");
+      label.htmlFor = "follow-up-" + entry.index;
+      questionWrap.appendChild(label);
+      const textarea = make("textarea");
+      textarea.id = label.htmlFor;
+      textarea.maxLength = 2000;
+      textarea.placeholder = "Record a question for a human reviewer; no action is executed.";
+      textarea.value = current.question;
+      textarea.addEventListener("input", function () {
+        const previous = followUps.get(entry.index) || {question:"",disposition:"open"};
+        followUps.set(entry.index, {question:textarea.value,disposition:previous.disposition});
+        renderStats();
+      });
+      questionWrap.appendChild(textarea);
+      noteGrid.appendChild(questionWrap);
+      const dispositionWrap = make("div");
+      const dispositionLabel = make("label", "", "Follow-up disposition");
+      dispositionLabel.htmlFor = "disposition-" + entry.index;
+      dispositionWrap.appendChild(dispositionLabel);
+      const select = make("select");
+      select.id = dispositionLabel.htmlFor;
+      [["open","Open"],["answered","Answered by human"],["defer","Defer to human"]].forEach(function (pair) {
+        const option = make("option", "", pair[1]);
+        option.value = pair[0];
+        select.appendChild(option);
+      });
+      select.value = current.disposition;
+      select.addEventListener("change", function () {
+        const previous = followUps.get(entry.index) || {question:"",disposition:"open"};
+        followUps.set(entry.index, {question:previous.question,disposition:select.value});
+        renderStats();
+      });
+      dispositionWrap.appendChild(select);
+      noteGrid.appendChild(dispositionWrap);
+      card.appendChild(noteGrid);
+      listNode.appendChild(card);
+    });
+  }
+  function resetWorkspace(clearInputs) {
+    sourceReadIntent += 1;
+    resumeReadIntent += 1;
+    state = null;
+    followUps = new Map();
+    resumeInput.value = "";
+    stageInput.value = "triage";
+    roleInput.value = "lab_operator";
+    severityFilter.value = "all";
+    textFilter.value = "";
+    endpointFilter.replaceChildren();
+    const all = make("option", "", "All endpoints");
+    all.value = "all";
+    endpointFilter.appendChild(all);
+    statsNode.replaceChildren();
+    renderFindings();
+    setButtons();
+    if (clearInputs) {
+      sourceInput.value = "";
+      resumeInput.value = "";
+    }
+  }
+  function sourceSummary() {
+    const source = state.source;
+    return {
+      schema: "lightup.lab_review.summary.v1",
+      status: "REVIEW_ONLY",
+      source_authenticated: false,
+      ground_truth_verified: false,
+      client_consent_verified: false,
+      operator_consent_verified: false,
+      authorization_granted: false,
+      dispatch_allowed: false,
+      release_allowed: false,
+      finding_count: source.findings.length,
+      severity_counts: severityCounts(source.findings),
+      coverage_counts: source.coverage.counts,
+      review_included: Object.prototype.hasOwnProperty.call(source, "review"),
+      review_skipped: Object.prototype.hasOwnProperty.call(source, "review_skipped")
+    };
+  }
+  function exportReturn() {
+    const source = state.source;
+    const entries = Array.from(followUps.entries()).map(function (pair) {
+      return {index:pair[0],value:pair[1]};
+    }).filter(function (entry) {
+      return entry.value.question.trim() || entry.value.disposition !== "open";
+    }).sort(function (a,b) { return a.index - b.index; });
+    const notes = entries.map(function (entry) {
+      return {
+        finding_index: entry.index,
+        check_id: source.findings[entry.index].check_id,
+        question: entry.value.question,
+        disposition: entry.value.disposition
+      };
+    });
+    return {
+      schema: "lightup.assessment_lab_review.return.v1",
+      status: "HUMAN_REVIEW_ONLY",
+      source_binding: {
+        sha256: state.digest,
+        size_bytes: state.raw.length,
+        finding_count: source.findings.length,
+        source_schema: "lightup.lab_assessment_result.v1"
+      },
+      stage: stageInput.value,
+      reviewer_role: roleInput.value,
+      human_review_only: true,
+      source_authenticated: false,
+      ground_truth_verified: false,
+      client_consent_verified: false,
+      operator_consent_verified: false,
+      authorization_granted: false,
+      dispatch_allowed: false,
+      release_allowed: false,
+      summary: {
+        finding_count: source.findings.length,
+        severity_counts: severityCounts(source.findings),
+        note_count: notes.filter(function (item) { return item.question.trim(); }).length
+      },
+      follow_ups: notes
+    };
+  }
+  function downloadJson(value, filename) {
+    const blob = new Blob([JSON.stringify(value, null, 2) + "\n"], {type:"application/json;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const anchor = make("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+  function validateReturn(value) {
+    const required = ["schema","status","source_binding","stage","reviewer_role","human_review_only","source_authenticated","ground_truth_verified","client_consent_verified","operator_consent_verified","authorization_granted","dispatch_allowed","release_allowed","summary","follow_ups"];
+    const result = exactKeys(value, required, []);
+    if (result.schema !== "lightup.assessment_lab_review.return.v1" || result.status !== "HUMAN_REVIEW_ONLY") fail();
+    if (result.human_review_only !== true) fail();
+    ["source_authenticated","ground_truth_verified","client_consent_verified","operator_consent_verified","authorization_granted","dispatch_allowed","release_allowed"].forEach(function (key) {
+      if (result[key] !== false) fail();
+    });
+    if (STAGES.indexOf(result.stage) === -1 || ROLES.indexOf(result.reviewer_role) === -1) fail();
+    const binding = exactKeys(result.source_binding, ["sha256","size_bytes","finding_count","source_schema"], []);
+    if (binding.sha256 !== state.digest || binding.size_bytes !== state.raw.length || binding.finding_count !== state.source.findings.length || binding.source_schema !== "lightup.lab_assessment_result.v1") fail();
+    const summary = exactKeys(result.summary, ["finding_count","severity_counts","note_count"], []);
+    if (summary.finding_count !== state.source.findings.length) fail();
+    const expectedCounts = severityCounts(state.source.findings);
+    const counts = exactKeys(summary.severity_counts, SEVERITIES, []);
+    SEVERITIES.forEach(function (key) { boundedInteger(counts[key]); if (counts[key] !== expectedCounts[key]) fail(); });
+    const entries = boundedArray(result.follow_ups, state.source.findings.length, 0);
+    const candidate = new Map();
+    let noteCount = 0;
+    entries.forEach(function (entry) {
+      const item = exactKeys(entry, ["finding_index","check_id","question","disposition"], []);
+      boundedInteger(item.finding_index, Math.max(0, state.source.findings.length - 1));
+      if (item.finding_index >= state.source.findings.length || candidate.has(item.finding_index)) fail();
+      if (item.check_id !== state.source.findings[item.finding_index].check_id) fail();
+      boundedText(item.question, 2000, false);
+      if (["open","answered","defer"].indexOf(item.disposition) === -1) fail();
+      if (item.question.trim()) noteCount += 1;
+      candidate.set(item.finding_index, {question:item.question,disposition:item.disposition});
+    });
+    boundedInteger(summary.note_count, state.source.findings.length);
+    if (summary.note_count !== noteCount) fail();
+    return {stage:result.stage,role:result.reviewer_role,notes:candidate};
+  }
+
+  sourceInput.addEventListener("change", async function () {
+    const file = sourceInput.files && sourceInput.files[0];
+    resetWorkspace(false);
+    const intent = sourceReadIntent;
+    if (!file) { setStatus("No source loaded.", "info"); return; }
+    try {
+      if (file.size < 1 || file.size > MAX_SOURCE_BYTES) fail();
+      const raw = new Uint8Array(await file.arrayBuffer());
+      if (intent !== sourceReadIntent) return;
+      if (raw.length !== file.size) fail();
+      const decoded = new TextDecoder("utf-8", {fatal:true,ignoreBOM:true}).decode(raw);
+      const source = validateSource(parseStrictJson(decoded));
+      const digest = await sha256(raw);
+      if (intent !== sourceReadIntent) return;
+      state = {raw:raw,source:source,digest:digest};
+      renderEndpointOptions();
+      renderStats();
+      renderFindings();
+      setButtons();
+      setStatus("Source admitted for human-only review. Claims remain unauthenticated; no action is available.", "success");
+    } catch (_error) {
+      if (intent !== sourceReadIntent) return;
+      resetWorkspace(true);
+      setStatus("HOLD: source could not be admitted. No findings or notes were retained.", "error");
+    }
+  });
+  resumeInput.addEventListener("change", async function () {
+    const file = resumeInput.files && resumeInput.files[0];
+    const intent = ++resumeReadIntent;
+    followUps = new Map();
+    stageInput.value = "triage";
+    roleInput.value = "lab_operator";
+    renderFindings();
+    renderStats();
+    if (!state || !file) { setStatus("HOLD: import the exact source before resuming.", "error"); return; }
+    const sourceIntent = sourceReadIntent;
+    try {
+      if (file.size < 1 || file.size > MAX_RETURN_BYTES) fail();
+      const raw = new Uint8Array(await file.arrayBuffer());
+      if (intent !== resumeReadIntent || sourceIntent !== sourceReadIntent || !state) return;
+      const decoded = new TextDecoder("utf-8", {fatal:true,ignoreBOM:true}).decode(raw);
+      const receipt = parseStrictJson(decoded);
+      const resumed = validateReturn(receipt);
+      if (intent !== resumeReadIntent || sourceIntent !== sourceReadIntent || !state) return;
+      followUps = resumed.notes;
+      stageInput.value = resumed.stage;
+      roleInput.value = resumed.role;
+      renderFindings();
+      renderStats();
+      setStatus("Human notes resumed against identical source bytes. This does not establish consent or authorization.", "success");
+    } catch (_error) {
+      if (intent !== resumeReadIntent || sourceIntent !== sourceReadIntent) return;
+      followUps = new Map();
+      resumeInput.value = "";
+      stageInput.value = "triage";
+      roleInput.value = "lab_operator";
+      renderFindings();
+      renderStats();
+      setStatus("HOLD: review return rejected. No notes were applied because source binding or schema did not match.", "error");
+    }
+  });
+  [severityFilter, endpointFilter, textFilter].forEach(function (control) {
+    control.addEventListener("input", renderFindings);
+    control.addEventListener("change", renderFindings);
+  });
+  exportReturnButton.addEventListener("click", function () {
+    if (!state) return;
+    const value = exportReturn();
+    const serialized = JSON.stringify(value, null, 2) + "\n";
+    if (new TextEncoder().encode(serialized).length > MAX_RETURN_BYTES) {
+      setStatus("HOLD: review return exceeds the 1 MiB resume limit. Shorten follow-up questions before exporting.", "error");
+      return;
+    }
+    downloadJson(value, "lightup-lab-review-return.json");
+  });
+  exportSummaryButton.addEventListener("click", function () {
+    if (state) downloadJson(sourceSummary(), "lightup-lab-summary.json");
+  });
+  document.getElementById("clear").addEventListener("click", function () {
+    resetWorkspace(true);
+    setStatus("Cleared. Source bytes and notes are no longer referenced by this page.", "info");
+  });
+  setButtons();
+})();
+</script>
+</body>
+</html>
