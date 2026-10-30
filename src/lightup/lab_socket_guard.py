@@ -93,6 +93,21 @@ def fixed_loopback_socket_boundary():
         require_connected_loopback(sock)
         return original_sendfile(sock, *args, **kwargs)
 
+    def guarded_reader(original):
+        def read(sock, *args, **kwargs):
+            # recv/recv_into and their msg/from variants can consume data
+            # from a socket connected before the lab boundary was entered.
+            require_connected_loopback(sock)
+            return original(sock, *args, **kwargs)
+        return read
+
+    raw_receivers = {
+        name: guarded_reader(getattr(socket.socket, name))
+        for name in ("recv", "recv_into", "recvfrom", "recvfrom_into",
+                     "recvmsg", "recvmsg_into")
+        if hasattr(socket.socket, name)
+    }
+
     def getaddrinfo(host, *args, **kwargs):
         if host != "127.0.0.1":
             raise LabSocketBoundaryError("Offline lab refuses DNS and non-loopback hosts")
@@ -205,6 +220,10 @@ def fixed_loopback_socket_boundary():
     tls_overrides.update({
         name: guarded_tls_connector(name) for name in ("connect", "connect_ex")
     })
+    tls_overrides.update({
+        name: guarded_reader(getattr(ssl.SSLSocket, name))
+        for name in ("recv", "recv_into", "read")
+    })
 
     # ExitStack also avoids the compiler's static nesting limit while
     # restoring every process-global patch even on a scorer exception.
@@ -244,6 +263,7 @@ def fixed_loopback_socket_boundary():
         ):
             if hasattr(os, name):
                 stack.enter_context(patch.object(os, name, refuse_process))
+        stack.enter_context(patch.multiple(socket.socket, **raw_receivers))
         stack.enter_context(patch.multiple(ssl.SSLSocket, **tls_overrides))
         stack.enter_context(patch.object(
             socket.socket, "sendmsg",

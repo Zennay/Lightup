@@ -240,6 +240,41 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                         subprocess.Popen(valid, shell=True)
                 original.assert_called_once_with(valid)
 
+    def test_preconnected_socket_receive_paths_check_peer_before_io(self):
+        # Synthetic peer identities; no public socket ever opened.
+        from types import SimpleNamespace
+        fake = SimpleNamespace(family=socket.AF_INET,
+                               getpeername=lambda: ("203.0.113.5", 443))
+        for method, args in (
+            ("recv", (1,)), ("recv_into", (bytearray(2),)),
+            ("recvfrom", (1,)), ("recvfrom_into", (bytearray(2),)),
+            ("recvmsg", (1,)), ("recvmsg_into", ([bytearray(2)],)),
+        ):
+            if not hasattr(socket.socket, method):
+                continue
+            with self.subTest(method=method), patch.object(
+                socket.socket, method, return_value=b"x"
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(socket.socket, method)(fake, *args)
+                underlying.assert_not_called()
+
+    def test_preconnected_tls_read_paths_check_peer_before_io(self):
+        import ssl
+        from types import SimpleNamespace
+        fake = SimpleNamespace(family=socket.AF_INET,
+                               getpeername=lambda: ("203.0.113.5", 443))
+        for method, args in (("recv", (1,)), ("recv_into", (bytearray(2),)),
+                             ("read", (1,))):
+            with self.subTest(method=method), patch.object(
+                ssl.SSLSocket, method, return_value=b"x"
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(ssl.SSLSocket, method)(fake, *args)
+                underlying.assert_not_called()
+
     def test_non_getaddrinfo_dns_and_reverse_dns_are_blocked(self):
         resolver_names = (
             "gethostbyname", "gethostbyname_ex", "gethostbyaddr",
