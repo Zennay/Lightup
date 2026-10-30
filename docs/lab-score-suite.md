@@ -298,3 +298,14 @@ HOLD). A modified saved report, symlink, extra private artifact or
 changed original archive emits generic HOLD without output and without
 rewriting the original inputs or review. This is reproduction of local
 synthetic evidence, not a public signature or real assessment authority.
+
+
+### Never write inside original evidence
+
+The private HTML output directory must not be inside, equal to, or an
+ancestor of any original archived calibration directory. The check happens
+before any output directory is created: placing the report inside an
+original `baseline` or `candidate` tree would otherwise mutate verified
+source evidence and falsely report success. Both save and read-only
+reverification reject overlap with a generic HOLD. Use a separate owner-only
+report directory alongside, not underneath, the archived originals.

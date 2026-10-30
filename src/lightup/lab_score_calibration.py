@@ -432,6 +432,24 @@ def _private_source_binding(roots: list[Path], html: str) -> dict[str, Any]:
     }
 
 
+def _refuse_review_source_overlap(roots: list[Path],
+                                  report_dir: str | Path) -> None:
+    """Keep report output and all original archived evidence disjoint.
+
+    Private parent components are no-follow elsewhere. Reject lexical
+    overlap before creating a destination: publishing a report inside an
+    original archive changes the very evidence we just verified.
+    """
+    candidate = Path(report_dir).expanduser()
+    if ".." in candidate.parts:
+        raise ValueError("parent traversal rejected")
+    candidate = Path(os.path.abspath(candidate))
+    for original in roots:
+        if (candidate == original or original in candidate.parents
+                or candidate in original.parents):
+            raise ValueError("review directory overlaps original evidence")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="lightup-lab-score-calibrate",
@@ -499,9 +517,11 @@ def main(argv: list[str] | None = None) -> int:
         try:
             html = render_history_html(result)
             if args.html_output_dir is not None:
+                _refuse_review_source_overlap(roots, args.html_output_dir)
                 source_binding = _private_source_binding(roots, html)
                 save_private_review(args.html_output_dir, html, source_binding)
             elif args.verify_html_output_dir is not None:
+                _refuse_review_source_overlap(roots, args.verify_html_output_dir)
                 source_binding = _private_source_binding(roots, html)
                 verify_private_review(args.verify_html_output_dir, html, source_binding)
                 print("LightUp saved synthetic HTML: VERIFIED; original comparison "

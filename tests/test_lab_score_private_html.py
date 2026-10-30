@@ -49,6 +49,45 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
                               after.st_ctime_ns))
             self.assertNotIn(base, out)
 
+    def test_review_output_cannot_mutate_original_archives(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            original = roots[0]
+            for destination in (original,
+                                original/"candidate"/"private-review",
+                                original/"baseline"/"private-review"):
+                code, out, err = self.invoke(roots, destination)
+                self.assertEqual(code, 2)
+                self.assertEqual(out, "")
+                self.assertIn("not saved", err)
+                self.assertNotIn(base, err)
+                self.assertTrue(cal.verify_saved_calibration(original)["passed"])
+                self.assertFalse((original/"candidate"/"private-review").exists())
+                self.assertFalse((original/"baseline"/"private-review").exists())
+
+    def test_review_output_rejects_ancestor_of_original_archives(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            code, out, err = self.invoke(roots, Path(base))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("not saved", err)
+            self.assertNotIn(base, err)
+            self.assertTrue(all(cal.verify_saved_calibration(root)["passed"]
+                                for root in roots))
+
+    def test_review_verify_rejects_source_overlap_without_mutation(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            destination = roots[1]/"candidate"/"review"
+            code, out, err = self.verify(roots, destination)
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("not verified", err)
+            self.assertFalse(destination.exists())
+            self.assertTrue(all(cal.verify_saved_calibration(root)["passed"]
+                                for root in roots))
+
     def test_different_original_archives_cannot_reverify_same_score_report(self):
         with tempfile.TemporaryDirectory() as base:
             originals = [Path(base)/str(i) for i in range(4)]
