@@ -88,6 +88,51 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
             self.assertTrue(all(cal.verify_saved_calibration(root)["passed"]
                                 for root in roots))
 
+    def test_original_changed_during_review_publication_is_rolled_back(self):
+        from lightup import lab_score_review_store as storage
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            saved = Path(base)/"private-review"
+            original_link = storage.os.link
+            def mutate_after_private_binding(*args, **kwargs):
+                original_link(*args, **kwargs)
+                if len(args) > 1 and args[1] == "source_receipt.json":
+                    (roots[0]/"candidate"/"report.json").write_bytes(
+                        b"modified while publishing"
+                    )
+            with patch.object(storage.os, "link",
+                              side_effect=mutate_after_private_binding):
+                code, out, err = self.invoke(roots, saved)
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("not saved", err)
+            self.assertNotIn(base, err)
+            self.assertTrue(saved.exists())
+            self.assertEqual(set(saved.iterdir()), set())
+
+    def test_swapped_original_archive_during_publish_is_rolled_back(self):
+        from lightup import lab_score_review_store as storage
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            alternate = Path(base)/"alternate"
+            self.assertTrue(cal.run_lab_score_calibration(alternate)["passed"])
+            saved = Path(base)/"private-review"
+            original_link = storage.os.link
+            def replace_after_binding(*args, **kwargs):
+                original_link(*args, **kwargs)
+                if len(args) > 1 and args[1] == "source_receipt.json":
+                    roots[1].rename(Path(base)/"previous-location")
+                    alternate.rename(roots[1])
+            with patch.object(storage.os, "link",
+                              side_effect=replace_after_binding):
+                code, out, err = self.invoke(roots, saved)
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("not saved", err)
+            self.assertNotIn(base, err)
+            self.assertFalse((saved/"history.html").exists())
+            self.assertFalse((saved/"source_receipt.json").exists())
+
     def test_different_original_archives_cannot_reverify_same_score_report(self):
         with tempfile.TemporaryDirectory() as base:
             originals = [Path(base)/str(i) for i in range(4)]

@@ -519,7 +519,10 @@ def main(argv: list[str] | None = None) -> int:
             if args.html_output_dir is not None:
                 _refuse_review_source_overlap(roots, args.html_output_dir)
                 source_binding = _private_source_binding(roots, html)
-                save_private_review(args.html_output_dir, html, source_binding)
+                save_private_review(
+                    args.html_output_dir, html, source_binding,
+                    lambda: _private_source_binding(roots, html),
+                )
             elif args.verify_html_output_dir is not None:
                 _refuse_review_source_overlap(roots, args.verify_html_output_dir)
                 source_binding = _private_source_binding(roots, html)

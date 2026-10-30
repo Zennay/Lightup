@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory
@@ -47,7 +47,10 @@ def _check_saved(fd: int, name: str, expected: bytes, original: tuple[int, int] 
         os.close(file_fd)
 
 
-def save_private_review(directory: str | Path, html: str, source_receipt: dict[str, Any]) -> None:
+def save_private_review(
+    directory: str | Path, html: str, source_receipt: dict[str, Any],
+    verify_original_source: Callable[[], dict[str, Any]],
+) -> None:
     """Publish a complete two-file private review in a new directory.
 
     A review is considered complete only with both source-bound artifacts.
@@ -85,6 +88,12 @@ def save_private_review(directory: str | Path, html: str, source_receipt: dict[s
                         pass
             if set(os.listdir(fd)) != set(_FILES):
                 raise ValueError("unrecognized private review entry")
+            # Original evidence can mutate *during* HTML/report publication.
+            # Re-check its private receipt binding after both saved artifacts
+            # were written, before reporting a successful review. On failure
+            # the surrounding handler removes only our own linked inodes.
+            if verify_original_source() != source_receipt:
+                raise ValueError("original evidence changed during publication")
             os.fsync(fd)
         except Exception:
             for name, original in reversed(created):

@@ -309,3 +309,14 @@ original `baseline` or `candidate` tree would otherwise mutate verified
 source evidence and falsely report success. Both save and read-only
 reverification reject overlap with a generic HOLD. Use a separate owner-only
 report directory alongside, not underneath, the archived originals.
+
+
+### Final original-evidence check during publication
+
+Before declaring a saved two-file private review successful, LightUp reopens
+and revalidates the *same original* archived calibration receipts after both
+private HTML and source-binding artifacts have been saved. If an original
+source changes or is replaced while the review is being published, both
+newly linked report files are cleaned up and the command returns a
+path-free HOLD. This prevents a falsely verified PASS caused by changing
+source evidence between the initial comparison and final report write.
