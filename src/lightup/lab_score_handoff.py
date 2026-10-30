@@ -19,6 +19,7 @@ from .lab_score_history_html import (
     build_history_review_summary, render_history_html, render_history_markdown,
 )
 from .lab_score_inspect import _private_dir_fd
+from .lab_score_portable_html_safety import admit_inert_html
 from .lab_score_suite import _private_output_directory
 
 _SCHEMA = "lightup.lab-score-portable-human-review.v1"
@@ -93,6 +94,10 @@ def save_portable_review(
     """
     reverify_original_private_report()
     files = _files(report)
+    # A source-free ZIP must be inert at *creation*, not just on receipt.
+    # Refuse renderer regressions before establishing any output directory.
+    admit_inert_html(files["index.html"])
+    admit_inert_html(files["history.html"])
     if len(files) != 7 or any(len(value) > 1024 * 1024 for value in files.values()):
         raise ValueError("portable review exceeds fixed allowlist or size bound")
     buffer = io.BytesIO()

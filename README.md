@@ -136,6 +136,9 @@ verify the original source bindings, saved HTML, JSON and receipt; tampered
 reports produce no substitute output. This never grants test or release
 authorization. For stdout-only automation without creating a review directory, use `--compare-history ARCHIVE1 ARCHIVE2 ... --format review-json`; it prints the exact same anonymous, validated `review_summary.json` schema and emits a safe HOLD on invalid original evidence. Verify the private report read-only with the *same original archives* using `--verify-html-output-dir EXISTING_PRIVATE_REVIEW_DIR` instead of `--html-output-dir`; this is synthetic localhost evidence review, not target or release authorization.
 
+The first-party producer applies this same inert HTML admission before
+creating any ZIP output directory; renderer regressions fail closed.
+
 The portable receiver also checks both HTML documents for a strict, local-only
 content policy, inert HTML elements/attributes, and bounded offline navigation.
 Even a canonical ZIP with recomputed unsigned SHA-256 manifest digests is
