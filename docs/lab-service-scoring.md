@@ -129,6 +129,35 @@ A failed save or verification exits 2 with a privacy-minimal HOLD receipt.
 Creation and verification options are mutually exclusive. These offline
 reports contain only first-party synthetic localhost observations.
 
+## Compare two original private synthetic canary reports
+
+The optional M1 offline HUMAN history workflow compares two previously saved,
+owner-private canary reports without re-running any scorer:
+
+```sh
+lightup-lab-safety-canary --compare-private-report-dirs /private/BEFORE /private/AFTER --format json
+lightup-lab-safety-canary --compare-private-report-dirs /private/BEFORE /private/AFTER --format text
+```
+
+Both complete original folders are independently reopened via the existing
+descriptor-pinned manifest/schema/byte verifier before any result is computed.
+A corrupted/invalid report fails closed with bounded anonymous `HOLD`, no
+source path, and no partial comparison. The comparison writes nothing and
+does not invoke a scorer, run a process, or contact any target. At most 15
+fixed first-party metric deltas are emitted, with evidence-quality and
+reproducibility decreases, missed/invalid count increases and valid-count
+decreases marked as synthetic regressions. PASS-to-HOLD always gives HOLD;
+HOLD-to-PASS also remains HOLD for HUMAN review rather than promoting an
+unverified old failure to clearance. Same-status PASS/PASS without synthetic
+regressions is only a **local synthetic comparison PASS**, not a release gate.
+
+Only allowlisted metric names and numeric values appear in the anonymous
+machine/human outputs. All original source/authentication, consent, external
+target and deployment flags remain false; local unsigned manifests cannot
+establish evidence provenance. No operator-facing success grants real scans,
+client consent or deployment. Creation, individual verification and history
+comparison options are mutually exclusive.
+
 ## Exact first-party scorer contracts
 
 The offline gate now rejects a scorer even if it claims `passed=true`

@@ -178,8 +178,8 @@ def _strict_json(raw: bytes) -> dict:
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite JSON")))
 
 
-def verify_private_canary_handoff(directory: str) -> dict:
-    """Read-only descriptor-pinned local integrity, NOT source authentication."""
+def _read_private_canary_handoff(directory: str) -> dict:
+    """Internal fully verified and pinned receipt; never directly expose original JSON."""
     import stat
 
     raw = Path(directory).expanduser()
@@ -246,6 +246,14 @@ def verify_private_canary_handoff(directory: str) -> dict:
             "authorization_granted": False,
             "deployment": False,
             "review_status": result["canary"]["status"],
+            "_admitted_canary": result["canary"],
         }
     finally:
         os.close(descriptor)
+
+
+def verify_private_canary_handoff(directory: str) -> dict:
+    """Read-only local receipt, without even synthetic metric internals."""
+    verified = _read_private_canary_handoff(directory)
+    verified.pop("_admitted_canary")
+    return verified

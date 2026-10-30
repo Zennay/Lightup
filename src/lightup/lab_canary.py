@@ -30,6 +30,8 @@ from lightup.lab_tls_score import run_lab_tls_baseline_score
 from lightup.lab_web_score import run_lab_web_baseline_score
 from lightup.lab_canary_handoff import (save_private_canary_handoff,
                                         verify_private_canary_handoff)
+from lightup.lab_canary_history import (compare_private_canary_handoffs,
+                                        render_private_canary_comparison)
 from lightup.webapp import create_app
 from lightup.webapp.__main__ import _loopback
 
@@ -380,7 +382,37 @@ def main(argv: list[str] | None = None) -> int:
                         help="new owner-private offline synthetic receipt directory; never overwrites")
     parser.add_argument("--verify-private-report-dir", metavar="EXISTING_DIR",
                         help="read-only local integrity; never source authentication")
+    parser.add_argument("--compare-private-report-dirs", nargs=2,
+                        metavar=("EARLIER_DIR", "LATER_DIR"),
+                        help="read-only two-original synthetic local score handoff comparison")
     args = parser.parse_args(argv)  # No caller-supplied target is supported.
+    if args.compare_private_report_dirs is not None:
+        if args.private_report_dir is not None or args.verify_private_report_dir is not None:
+            parser.error("private history is standalone and read-only")
+        try:
+            compared = compare_private_canary_handoffs(
+                *args.compare_private_report_dirs
+            )
+        except Exception:
+            compared = {
+                "schema": "lightup.m1.synthetic-private-canary-history.v1",
+                "review_status": "HOLD",
+                "metric_changes": [], "regressions": [],
+                "synthetic_loopback_only": True, "source_authenticated": False,
+                "consent_authenticated": False, "authorization_granted": False,
+                "external_target_authorized": False, "deployment": False,
+                "human_review_only": True, "input_integrity": False,
+            }
+            code = 2
+        else:
+            code = 0 if compared["review_status"] == "PASS" else 2
+        if args.format == "json":
+            print(json.dumps(compared, sort_keys=True, allow_nan=False))
+        elif not compared.get("input_integrity", True):
+            print("LightUp synthetic canary history: HOLD; source-free local receipts not verified.")
+        else:
+            print(render_private_canary_comparison(compared))
+        return code
     if args.private_report_dir is not None and args.verify_private_report_dir is not None:
         parser.error("choose create OR verify for private handoff")
     if args.verify_private_report_dir is not None:
