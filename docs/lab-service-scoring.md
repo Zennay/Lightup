@@ -161,6 +161,33 @@ establish evidence provenance. No operator-facing success grants real scans,
 client consent or deployment. Creation, individual verification and history
 comparison options are mutually exclusive.
 
+## Owner-private scriptless HUMAN history snapshot
+
+For an operator needing a durable offline review of two **already verified**
+synthetic sources, use one exclusive output directory and later reopen it:
+
+```sh
+lightup-lab-safety-canary --compare-private-report-dirs /private/BEFORE /private/AFTER --private-history-output-dir /private/NEW-REVIEW --format json
+lightup-lab-safety-canary --verify-private-history-output-dir /private/NEW-REVIEW --format json
+```
+
+The first command validates both original PRIVATE source/receipt/manifest
+bundles in memory before writing a new `0700` owner-private directory with
+only `history.json`, static scriptless `history.html` (CSP), and
+`manifest.json` (three `0600` files). Its manifest is committed last,
+and existing destinations are never overwritten. A corrupted, incomplete,
+reused-same-source, or unauthorized-claim comparison **cannot** be saved.
+
+The second command performs read-only descriptor-pinned/no-follow checks on
+the entire exact owner-private file inventory, mode, source-free JSON schema,
+metric directions and HOLD priorities, SHA-256 hashes, and exact regenerated
+first-party HTML bytes. Even a rewritten HTML approval and recomputed
+**unsigned** manifest is rejected with HOLD and no leaked source path.
+It does not contact either original source or run a scorer. A valid local
+snapshot remains **unsigned and unauthenticated**: never treat its JSON,
+HTML or manifest as client permission, evidence authenticity, source identity,
+independent reviewer acceptance, security sign-off, or deployment approval.
+
 ## Exact first-party scorer contracts
 
 The offline gate now rejects a scorer even if it claims `passed=true`

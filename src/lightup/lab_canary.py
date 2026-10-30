@@ -33,6 +33,8 @@ from lightup.lab_canary_handoff import (save_private_canary_handoff,
 from lightup.lab_canary_history import (compare_private_canary_handoffs,
                                         render_private_canary_comparison,
                                         render_private_canary_history_html)
+from lightup.lab_canary_history_store import (save_private_history_snapshot,
+                                               verify_private_history_snapshot)
 from lightup.webapp import create_app
 from lightup.webapp.__main__ import _loopback
 
@@ -386,7 +388,40 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--compare-private-report-dirs", nargs=2,
                         metavar=("EARLIER_DIR", "LATER_DIR"),
                         help="read-only two-original synthetic local score handoff comparison")
+    parser.add_argument("--private-history-output-dir", metavar="NEW_DIR",
+                        help="new owner-private snapshot of synthetic comparison")
+    parser.add_argument("--verify-private-history-output-dir", metavar="EXISTING_DIR",
+                        help="read-only validation of a saved history snapshot")
     args = parser.parse_args(argv)  # No caller-supplied target is supported.
+    if args.verify_private_history_output_dir is not None:
+        if (args.compare_private_report_dirs is not None
+                or args.private_report_dir is not None
+                or args.verify_private_report_dir is not None
+                or args.private_history_output_dir is not None
+                or args.format == "html"):
+            parser.error("history verification must be standalone and read-only")
+        try:
+            snapshot = verify_private_history_snapshot(
+                args.verify_private_history_output_dir)
+        except Exception:
+            snapshot = {
+                "schema": "lightup.m1.synthetic-private-history-snapshot-verification.v1",
+                "transport_integrity": False, "review_status": "HOLD",
+                "synthetic_loopback_only": True, "source_authenticated": False,
+                "consent_authenticated": False, "authorization_granted": False,
+                "external_target_authorized": False, "deployment": False,
+            }
+        code = 0 if snapshot["transport_integrity"] and snapshot["review_status"] == "PASS" else 2
+        if args.format == "json":
+            print(json.dumps(snapshot, sort_keys=True))
+        else:
+            print("LightUp synthetic HUMAN history: " + snapshot["review_status"]
+                  + "; local bytes " + ("VERIFIED" if snapshot["transport_integrity"]
+                                       else "NOT VERIFIED")
+                  + "; source/consent NOT authenticated; NO deployment or target approval.")
+        return code
+    if args.private_history_output_dir is not None and args.compare_private_report_dirs is None:
+        parser.error("history snapshot requires two original private reports")
     if args.compare_private_report_dirs is not None:
         if args.private_report_dir is not None or args.verify_private_report_dir is not None:
             parser.error("private history is standalone and read-only")
@@ -407,6 +442,26 @@ def main(argv: list[str] | None = None) -> int:
             code = 2
         else:
             code = 0 if compared["review_status"] == "PASS" else 2
+        if args.private_history_output_dir is not None:
+            try:
+                save_private_history_snapshot(args.private_history_output_dir, compared)
+            except Exception:
+                denied = {
+                    "schema": "lightup.m1.synthetic-private-history-snapshot-verification.v1",
+                    "review_status": "HOLD", "snapshot_saved": False,
+                    "synthetic_loopback_only": True, "source_authenticated": False,
+                    "consent_authenticated": False, "authorization_granted": False,
+                    "external_target_authorized": False, "deployment": False,
+                }
+                if args.format == "json":
+                    print(json.dumps(denied, sort_keys=True))
+                elif args.format == "html":
+                    print("<!doctype html><html lang='en'><p>HOLD: private HUMAN history "
+                          "not saved. No source authentication or approval.</p></html>")
+                else:
+                    print("LightUp synthetic HUMAN history HOLD: private snapshot not saved.")
+                return 2
+            compared["snapshot_saved"] = True
         if args.format == "json":
             print(json.dumps(compared, sort_keys=True, allow_nan=False))
         elif args.format == "html":
