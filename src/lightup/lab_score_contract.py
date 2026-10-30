@@ -12,9 +12,19 @@ TLS_CHECKS = tuple('fixture_bound_to_loopback server_completed_expected_handshak
 HTTP_CHECKS = tuple('fixtures_bound_to_ipv4_loopback weak_fixture_matches_hand_maintained_ground_truth hardened_control_has_no_findings repeat_observations_match evidence_lineage_verified persisted_record_readback'.split())
 
 
+EXPECTED_SCENARIOS = {
+    "service": "lab-service-inventory-loopback",
+    "TLS": "lab-tls-baseline-self-signed-loopback",
+    "HTTP": "lab-web-baseline-security-headers-loopback",
+}
+
+
 def require_first_party_score(result: dict, label: str, valid: int, calls: int, required_checks: tuple[str, ...]) -> dict:
     if result.get("passed") is not True:
         raise RuntimeError(f"Offline safety gate denied: {label} scorer")
+    if (label not in EXPECTED_SCENARIOS or
+            result.get("scenario_id") != EXPECTED_SCENARIOS[label]):
+        raise RuntimeError(f"Offline safety gate denied: {label} source scenario")
     checks = result.get("checks")
     if not isinstance(checks, dict) or set(checks) != set(required_checks):
         raise RuntimeError(f"Offline safety gate denied: {label} check inventory")

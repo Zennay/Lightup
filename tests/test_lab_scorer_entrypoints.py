@@ -178,11 +178,11 @@ class LabScorerEntrypointTests(unittest.TestCase):
             "runtime_seconds": 0.001,
         }
         good = {
-            "passed": True, "run_id": "lab-run", "scenario_id": "lab-scenario",
+            "passed": True, "run_id": "lab-run", "scenario_id": "lab-service-inventory-loopback",
             "evaluation_record_id": "lab-record",
             "checks": dict.fromkeys(lab_canary.SERVICE_CHECKS, True),
             "evaluation": {
-                "metrics": metrics, "run_id": "lab-run", "scenario_id": "lab-scenario",
+                "metrics": metrics, "run_id": "lab-run", "scenario_id": "lab-service-inventory-loopback",
                 "record_id": "lab-record",
             },
         }
@@ -192,7 +192,8 @@ class LabScorerEntrypointTests(unittest.TestCase):
         )
         for change in (
             "missing", "wrong_type", "bool_count", "negative_zero", "tool_count",
-            "fpr", "wrong_run", "wrong_record", "coverage", "extra_metric",
+            "fpr", "wrong_run", "wrong_record", "wrong_scenario",
+            "coverage", "extra_metric",
             "runtime_nan", "runtime_negative_zero", "remediation",
         ):
             bad = deepcopy(good)
@@ -212,6 +213,8 @@ class LabScorerEntrypointTests(unittest.TestCase):
                 bad["evaluation"]["run_id"] = "forged"
             elif change == "wrong_record":
                 bad["evaluation_record_id"] = "forged"
+            elif change == "wrong_scenario":
+                bad["scenario_id"] = bad["evaluation"]["scenario_id"] = "forged"
             elif change == "coverage":
                 bad["evaluation"]["metrics"]["coverage_assessed"] = 0
             elif change == "extra_metric":

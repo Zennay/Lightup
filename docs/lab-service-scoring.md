@@ -159,3 +159,9 @@ and run/scenario/record lineage must also pass. A forged 75% false-positive
 rate with inconsistent run ID previously returned success from a standalone
 CLI; it now returns exit 2 with the private-safe error receipt. No external
 target capability or grant is introduced.
+
+The canonical contract also requires the **exact source-defined scenario**
+identifier for service inventory, TLS baseline and HTTP security headers.
+A scorer cannot make a different scenario PASS merely by rewriting both
+top-level and persisted scenario IDs to the same forged value. Regression
+coverage exercises this swap through all three direct scorer CLI surfaces.

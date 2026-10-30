@@ -110,13 +110,22 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                     forged = deepcopy(valid)
                     forged["evaluation"]["metrics"]["false_positive_rate"] = 0.75
                     forged["evaluation"]["run_id"] = "forged-canonical-run"
-                    with patch.object(mod, api, return_value=forged):
-                        with redirect_stdout(io.StringIO()) as receipt:
-                            exit_code = mod.main(["--db", "fictional.db"])
-                    self.assertEqual(exit_code, 2)
-                    self.assertEqual(json.loads(receipt.getvalue()), {
-                        "passed": False, "error": "offline fixture denied or unavailable"
-                    })
+                    for attack in ("fpr_and_run", "scenario_swap"):
+                        bad = deepcopy(forged)
+                        if attack == "scenario_swap":
+                            bad["evaluation"]["metrics"]["false_positive_rate"] = 0.0
+                            bad["evaluation"]["run_id"] = valid["run_id"]
+                            bad["scenario_id"] = "forged-lab-scenario"
+                            bad["evaluation"]["scenario_id"] = "forged-lab-scenario"
+                        with self.subTest(attack=attack), patch.object(
+                            mod, api, return_value=bad
+                        ):
+                            with redirect_stdout(io.StringIO()) as receipt:
+                                exit_code = mod.main(["--db", "fictional.db"])
+                            self.assertEqual(exit_code, 2)
+                            self.assertEqual(json.loads(receipt.getvalue()), {
+                                "passed": False, "error": "offline fixture denied or unavailable"
+                            })
 
     def test_all_three_installed_clis_hide_failure_paths(self):
         for mod, api in (
