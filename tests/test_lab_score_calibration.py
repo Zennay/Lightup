@@ -407,6 +407,7 @@ class CalibrationTests(unittest.TestCase):
             self.assertEqual(result["pairwise_holds"], [{
                 "previous_index": 1, "current_index": 3,
                 "independent_evaluations": False, "score_stable": True,
+                "metric_deltas": [],
             }])
             self.assertNotIn(base, out.getvalue())
             text_out = io.StringIO()
@@ -420,6 +421,37 @@ class CalibrationTests(unittest.TestCase):
             with redirect_stderr(err), redirect_stdout(io.StringIO()):
                 self.assertEqual(cal.main(["--compare-history", str(first)]), 2)
             self.assertIn("HOLD", err.getvalue())
+
+    def test_history_reports_bounded_first_party_metric_drift(self):
+        import copy
+        with tempfile.TemporaryDirectory() as base:
+            first, second = Path(base)/"first", Path(base)/"second"
+            self.assertTrue(cal.run_lab_score_calibration(first)["passed"])
+            self.assertTrue(cal.run_lab_score_calibration(second)["passed"])
+            actual = cal.compare_saved_calibrations
+            def synthetic_drift(*args):
+                pair = copy.deepcopy(actual(*args))
+                pair["passed"] = False
+                comparison = pair["comparison"]
+                comparison["score_stable"] = False
+                comparison["capabilities"]["service_inventory"]["changed_metrics"] = {
+                    "coverage_assessed": {"baseline": 1, "candidate": 2},
+                    "PRIVATE_SOURCE_KEY": {"baseline": base, "candidate": base},
+                }
+                return pair
+            with patch.object(cal, "compare_saved_calibrations",
+                              side_effect=synthetic_drift):
+                result = cal.compare_saved_calibration_history([first, second])
+            self.assertFalse(result["passed"])
+            self.assertFalse(result["score_stable"])
+            delta = result["pairwise_holds"][0]["metric_deltas"]
+            self.assertEqual(delta, [{
+                "capability": "service_inventory",
+                "metric": "coverage_assessed",
+                "previous": 1, "current": 2,
+            }])
+            self.assertNotIn(base, str(result))
+            self.assertNotIn("PRIVATE_SOURCE_KEY", str(result))
 
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:

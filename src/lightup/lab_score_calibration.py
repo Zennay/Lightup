@@ -14,7 +14,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .lab_score_compare import compare_score_runs, render_score_review
+from .lab_score_compare import (
+    _SCORE_FIELDS, compare_score_runs, render_score_review,
+)
+from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
 
@@ -287,13 +290,21 @@ def compare_saved_calibration_history(
             stable &= summary["score_stable"] is True
             all_passed &= pair["passed"] is True
             if pair["passed"] is not True:
-                # Report only 1-based positions and allowlisted Boolean
-                # reasons. Original IDs, paths and SHA digests stay private.
+                # Only canonical first-party capability and metric names from
+                # the existing verified comparator; never copy arbitrary keys.
+                changes = [
+                    {"capability": name, "metric": field,
+                     "previous": summary["capabilities"][name]["changed_metrics"][field]["baseline"],
+                     "current": summary["capabilities"][name]["changed_metrics"][field]["candidate"]}
+                    for name in _EXPECTED_FINDINGS for field in _SCORE_FIELDS
+                    if field in summary["capabilities"][name]["changed_metrics"]
+                ]
                 pairwise_holds.append({
                     "previous_index": i + 1,
                     "current_index": j + 1,
                     "independent_evaluations": summary["independent_evaluations"],
                     "score_stable": summary["score_stable"],
+                    "metric_deltas": changes,
                 })
             if j == i + 1:
                 adjacent.append({
@@ -378,6 +389,8 @@ def main(argv: list[str] | None = None) -> int:
                     reasons.append("score drift")
                 reason = ", ".join(reasons) or "verification HOLD"
                 print(f"Archive {item['previous_index']} -> {item['current_index']}: HOLD ({reason})")
+                for delta in item["metric_deltas"]:
+                    print(f"  {delta['capability']}.{delta['metric']}: {delta['previous']} -> {delta['current']}")
             print("Authority: none; localhost fixtures only; no external assessment.")
         else:
             labels = ("previous and current"

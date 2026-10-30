@@ -203,6 +203,9 @@ archive is independently reverified before and after the history.
 JSON and text output contain only indices, anonymous counts and
 PASS/HOLD statuses. A bounded pairwise HOLD list also identifies the
 archive positions and safe reason flags (reused source or metric drift),
-including non-adjacent replay that adjacent statuses would miss. No evidence
-payload, source path, checksum or run ID leaves the private directory.
+including non-adjacent replay that adjacent statuses would miss. For drift,
+the operator also gets before/after values for only the fixed allowlisted
+first-party capability and score metric fields: no arbitrary source keys are
+copied into JSON or text. No evidence payload, source path, checksum or run ID
+leaves the private directory.
 This is not real target, scanning, approval or deployment authority.
