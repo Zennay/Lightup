@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 import io
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, redirect_stderr
 import os
 import stat
 import shutil
@@ -55,12 +55,32 @@ class SavedLabScoreCompareTests(unittest.TestCase):
                 code = main(["--baseline-dir", str(a), "--candidate-dir", str(b)])
             self.assertEqual(code, 0)
             self.assertTrue(json.loads(output.getvalue())["passed"])
-            output = io.StringIO()
-            with redirect_stdout(output):
+            output, errors = io.StringIO(), io.StringIO()
+            with redirect_stdout(output), redirect_stderr(errors):
                 code = main(["--baseline-dir", str(a), "--candidate-dir", str(a),
                              "--format", "text"])
             self.assertEqual(code, 2)
             self.assertEqual(output.getvalue(), "")
+            self.assertIn("score comparison: HOLD", errors.getvalue())
+            self.assertNotIn(temp, errors.getvalue())
+            self.assertNotIn("record_sha256", errors.getvalue())
+
+    def test_rejected_corrupt_store_uses_private_safe_text_error(self):
+        with tempfile.TemporaryDirectory() as temp:
+            original, candidate = Path(temp)/"private-base", Path(temp)/"private-corrupt"
+            self.assertTrue(run_lab_score_suite(original)["passed"])
+            shutil.copytree(original, candidate)
+            saved = candidate / "report.json"
+            saved.write_text("{not-valid-json")
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = main(["--baseline-dir", str(original),
+                             "--candidate-dir", str(candidate), "--format", "text"])
+            self.assertEqual(code, 2)
+            self.assertEqual(stdout.getvalue(), "")
+            self.assertIn("verification refused", stderr.getvalue())
+            self.assertNotIn(temp, stderr.getvalue())
+            self.assertNotIn("not-valid-json", stderr.getvalue())
 
     def test_text_review_safely_shows_drift_and_reused_evaluations(self):
         report = {

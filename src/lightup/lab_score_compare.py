@@ -98,9 +98,15 @@ def main(argv: list[str] | None = None) -> int:
     try:
         report = compare_score_runs(args.baseline_dir, args.candidate_dir)
     except Exception as exc:
-        print(json.dumps({
-            "schema": SCHEMA, "passed": False, "error_type": type(exc).__name__,
-        }, sort_keys=True), file=sys.stderr)
+        if args.format == "text":
+            # Preserve private file paths and untrusted exception strings.
+            print("LightUp synthetic score comparison: HOLD", file=sys.stderr)
+            print("Saved evidence: verification refused; no external assessment.",
+                  file=sys.stderr)
+        else:
+            print(json.dumps({
+                "schema": SCHEMA, "passed": False, "error_type": type(exc).__name__,
+            }, sort_keys=True), file=sys.stderr)
         return 2
     if args.format == "text":
         print(render_score_review(report))

@@ -104,7 +104,9 @@ same `lightup-lab-score-compare` command. The existing JSON response stays
 the default. Text identifies PASS/HOLD, distinct versus reused evaluations,
 per-capability evidence counts, and exact changes to allowlisted metrics.
 Private source paths, record identifiers, payloads and hashes are excluded.
-Both formats return exit code 2 for drift or reused evaluations. This is
+Both formats return exit code 2 for drift or reused evaluations. In text mode
+a rejected or corrupt saved source emits a generic HOLD on stderr, not a raw
+exception or private path; the existing JSON error shape is unchanged. This is
 synthetic fixed-loopback calibration, **not** review, consent, or authority.
 
 The output compares nine bounded first-party scoring metrics for service,
