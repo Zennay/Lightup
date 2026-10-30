@@ -41,6 +41,11 @@ class PortableReviewTests(unittest.TestCase):
             self.assertEqual(destination.stat().st_mode & 0o777, 0o700)
             zip_path = destination / "LightUp-SYNTHETIC-OFFLINE-REVIEW.zip"
             self.assertEqual(zip_path.stat().st_mode & 0o777, 0o600)
+            verify_code, verify_out, verify_err = invoke("--verify-portable-review", zip_path)
+            self.assertEqual((verify_code, verify_err), (0, ""))
+            self.assertIn("TRANSPORT VERIFIED", verify_out)
+            self.assertIn("source NOT authenticated", verify_out)
+            self.assertNotIn(str(base), verify_out)
             with ZipFile(zip_path) as archive:
                 self.assertIsNone(archive.testzip())
                 self.assertEqual(set(archive.namelist()), {
@@ -68,6 +73,11 @@ class PortableReviewTests(unittest.TestCase):
             self.assertEqual((code, out), (2, ""))
             self.assertNotIn(str(base), err)
             self.assertTrue(err)
+            with ZipFile(zip_path, "a") as changed:
+                changed.writestr("original_private_receipt.json", "forbidden")
+            verify_code, verify_out, verify_err = invoke("--verify-portable-review", zip_path)
+            self.assertEqual((verify_code, verify_out), (2, ""))
+            self.assertNotIn(str(base), verify_err)
 
     def test_nonadjacent_original_replay_yields_portable_global_hold(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -94,6 +104,12 @@ class PortableReviewTests(unittest.TestCase):
                 self.assertIn(b"HOLD", archive.read("review.csv"))
                 self.assertNotIn(str(base).encode(), b"".join(
                     archive.read(name) for name in archive.namelist()))
+            verify_code, verify_out, verify_err = invoke(
+                "--verify-portable-review",
+                destination / "LightUp-SYNTHETIC-OFFLINE-REVIEW.zip")
+            self.assertEqual((verify_code, verify_err), (2, ""))
+            self.assertIn("TRANSPORT VERIFIED", verify_out)
+            self.assertIn("status HOLD", verify_out)
 
     def test_refuse_corrupt_private_binding_without_publishing(self):
         with tempfile.TemporaryDirectory() as tmp:

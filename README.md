@@ -158,6 +158,22 @@ authenticity. A real original-evidence reuse HOLD remains a HOLD in the ZIP
 and exit status 2; a corrupt original or receipt refuses publication. There is
 no live target, security scan, grant, consent, review approval or deployment.
 
+A recipient can validate the transported ZIP in its owner-private directory,
+without opening the original archive or network:
+
+```sh
+lightup-lab-score-calibrate --verify-portable-review \
+  NEW_PRIVATE_HANDOFF_DIR/LightUp-SYNTHETIC-OFFLINE-REVIEW.zip
+```
+
+This read-only checker rejects duplicate/unexpected ZIP entries, unsafe
+permissions and symlinks, oversized members, malformed/contradictory anonymous
+pair or manifest metadata, and changed export digests. It returns TRANSPORT
+VERIFIED plus the original review PASS/HOLD state, never private source paths.
+It cannot authenticate the original source or its signer: a forged ZIP with
+recomputed unsigned hashes is not trusted original evidence or an approval.
+Keep the ZIP in a 0700 directory as a 0600 file for this local checker.
+
 For privacy-minimal spreadsheet handoff use `--compare-history ARCHIVE1 ARCHIVE2 --format review-csv`: only archive ordinals, PASS/HOLD and two boolean evidence/score flags. Add `--verify-html-output-dir` to bind it to the already saved private three-file review; unlike regular `--format csv`, this never exports original score values.
 
 
