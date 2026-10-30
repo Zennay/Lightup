@@ -1,5 +1,6 @@
 """Read-only original-source HUMAN brief; no security authority."""
 from __future__ import annotations
+from .lab_score_action_admission import admit_human_actions
 from .lab_score_portable_html_safety import admit_inert_html
 
 _EXPLAIN = {
@@ -13,7 +14,7 @@ _GATE = ("Qualified independent HUMAN review of original private source, "
 def render_action_brief(data: dict, fmt: str) -> str:
     if fmt not in ("actions-brief-markdown", "actions-brief-html"):
         raise ValueError("invalid HUMAN brief format")
-    rows = data["actions"]
+    rows = admit_human_actions(data)
     if not isinstance(rows, list):
         raise ValueError("untrusted source-bound action inventory")
     if (data["schema"] != "lightup.lab-score-human-two-transport-actions.v1"

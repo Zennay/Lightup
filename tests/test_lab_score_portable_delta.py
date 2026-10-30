@@ -305,6 +305,52 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         for fmt in ('actions-brief-markdown','actions-brief-html'):
             self.assertIn('NOT_VERIFIED',render_action_brief(canonical,fmt))
 
+    def test_action_exports_admit_only_ordered_closed_synthetic_inventory(self):
+        from copy import deepcopy
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_review_actions import build_review_actions, render_review_actions
+        from lightup.lab_score_action_brief import render_action_brief
+        original = build_review_actions(
+            compare_portable_review_transports(str(self.hold), str(self.passing)),
+            str(self.hold), str(self.passing))
+        formats = ('actions-json', 'actions-csv', 'actions-html',
+                   'actions-brief-markdown', 'actions-brief-html')
+        def render(value, fmt):
+            if fmt.startswith('actions-brief'):
+                return render_action_brief(value, fmt)
+            return render_review_actions(value, fmt)
+        for fmt in formats:
+            self.assertIn('NOT_VERIFIED', render(original, fmt))
+        cases = []
+        changed = deepcopy(original)
+        changed['hidden_source_original'] = 'DO_NOT_EXPORT'
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['actions'][-1]['original_customer_name'] = 'DO_NOT_EXPORT'
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['actions'][-1]['completion'] = 'APPROVED'
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['actions'][-1]['human_action'] = 'GRANT_LIVE_ACCESS'
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['actions'][-1]['authorization_granted'] = True
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['unsigned_transport_sha256']['baseline'] = 'private-source'
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['hold_action_rows'] = True
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['review_status'] = 'PASS'
+        cases.append(changed)
+        for idx, value in enumerate(cases):
+            for fmt in formats:
+                with self.subTest(case=idx, fmt=fmt), self.assertRaises(ValueError):
+                    render(value, fmt)
+
     def test_atomic_ten_file_original_bound_human_brief_room(self):
         from hashlib import sha256
         room=self.root/'full-private-ten-view-room'

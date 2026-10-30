@@ -9,6 +9,7 @@ import io
 import json
 from typing import Any
 
+from .lab_score_action_admission import admit_human_actions
 from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_portable_html_safety import admit_inert_html
 
@@ -79,7 +80,7 @@ def build_review_actions(comparison: dict[str, Any], baseline: str,
 
 def render_review_actions(data: dict[str, Any], fmt: str) -> str:
     """Render a bounded inert synthetic HUMAN action manifest."""
-    actions=data['actions']
+    actions=admit_human_actions(data)
     if (data['schema']!='lightup.lab-score-human-two-transport-actions.v1'
             or data['review_status'] not in ('PASS','HOLD')
             or not 1 <= len(actions) <= 113
