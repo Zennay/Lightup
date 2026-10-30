@@ -506,6 +506,8 @@ def main(argv: list[str] | None = None) -> int:
                              "after verifying the existing private three-file review")
     parser.add_argument("--queue-workroom-dir", metavar="DIR",
                         help="new or existing 0700 HUMAN review directory")
+    parser.add_argument("--include-triage", action="store_true",
+                        help="publish full eight-file HUMAN workroom, including offline triage CSV/HTML/Markdown")
     parser.add_argument("--unpacked-review-dir", help="existing private review files")
     parser.add_argument("--unpack-output-dir",
                         help="new 0700 private directory for verified source-free review files")
@@ -514,6 +516,7 @@ def main(argv: list[str] | None = None) -> int:
         if (args.queue_workroom_dir is None
                 or args.format not in (("text",) if args.publish_queue_workroom is not None
                                        else ("text", "csv", "review-csv", "review-json", "html", "navigator-html", "triage-markdown", "triage-html", "triage-csv"))
+                or (args.include_triage and args.publish_queue_workroom is None)
                 or args.review_queue or args.focus_pair is not None
                 or args.focus_archive_index is not None or args.html_output_dir is not None
                 or args.unpack_output_dir is not None or args.unpacked_review_dir is not None
@@ -523,32 +526,24 @@ def main(argv: list[str] | None = None) -> int:
         try:
             if args.publish_queue_workroom is not None:
                 result = publish_queue_workroom(args.publish_queue_workroom,
-                                                args.queue_workroom_dir)
+                                                args.queue_workroom_dir,
+                                                include_triage=args.include_triage)
             else:
-                if args.format in ("text", "navigator-html", "triage-markdown", "triage-html", "triage-csv"):
+                if args.format in ("text", "navigator-html"):
                     result = verify_queue_workroom(args.verify_queue_workroom,
                                                    args.queue_workroom_dir)
                     if args.format == "navigator-html":
                         export = render_portable_queue_html(
                             result["review_queue"], global_status=result["review_status"],
                             navigation=True).encode("utf-8")
-                    elif args.format == "triage-markdown":
-                        export = render_human_triage_plan(
-                            result["review_queue"], global_status=result["review_status"],
-                            source_zip_sha256=result["portable_transport_sha256"]).encode("utf-8")
-                    elif args.format == "triage-html":
-                        export = render_human_triage_html(
-                            result["review_queue"], global_status=result["review_status"],
-                            source_zip_sha256=result["portable_transport_sha256"]).encode("utf-8")
-                    elif args.format == "triage-csv":
-                        export = render_human_triage_csv(
-                            result["review_queue"], global_status=result["review_status"],
-                            source_zip_sha256=result["portable_transport_sha256"]).encode("utf-8")
                 else:
                     filename = {"csv": "queue_archives.csv",
                                 "review-csv": "queue_pairs.csv",
                                 "review-json": "queue.json",
-                                "html": "queue.html"}[args.format]
+                                "html": "queue.html",
+                                "triage-markdown": "triage.md",
+                                "triage-html": "triage.html",
+                                "triage-csv": "triage.csv"}[args.format]
                     result, export = export_verified_queue_workroom(
                         args.verify_queue_workroom, args.queue_workroom_dir, filename)
         except Exception:
@@ -562,6 +557,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result["review_status"] == "PASS" else 2
     if args.queue_workroom_dir is not None:
         parser.error("--queue-workroom-dir requires queue workroom mode")
+    if args.include_triage:
+        parser.error("--include-triage requires --publish-queue-workroom")
     if args.review_queue and (args.verify_portable_review is None
                               or args.focus_pair is not None
                               or args.focus_archive_index is not None

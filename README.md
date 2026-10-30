@@ -320,3 +320,22 @@ for this export. If manually redirecting stdout into a local file, set
 `umask 077` first and retain the output only within owner-private storage.
 The inert `triage-html` worksheet now links each priority archive to its
 corresponding original HOLD follow-up checklist for keyboard/print review.
+
+### Atomic offline HUMAN action delivery (optional v3)
+
+`lightup-lab-score-calibrate --publish-queue-workroom PRIVATE.zip
+--queue-workroom-dir NEW_OWNER_PRIVATE_DIR --include-triage` creates an
+**eight-file** source-free offline workroom: queue HTML/JSON, two queue CSVs,
+`triage.md`, inert `triage.html`, formula-safe `triage.csv`, and an unsigned
+SHA-256 `manifest.json`. Without the flag, the existing five-file v2 output
+remains unchanged. Old v1/v2 workrooms remain readable, not overwritten.
+
+The new room is mode 0700, exclusive artifacts 0600, no overwrites or
+reused file identities. Publication verifies the original canonical v3 ZIP,
+writes atomically via directory descriptors, performs full two-pass original
+and saved-room reinspection, and rolls back owned files on any failure.
+Recipients supply BOTH the original ZIP and the private room to
+`--verify-queue-workroom ... --format triage-csv|triage-html|triage-markdown`.
+A changed ZIP or saved file fails closed with no partial output. All outputs
+are human-only and unauthenticated; no consent, grants, security execution,
+external targets, release or deployment can be inferred.

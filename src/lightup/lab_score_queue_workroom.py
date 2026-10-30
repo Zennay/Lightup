@@ -12,16 +12,19 @@ from typing import Any
 from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_portable_queue import render_portable_queue_html
 from .lab_score_queue_csv import render_queue_csv
+from .lab_score_queue_triage import (render_human_triage_plan, render_human_triage_html, render_human_triage_csv)
 from .lab_score_suite import _private_output_directory
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 
 _NAMES_V1 = ('queue.html', 'queue.json', 'manifest.json')
 _NAMES_V2 = ('queue.html', 'queue.json', 'queue_archives.csv', 'queue_pairs.csv', 'manifest.json')
+_NAMES_V3 = ('queue.html', 'queue.json', 'queue_archives.csv', 'queue_pairs.csv',
+             'triage.md', 'triage.html', 'triage.csv', 'manifest.json')
 _MAX = 65536
 
 
 def _payloads(archive: str | Path, *, version: int = 2) -> tuple[dict[str, Any], dict[str, bytes]]:
-    if version not in (1, 2):
+    if version not in (1, 2, 3):
         raise ValueError("unsupported offline workroom version")
     verified = verify_portable_review(archive, review_queue=True)
     if not verified['history_content_validated']:
@@ -41,8 +44,16 @@ def _payloads(archive: str | Path, *, version: int = 2) -> tuple[dict[str, Any],
         'queue.html': render_portable_queue_html(queue, global_status=verified['review_status']).encode('utf-8'),
         'queue.json': (json.dumps(review, sort_keys=True, indent=2, allow_nan=False)+'\n').encode('utf-8'),
     }
-    if version == 2:
+    if version >= 2:
         payloads.update(render_queue_csv(queue, global_status=verified['review_status']))
+    if version == 3:
+        opts = {'global_status': verified['review_status'],
+                'source_zip_sha256': verified['portable_transport_sha256']}
+        payloads.update({
+            'triage.md': render_human_triage_plan(queue, **opts).encode('utf-8'),
+            'triage.html': render_human_triage_html(queue, **opts).encode('utf-8'),
+            'triage.csv': render_human_triage_csv(queue, **opts).encode('utf-8'),
+        })
     manifest = {
         'schema': f'lightup.lab-score-human-queue-workroom-manifest.v{version}',
         'source_zip_sha256': verified['portable_transport_sha256'],
@@ -77,7 +88,9 @@ def verify_queue_workroom(archive: str | Path, directory: str | Path) -> dict[st
     fd = _private_dir_fd(directory)
     try:
         inventory = set(os.listdir(fd))
-        if inventory == set(_NAMES_V2):
+        if inventory == set(_NAMES_V3):
+            version, names = 3, _NAMES_V3
+        elif inventory == set(_NAMES_V2):
             version, names = 2, _NAMES_V2
         elif inventory == set(_NAMES_V1):
             version, names = 1, _NAMES_V1
@@ -116,7 +129,7 @@ def export_verified_queue_workroom(archive: str | Path, directory: str | Path,
     Never open a mutable output path for presentation after validation; get
     canonical bytes from re-admitted original ZIP and compare transport again.
     """
-    if filename not in _NAMES_V2 or filename == "manifest.json":
+    if filename not in _NAMES_V3 or filename == "manifest.json":
         raise ValueError("unsupported source-free reviewer export")
     verified = verify_queue_workroom(archive, directory)
     final, payloads = _payloads(archive, version=verified["workroom_version"])
@@ -127,23 +140,36 @@ def export_verified_queue_workroom(archive: str | Path, directory: str | Path,
         if filename not in payloads:
             payloads.update(render_queue_csv(final["review_queue"],
                                              global_status=final["review_status"]))
+    if filename in ('triage.md', 'triage.html', 'triage.csv'):
+        # Legacy v1/v2 room remains immutable. Re-derive from canonical source.
+        if filename not in payloads:
+            opts = {'global_status': final['review_status'],
+                    'source_zip_sha256': final['portable_transport_sha256']}
+            renderers = {'triage.md': render_human_triage_plan,
+                         'triage.html': render_human_triage_html,
+                         'triage.csv': render_human_triage_csv}
+            payloads[filename] = renderers[filename](
+                final['review_queue'], **opts).encode('utf-8')
     return verified, payloads[filename]
 
 
-def publish_queue_workroom(archive: str | Path, destination: str | Path) -> dict[str, Any]:
+def publish_queue_workroom(archive: str | Path, destination: str | Path, *,
+                           include_triage: bool = False) -> dict[str, Any]:
     """Publish three 0600 files to new 0700 dir, no overwrite or source auth."""
     source = Path(archive).expanduser().absolute()
     target = Path(destination).expanduser().absolute()
     if ('..' in Path(destination).parts or target == source.parent
             or target in source.parents or source in target.parents):
         raise ValueError('queue output overlaps original ZIP')
-    result, payloads = _payloads(archive)
+    version = 3 if include_triage else 2
+    result, payloads = _payloads(archive, version=version)
+    names = _NAMES_V3 if include_triage else _NAMES_V2
     root = _private_output_directory(target)
     fd = _private_dir_fd(root)
     created: list[tuple[str, tuple[int, int]]] = []
     try:
         try:
-            for name in _NAMES_V2:
+            for name in names:
                 temporary = '.' + name + '.tmp'
                 writer = os.open(temporary, os.O_WRONLY | os.O_CREAT |
                                  os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd)

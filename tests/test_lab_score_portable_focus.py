@@ -772,3 +772,65 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertIn("archive-1", parser.ids)
         self.assertIn("GLOBAL STATUS HOLD", page)
         self.assertNotIn(str(self.root), page)
+
+    def test_atomic_eight_file_triage_workroom_end_to_end(self):
+        from lightup.lab_score_queue_workroom import verify_queue_workroom
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        room = self.root / "triage-v3-eight-file"
+        code, _, err = invoke("--publish-queue-workroom", self.archive,
+                              "--queue-workroom-dir", room, "--include-triage")
+        self.assertEqual((code, err), (2, ""))
+        expected = {"queue.html", "queue.json", "queue_archives.csv",
+                    "queue_pairs.csv", "triage.md", "triage.html",
+                    "triage.csv", "manifest.json"}
+        self.assertEqual({p.name for p in room.iterdir()}, expected)
+        self.assertEqual(room.stat().st_mode & 0o777, 0o700)
+        self.assertTrue(all(p.stat().st_mode & 0o777 == 0o600
+                            for p in room.iterdir()))
+        self.assertEqual(verify_queue_workroom(self.archive, room)["workroom_version"], 3)
+        manifest = json.loads((room / "manifest.json").read_text())
+        self.assertEqual(manifest["schema"], "lightup.lab-score-human-queue-workroom-manifest.v3")
+        self.assertFalse(manifest["authorization_granted"])
+        self.assertEqual(set(manifest["file_sha256"]), expected - {"manifest.json"})
+        original = {p.name: p.read_bytes() for p in room.iterdir()}
+        for fmt, name in (("triage-markdown", "triage.md"),
+                          ("triage-html", "triage.html"),
+                          ("triage-csv", "triage.csv"),
+                          ("review-json", "queue.json"),
+                          ("review-csv", "queue_pairs.csv")):
+            code, output, err = invoke("--verify-queue-workroom", self.archive,
+                                       "--queue-workroom-dir", room,
+                                       "--format", fmt)
+            self.assertEqual((code, err), (2, ""))
+            self.assertEqual(output.encode(), original[name])
+            self.assertNotIn(str(self.root), output)
+        admit_inert_html(original["triage.html"])
+        self.assertIn(b"GLOBAL STATUS HOLD", original["triage.html"])
+        self.assertIn(b"NOT_VERIFIED", original["triage.csv"])
+        self.assertEqual(original, {p.name: p.read_bytes() for p in room.iterdir()})
+        code, output, err = invoke("--publish-queue-workroom", self.archive,
+                                   "--queue-workroom-dir", room, "--include-triage")
+        self.assertEqual((code, output), (2, ""))
+        self.assertEqual(original, {p.name: p.read_bytes() for p in room.iterdir()})
+        (room / "triage.csv").write_text("=HYPERLINK('unsafe')")
+        for fmt in ("triage-csv", "triage-markdown", "triage-html", "review-json"):
+            code, output, err = invoke("--verify-queue-workroom", self.archive,
+                                       "--queue-workroom-dir", room, "--format", fmt)
+            self.assertEqual((code, output), (2, ""))
+            self.assertIn("not verified", err)
+
+    def test_triage_v3_and_legacy_v2_publisher_coexist(self):
+        from lightup.lab_score_queue_workroom import verify_queue_workroom
+        standard = self.root / "plain-five-files"
+        code, _, err = invoke("--publish-queue-workroom", self.archive,
+                              "--queue-workroom-dir", standard)
+        self.assertEqual((code, err), (2, ""))
+        self.assertEqual(verify_queue_workroom(self.archive, standard)["workroom_version"], 2)
+        self.assertEqual({p.name for p in standard.iterdir()},
+                         {"queue.html", "queue.json", "queue_archives.csv",
+                          "queue_pairs.csv", "manifest.json"})
+        code, csv_text, err = invoke("--verify-queue-workroom", self.archive,
+                                     "--queue-workroom-dir", standard,
+                                     "--format", "triage-csv")
+        self.assertEqual((code, err), (2, ""))
+        self.assertIn("RECAPTURE_INDEPENDENT", csv_text)
