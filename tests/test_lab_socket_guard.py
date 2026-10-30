@@ -43,6 +43,49 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                 underlying_bind.assert_not_called()
                 underlying_send.assert_not_called()
 
+    def test_listener_apis_deny_prebound_public_interfaces_before_io(self):
+        # A pre-bound listener can exist before the scoped scorer boundary.
+        # Mock address metadata and underlying methods: no public bind.
+        from types import SimpleNamespace
+        sock = SimpleNamespace(family=socket.AF_INET,
+                               getsockname=lambda: ("0.0.0.0", 45678))
+        with patch.object(socket.socket, "listen", return_value=None) as underlying_listen, \
+             patch.object(socket.socket, "accept", return_value=(None, ("127.0.0.1", 3456))) as underlying_accept:
+            with fixed_loopback_socket_boundary():
+                with self.assertRaises(LabSocketBoundaryError):
+                    socket.socket.listen(sock, 1)
+                with self.assertRaises(LabSocketBoundaryError):
+                    socket.socket.accept(sock)
+            underlying_listen.assert_not_called()
+            underlying_accept.assert_not_called()
+
+    def test_listener_accept_only_fixed_loopback_peer(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        listener = SimpleNamespace(family=socket.AF_INET,
+                                   getsockname=lambda: ("127.0.0.1", 45678))
+        bad_client = Mock()
+        bad_client.family = socket.AF_INET
+        with patch.object(socket.socket, "accept", return_value=(
+            bad_client, ("203.0.113.5", 40001)
+        )) as underlying:
+            with fixed_loopback_socket_boundary():
+                with self.assertRaises(LabSocketBoundaryError):
+                    socket.socket.accept(listener)
+            underlying.assert_called_once()
+            bad_client.close.assert_called_once()
+        good_client = Mock()
+        good_client.family = socket.AF_INET
+        with patch.object(socket.socket, "accept", return_value=(
+            good_client, ("127.0.0.1", 40001)
+        )), patch.object(socket.socket, "listen", return_value=None):
+            with fixed_loopback_socket_boundary():
+                self.assertIsNone(socket.socket.listen(listener, 2))
+                accepted, address = socket.socket.accept(listener)
+                self.assertIs(accepted, good_client)
+                self.assertEqual(address, ("127.0.0.1", 40001))
+            good_client.close.assert_not_called()
+
     def test_preconnected_socket_send_paths_refuse_non_loopback_peer(self):
         # Synthetic peer only: never open a real external connection.
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:

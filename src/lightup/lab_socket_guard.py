@@ -70,6 +70,8 @@ def fixed_loopback_socket_boundary():
     original_send = socket.socket.send
     original_sendall = socket.socket.sendall
     original_sendfile = socket.socket.sendfile
+    original_listen = socket.socket.listen
+    original_accept = socket.socket.accept
     original_getaddrinfo = socket.getaddrinfo
 
     def connect(sock, address):
@@ -83,6 +85,30 @@ def fixed_loopback_socket_boundary():
     def bind(sock, address):
         _require_fixed_loopback_address(sock, address)
         return original_bind(sock, address)
+
+    def require_loopback_listener(sock):
+        # A listening socket may have been bound before this scope started.
+        if sock.family != socket.AF_INET:
+            raise LabSocketBoundaryError("Offline lab refuses non-IPv4 listener")
+        try:
+            address = sock.getsockname()
+        except OSError:
+            raise LabSocketBoundaryError("Offline lab refuses unverified listener") from None
+        _require_fixed_loopback_address(sock, address)
+
+    def listen(sock, *args, **kwargs):
+        require_loopback_listener(sock)
+        return original_listen(sock, *args, **kwargs)
+
+    def accept(sock, *args, **kwargs):
+        require_loopback_listener(sock)
+        client, peer = original_accept(sock, *args, **kwargs)
+        try:
+            _require_fixed_loopback_address(client, peer)
+        except BaseException:
+            client.close()
+            raise
+        return client, peer
 
     def sendto(sock, *args):
         if len(args) not in (2, 3):
@@ -274,7 +300,8 @@ def fixed_loopback_socket_boundary():
             (ssl.SSLContext, {"wrap_socket": guarded_tls_wrap}),
             (socket.socket, {
                 "connect": connect, "connect_ex": connect_ex,
-                "bind": bind, "sendto": sendto, "send": send,
+                "bind": bind, "listen": listen, "accept": accept,
+                "sendto": sendto, "send": send,
                 "sendall": sendall, "sendfile": sendfile,
             }),
             (socket, {
