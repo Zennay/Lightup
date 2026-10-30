@@ -17,6 +17,7 @@ import tempfile
 from urllib.parse import urlencode
 
 from lightup.domain import DomainStore, Role
+from lightup.lab_socket_guard import fixed_loopback_socket_boundary
 from lightup.lab_service_score import run_lab_service_inventory_score
 from lightup.lab_tls_score import run_lab_tls_baseline_score
 from lightup.lab_web_score import run_lab_web_baseline_score
@@ -190,18 +191,19 @@ def _run_canary() -> int:
         else:
             raise RuntimeError("Offline safety gate denied: non-loopback shell bind")
 
-        service_score = run_lab_service_inventory_score(
-            Path(directory) / "service-labeval.db"
-        )
-        service_metrics = _require_first_party_score(service_score, "service", 1, 2, SERVICE_CHECKS)
+        with fixed_loopback_socket_boundary():
+            service_score = run_lab_service_inventory_score(
+                Path(directory) / "service-labeval.db"
+            )
+            service_metrics = _require_first_party_score(service_score, "service", 1, 2, SERVICE_CHECKS)
 
-        tls_score = run_lab_tls_baseline_score(
-            Path(directory) / "tls-labeval.db"
-        )
-        tls_metrics = _require_first_party_score(tls_score, "TLS", 1, 2, TLS_CHECKS)
+            tls_score = run_lab_tls_baseline_score(
+                Path(directory) / "tls-labeval.db"
+            )
+            tls_metrics = _require_first_party_score(tls_score, "TLS", 1, 2, TLS_CHECKS)
 
-        score = run_lab_web_baseline_score(Path(directory) / "web-labeval.db")
-        score_metrics = _require_first_party_score(score, "HTTP", 5, 4, HTTP_CHECKS)
+            score = run_lab_web_baseline_score(Path(directory) / "web-labeval.db")
+            score_metrics = _require_first_party_score(score, "HTTP", 5, 4, HTTP_CHECKS)
 
     if not (not Path(directory).exists()):
         raise RuntimeError("Offline safety gate denied: temporary-state cleanup")
@@ -217,6 +219,7 @@ def _run_canary() -> int:
         "client_operator_route_denied": True,
         "cross_origin_request_denied": True,
         "non_loopback_refused": True,
+        "fixed_loopback_socket_boundary_enforced": True,
         "temporary_state_removed": True,
         "lab_only": True,
         "external_target_authorized": False,
@@ -249,6 +252,7 @@ def _render_text(result: dict) -> str:
     return "\n".join((
         "LightUp offline lab safety gate: PASS",
         "Mode: FIXED LOOPBACK LAB; external execution: DISABLED",
+        "Scorer sockets: fixed IPv4 loopback only (in-process guard)",
         "Authentication, CSRF and session revocation: PASS",
         "Client isolation, operator roles and origin boundaries: PASS",
         f"Service scorer: PASS (synthetic valid findings: {result['service_inventory_valid_findings']})",

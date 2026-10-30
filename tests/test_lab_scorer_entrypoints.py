@@ -140,6 +140,7 @@ class LabScorerEntrypointTests(unittest.TestCase):
             "Service scorer: PASS (synthetic valid findings: 1)",
             "TLS scorer: PASS (synthetic valid findings: 1)",
             "HTTP scorer: PASS (synthetic valid findings: 5)",
+            "Scorer sockets: fixed IPv4 loopback only (in-process guard)",
             "External target and deployment authority: NONE",
         ):
             self.assertIn(line, summary)

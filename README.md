@@ -129,3 +129,8 @@ For operator-readable local verification, run
 remains compatible with CI; either output reports PASS/HOLD and never grants
 permission to scan real targets or deploy. Text receipts contain no private
 paths, request data or user identities.
+
+The combined offline scorer also applies a temporary, in-process
+`127.0.0.1`-only Python socket boundary while its three known fixtures
+run. It is defense in depth and **not** a kernel network sandbox, a grant
+or permission to run real-target activity.

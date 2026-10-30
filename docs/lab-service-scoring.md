@@ -109,3 +109,19 @@ runtime must be finite and non-negative. The top-level and persisted
 evaluation run/scenario/record IDs must match. This closes a reproduced
 false-PASS for a 75% false-positive rate with forged evaluation lineage.
 All checks remain synthetic lab-only and confer no production authority.
+
+## In-process loopback socket boundary
+
+During the three fixed M1 scorers, the installed offline safety canary
+temporarily restricts Python socket connect, connect_ex, bind, sendto,
+sendmsg and getaddrinfo to the exact IPv4 `127.0.0.1` lab address. It
+refuses wildcard binds, hostnames, IPv6 and other IPv4 destinations before
+the blocked socket call reaches the OS. The boundary restores all socket
+functions after success or a failed scorer. Its receipt includes
+`fixed_loopback_socket_boundary_enforced=true`.
+
+**Limit:** this is a process-wide Python socket boundary for a standalone
+single-invocation CLI, not a kernel-level network namespace, egress firewall
+or containment for subprocesses, raw native calls or concurrent untrusted
+threads. Production or untrusted code still requires an externally enforced
+isolated network. There is no external-target, deployment or grant authority.
