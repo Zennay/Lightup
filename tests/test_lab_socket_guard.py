@@ -481,6 +481,30 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                 self.assertNotIn("PRIVATE", err.getvalue())
                 scorer.assert_not_called()
 
+    def test_canary_rejects_silent_process_guard_failure(self):
+        # Preserve the real socket/TLS boundary but simulate accidentally
+        # missing child-process interception. The synthetic path cannot launch.
+        import subprocess
+        from contextlib import contextmanager
+        real = lab_canary.fixed_loopback_socket_boundary
+
+        @contextmanager
+        def broken_process_boundary():
+            with real():
+                with patch.object(subprocess, "Popen",
+                                  side_effect=FileNotFoundError("synthetic-not-executable")):
+                    yield
+
+        with patch.object(lab_canary, "fixed_loopback_socket_boundary",
+                          side_effect=broken_process_boundary):
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main([])
+        self.assertEqual(code, 2, "disabled process interception must never PASS")
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["failure_stage"], "setup")
+        self.assertIs(result["external_target_authorized"], False)
+
     def test_canary_rejects_silent_socket_guard_failure(self):
         # All fixtures are fixed 127.0.0.1; no external socket is used.
         from contextlib import nullcontext
@@ -501,6 +525,7 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
             self.assertEqual(lab_canary.main([]), 0)
         result = json.loads(out.getvalue())
         self.assertTrue(result["fixed_loopback_socket_boundary_enforced"])
+        self.assertIs(result["fixed_lab_child_process_policy_enforced"], True)
         self.assertTrue(result["temporary_state_removed"])
         self.assertIs(socket.socket.connect, original)
 

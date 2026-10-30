@@ -120,6 +120,28 @@ def _verify_active_loopback_guard() -> bool:
     raise RuntimeError("offline loopback TLS guard inactive")
 
 
+def _verify_active_child_process_guard(directory: Path) -> bool:
+    """Verify a non-existent synthetic child is refused before any exec.
+
+    No program can be run at this path: the owning temporary directory is
+    private and the chosen file does not exist. This must raise our dedicated
+    policy refusal, not the OS's executable-not-found exception.
+    """
+    unlaunchable = directory / "synthetic-child-that-does-not-exist"
+    if unlaunchable.exists() or unlaunchable.is_symlink():
+        raise RuntimeError("offline synthetic process probe collision")
+    try:
+        subprocess.Popen(
+            [str(unlaunchable)], stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env={},
+        )
+    except LabSocketBoundaryError:
+        return True
+    except OSError:
+        raise RuntimeError("offline child process boundary inactive") from None
+    raise RuntimeError("offline child process boundary inactive")
+
+
 def _run_canary() -> int:
     denied = subprocess.run(
         [sys.executable, "-m", "lightup.cli", "scope-check", "8.8.8.8"],
@@ -239,6 +261,7 @@ def _run_canary() -> int:
 
         with fixed_loopback_socket_boundary():
             guard_verified = _verify_active_loopback_guard()
+            child_guard_verified = _verify_active_child_process_guard(Path(directory))
             service_score, service_metrics = _score_component(
                 "service", run_lab_service_inventory_score,
                 Path(directory) / "service-labeval.db", "service", 1, 2, SERVICE_CHECKS
@@ -270,6 +293,7 @@ def _run_canary() -> int:
         "cross_origin_request_denied": True,
         "non_loopback_refused": True,
         "fixed_loopback_socket_boundary_enforced": guard_verified,
+        "fixed_lab_child_process_policy_enforced": child_guard_verified,
         "temporary_state_removed": True,
         "lab_only": True,
         "external_target_authorized": False,
@@ -305,6 +329,7 @@ def _render_text(result: dict) -> str:
         "LightUp offline lab safety gate: PASS",
         "Mode: FIXED LOOPBACK LAB; external execution: DISABLED",
         "Scorer sockets: fixed IPv4 loopback only (in-process guard)",
+        "Local child processes: pinned synthetic TLS certificate only (in-process guard)",
         "Authentication, CSRF and session revocation: PASS",
         "Scope refusal and source-defined non-executing plan: PASS",
         "First-party scorer evidence and engine contracts: PASS",
