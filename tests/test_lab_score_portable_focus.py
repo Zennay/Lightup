@@ -176,6 +176,49 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertNotIn("<script", html)
         self.assertNotIn(str(self.root), html)
 
+    def test_queue_workroom_publish_reopen_and_rehashed_tamper(self):
+        root = self.root / "queue-new-private-workroom"
+        code, out, err = invoke("--publish-queue-workroom", self.archive,
+                                "--queue-workroom-dir", root)
+        self.assertEqual((code, err), (2, ""))
+        self.assertIn("status HOLD", out)
+        self.assertEqual(root.stat().st_mode & 0o777, 0o700)
+        self.assertEqual({p.name for p in root.iterdir()},
+                         {"queue.html", "queue.json", "manifest.json"})
+        self.assertTrue(all(p.stat().st_mode & 0o777 == 0o600 for p in root.iterdir()))
+        code, out, err = invoke("--verify-queue-workroom", self.archive,
+                                "--queue-workroom-dir", root)
+        self.assertEqual((code, err), (2, ""))
+        self.assertIn("FILES VERIFIED", out)
+        code, out, err = invoke("--publish-queue-workroom", self.archive,
+                                "--queue-workroom-dir", root)
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        original = (root / "queue.html").read_bytes()
+        altered = original.replace(b"HUMAN review", b"HUMAN approval")
+        self.assertNotEqual(original, altered)
+        (root / "queue.html").write_bytes(altered)
+        manifest = json.loads((root / "manifest.json").read_text())
+        manifest["file_sha256"]["queue.html"] = hashlib.sha256(altered).hexdigest()
+        (root / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2)+"\n")
+        code, out, err = invoke("--verify-queue-workroom", self.archive,
+                                "--queue-workroom-dir", root)
+        self.assertEqual(code, 2)
+        self.assertFalse(out)
+        self.assertIn("not verified", err)
+
+    def test_queue_workroom_corrupt_zip_creates_no_private_output(self):
+        evil = self.root / "private-queue-bad.zip"
+        evil.write_bytes(self.archive.read_bytes()+b"extra-false-source")
+        evil.chmod(0o600)
+        output = self.root / "private-queue-bad-output"
+        code, out, err = invoke("--publish-queue-workroom", evil,
+                                "--queue-workroom-dir", output)
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertFalse(output.exists())
+        self.assertNotIn(str(self.root), err)
+
     def test_queue_rejects_tampered_transport_before_pair_projection(self):
         evil = self.root / "queue-tampered"
         evil.mkdir(mode=0o700)

@@ -29,6 +29,7 @@ from .lab_score_portable_unpack import unpack_portable_review, verify_unpacked_p
 from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_portable_focus import render_portable_focus, render_portable_pair
 from .lab_score_portable_queue import render_portable_queue, render_portable_queue_html
+from .lab_score_queue_workroom import publish_queue_workroom, verify_queue_workroom
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
@@ -478,6 +479,10 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--verify-portable-review",
                       help="read-only transport integrity check of a portable HUMAN ZIP; "
                            "does not authenticate original evidence")
+    mode.add_argument("--publish-queue-workroom", metavar="ZIP",
+                      help="create source-free offline HUMAN review room")
+    mode.add_argument("--verify-queue-workroom", metavar="ZIP",
+                      help="read-only reread saved HUMAN review room vs original ZIP")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
     parser.add_argument("--format", choices=("json", "text", "csv", "html", "review-json", "review-markdown", "review-csv"),
@@ -497,10 +502,35 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--portable-review-output-dir",
                         help="create an owner-private, source-free offline HUMAN review ZIP "
                              "after verifying the existing private three-file review")
+    parser.add_argument("--queue-workroom-dir", metavar="DIR",
+                        help="new or existing 0700 HUMAN review directory")
     parser.add_argument("--unpacked-review-dir", help="existing private review files")
     parser.add_argument("--unpack-output-dir",
                         help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
+    if args.publish_queue_workroom is not None or args.verify_queue_workroom is not None:
+        if (args.queue_workroom_dir is None or args.format != "text"
+                or args.review_queue or args.focus_pair is not None
+                or args.focus_archive_index is not None or args.html_output_dir is not None
+                or args.unpack_output_dir is not None or args.unpacked_review_dir is not None
+                or args.verify_html_output_dir is not None
+                or args.portable_review_output_dir is not None):
+            parser.error("queue workroom requires only --queue-workroom-dir and text mode")
+        try:
+            if args.publish_queue_workroom is not None:
+                result = publish_queue_workroom(args.publish_queue_workroom,
+                                                args.queue_workroom_dir)
+            else:
+                result = verify_queue_workroom(args.verify_queue_workroom,
+                                               args.queue_workroom_dir)
+        except Exception:
+            print("LightUp HUMAN offline queue: HOLD; workroom not verified.", file=sys.stderr)
+            return 2
+        print("LightUp HUMAN offline queue: FILES VERIFIED; original source NOT authenticated; "
+              "status " + result["review_status"] + ".")
+        return 0 if result["review_status"] == "PASS" else 2
+    if args.queue_workroom_dir is not None:
+        parser.error("--queue-workroom-dir requires queue workroom mode")
     if args.review_queue and (args.verify_portable_review is None
                               or args.focus_pair is not None
                               or args.focus_archive_index is not None

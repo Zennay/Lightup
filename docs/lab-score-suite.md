@@ -454,3 +454,17 @@ It keeps the global HOLD, all pair priorities and the non-authorization text.
 A legacy unsigned v1/v2 review can never emit HTML, even with matching digests.
 The command does not write to disk or access external targets. Save stdout
 only in an owner-private 0600 file if a permanent offline copy is needed.
+
+### Save and independently reopen a private HUMAN review queue
+
+`lightup-lab-score-calibrate --publish-queue-workroom SOURCE.zip --queue-workroom-dir NEW_DIR`
+validates the original canonical v3 source-free synthetic ZIP and publishes
+`queue.html`, `queue.json`, `manifest.json` under a new owner-private 0700
+directory, with 0600 files, no overwrite and no network access. It rereads
+the original ZIP and all three published files before reporting success.
+`lightup-lab-score-calibrate --verify-queue-workroom SOURCE.zip --queue-workroom-dir EXISTING_DIR`
+independently revalidates the original ZIP and files in two read-only passes.
+An attacker who recalculates an unsigned local digest still cannot pass a
+byte-exact original ZIP comparison. An untrusted v1/v2 ZIP cannot publish
+browser HTML. No source or reviewer identity, consent, authorization, target
+contact, grant or deployment is implied; global HOLD exits with status 2.
