@@ -5,9 +5,17 @@ first-party scorer functions execute; it is never an execution authorization.
 """
 from __future__ import annotations
 
+import argparse
 from contextlib import contextmanager
 import socket
 from unittest.mock import patch
+
+
+class PrivateLabArgumentParser(argparse.ArgumentParser):
+    """Reject unexpected CLI arguments without echoing sensitive input."""
+
+    def error(self, message: str) -> None:
+        self.exit(2, f"{self.prog}: unsupported offline lab arguments\n")
 
 
 class LabSocketBoundaryError(RuntimeError):

@@ -17,7 +17,7 @@ import tempfile
 from urllib.parse import urlencode
 
 from lightup.domain import DomainStore, Role
-from lightup.lab_socket_guard import fixed_loopback_socket_boundary
+from lightup.lab_socket_guard import PrivateLabArgumentParser, fixed_loopback_socket_boundary
 from lightup.lab_service_score import run_lab_service_inventory_score
 from lightup.lab_tls_score import run_lab_tls_baseline_score
 from lightup.lab_web_score import run_lab_web_baseline_score
@@ -263,16 +263,9 @@ def _render_text(result: dict) -> str:
     ))
 
 
-class _PrivateArgumentParser(argparse.ArgumentParser):
-    """Never echo caller-provided target or path strings into shared logs."""
-
-    def error(self, message: str) -> None:
-        self.exit(2, f"{self.prog}: unsupported arguments (lab-only)\n")
-
-
 def main(argv: list[str] | None = None) -> int:
     """Return a privacy-minimal receipt instead of exposing exception details."""
-    parser = _PrivateArgumentParser(
+    parser = PrivateLabArgumentParser(
         prog="lightup-lab-safety-canary",
         description="Offline fixed-loopback safety gate.",
     )

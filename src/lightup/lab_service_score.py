@@ -12,6 +12,7 @@ import json
 import socket
 import time
 from pathlib import Path
+from .lab_socket_guard import PrivateLabArgumentParser, fixed_loopback_socket_boundary
 
 from .ai.orchestration import ToolCall, ToolExecutor, ToolRegistry
 from .labeval import (
@@ -51,7 +52,7 @@ def _open_ports(result) -> tuple[int, ...]:
     return tuple(sorted(int(item) for item in raw.split(",") if item))
 
 
-def run_lab_service_inventory_score(state_path: str | Path = "lightup-lab.db") -> dict:
+def _unprotected_run_lab_service_inventory_score(state_path: str | Path = "lightup-lab.db") -> dict:
     """Run two gated observations and persist their ground-truth score."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind((LOOPBACK, 0))
@@ -168,8 +169,15 @@ def run_lab_service_inventory_score(state_path: str | Path = "lightup-lab.db") -
         }
 
 
+
+def run_lab_service_inventory_score(state_path: str | Path = "lightup-lab.db") -> dict:
+    """Score one owned fixture with a strict in-process IPv4 loopback socket gate."""
+    with fixed_loopback_socket_boundary():
+        return _unprotected_run_lab_service_inventory_score(state_path)
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
+    parser = PrivateLabArgumentParser(
         prog="lightup-lab-service-score",
         description="Score the service-inventory worker against an owned loopback fixture.",
     )
@@ -181,8 +189,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         result = run_lab_service_inventory_score(args.db)
-    except (OSError, PermissionError, RuntimeError, ValueError) as exc:
-        print(json.dumps({"passed": False, "error": str(exc)}, indent=2))
+    except (OSError, PermissionError, RuntimeError, ValueError):
+        print(json.dumps({"passed": False, "error": "offline fixture denied or unavailable"}, indent=2))
         return 2
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result["passed"] else 2

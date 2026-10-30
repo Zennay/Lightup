@@ -18,6 +18,7 @@ import tempfile
 import threading
 import time
 from pathlib import Path
+from .lab_socket_guard import PrivateLabArgumentParser, fixed_loopback_socket_boundary
 
 from .ai.orchestration import ToolCall, ToolExecutor, ToolRegistry
 from .labeval import (
@@ -125,7 +126,7 @@ def _default_trust_rejects_fixture(port: int) -> bool:
         return False
 
 
-def run_lab_tls_baseline_score(state_path: str | Path = "lightup-lab.db") -> dict:
+def _unprotected_run_lab_tls_baseline_score(state_path: str | Path = "lightup-lab.db") -> dict:
     """Run two TLS observations against a self-signed loopback fixture and score them."""
     with tempfile.TemporaryDirectory(prefix="lightup-tls-lab-") as temp_dir:
         cert_path, key_path = _create_self_signed_certificate(Path(temp_dir))
@@ -287,8 +288,15 @@ def run_lab_tls_baseline_score(state_path: str | Path = "lightup-lab.db") -> dic
             }
 
 
+
+def run_lab_tls_baseline_score(state_path: str | Path = "lightup-lab.db") -> dict:
+    """Score one owned fixture with a strict in-process IPv4 loopback socket gate."""
+    with fixed_loopback_socket_boundary():
+        return _unprotected_run_lab_tls_baseline_score(state_path)
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
+    parser = PrivateLabArgumentParser(
         prog="lightup-lab-tls-score",
         description="Score the TLS baseline worker against an owned self-signed loopback fixture.",
     )
@@ -300,8 +308,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         result = run_lab_tls_baseline_score(args.db)
-    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
-        print(json.dumps({"passed": False, "error": str(exc)}, indent=2))
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError):
+        print(json.dumps({"passed": False, "error": "offline fixture denied or unavailable"}, indent=2))
         return 2
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result["passed"] else 2

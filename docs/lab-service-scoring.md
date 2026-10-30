@@ -125,3 +125,17 @@ single-invocation CLI, not a kernel-level network namespace, egress firewall
 or containment for subprocesses, raw native calls or concurrent untrusted
 threads. Production or untrusted code still requires an externally enforced
 isolated network. There is no external-target, deployment or grant authority.
+
+### Direct scorer commands
+
+The three individually installed scorers (`lightup-lab-service-score`,
+`lightup-lab-tls-score`, `lightup-lab-web-score`) and their public Python
+`run_lab_*_score` APIs now also enter the same temporary in-process
+loopback gate. The combined canary checks them in a second, outer boundary.
+Direct invocation cannot turn off the restriction with a CLI parameter.
+This still is **not** a substitute for an OS egress firewall or namespace.
+
+On direct scorer failure, the JSON CLI returns exit 2 with a fixed
+`passed=false` and `error="offline fixture denied or unavailable"`; it
+never echoes a private SQLite path, exception string, or rejected input.
+All four installed CLIs use the same private-safe argument parser.

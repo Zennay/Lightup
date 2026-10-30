@@ -8,7 +8,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-from lightup import lab_canary
+from lightup import lab_canary, lab_service_score, lab_tls_score, lab_web_score
 from lightup.lab_socket_guard import (
     LabSocketBoundaryError, fixed_loopback_socket_boundary,
 )
@@ -42,6 +42,69 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                 underlying_connect_ex.assert_not_called()
                 underlying_bind.assert_not_called()
                 underlying_send.assert_not_called()
+
+    def test_each_installed_scorer_api_enforces_socket_gate_on_its_own(self):
+        cases = (
+            (lab_service_score, "run_lab_service_inventory_score"),
+            (lab_tls_score, "run_lab_tls_baseline_score"),
+            (lab_web_score, "run_lab_web_baseline_score"),
+        )
+        def forbidden_work(_db):
+            # DNS must fail before any external connection can be attempted.
+            return socket.create_connection(("example.invalid", 443))
+        for mod, api in cases:
+            with self.subTest(api=api):
+                with patch.object(mod, "_unprotected_" + api,
+                                  side_effect=forbidden_work):
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(mod, api)("synthetic.db")
+
+    def test_each_installed_scorer_api_runs_valid_fixed_fixture(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        with TemporaryDirectory() as d:
+            for mod, api, count in (
+                (lab_service_score, "run_lab_service_inventory_score", 1),
+                (lab_tls_score, "run_lab_tls_baseline_score", 1),
+                (lab_web_score, "run_lab_web_baseline_score", 5),
+            ):
+                with self.subTest(api=api):
+                    result = getattr(mod, api)(Path(d) / (api + ".db"))
+                    self.assertIs(result["passed"], True)
+                    self.assertEqual(result["evaluation"]["metrics"]["valid_findings"], count)
+
+    def test_all_three_installed_clis_hide_failure_paths(self):
+        for mod, api in (
+            (lab_service_score, "run_lab_service_inventory_score"),
+            (lab_tls_score, "run_lab_tls_baseline_score"),
+            (lab_web_score, "run_lab_web_baseline_score"),
+        ):
+            with self.subTest(api=api):
+                with patch.object(mod, api,
+                                  side_effect=PermissionError("/tmp/PRIVATE-credential.db")):
+                    with redirect_stdout(io.StringIO()) as out:
+                        code = mod.main(["--db", "/tmp/PRIVATE-credential.db"])
+                self.assertEqual(code, 2)
+                self.assertEqual(json.loads(out.getvalue()), {
+                    "passed": False, "error": "offline fixture denied or unavailable"
+                })
+                self.assertNotIn("PRIVATE", out.getvalue())
+
+    def test_direct_clis_do_not_echo_rejected_argument_values(self):
+        from contextlib import redirect_stderr
+        for mod, api in (
+            (lab_service_score, "run_lab_service_inventory_score"),
+            (lab_tls_score, "run_lab_tls_baseline_score"),
+            (lab_web_score, "run_lab_web_baseline_score"),
+        ):
+            with self.subTest(api=api):
+                with patch.object(mod, api) as scorer:
+                    with redirect_stderr(io.StringIO()) as err:
+                        with self.assertRaises(SystemExit) as raised:
+                            mod.main(["--target", "https://PRIVATE.example/secret"])
+                self.assertEqual(raised.exception.code, 2)
+                self.assertNotIn("PRIVATE", err.getvalue())
+                scorer.assert_not_called()
 
     def test_valid_fixed_loopback_scorer_run_works_and_restores_socket(self):
         original = socket.socket.connect
