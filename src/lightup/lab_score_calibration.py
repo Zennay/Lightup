@@ -567,7 +567,8 @@ def main(argv: list[str] | None = None) -> int:
                     else:
                         output = render_comparison(comparison, args.format)
                 else:
-                    output = (f"LightUp HUMAN offline comparison: {"five" if file_count == 5 else "eight"} saved files "
+                    count_label = "five" if file_count == 5 else "eight"
+                    output = (f"LightUp HUMAN offline comparison: {count_label} saved files "
                               "reverified; no remediation or authorization.\n")
             elif args.comparison_output_dir is not None:
                 comparison = publish_private_comparison(

@@ -1,6 +1,7 @@
 """Real synthetic original archive-focused, read-only recipient workflow."""
 from __future__ import annotations
 
+import gc
 import io
 import hashlib
 import json
@@ -15,6 +16,9 @@ from lightup import lab_score_calibration as cli
 
 
 def invoke(*args):
+    # Collect leaked test DB objects before capturing this CLI call's stderr.
+    # The caller must still detect warnings actually emitted by this CLI.
+    gc.collect()
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
         status = cli.main(list(map(str, args)))

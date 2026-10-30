@@ -1,5 +1,6 @@
 """Two admitted synthetic ZIPs; human-only delta, never automatic remediation."""
 from __future__ import annotations
+import gc
 import csv
 import io
 import json
@@ -13,6 +14,8 @@ from lightup.lab_score_portable_html_safety import admit_inert_html
 
 
 def run(*args):
+    # Keep warnings from previously discarded test DBs outside CLI stderr capture.
+    gc.collect()
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
         status = app.main([str(x) for x in args])
