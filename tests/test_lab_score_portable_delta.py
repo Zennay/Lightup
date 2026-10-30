@@ -162,7 +162,7 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         self.assertEqual(run('--compare-portable-reviews',self.hold,self.passing,
                              '--comparison-output-dir',room,'--include-actions')[0],2)
         saved = {p.name:p.read_bytes() for p in room.iterdir()}
-        for fmt in ('actions-batch-json','actions-batch-markdown','actions-batch-html'):
+        for fmt in ('actions-batch-json','actions-batch-markdown','actions-batch-html','actions-batch-csv'):
             direct = run('--compare-portable-reviews',self.hold,self.passing,
                          '--focus-batch',selected,'--format',fmt)
             reopened = run('--verify-comparison-workroom',self.hold,self.passing,
@@ -211,7 +211,7 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         self.assertEqual(packet['global_review_status'],'HOLD')
         self.assertEqual(packet['selected_original_pairs'][0]['hold_reasons'],
                          ['evidence_reused'])
-        for fmt in ('actions-batch-markdown','actions-batch-html'):
+        for fmt in ('actions-batch-markdown','actions-batch-html','actions-batch-csv'):
             result=render_human_batch(combined,select,fmt)
             self.assertIn('NOT_VERIFIED',result)
             if fmt.endswith('html'):
@@ -236,14 +236,15 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         args=['--focus-room-dir',room,'--focus-batch',selector]
         code,out,err=run('--publish-batch-focus',self.hold,self.passing,*args)
         self.assertEqual((code,err),(2,''))
-        self.assertIn('four private files',out)
+        self.assertIn('five private files',out)
         saved={p.name:p.read_bytes() for p in room.iterdir()}
-        self.assertEqual(set(saved),{'batch.json','batch.md','batch.html','manifest.json'})
+        self.assertEqual(set(saved),{'batch.json','batch.md','batch.html','batch.csv','manifest.json'})
         self.assertEqual(stat.S_IMODE(room.stat().st_mode),0o700)
         self.assertTrue(all(stat.S_IMODE(p.stat().st_mode)==0o600 for p in room.iterdir()))
         for fmt,name in (('actions-batch-json','batch.json'),
                          ('actions-batch-markdown','batch.md'),
-                         ('actions-batch-html','batch.html')):
+                         ('actions-batch-html','batch.html'),
+                         ('actions-batch-csv','batch.csv')):
             verified=run('--verify-batch-focus',self.hold,self.passing,
                          *args,'--format',fmt)
             direct=run('--compare-portable-reviews',self.hold,self.passing,
@@ -262,6 +263,51 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         self.assertEqual((code,out),(2,''))
         self.assertIn('not verified',err)
         self.assertNotIn('forged',err)
+
+    def test_batch_csv_is_safe_action_queue_and_legacy_room_reopens(self):
+        import os
+        from lightup.lab_score_focus_workroom import _canonical
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)), str(self.hold), str(self.passing))
+        row = actions['actions'][0]
+        selector = f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        result = run('--compare-portable-reviews', self.hold, self.passing,
+                     '--focus-batch', selector, '--format', 'actions-batch-csv')
+        self.assertEqual((result[0], result[2]), (2, ''))
+        records = list(csv.DictReader(io.StringIO(result[1])))
+        self.assertGreaterEqual(len(records), 1)
+        self.assertEqual({r['completion'] for r in records}, {'NOT_VERIFIED'})
+        self.assertEqual({r['authorization_granted'] for r in records}, {'false'})
+        self.assertEqual({r['global_review_status'] for r in records}, {'HOLD'})
+        self.assertTrue(all(not value.startswith(('=', '+', '-', '@'))
+                            for record in records for value in record.values()))
+        self.assertNotIn(str(self.root), result[1])
+
+        # Genuine four-file v1 workrooms must remain verifiable after v2 ships.
+        _, payloads = _canonical(str(self.hold), str(self.passing),
+                                 selector, legacy_batch=True)
+        legacy = self.root / 'existing-batch-v1'
+        legacy.mkdir(mode=0o700)
+        for name, body in payloads.items():
+            fd = os.open(legacy/name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, 'wb') as output:
+                output.write(body)
+        for fmt, name in (('actions-batch-json','batch.json'),
+                          ('actions-batch-markdown','batch.md'),
+                          ('actions-batch-html','batch.html')):
+            actual = run('--verify-batch-focus', self.hold, self.passing,
+                         '--focus-room-dir', legacy, '--focus-batch', selector,
+                         '--format', fmt)
+            self.assertEqual((actual[0], actual[2]), (2, ''))
+            self.assertEqual(actual[1].encode(), payloads[name])
+        code, out, err = run('--verify-batch-focus', self.hold, self.passing,
+                             '--focus-room-dir', legacy, '--focus-batch', selector,
+                             '--format','actions-batch-csv')
+        self.assertEqual((code, out), (2, ''))
+        self.assertIn('not verified', err)
+        self.assertEqual({p.name: p.read_bytes() for p in legacy.iterdir()}, payloads)
 
     def test_private_batch_bad_selection_leaves_no_room(self):
         root=self.root/'batch-invalid-dir'

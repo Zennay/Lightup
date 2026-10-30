@@ -5,6 +5,8 @@ rechecked synthetic original ZIPs. The selector cannot discover other pairs.
 """
 from __future__ import annotations
 
+import csv
+import io
 import json
 import re
 
@@ -72,6 +74,21 @@ def render_human_batch(data: dict, selection: str, fmt: str) -> str:
     }
     if fmt == "actions-batch-json":
         output = json.dumps(packet, sort_keys=True, allow_nan=False) + "\n"
+    elif fmt == "actions-batch-csv":
+        # All CSV cells originate from admitted enums or bounded integer ordinals.
+        # No source paths, external identities or spreadsheet formulas.
+        buffer = io.StringIO(newline="")
+        writer = csv.writer(buffer, lineterminator="\n")
+        writer.writerow(("source", "anonymous_previous", "anonymous_current",
+                         "hold_reason", "human_followup", "completion",
+                         "global_review_status", "authorization_granted",
+                         "original_source_authenticated", "other_original_pairs_hidden"))
+        for item in packet["selected_original_pairs"]:
+            for reason in item["hold_reasons"]:
+                writer.writerow((item["source"], item["anonymous_previous"],
+                                 item["anonymous_current"], reason, _ACTION[reason],
+                                 "NOT_VERIFIED", "HOLD", "false", "false", "true"))
+        output = buffer.getvalue()
     elif fmt == "actions-batch-markdown":
         output = ("# LightUp offline synthetic HUMAN selected HOLD pairs\n\n"
                   "**GLOBAL STATUS HOLD — NOT VERIFIED / NOT AUTHORIZED**\n\n"

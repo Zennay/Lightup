@@ -25,7 +25,8 @@ _FORMATS = (
 )
 
 
-def _canonical(first: str, second: str, selector: tuple[str, str, str]) -> tuple[dict, dict[str, bytes]]:
+def _canonical(first: str, second: str, selector: tuple[str, str, str], *,
+               legacy_batch: bool = False) -> tuple[dict, dict[str, bytes]]:
     comparison = compare_portable_review_transports(first, second)
     actions = build_review_actions(comparison, first, second)
     is_batch = type(selector) is str
@@ -33,6 +34,8 @@ def _canonical(first: str, second: str, selector: tuple[str, str, str]) -> tuple
         formats = (("actions-batch-json", "batch.json"),
                    ("actions-batch-markdown", "batch.md"),
                    ("actions-batch-html", "batch.html"))
+        if not legacy_batch:
+            formats += (("actions-batch-csv", "batch.csv"),)
         payloads = {name: render_human_batch(actions, selector, fmt).encode("utf-8")
                     for fmt, name in formats}
     else:
@@ -41,8 +44,9 @@ def _canonical(first: str, second: str, selector: tuple[str, str, str]) -> tuple
         payloads = {name: render_action_focus(actions, *selector, fmt).encode("utf-8")
                     for fmt, name in _FORMATS}
     receipt = {
-        "schema": ("lightup.lab-score-original-human-batch-room.v1" if is_batch
-                   else "lightup.lab-score-original-human-focus-room.v1"),
+        "schema": ("lightup.lab-score-original-human-batch-room.v1" if legacy_batch else
+                   "lightup.lab-score-original-human-batch-room.v2" if is_batch else
+                   "lightup.lab-score-original-human-focus-room.v1"),
         "selector": selector if is_batch else list(selector),
         "global_review_status": "HOLD",
         "original_unsigned_transport_sha256": {
@@ -144,9 +148,14 @@ def verify_private_focus(first: str, second: str, directory: str,
                          selector: tuple[str, str, str]) -> tuple[dict, dict[str, bytes]]:
     """Source re-derive all four stored files, read twice, no modification."""
     target = _paths(first, second, directory)
-    comparison, expected = _canonical(first, second, selector)
     fd = _private_dir_fd(target)
     try:
+        # Exact historic four-file inventory selects v1. Missing a v2 CSV
+        # cannot downgrade a saved room: the v2 manifest then fails validation.
+        legacy_batch = (type(selector) is str and set(os.listdir(fd)) ==
+                        {"batch.json", "batch.md", "batch.html", "manifest.json"})
+        comparison, expected = _canonical(first, second, selector,
+                                          legacy_batch=legacy_batch)
         identity: dict[str, tuple] = {}
         for _ in range(2):
             if set(os.listdir(fd)) != set(expected):

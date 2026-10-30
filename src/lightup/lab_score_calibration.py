@@ -514,7 +514,7 @@ def main(argv: list[str] | None = None) -> int:
                       help="reverify source-bound private selected HOLD batch room")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
-    parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "triage-csv", "review-csv", "actions-json", "actions-csv", "actions-html", "actions-brief-markdown", "actions-brief-html", "actions-focus-json", "actions-focus-text", "actions-focus-html", "actions-batch-json", "actions-batch-markdown", "actions-batch-html"),
+    parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "triage-csv", "review-csv", "actions-json", "actions-csv", "actions-html", "actions-brief-markdown", "actions-brief-html", "actions-focus-json", "actions-focus-text", "actions-focus-html", "actions-batch-json", "actions-batch-markdown", "actions-batch-html", "actions-batch-csv"),
                         default="text")
     parser.add_argument("--focus-room-dir", metavar="DIR",
                         help="new/existing private source-local HOLD review room")
@@ -559,7 +559,8 @@ def main(argv: list[str] | None = None) -> int:
                 or args.focus_room_dir is None
                 or args.format not in (("text",) if creating else
                                        ("text", "actions-batch-json",
-                                        "actions-batch-markdown", "actions-batch-html"))
+                                        "actions-batch-markdown", "actions-batch-html",
+                                        "actions-batch-csv"))
                 or any((args.include_actions, args.include_briefs, args.export_comparison,
                         args.focus_archive_index is not None, args.focus_pair is not None,
                         args.review_queue, args.include_triage,
@@ -576,15 +577,16 @@ def main(argv: list[str] | None = None) -> int:
             if creating:
                 comparison = publish_private_focus(*originals, args.focus_room_dir,
                                                    args.focus_batch)
-                output = "LightUp original HUMAN HOLD batch: four private files verified; no approval.\n"
+                output = "LightUp original HUMAN HOLD batch: five private files verified; no approval.\n"
             else:
                 comparison, saved = verify_private_focus(*originals, args.focus_room_dir,
                                                          args.focus_batch)
                 names = {"actions-batch-json": "batch.json",
                          "actions-batch-markdown": "batch.md",
-                         "actions-batch-html": "batch.html"}
+                         "actions-batch-html": "batch.html",
+                         "actions-batch-csv": "batch.csv"}
                 output = (saved[names[args.format]].decode("utf-8") if args.format in names
-                          else "LightUp original HUMAN HOLD batch: four files reverified; no approval.\n")
+                          else "LightUp original HUMAN HOLD batch: private files reverified; no approval.\n")
         except Exception:
             print("LightUp original HUMAN batch: HOLD; source or saved room not verified.",
                   file=sys.stderr)
@@ -639,7 +641,7 @@ def main(argv: list[str] | None = None) -> int:
                                 else ("text", "json", "csv", "html",
                                       "actions-json", "actions-csv", "actions-html", "actions-brief-markdown", "actions-brief-html",
                                       "actions-focus-json", "actions-focus-text", "actions-focus-html",
-                                      "actions-batch-json", "actions-batch-markdown", "actions-batch-html"))
+                                      "actions-batch-json", "actions-batch-markdown", "actions-batch-html", "actions-batch-csv"))
                 or (args.verify_comparison_workroom is not None
                     and args.comparison_output_dir is None)
                 or (args.export_comparison and
@@ -647,10 +649,10 @@ def main(argv: list[str] | None = None) -> int:
                      or args.comparison_output_dir is None))
                 or (args.focus_batch is not None and
                     (args.focus_action is not None
-                     or args.format not in ("actions-batch-json", "actions-batch-markdown", "actions-batch-html")
+                     or args.format not in ("actions-batch-json", "actions-batch-markdown", "actions-batch-html", "actions-batch-csv")
                      or (args.comparison_output_dir is not None and not args.export_comparison)))
                 or (args.focus_batch is None and
-                    args.format in ("actions-batch-json", "actions-batch-markdown", "actions-batch-html"))
+                    args.format in ("actions-batch-json", "actions-batch-markdown", "actions-batch-html", "actions-batch-csv"))
                 or (args.focus_action is not None and
                     (args.format not in ("actions-focus-json", "actions-focus-text", "actions-focus-html")
                      or (args.comparison_output_dir is not None and not args.export_comparison)))
