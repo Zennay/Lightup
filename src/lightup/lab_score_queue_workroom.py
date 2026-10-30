@@ -104,7 +104,30 @@ def verify_queue_workroom(archive: str | Path, directory: str | Path) -> dict[st
     if (final['portable_transport_sha256'] != result['portable_transport_sha256']
             or final_expected != expected):
         raise ValueError('original ZIP changed during recipient inspection')
+    result["workroom_version"] = version
+    result["workroom_files_verified"] = len(expected)
     return result
+
+
+def export_verified_queue_workroom(archive: str | Path, directory: str | Path,
+                                   filename: str) -> tuple[dict[str, Any], bytes]:
+    """Emit only original-derived bytes after full saved-workroom reinspection.
+
+    Never open a mutable output path for presentation after validation; get
+    canonical bytes from re-admitted original ZIP and compare transport again.
+    """
+    if filename not in _NAMES_V2 or filename == "manifest.json":
+        raise ValueError("unsupported source-free reviewer export")
+    verified = verify_queue_workroom(archive, directory)
+    final, payloads = _payloads(archive, version=verified["workroom_version"])
+    if final["portable_transport_sha256"] != verified["portable_transport_sha256"]:
+        raise ValueError("original ZIP changed before recipient export")
+    if filename in ("queue_pairs.csv", "queue_archives.csv"):
+        # Old v1 workrooms lack stored CSVs; rederive only from admitted source.
+        if filename not in payloads:
+            payloads.update(render_queue_csv(final["review_queue"],
+                                             global_status=final["review_status"]))
+    return verified, payloads[filename]
 
 
 def publish_queue_workroom(archive: str | Path, destination: str | Path) -> dict[str, Any]:

@@ -30,7 +30,7 @@ from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_portable_focus import render_portable_focus, render_portable_pair
 from .lab_score_portable_queue import render_portable_queue, render_portable_queue_html
 from .lab_score_queue_csv import render_queue_csv
-from .lab_score_queue_workroom import publish_queue_workroom, verify_queue_workroom
+from .lab_score_queue_workroom import publish_queue_workroom, verify_queue_workroom, export_verified_queue_workroom
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
@@ -512,7 +512,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.publish_queue_workroom is not None or args.verify_queue_workroom is not None:
         if (args.queue_workroom_dir is None
                 or args.format not in (("text",) if args.publish_queue_workroom is not None
-                                       else ("text", "csv", "review-csv"))
+                                       else ("text", "csv", "review-csv", "review-json", "html"))
                 or args.review_queue or args.focus_pair is not None
                 or args.focus_archive_index is not None or args.html_output_dir is not None
                 or args.unpack_output_dir is not None or args.unpacked_review_dir is not None
@@ -524,16 +524,21 @@ def main(argv: list[str] | None = None) -> int:
                 result = publish_queue_workroom(args.publish_queue_workroom,
                                                 args.queue_workroom_dir)
             else:
-                result = verify_queue_workroom(args.verify_queue_workroom,
-                                               args.queue_workroom_dir)
+                if args.format == "text":
+                    result = verify_queue_workroom(args.verify_queue_workroom,
+                                                   args.queue_workroom_dir)
+                else:
+                    filename = {"csv": "queue_archives.csv",
+                                "review-csv": "queue_pairs.csv",
+                                "review-json": "queue.json",
+                                "html": "queue.html"}[args.format]
+                    result, export = export_verified_queue_workroom(
+                        args.verify_queue_workroom, args.queue_workroom_dir, filename)
         except Exception:
             print("LightUp HUMAN offline queue: HOLD; workroom not verified.", file=sys.stderr)
             return 2
-        if args.format in ("csv", "review-csv"):
-            outputs = render_queue_csv(result["review_queue"],
-                                       global_status=result["review_status"])
-            name = "queue_pairs.csv" if args.format == "review-csv" else "queue_archives.csv"
-            sys.stdout.write(outputs[name].decode("utf-8"))
+        if args.format != "text":
+            sys.stdout.write(export.decode("utf-8"))
         else:
             print("LightUp HUMAN offline queue: FILES VERIFIED; original source NOT authenticated; "
                   "status " + result["review_status"] + ".")

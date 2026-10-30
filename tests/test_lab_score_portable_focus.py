@@ -394,6 +394,48 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual((code, raw), (2, ""))
         self.assertIn("not verified", error)
 
+    def test_saved_workroom_html_json_csv_exports_bound_to_original_zip(self):
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        room = self.root / "saved-full-recipient"
+        status, out, error = invoke("--publish-queue-workroom", self.archive,
+                                    "--queue-workroom-dir", room)
+        self.assertEqual((status, error), (2, ""))
+        for name, output in (("html", "queue.html"),
+                             ("review-json", "queue.json"),
+                             ("csv", "queue_archives.csv"),
+                             ("review-csv", "queue_pairs.csv")):
+            code, rendered, err = invoke("--verify-queue-workroom", self.archive,
+                                         "--queue-workroom-dir", room,
+                                         "--format", name)
+            self.assertEqual((code, err), (2, ""))
+            self.assertEqual(rendered.encode(), (room / output).read_bytes())
+            if name == "html":
+                admit_inert_html(rendered.encode())
+            if name == "review-json":
+                receipt = json.loads(rendered)
+                self.assertEqual(receipt["review_status"], "HOLD")
+                self.assertFalse(receipt["authorization_granted"])
+        old = self.root / "saved-full-recipient-v1"
+        old.mkdir(mode=0o700)
+        from lightup.lab_score_queue_workroom import _payloads
+        for name, data in _payloads(self.archive, version=1)[1].items():
+            file = old / name
+            file.write_bytes(data)
+            file.chmod(0o600)
+        for mode in ("html", "review-json", "csv", "review-csv"):
+            code, data, err = invoke("--verify-queue-workroom", self.archive,
+                                     "--queue-workroom-dir", old,
+                                     "--format", mode)
+            self.assertEqual((code, err), (2, ""))
+            self.assertTrue(data)
+        (room / "queue.html").write_text("<script>unsafe</script>")
+        for mode in ("html", "review-json", "csv", "review-csv"):
+            code, data, err = invoke("--verify-queue-workroom", self.archive,
+                                     "--queue-workroom-dir", room,
+                                     "--format", mode)
+            self.assertEqual((code, data), (2, ""))
+            self.assertIn("not verified", err)
+
     def test_queue_workroom_rechecks_original_after_reading_files(self):
         from unittest.mock import patch
         from lightup import lab_score_queue_workroom as workroom

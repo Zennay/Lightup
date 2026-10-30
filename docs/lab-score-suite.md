@@ -517,3 +517,13 @@ passes, then revalidating that ZIP. A legacy v1 room can thus be consumed by
 newer CSV tools without mutating its three original files. A corrupted saved
 file returns HOLD with **no stdout CSV**, even if an unsigned manifest digest
 was recomputed. All exports carry global status and explicit false authority.
+
+The saved-workroom read-only recipient can also present the **already
+validated** inert `queue.html` (`--format html`) and source-free `queue.json`
+(`--format review-json`) directly to stdout. Together with `csv` and
+`review-csv`, this supplies all four reviewer-facing files from either v1
+or v2 workrooms without modifying the private workroom. The emitted payloads
+are rederived from the original, newly re-admitted v3 ZIP after the complete
+saved workspace was rechecked; no mutable saved file is reread for export.
+Any saved-file tamper results in HOLD and **zero exported bytes**. No external
+targets, assessment grants, source identity or deployment authorization.
