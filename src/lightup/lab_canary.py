@@ -16,6 +16,7 @@ import sys
 import tempfile
 from urllib.parse import urlencode
 
+from lightup.capabilities import CapabilityState, get_capabilities
 from lightup.domain import DomainStore, Role
 from lightup.lab_socket_guard import PrivateLabArgumentParser, fixed_loopback_socket_boundary
 from lightup.lab_service_score import run_lab_service_inventory_score
@@ -68,6 +69,10 @@ def _require_loopback_plan_disabled(response: subprocess.CompletedProcess) -> No
         raise RuntimeError("Offline safety gate denied: plan schema")
     scope = {"allowed": True, "normalized_host": "127.0.0.1", "reason": "loopback"}
     capabilities = payload["capability_ids"]
+    expected_capabilities = [
+        item.capability_id for item in get_capabilities()
+        if item.state in {CapabilityState.PLANNING, CapabilityState.LAB_ONLY}
+    ]
     if (payload["target"] != "127.0.0.1"
             or type(payload["execution_enabled"]) is not bool
             or payload["execution_enabled"] is not False
@@ -78,7 +83,8 @@ def _require_loopback_plan_disabled(response: subprocess.CompletedProcess) -> No
             or not all(type(x) is str and re.fullmatch(r"[a-z][a-z0-9-]*", x)
                        for x in capabilities)
             or not {"web-baseline", "network-services"}.issubset(set(capabilities))
-            or len(capabilities) != len(set(capabilities))):
+            or len(capabilities) != len(set(capabilities))
+            or capabilities != expected_capabilities):
         raise RuntimeError("Offline safety gate denied: non-executing loopback plan")
 
 

@@ -218,7 +218,13 @@ class LabScorerEntrypointTests(unittest.TestCase):
                 "allowed": True, "normalized_host": "127.0.0.1",
                 "reason": "loopback",
             },
-            "capability_ids": ["web-baseline", "network-services"],
+            "capability_ids": [
+                cap.capability_id for cap in lab_canary.get_capabilities()
+                if cap.state in {
+                    lab_canary.CapabilityState.PLANNING,
+                    lab_canary.CapabilityState.LAB_ONLY,
+                }
+            ],
             "execution_enabled": False,
         }
         lab_canary._require_loopback_plan_disabled(
@@ -226,7 +232,7 @@ class LabScorerEntrypointTests(unittest.TestCase):
         )
         for attack in ("wrong_target", "wrong_scope", "scope_bool",
                        "execution_bool", "missing_capability", "duplicates",
-                       "unknown_schema"):
+                       "unknown_schema", "extra_capability", "reordered_capabilities"):
             bad = deepcopy(good)
             if attack == "wrong_target":
                 bad["target"] = "8.8.8.8"
@@ -237,7 +243,11 @@ class LabScorerEntrypointTests(unittest.TestCase):
             elif attack == "execution_bool":
                 bad["execution_enabled"] = 0
             elif attack == "missing_capability":
-                bad["capability_ids"] = ["web-baseline"]
+                bad["capability_ids"].remove("network-services")
+            elif attack == "extra_capability":
+                bad["capability_ids"].append("nonexistent-external-grant")
+            elif attack == "reordered_capabilities":
+                bad["capability_ids"].reverse()
             elif attack == "duplicates":
                 bad["capability_ids"].append("web-baseline")
             else:

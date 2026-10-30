@@ -198,3 +198,10 @@ canonical capability IDs including both local service and HTTP baselines.
 Mismatched targets, duplicate identifiers or integer/boolean substitution
 no longer qualify as an offline calibration PASS. This does not authorize
 any action against 8.8.8.8 or another external target.
+
+The accepted plan capability list must now exactly match the current
+source-defined registry's `planning` and `lab_only` capabilities, in
+registration order. A synthetic injected capability, a missing registered
+capability, or reordered list was previously incorrectly accepted by the
+offline canary; all now produce HOLD. The plan remains non-executing even
+when its complete registry list is valid.
