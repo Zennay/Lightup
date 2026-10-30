@@ -309,6 +309,127 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         self.assertIn('not verified', err)
         self.assertEqual({p.name: p.read_bytes() for p in legacy.iterdir()}, payloads)
 
+    def test_private_focus_reopen_from_manifest_no_selector_and_tamper(self):
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)), str(self.hold), str(self.passing))
+        row = actions['actions'][0]
+        select = ('baseline', str(row['anonymous_previous']),
+                  str(row['anonymous_current']))
+        room = self.root / 'human-focus-original-reopen'
+        flags = ('--focus-room-dir', room)
+        created = run('--publish-action-focus', self.hold, self.passing,
+                      *flags, '--focus-action', *select)
+        self.assertEqual((created[0], created[2]), (2, ''))
+        saved = {p.name: p.read_bytes() for p in room.iterdir()}
+        self.assertEqual(set(saved), {'focus.json','focus.txt','focus.html','manifest.json'})
+        for fmt,name in (('actions-focus-json','focus.json'),
+                         ('actions-focus-text','focus.txt'),
+                         ('actions-focus-html','focus.html')):
+            inferred = run('--verify-action-focus', self.hold, self.passing,
+                           *flags, '--format', fmt)
+            specified = run('--verify-action-focus', self.hold, self.passing,
+                            *flags, '--focus-action', *select, '--format', fmt)
+            self.assertEqual(inferred, specified)
+            self.assertEqual((inferred[0], inferred[2]), (2, ''))
+            self.assertEqual(inferred[1].encode(), saved[name])
+            if fmt.endswith('html'):
+                admit_inert_html(inferred[1].encode())
+        self.assertEqual({p.name:p.read_bytes() for p in room.iterdir()}, saved)
+        corrupted = json.loads(saved['manifest.json'])
+        corrupted['selector'] = ['candidate', *select[1:]]
+        (room/'manifest.json').write_text(json.dumps(corrupted, indent=2, sort_keys=True)+'\n')
+        for fmt in ('actions-focus-json','actions-focus-html'):
+            denied = run('--verify-action-focus', self.hold, self.passing,
+                         *flags, '--format', fmt)
+            self.assertEqual((denied[0], denied[1]), (2, ''))
+            self.assertIn('not verified', denied[2])
+        (room/'manifest.json').write_bytes(saved['manifest.json'])
+        (room/'focus.txt').write_text('forged AUTHORIZED')
+        denied = run('--verify-action-focus', self.hold, self.passing,
+                     *flags, '--format', 'actions-focus-json')
+        self.assertEqual((denied[0], denied[1]), (2, ''))
+        self.assertIn('not verified', denied[2])
+
+    def test_private_batch_reopen_from_saved_manifest_selector(self):
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)), str(self.hold), str(self.passing))
+        row = actions['actions'][0]
+        selector = f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        room = self.root / 'operator-reopen-batch-v2'
+        flags = ('--focus-room-dir', room)
+        self.assertEqual(run('--publish-batch-focus', self.hold, self.passing,
+                             *flags, '--focus-batch', selector)[0], 2)
+        before = {p.name:p.read_bytes() for p in room.iterdir()}
+        for fmt,name in (('actions-batch-json','batch.json'),
+                         ('actions-batch-markdown','batch.md'),
+                         ('actions-batch-html','batch.html'),
+                         ('actions-batch-csv','batch.csv')):
+            automatic = run('--verify-batch-focus', self.hold, self.passing,
+                            *flags, '--format', fmt)
+            explicit = run('--verify-batch-focus', self.hold, self.passing,
+                           *flags, '--focus-batch', selector, '--format', fmt)
+            self.assertEqual(automatic, explicit)
+            self.assertEqual((automatic[0], automatic[2]), (2, ''))
+            self.assertEqual(automatic[1].encode(), before[name])
+        self.assertEqual({p.name:p.read_bytes() for p in room.iterdir()}, before)
+        # The pinned manifest does not authorize an alternate selector.
+        invalid = run('--verify-batch-focus', self.hold, self.passing,
+                      *flags, '--focus-batch', 'baseline:1-2',
+                      '--format', 'actions-batch-csv')
+        self.assertEqual((invalid[0], invalid[1]), (2, ''))
+        # This is an untrusted local manifest, never a standalone approval.
+        (room/'manifest.json').write_text('{"selector":"baseline:1-2"}')
+        for fmt in ('actions-batch-json','actions-batch-csv'):
+            denied = run('--verify-batch-focus', self.hold, self.passing,
+                         *flags, '--format', fmt)
+            self.assertEqual((denied[0], denied[1]), (2, ''))
+            self.assertIn('not verified', denied[2])
+        (room/'manifest.json').write_bytes(before['manifest.json'])
+        forged = json.loads(before['manifest.json'])
+        forged['selector'] = 'candidate:1-2'
+        (room/'manifest.json').write_text(json.dumps(forged, indent=2, sort_keys=True)+'\n')
+        denied = run('--verify-batch-focus', self.hold, self.passing,
+                     *flags, '--format', 'actions-batch-csv')
+        self.assertEqual((denied[0], denied[1]), (2, ''))
+        (room/'manifest.json').write_bytes(before['manifest.json'])
+        (room/'batch.csv').write_text('forged APPROVED')
+        denied = run('--verify-batch-focus', self.hold, self.passing,
+                     *flags, '--format', 'actions-batch-json')
+        self.assertEqual((denied[0], denied[1]), (2, ''))
+        self.assertIn('not verified', denied[2])
+
+    def test_private_batch_legacy_manifest_reopen_without_selector(self):
+        from lightup.lab_score_focus_workroom import _canonical
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)), str(self.hold), str(self.passing))
+        row = actions['actions'][0]
+        selector = f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        _, payloads = _canonical(str(self.hold), str(self.passing),
+                                 selector, legacy_batch=True)
+        room = self.root / 'manifest-reopen-v1'
+        room.mkdir(mode=0o700)
+        import os
+        for name, data in payloads.items():
+            fd = os.open(room/name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, 'wb') as output:
+                output.write(data)
+        args = ('--verify-batch-focus', self.hold, self.passing,
+                '--focus-room-dir', room)
+        for fmt,name in (('actions-batch-json','batch.json'),
+                         ('actions-batch-markdown','batch.md'),
+                         ('actions-batch-html','batch.html')):
+            result = run(*args, '--format', fmt)
+            self.assertEqual((result[0], result[2]), (2, ''))
+            self.assertEqual(result[1].encode(), payloads[name])
+        self.assertEqual(run(*args,'--format','actions-batch-csv')[:2], (2,''))
+        self.assertEqual({p.name:p.read_bytes() for p in room.iterdir()}, payloads)
+
     def test_private_batch_bad_selection_leaves_no_room(self):
         root=self.root/'batch-invalid-dir'
         for bad in ('candidate:1-2','baseline:1-1','baseline:1-9',

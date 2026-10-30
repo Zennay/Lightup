@@ -35,7 +35,9 @@ from .lab_score_review_delta import (compare_portable_review_transports, render_
 from .lab_score_review_actions import build_review_actions, render_review_actions
 from .lab_score_action_focus import render_action_focus
 from .lab_score_action_batch import render_human_batch
-from .lab_score_focus_workroom import publish_private_focus, verify_private_focus
+from .lab_score_focus_workroom import (publish_private_focus, verify_private_focus,
+                                       read_private_batch_selection,
+                                       read_private_action_selection)
 from .lab_score_queue_csv import render_queue_csv
 from .lab_score_queue_triage import (render_human_triage_plan, render_human_triage_html,
                                      render_human_triage_csv, render_human_focus_html)
@@ -505,13 +507,13 @@ def main(argv: list[str] | None = None) -> int:
                       help="publish one source-local HUMAN HOLD pair to a private four-file room")
     mode.add_argument("--verify-action-focus", nargs=2,
                       metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
-                      help="reverify private HUMAN HOLD pair room against both originals")
+                      help="reverify saved private HUMAN HOLD pair; --focus-action optional")
     mode.add_argument("--publish-batch-focus", nargs=2,
                       metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
                       help="publish selected original HOLD pairs to a private four-file room")
     mode.add_argument("--verify-batch-focus", nargs=2,
                       metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
-                      help="reverify source-bound private selected HOLD batch room")
+                      help="reverify saved private HOLD batch (selection optional via original manifest)")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
     parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "triage-csv", "review-csv", "actions-json", "actions-csv", "actions-html", "actions-brief-markdown", "actions-brief-html", "actions-focus-json", "actions-focus-text", "actions-focus-html", "actions-batch-json", "actions-batch-markdown", "actions-batch-html", "actions-batch-csv"),
@@ -555,7 +557,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.publish_batch_focus is not None or args.verify_batch_focus is not None:
         creating = args.publish_batch_focus is not None
-        if (args.focus_batch is None or args.focus_action is not None
+        if ((creating and args.focus_batch is None)
+                or args.focus_action is not None
                 or args.focus_room_dir is None
                 or args.format not in (("text",) if creating else
                                        ("text", "actions-batch-json",
@@ -571,7 +574,7 @@ def main(argv: list[str] | None = None) -> int:
                         args.portable_review_output_dir is not None,
                         args.unpacked_review_dir is not None,
                         args.unpack_output_dir is not None))):
-            parser.error("batch review requires only --focus-batch and --focus-room-dir")
+            parser.error("batch review publish needs --focus-batch; verification may recover the private manifest selector")
         originals = args.publish_batch_focus if creating else args.verify_batch_focus
         try:
             if creating:
@@ -579,8 +582,13 @@ def main(argv: list[str] | None = None) -> int:
                                                    args.focus_batch)
                 output = "LightUp original HUMAN HOLD batch: five private files verified; no approval.\n"
             else:
+                # Without an explicit selector, recover only a candidate from
+                # an owner-private canonical manifest, then verify it and
+                # every saved member against both original synthetic ZIPs.
+                selection = (args.focus_batch if args.focus_batch is not None else
+                             read_private_batch_selection(*originals, args.focus_room_dir))
                 comparison, saved = verify_private_focus(*originals, args.focus_room_dir,
-                                                         args.focus_batch)
+                                                         selection)
                 names = {"actions-batch-json": "batch.json",
                          "actions-batch-markdown": "batch.md",
                          "actions-batch-html": "batch.html",
@@ -595,7 +603,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if comparison["review_status"] == "PASS" else 2
     if args.publish_action_focus is not None or args.verify_action_focus is not None:
         creating = args.publish_action_focus is not None
-        if (args.focus_action is None or args.focus_room_dir is None
+        if ((creating and args.focus_action is None) or args.focus_room_dir is None
                 or args.format not in (("text",) if creating else
                                        ("text", "actions-focus-json", "actions-focus-text", "actions-focus-html"))
                 or any((args.include_actions, args.include_briefs, args.export_comparison,
@@ -616,8 +624,10 @@ def main(argv: list[str] | None = None) -> int:
                                                    tuple(args.focus_action))
                 output = "LightUp source-local HUMAN HOLD: four private files verified; no approval.\n"
             else:
+                selection = (tuple(args.focus_action) if args.focus_action is not None else
+                             read_private_action_selection(*original, args.focus_room_dir))
                 comparison, expected = verify_private_focus(*original, args.focus_room_dir,
-                                                            tuple(args.focus_action))
+                                                            selection)
                 names = {"actions-focus-json": "focus.json",
                          "actions-focus-text": "focus.txt",
                          "actions-focus-html": "focus.html"}
