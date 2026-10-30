@@ -165,6 +165,43 @@ class PortableHTMLAdmissionTests(unittest.TestCase):
         self.assertIn("LEGACY review HTML contents NOT fully independently validated", output)
         self.assertIn("status HOLD", output)
 
+    def test_legacy_false_pass_can_never_be_published_as_html(self):
+        package = self.forged(
+            "legacy-unsafe-preview",
+            replace_index=lambda b: b.replace(
+                b"Synthetic PASS only", b"Live approval granted"),
+            schema="lightup.lab-score-portable-human-review.v1")
+        destination = self.base / "legacy-false-pass-browser"
+        code, out, err = invoke("--verify-portable-review", package)
+        self.assertEqual((code, err), (2, ""))
+        self.assertIn("status HOLD", out)
+        self.assertIn("LEGACY READ-ONLY TRIAGE", out)
+        self.assertIn("No legacy HTML published", out)
+        self.assertNotIn(str(self.base), out)
+        code, out, err = invoke("--unpack-portable-review", package,
+                                "--unpack-output-dir", destination)
+        self.assertEqual((code, out), (2, ""))
+        self.assertIn("HOLD", err)
+        self.assertFalse(destination.exists())
+        code, out, err = invoke("--verify-unpacked-review", package,
+                                "--unpacked-review-dir", self.base)
+        self.assertEqual((code, out), (2, ""))
+        self.assertIn("HOLD", err)
+
+    def test_v2_unverified_history_cannot_be_opened_in_browser(self):
+        package = self.forged(
+            "legacy-v2-unsafe-preview",
+            replace_history=lambda b: b.replace(
+                b"Canonical synthetic original history: PASS",
+                b"Approved for external targets"),
+            schema="lightup.lab-score-portable-human-review.v2")
+        dest = self.base / "v2-false-pass-browser"
+        status, output, error = invoke("--unpack-portable-review", package,
+                                       "--unpack-output-dir", dest)
+        self.assertEqual((status, output), (2, ""))
+        self.assertIn("HOLD", error)
+        self.assertFalse(dest.exists())
+
     def test_legacy_inert_bodyless_index_is_still_supported(self):
         def legacy(b):
             return (

@@ -546,6 +546,8 @@ def main(argv: list[str] | None = None) -> int:
                  else "LEGACY review HTML contents NOT fully independently validated; ")
               + "original source NOT authenticated; status "
               + verified["review_status"] + ".")
+        if verified["legacy_read_only_triage"]:
+            print(verified["legacy_read_only_triage"])
         return 0 if verified["review_status"] == "PASS" else 2
     if args.focus_archive_index is not None and (
             args.compare_history is None or args.format not in

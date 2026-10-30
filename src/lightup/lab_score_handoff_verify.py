@@ -18,6 +18,7 @@ from .lab_score_inspect import _artifact_fd, _private_dir_fd
 from .lab_score_portable_html_safety import admit_inert_html
 from .lab_score_portable_dashboard import render_portable_dashboard
 from .lab_score_portable_history import render_portable_history
+from .lab_score_portable_legacy_triage import legacy_triage
 from .lab_score_portable_text_safety import admit_text_exports
 from .lab_score_compare import _SCORE_FIELDS
 from .lab_score_suite import _EXPECTED_FINDINGS
@@ -256,6 +257,7 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
         "review_status": "PASS" if (summary["passed"] and is_v3) else "HOLD",
         "archives_checked": summary["archives_checked"],
         "pairs_checked": summary["pairs_checked"],
+        "legacy_read_only_triage": "" if is_v3 else legacy_triage(summary),
     }
     # Unsigned transport digests are attacker-recomputable. Independently
     # enforce inert, local-only HTML for the files a HUMAN will open.

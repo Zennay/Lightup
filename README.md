@@ -201,10 +201,14 @@ Its offline archive navigator, HOLD reasons and per-pair anchors remain
 keyboard-accessible and scriptless, without disclosing raw original metrics.
 Even a ZIP with inert-but-forged PASS/HOLD headlines, altered pair reasons or
 recomputed unsigned SHA-256 manifest hashes is refused.
-Earlier **v1/v2** handoffs can still be opened for manual inspection, but
-return **HOLD** with an explicit legacy content-warning because both displayed
-HTML documents cannot be established from the original anonymous summary;
-a schema downgrade cannot silently promote a forged report. Regenerate a v3
+Earlier **v1/v2** handoffs remain **read-only inspectable via the verifier**
+and return **HOLD** with an explicit legacy content-warning; the receiver
+refuses **unpacking or reopening** their unverified HTML, so a recomputed
+legacy ZIP cannot persuade a HUMAN with a false PASS/approval headline. A
+schema downgrade cannot silently promote a forged report. The read-only
+legacy verifier prints a bounded, explicitly **untrusted anonymous** console
+triage of claimed HOLD pairs and priority ordinals, never an approval or an
+HTML workspace. Regenerate a v3
 ZIP from verified *synthetic* original archives for this stricter integrity
 check. No version authenticates original source identity, consent, reviewer
 approval, live authorization or release.

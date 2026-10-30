@@ -24,6 +24,13 @@ def unpack_portable_review(archive: str | Path, output_dir: str | Path) -> dict[
     destination stays owner-private. On error roll back only owned inodes.
     """
     result, files = _validated_portable_review(archive)
+    # Legacy v1/v2 packages have no complete semantic content binding.
+    # Even a correctly canonical ZIP may embed a passive false approval
+    # headline. HOLD in the terminal is not enough if we then render its
+    # unverified HTML directly to a HUMAN as an offline browse workspace.
+    # Retain read-only CLI inspection, but refuse unsafe HTML publication.
+    if not result["history_content_validated"]:
+        raise ValueError("legacy unverified review HTML cannot be published")
     source = Path(archive).expanduser().absolute()
     destination = Path(output_dir).expanduser().absolute()
     if (".." in Path(output_dir).parts or destination == source.parent
@@ -93,6 +100,8 @@ def unpack_portable_review(archive: str | Path, output_dir: str | Path) -> dict[
 def verify_unpacked_portable_review(archive: str | Path, directory: str | Path) -> dict[str, Any]:
     """Read-only byte-exact reinspection against the canonical original ZIP."""
     result, payloads = _validated_portable_review(archive)
+    if not result["history_content_validated"]:
+        raise ValueError("legacy unverified review HTML cannot be reopened")
     fd = _private_dir_fd(directory)
     try:
         identities: dict[str, tuple[int, int, int, int, int]] = {}
