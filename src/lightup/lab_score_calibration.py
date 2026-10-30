@@ -29,6 +29,7 @@ from .lab_score_portable_unpack import unpack_portable_review, verify_unpacked_p
 from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_portable_focus import render_portable_focus, render_portable_pair
 from .lab_score_portable_queue import render_portable_queue, render_portable_queue_html
+from .lab_score_queue_csv import render_queue_csv
 from .lab_score_queue_workroom import publish_queue_workroom, verify_queue_workroom
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
@@ -577,7 +578,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.unpack_output_dir is not None:
         parser.error("--unpack-output-dir requires --unpack-portable-review")
     if args.verify_portable_review is not None:
-        if (args.format not in (("text", "json", "html") if args.review_queue else ("text", "json"))
+        if (args.format not in (("text", "json", "html", "review-csv") if args.review_queue else ("text", "json"))
                 or args.html_output_dir is not None
                 or args.verify_html_output_dir is not None
                 or args.portable_review_output_dir is not None):
@@ -604,6 +605,14 @@ def main(argv: list[str] | None = None) -> int:
                 print("LightUp portable HUMAN review: HOLD; transport not verified.",
                       file=sys.stderr)
             return 2
+        if args.format == "review-csv":
+            if not verified["history_content_validated"]:
+                print("Legacy review queue: HOLD; CSV NOT admitted.", file=sys.stderr)
+                return 2
+            sys.stdout.write(render_queue_csv(
+                verified["review_queue"], global_status=verified["review_status"]
+            )["queue_pairs.csv"].decode("utf-8"))
+            return 0 if verified["review_status"] == "PASS" else 2
         if args.format == "html":
             if not verified["history_content_validated"]:
                 print("Legacy review queue: HOLD; HTML NOT admitted.", file=sys.stderr)

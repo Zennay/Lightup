@@ -493,3 +493,10 @@ created directory **only if it is still the same inode and empty**, so an
 ordinary retry can reuse that path without manual cleanup. Unexpected files
 added by an independent local writer are never deleted. Reopening remains
 read-only and unchanged; no original source, approval or grant is modified.
+
+For automation that needs the original pair queue without creating a directory,
+`--verify-portable-review SOURCE.zip --review-queue --format review-csv`
+prints the same bounded, formula-free HOLD-first `queue_pairs.csv` directly to
+stdout. It still admits the **whole** canonical ZIP before rendering a byte,
+returns exit 2 for global HOLD, and refuses unsigned legacy v1/v2 or corrupted
+transport with **no CSV output**. No authorization is ever inferred from CSV.

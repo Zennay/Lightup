@@ -288,6 +288,20 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual({file.name for file in directory.iterdir()}, {"human-note.txt"})
         self.assertEqual((directory / "human-note.txt").read_text(), "human-local-note")
 
+    def test_direct_csv_queue_verifies_zip_and_remains_globally_hold(self):
+        import csv
+        from io import StringIO
+        status, output, err = invoke("--verify-portable-review", self.archive,
+                                     "--review-queue", "--format", "review-csv")
+        self.assertEqual((status, err), (2, ""))
+        rows = list(csv.DictReader(StringIO(output)))
+        self.assertEqual(len(rows), 6)
+        self.assertEqual((rows[0]["previous_archive"], rows[0]["current_archive"],
+                          rows[0]["pair_status"]), ("1", "4", "HOLD"))
+        self.assertTrue(all(p["global_status"] == "HOLD" and
+                            p["authorization_granted"] == "false" for p in rows))
+        self.assertNotIn(str(self.root), output)
+
     def test_queue_workroom_rechecks_original_after_reading_files(self):
         from unittest.mock import patch
         from lightup import lab_score_queue_workroom as workroom
@@ -387,6 +401,10 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual(status, 2)
         self.assertEqual(html, "")
         self.assertIn("HTML NOT admitted", err)
+        status, csvout, err = invoke("--verify-portable-review", legacy_zip,
+                                     "--review-queue", "--format", "review-csv")
+        self.assertEqual((status, csvout), (2, ""))
+        self.assertIn("CSV NOT admitted", err)
         self.assertTrue(legacy_queue["review_queue_untrusted_legacy_claim"])
         self.assertFalse(legacy_queue["history_content_validated"])
         self.assertEqual(legacy_queue["review_status"], "HOLD")
