@@ -524,6 +524,48 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                 self.assertNotIn("PRIVATE", err.getvalue())
                 scorer.assert_not_called()
 
+    def test_canary_rejects_silent_listener_guard_failure(self):
+        from contextlib import contextmanager
+        real = lab_canary.fixed_loopback_socket_boundary
+
+        @contextmanager
+        def missing_listener_interceptor():
+            with real():
+                # Synthetic listener: underlying C method would only raise
+                # TypeError on this non-socket, never bind a public interface.
+                with patch.object(socket.socket, "listen",
+                                  side_effect=TypeError("synthetic-not-a-socket")):
+                    yield
+
+        with patch.object(lab_canary, "fixed_loopback_socket_boundary",
+                          side_effect=missing_listener_interceptor):
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main([])
+        self.assertEqual(code, 2, "missing listener guard must never PASS")
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["failure_stage"], "setup")
+
+    def test_canary_rejects_silent_accept_guard_failure(self):
+        from contextlib import contextmanager
+        real = lab_canary.fixed_loopback_socket_boundary
+
+        @contextmanager
+        def missing_accept_interceptor():
+            with real():
+                with patch.object(socket.socket, "accept",
+                                  side_effect=TypeError("synthetic-not-a-socket")):
+                    yield
+
+        with patch.object(lab_canary, "fixed_loopback_socket_boundary",
+                          side_effect=missing_accept_interceptor):
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main([])
+        self.assertEqual(code, 2)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["failure_stage"], "setup")
+
     def test_canary_rejects_silent_process_guard_failure(self):
         # Preserve the real socket/TLS boundary but simulate accidentally
         # missing child-process interception. The synthetic path cannot launch.

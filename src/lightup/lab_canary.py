@@ -109,6 +109,19 @@ def _verify_active_loopback_guard() -> bool:
                 pass
             else:
                 raise RuntimeError("offline loopback socket guard inactive")
+    # Prove the separate listener/accept hooks are present too. This object
+    # is not a real socket, so even if interception disappears the native
+    # method cannot open a public listener or accept a real connection.
+    synthetic_listener = SimpleNamespace(
+        family=socket.AF_INET,
+        getsockname=lambda: ("0.0.0.0", 45678),
+    )
+    for method in ("listen", "accept"):
+        try:
+            getattr(socket.socket, method)(synthetic_listener)
+        except LabSocketBoundaryError:
+            continue
+        raise RuntimeError("offline loopback listener guard inactive")
     synthetic_tls = SimpleNamespace(
         family=socket.AF_INET,
         getpeername=lambda: ("203.0.113.5", 443),
