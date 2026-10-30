@@ -139,3 +139,11 @@ On direct scorer failure, the JSON CLI returns exit 2 with a fixed
 `passed=false` and `error="offline fixture denied or unavailable"`; it
 never echoes a private SQLite path, exception string, or rejected input.
 All four installed CLIs use the same private-safe argument parser.
+
+
+The socket boundary also denies `gethostbyname`, `gethostbyname_ex`,
+`gethostbyaddr` and `getnameinfo`, plus nonnumeric `getfqdn` calls,
+so standalone scorers do not initiate hostname or reverse-DNS lookups.
+The standard HTTP fixture's numeric `getfqdn("127.0.0.1")` returns the
+same literal without reverse resolution. This remains a Python in-process
+restriction, not OS-level egress isolation.

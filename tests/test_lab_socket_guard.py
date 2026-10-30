@@ -43,6 +43,27 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                 underlying_bind.assert_not_called()
                 underlying_send.assert_not_called()
 
+    def test_non_getaddrinfo_dns_and_reverse_dns_are_blocked(self):
+        resolver_names = (
+            "gethostbyname", "gethostbyname_ex", "gethostbyaddr",
+            "getnameinfo", "getfqdn",
+        )
+        calls = (
+            lambda: socket.gethostbyname("external.invalid"),
+            lambda: socket.gethostbyname_ex("external.invalid"),
+            lambda: socket.gethostbyaddr("203.0.113.9"),
+            lambda: socket.getnameinfo(("203.0.113.9", 443), 0),
+            lambda: socket.getfqdn("external.invalid"),
+        )
+        originals = {name: getattr(socket, name) for name in resolver_names}
+        with fixed_loopback_socket_boundary():
+            self.assertEqual(socket.getfqdn("127.0.0.1"), "127.0.0.1")
+            for name, action in zip(resolver_names, calls):
+                with self.subTest(api=name), self.assertRaises(LabSocketBoundaryError):
+                    action()
+        for name, original in originals.items():
+            self.assertIs(getattr(socket, name), original)
+
     def test_each_installed_scorer_api_enforces_socket_gate_on_its_own(self):
         cases = (
             (lab_service_score, "run_lab_service_inventory_score"),

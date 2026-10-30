@@ -67,11 +67,27 @@ def fixed_loopback_socket_boundary():
             raise LabSocketBoundaryError("Offline lab refuses DNS and non-loopback hosts")
         return original_getaddrinfo(host, *args, **kwargs)
 
+    def refuse_name_resolution(*args, **kwargs):
+        raise LabSocketBoundaryError("Offline lab forbids separate resolver API")
+
+    def fixed_loopback_fqdn(name: str = "") -> str:
+        # http.server asks for its numeric bind address during initialization.
+        # Never reverse-resolve the local address or consult the network.
+        if name == "127.0.0.1":
+            return "127.0.0.1"
+        raise LabSocketBoundaryError("Offline lab forbids hostname resolution")
+
     with patch.object(socket.socket, "connect", connect), patch.object(
         socket.socket, "connect_ex", connect_ex
     ), patch.object(socket.socket, "bind", bind), patch.object(
         socket.socket, "sendto", sendto
     ), patch.object(socket, "getaddrinfo", getaddrinfo), patch.object(
+        socket, "gethostbyname", refuse_name_resolution
+    ), patch.object(socket, "gethostbyname_ex", refuse_name_resolution), patch.object(
+        socket, "gethostbyaddr", refuse_name_resolution
+    ), patch.object(socket, "getnameinfo", refuse_name_resolution), patch.object(
+        socket, "getfqdn", fixed_loopback_fqdn
+    ), patch.object(
         socket.socket, "sendmsg",
         side_effect=LabSocketBoundaryError("Offline lab refuses sendmsg")
     ):
