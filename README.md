@@ -175,6 +175,25 @@ It cannot authenticate the original source or its signer: a forged ZIP with
 recomputed unsigned hashes is not trusted original evidence or an approval.
 Keep the ZIP in a 0700 directory as a 0600 file for this local checker.
 
+To open a verified portable HUMAN ZIP as scriptless files without manual ZIP
+extraction, use the same first-party CLI in an owner-private working area:
+
+```sh
+lightup-lab-score-calibrate --unpack-portable-review \
+  PRIVATE_DIR/LightUp-SYNTHETIC-OFFLINE-REVIEW.zip \
+  --unpack-output-dir NEW_PRIVATE_BROWSE_DIR
+```
+
+This offline operation validates the *entire* canonical ZIP byte stream,
+manifest, bounded members and anonymous status from a single immutable read
+before publishing anything. It creates a new 0700 directory containing exactly
+seven fixed-name 0600 source-free files, including `index.html` for local
+browser review, and refuses overwrite, symlinks, unknown entries, appended ZIP
+bytes and source/output overlap. A genuine evidence-reuse HOLD still publishes
+an inspectable HOLD review with exit 2, never a PASS. Corrupt inputs produce no
+files. No original source identity, external target permission or human review
+approval is gained from verification or unpacking.
+
 For privacy-minimal spreadsheet handoff use `--compare-history ARCHIVE1 ARCHIVE2 --format review-csv`: only archive ordinals, PASS/HOLD and two boolean evidence/score flags. Add `--verify-html-output-dir` to bind it to the already saved private three-file review; unlike regular `--format csv`, this never exports original score values.
 
 

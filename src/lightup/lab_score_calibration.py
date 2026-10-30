@@ -25,6 +25,7 @@ from .lab_score_history_html import render_history_html, build_history_review_su
 from .lab_score_review_store import (save_private_review, verify_private_review,
                                      summary_bytes)
 from .lab_score_handoff import save_portable_review
+from .lab_score_portable_unpack import unpack_portable_review
 from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
@@ -469,6 +470,8 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--compare-calibrations", nargs=2,
                       metavar=("PREVIOUS", "CURRENT"),
                       help="compare two fully verified private saved calibrations offline")
+    mode.add_argument("--unpack-portable-review",
+                      help="verify and open a synthetic portable HUMAN ZIP in a new private offline directory")
     mode.add_argument("--verify-portable-review",
                       help="read-only transport integrity check of a portable HUMAN ZIP; "
                            "does not authenticate original evidence")
@@ -486,7 +489,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--portable-review-output-dir",
                         help="create an owner-private, source-free offline HUMAN review ZIP "
                              "after verifying the existing private three-file review")
+    parser.add_argument("--unpack-output-dir",
+                        help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
+    if args.unpack_portable_review is not None:
+        if (args.unpack_output_dir is None or args.format != "text"
+                or args.focus_archive_index is not None or args.html_output_dir is not None
+                or args.verify_html_output_dir is not None
+                or args.portable_review_output_dir is not None):
+            parser.error("unpack requires --unpack-output-dir and no other review options")
+        try:
+            result = unpack_portable_review(args.unpack_portable_review,
+                                            args.unpack_output_dir)
+        except Exception:
+            print("LightUp portable HUMAN review: HOLD; offline files not published.",
+                  file=sys.stderr)
+            return 2
+        print("LightUp portable HUMAN review: OFFLINE FILES READY; "
+              "source NOT authenticated; status " + result["review_status"] + ".")
+        return 0 if result["review_status"] == "PASS" else 2
+    if args.unpack_output_dir is not None:
+        parser.error("--unpack-output-dir requires --unpack-portable-review")
     if args.verify_portable_review is not None:
         if (args.format != "text" or args.focus_archive_index is not None
                 or args.html_output_dir is not None

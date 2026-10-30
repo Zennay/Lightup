@@ -76,8 +76,8 @@ def _validate_summary(summary: dict[str, Any]) -> None:
         raise ValueError("unsafe portable review authority fields")
 
 
-def verify_portable_review(path: str | Path) -> dict[str, Any]:
-    """No-network, no-write ZIP integrity verification; never original identity."""
+def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[str, bytes]]:
+    """Admit a complete immutable ZIP snapshot once, without unpacking."""
     path = Path(path).expanduser()
     if ".." in path.parts or not path.name or path.name != "LightUp-SYNTHETIC-OFFLINE-REVIEW.zip":
         raise ValueError("invalid portable review path")
@@ -158,7 +158,7 @@ def verify_portable_review(path: str | Path) -> dict[str, Any]:
         if (type(recorded) is not str or len(recorded) != 64
                 or not hmac.compare_digest(actual, recorded)):
             raise ValueError("modified portable export")
-    return {
+    result = {
         "schema": _SCHEMA,
         "transport_integrity": True,
         "original_source_authenticated": False,
@@ -170,3 +170,10 @@ def verify_portable_review(path: str | Path) -> dict[str, Any]:
         "archives_checked": summary["archives_checked"],
         "pairs_checked": summary["pairs_checked"],
     }
+    return result, payloads
+
+
+def verify_portable_review(path: str | Path) -> dict[str, Any]:
+    """No-network, no-write ZIP integrity verification; no source authority."""
+    result, _ = _validated_portable_review(path)
+    return result
