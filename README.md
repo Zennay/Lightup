@@ -459,3 +459,27 @@ against their original bound bytes; then it derives the action plan from
 source again. Altering an unrequested saved member still fails closed with
 no action output. The prior five-file manifest/schema and outputs are
 unchanged. These exports do not contact external systems or grant approval.
+
+### Owner-private two-ZIP HUMAN comparison with persistent follow-up actions (M1)
+
+For first-party synthetic offline review only, publish the complete original
+comparison **and** its source-bound HUMAN action checklist atomically:
+
+```sh
+lightup-lab-score-calibrate --compare-portable-reviews BASELINE.zip CANDIDATE.zip \
+  --comparison-output-dir NEW_PRIVATE_ROOM --include-actions
+lightup-lab-score-calibrate --verify-comparison-workroom BASELINE.zip CANDIDATE.zip \
+  --comparison-output-dir NEW_PRIVATE_ROOM --export-comparison --format actions-html
+```
+
+The optional v2 room holds eight files: four comparison views, three action
+views (`actions.json`, `actions.csv`, `actions.html`), and `manifest.json`. The
+legacy five-file v1 room remains supported without the flag. Both require two
+original canonical source-free ZIPs at verification time; all files, even
+non-requested formats, must match freshly rebuilt canonical content. Output is
+exclusive, 0700 directory / 0600 files, no overwrite, and all failure paths
+remain HOLD with no partial re-export. The action CSV is designed for local
+spreadsheet triage; HTML uses inert offline CSP. All actions are **HUMAN-only,
+NOT_VERIFIED**, and neither an unsigned transport hash nor a local PASS grants
+original source identity, legal scope, security review, remediation approval,
+external target contact, or deployment.

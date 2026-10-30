@@ -175,6 +175,43 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
                 self.assertEqual((code,out),(2,''))
                 self.assertIn('not verified',err)
 
+    def test_saved_eight_file_action_roundtrip_and_fail_closed(self):
+        room=self.root/'private-eight-actions'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',room,'--include-actions')
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('eight private files',out)
+        saved={p.name:p.read_bytes() for p in room.iterdir()}
+        self.assertEqual(len(saved),8)
+        self.assertEqual(json.loads(saved['manifest.json'])['schema'],
+            'lightup.lab-score-human-two-transport-workroom.v2')
+        self.assertEqual(room.stat().st_mode&0o777,0o700)
+        self.assertTrue(all(p.stat().st_mode&0o777==0o600 for p in room.iterdir()))
+        for fmt,name in (('actions-json','actions.json'),('actions-csv','actions.csv'),
+                         ('actions-html','actions.html'),('csv','comparison.csv')):
+            code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                             '--comparison-output-dir',room,'--export-comparison',
+                             '--format',fmt)
+            self.assertEqual((code,err),(2,''))
+            self.assertEqual(out.encode(),saved[name])
+        admit_inert_html(saved['actions.html'])
+        self.assertEqual(json.loads(saved['actions.json'])['hold_action_rows'],1)
+        self.assertEqual(saved,{p.name:p.read_bytes() for p in room.iterdir()})
+        (room/'actions.csv').write_text('tampered non-requested file')
+        for fmt in ('actions-json','json','html'):
+            code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                             '--comparison-output-dir',room,'--export-comparison',
+                             '--format',fmt)
+            self.assertEqual((code,out),(2,''))
+            self.assertIn('not verified',err)
+
+    def test_include_actions_requires_private_publish_dir(self):
+        with self.assertRaises(SystemExit):
+            run('--compare-portable-reviews',self.hold,self.passing,'--include-actions')
+        with self.assertRaises(SystemExit):
+            run('--verify-comparison-workroom',self.hold,self.passing,
+                '--comparison-output-dir',self.root/'missing','--include-actions')
+
     def test_export_requires_original_source_and_saved_private_room(self):
         with self.assertRaises(SystemExit):
             run('--compare-portable-reviews',self.hold,self.passing,

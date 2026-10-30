@@ -521,12 +521,16 @@ def main(argv: list[str] | None = None) -> int:
                         help="publish full eight-file HUMAN workroom, including offline triage CSV/HTML/Markdown")
     parser.add_argument("--comparison-output-dir", metavar="NEW_DIR",
                         help="new 0700 owner-private five-file HUMAN two-ZIP comparison package")
+    parser.add_argument("--include-actions", action="store_true",
+                        help="publish private eight-file HUMAN two-ZIP comparison with action views")
     parser.add_argument("--export-comparison", action="store_true",
                         help="after fully revalidating both original ZIPs and all saved HUMAN outputs, emit one canonical review view")
     parser.add_argument("--unpacked-review-dir", help="existing private review files")
     parser.add_argument("--unpack-output-dir",
                         help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
+    if args.include_actions and args.compare_portable_reviews is None:
+        parser.error("--include-actions requires --compare-portable-reviews and --comparison-output-dir")
     if args.compare_portable_reviews is not None or args.verify_comparison_workroom is not None:
         if (args.format not in (("text",) if (args.comparison_output_dir is not None
                                            and not args.export_comparison)
@@ -540,6 +544,8 @@ def main(argv: list[str] | None = None) -> int:
                 or args.focus_pair is not None
                 or args.focus_archive_index is not None
                 or args.review_queue or args.include_triage
+                or (args.include_actions and (args.verify_comparison_workroom is not None
+                                             or args.comparison_output_dir is None))
                 or args.queue_workroom_dir is not None
                 or args.html_output_dir is not None
                 or args.verify_html_output_dir is not None
@@ -549,8 +555,9 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("two-ZIP HUMAN comparison requires only --format text|json|csv|html")
         try:
             if args.verify_comparison_workroom is not None:
-                comparison = verify_private_comparison(
-                    *args.verify_comparison_workroom, args.comparison_output_dir)
+                comparison, file_count = verify_private_comparison(
+                    *args.verify_comparison_workroom, args.comparison_output_dir,
+                    with_count=True)
                 if args.export_comparison:
                     # Reconstruct canonical original-derived bytes, never reopen
                     # a mutable saved output pathname after full verification.
@@ -560,12 +567,14 @@ def main(argv: list[str] | None = None) -> int:
                     else:
                         output = render_comparison(comparison, args.format)
                 else:
-                    output = ("LightUp HUMAN offline comparison: five saved files "
+                    output = (f"LightUp HUMAN offline comparison: {"five" if file_count == 5 else "eight"} saved files "
                               "reverified; no remediation or authorization.\n")
             elif args.comparison_output_dir is not None:
                 comparison = publish_private_comparison(
-                    *args.compare_portable_reviews, args.comparison_output_dir)
-                output = ("LightUp HUMAN offline comparison: five private files "
+                    *args.compare_portable_reviews, args.comparison_output_dir,
+                    include_actions=args.include_actions)
+                count = "eight" if args.include_actions else "five"
+                output = (f"LightUp HUMAN offline comparison: {count} private files "
                           "saved; unsigned transport only; no remediation or authorization.\n")
             else:
                 comparison = compare_portable_review_transports(

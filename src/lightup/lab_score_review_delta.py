@@ -125,7 +125,8 @@ def render_comparison(result: dict[str, Any], fmt: str) -> str:
     return html
 
 
-def publish_private_comparison(first: str, second: str, destination: str) -> dict[str, Any]:
+def publish_private_comparison(first: str, second: str, destination: str, *,
+                               include_actions: bool = False) -> dict[str, Any]:
     """Atomically publish complete HUMAN views from two admitted ZIPs."""
     import os
     import hashlib
@@ -145,8 +146,16 @@ def publish_private_comparison(first: str, second: str, destination: str) -> dic
     formats = ('json','text','csv','html')
     payloads = {name: render_comparison(result, fmt).encode('utf-8')
                 for name, fmt in zip(names, formats)}
+    if include_actions:
+        from .lab_score_review_actions import build_review_actions, render_review_actions
+        actions = build_review_actions(result, first, second)
+        for fmt, name in (('actions-json', 'actions.json'),
+                          ('actions-csv', 'actions.csv'),
+                          ('actions-html', 'actions.html')):
+            payloads[name] = render_review_actions(actions, fmt).encode('utf-8')
     receipt = {
-        'schema': 'lightup.lab-score-human-two-transport-workroom.v1',
+        'schema': ('lightup.lab-score-human-two-transport-workroom.v2'
+                   if include_actions else 'lightup.lab-score-human-two-transport-workroom.v1'),
         'unsigned_local_consistency_only': True,
         'source_zip_sha256': [result['baseline']['unsigned_transport_sha256'],
                               result['candidate']['unsigned_transport_sha256']],
@@ -207,7 +216,8 @@ def publish_private_comparison(first: str, second: str, destination: str) -> dic
     return result
 
 
-def verify_private_comparison(first: str, second: str, directory: str) -> dict[str, Any]:
+def verify_private_comparison(first: str, second: str, directory: str, *,
+                              with_count: bool = False) -> dict[str, Any]:
     """Reopen all five saved private files and both original ZIPs, read only."""
     import os
     import hashlib
@@ -218,8 +228,27 @@ def verify_private_comparison(first: str, second: str, directory: str) -> dict[s
     views={('comparison.txt' if fmt=='text' else 'comparison.'+fmt):
            render_comparison(result,fmt).encode('utf-8')
            for fmt in ('json','text','csv','html')}
+    fd=_private_dir_fd(directory)
+    try:
+        inventory = set(os.listdir(fd))
+        base = {'comparison.json', 'comparison.txt', 'comparison.csv',
+                'comparison.html', 'manifest.json'}
+        with_actions = base | {'actions.json', 'actions.csv', 'actions.html'}
+        if inventory not in (base, with_actions):
+            raise ValueError('invalid saved HUMAN comparison inventory')
+        include_actions = inventory == with_actions
+    finally:
+        os.close(fd)
+    if include_actions:
+        from .lab_score_review_actions import build_review_actions, render_review_actions
+        actions = build_review_actions(result, first, second)
+        for fmt, name in (('actions-json', 'actions.json'),
+                          ('actions-csv', 'actions.csv'),
+                          ('actions-html', 'actions.html')):
+            views[name] = render_review_actions(actions, fmt).encode('utf-8')
     manifest={
-        'schema':'lightup.lab-score-human-two-transport-workroom.v1',
+        'schema':('lightup.lab-score-human-two-transport-workroom.v2'
+                  if include_actions else 'lightup.lab-score-human-two-transport-workroom.v1'),
         'unsigned_local_consistency_only':True,
         'source_zip_sha256':[result['baseline']['unsigned_transport_sha256'],
                              result['candidate']['unsigned_transport_sha256']],
@@ -246,4 +275,4 @@ def verify_private_comparison(first: str, second: str, directory: str) -> dict[s
         os.close(fd)
     if compare_portable_review_transports(first,second)!=result:
         raise ValueError('original review transports changed during receipt inspection')
-    return result
+    return (result, len(views)) if with_count else result
