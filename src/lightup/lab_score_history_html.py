@@ -29,6 +29,7 @@ def render_history_html(report: dict[str, Any]) -> str:
     if not isinstance(pairs, list) or len(pairs) != n * (n - 1) // 2:
         raise ValueError("invalid pairwise history")
     lookup: dict[tuple[int, int], bool] = {}
+    flags: dict[tuple[int, int], tuple[bool, bool]] = {}
     for item in pairs:
         if not isinstance(item, dict):
             raise ValueError("invalid history pair")
@@ -38,7 +39,13 @@ def render_history_html(report: dict[str, Any]) -> str:
                 or not 1 <= i < j <= n or type(passed) is not bool
                 or (i, j) in lookup):
             raise ValueError("invalid pairwise index")
+        independent = item.get("independent_evaluations")
+        stable = item.get("score_stable")
+        if (type(independent) is not bool or type(stable) is not bool
+                or passed is not (independent and stable)):
+            raise ValueError("contradictory original pair status")
         lookup[i, j] = passed
+        flags[i, j] = (independent, stable)
     rows = []
     rows.append("<tr><th scope='col'>Archive</th>"
                 + "".join(f"<th scope='col'>{i}</th>" for i in range(1, n + 1))
@@ -69,7 +76,10 @@ def render_history_html(report: dict[str, Any]) -> str:
         i, j = item.get("previous_index"), item.get("current_index")
         if (type(i) is not int or type(j) is not int
                 or not 1 <= i < j <= n or lookup.get((i, j)) is not False
-                or (i, j) in seen_holds):
+                or (i, j) in seen_holds
+                or type(item.get("independent_evaluations")) is not bool
+                or type(item.get("score_stable")) is not bool
+                or flags[i, j] != (item["independent_evaluations"], item["score_stable"])):
             raise ValueError("invalid hold position")
         seen_holds.add((i, j))
         reused_pairs += item.get("independent_evaluations") is False
@@ -113,6 +123,12 @@ def render_history_html(report: dict[str, Any]) -> str:
         raise ValueError("incomplete or mismatched HOLD details")
     if type(report.get("passed")) is not bool or report["passed"] != all(lookup.values()):
         raise ValueError("inconsistent overall calibration status")
+    if (type(report.get("independent_evaluations")) is not bool
+            or report["independent_evaluations"] != all(ind for ind, _ in flags.values())
+            or type(report.get("score_stable")) is not bool
+            or report["score_stable"] != all(stable for _, stable in flags.values())
+            or report.get("pairs_checked") != len(lookup)):
+        raise ValueError("inconsistent summary of original evidence")
     hotspot_rows = []
     for capability, info in sorted(hotspots.items(),
                                    key=lambda pair: (-len(pair[1]["pairs"]), pair[0])):

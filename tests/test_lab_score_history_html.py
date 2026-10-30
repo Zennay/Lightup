@@ -61,11 +61,14 @@ class HistoryHtmlTests(unittest.TestCase):
 
     def test_readable_score_drift_hotspots_link_to_original_pairs(self):
         pairs = [{"previous_index": i, "current_index": j,
-                  "passed": (i, j) == (1, 2)}
+                  "passed": (i, j) == (1, 2),
+                  "independent_evaluations": (i, j) != (2, 3),
+                  "score_stable": (i, j) == (1, 2)}
                  for i, j in ((1, 2), (1, 3), (2, 3))]
         report = {
             "schema": cal.HISTORY_SCHEMA, "archives_checked": 3,
-            "passed": False, "pairs": pairs,
+            "passed": False, "pairs": pairs, "pairs_checked": 3,
+            "independent_evaluations": False, "score_stable": False,
             "pairwise_holds": [
                 {"previous_index": 1, "current_index": 3,
                  "independent_evaluations": True, "score_stable": False,
@@ -102,8 +105,11 @@ class HistoryHtmlTests(unittest.TestCase):
 
     def test_incomplete_or_duplicate_hold_details_refuse_report(self):
         report = {"schema": cal.HISTORY_SCHEMA, "archives_checked": 2,
-                  "passed": False,
-                  "pairs": [{"previous_index": 1, "current_index": 2, "passed": False}],
+                  "passed": False, "pairs_checked": 1,
+                  "independent_evaluations": False, "score_stable": True,
+                  "pairs": [{"previous_index": 1, "current_index": 2,
+                             "passed": False, "independent_evaluations": False,
+                             "score_stable": True}],
                   "pairwise_holds": []}
         with self.assertRaises(ValueError):
             render_history_html(report)
@@ -117,6 +123,42 @@ class HistoryHtmlTests(unittest.TestCase):
         report["passed"] = True
         with self.assertRaises(ValueError):
             render_history_html(report)
+
+    def test_contradictory_pair_and_global_receipt_flags_fail_closed(self):
+        from copy import deepcopy
+        source = {
+            "schema": cal.HISTORY_SCHEMA, "archives_checked": 2,
+            "pairs_checked": 1, "passed": False,
+            "independent_evaluations": False, "score_stable": True,
+            "pairs": [{"previous_index": 1, "current_index": 2,
+                       "passed": False, "independent_evaluations": False,
+                       "score_stable": True}],
+            "pairwise_holds": [{"previous_index": 1, "current_index": 2,
+                                "independent_evaluations": False,
+                                "score_stable": True, "metric_deltas": []}],
+        }
+        self.assertIn("Overall: HOLD", render_history_html(source))
+        variants = []
+        for area, field, changed in (
+            ("pairs", "passed", True),
+            ("pairs", "independent_evaluations", True),
+            ("pairs", "score_stable", False),
+            ("pairwise_holds", "independent_evaluations", True),
+            ("pairwise_holds", "score_stable", False),
+        ):
+            corrupt = deepcopy(source)
+            corrupt[area][0][field] = changed
+            variants.append(corrupt)
+        for field, changed in (("independent_evaluations", True),
+                               ("score_stable", False),
+                               ("pairs_checked", 2)):
+            corrupt = deepcopy(source)
+            corrupt[field] = changed
+            variants.append(corrupt)
+        for item in variants:
+            with self.subTest(item=item):
+                with self.assertRaises(ValueError):
+                    render_history_html(item)
 
     def test_rejects_invalid_source_without_writing_partial_html(self):
         with tempfile.TemporaryDirectory() as base:
@@ -137,8 +179,11 @@ class HistoryHtmlTests(unittest.TestCase):
         report = {
             "schema": cal.HISTORY_SCHEMA,
             "archives_checked": 2,
-            "passed": False,
-            "pairs": [{"previous_index": 1, "current_index": 2, "passed": False}],
+            "passed": False, "pairs_checked": 1,
+            "independent_evaluations": True, "score_stable": False,
+            "pairs": [{"previous_index": 1, "current_index": 2,
+                       "passed": False, "independent_evaluations": True,
+                       "score_stable": False}],
             "pairwise_holds": [{
                 "previous_index": 1, "current_index": 2,
                 "independent_evaluations": True, "score_stable": False,
