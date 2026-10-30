@@ -132,7 +132,10 @@ creates a fresh 0700 parent plus two separate 0700 saved-run directories
 (`baseline/` and `candidate/`), each with four 0600 reports/evidence stores.
 After both saves are independently inspected, a private 0600 root `report.json`
 receipt is published atomically without overwrite. This stores the bounded,
-non-authorizing score comparison (not raw evidence or a signed attestation).
+non-authorizing score comparison and SHA-256 digests of the eight saved
+source files; digest values remain solely in the private persisted receipt,
+not the operator text or JSON output. They bind the calibration to exact
+saved bytes, but are **not** source authentication or a signed attestation.
 It then *reopens and verifies* both stored results with the existing
 pinned/immutable read-only inspector and compares the nine first-party
 metrics. The final default private-safe text report contains verified
@@ -146,8 +149,9 @@ For read-only follow-up on saved baseline and candidate evidence, use
 This option never starts scorers or changes saved files, checks the owner-private
 root, exact two saved-run children and one owner-only root receipt without
 following symlinks. It reuses the pinned read-only artifact inspector and
-recomputes the result, requiring an exact canonical-byte match against the
-root receipt. A missing, symlinked, extra, modified or non-private saved
+recomputes the result plus every source-file SHA-256, requiring an exact
+canonical-byte match against the root receipt. A missing, symlinked, extra,
+replaced, modified or non-private saved
 entry or altered receipt causes generic HOLD; the receipt cannot authorize
 real-world actions or prove original evidence authenticity.
 `--output-dir` and `--verify-output-dir` are mutually exclusive.

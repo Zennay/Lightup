@@ -35,7 +35,16 @@ class CalibrationTests(unittest.TestCase):
             for p in (root, root/"baseline", root/"candidate"):
                 self.assertEqual(stat.S_IMODE(p.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE((root/"report.json").stat().st_mode), 0o600)
-            self.assertEqual(json.loads((root/"report.json").read_text()), report)
+            stored = json.loads((root/"report.json").read_text())
+            self.assertEqual({k: v for k, v in stored.items()
+                              if k != "source_sha256"}, report)
+            self.assertNotIn("source_sha256", out.getvalue())
+            for name in ("baseline", "candidate"):
+                self.assertEqual(set(stored["source_sha256"][name]),
+                                 {"report.json", "service_inventory.sqlite3",
+                                  "tls_baseline.sqlite3", "http_baseline.sqlite3"})
+                self.assertTrue(all(len(digest) == 64 for digest
+                                    in stored["source_sha256"][name].values()))
             for name in ("baseline", "candidate"):
                 d = root/name
                 self.assertTrue(inspect_score_run(d)["passed"])
@@ -132,6 +141,22 @@ class CalibrationTests(unittest.TestCase):
             receipt.symlink_to(Path(base)/"moved.json")
             with self.assertRaises(OSError):
                 cal.verify_saved_calibration(root)
+
+    def test_valid_independent_replacement_fails_source_binding(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as base:
+            first = Path(base)/"first"
+            alternative = Path(base)/"alternative"
+            self.assertTrue(cal.run_lab_score_calibration(first)["passed"])
+            self.assertTrue(cal.run_lab_score_calibration(alternative)["passed"])
+            shutil.rmtree(first/"candidate")
+            shutil.copytree(alternative/"candidate", first/"candidate")
+            # Scores still match and both source bundles remain valid, but
+            # the persisted receipt must bind the exact saved source bytes.
+            self.assertTrue(cal.compare_score_runs(
+                first/"baseline", first/"candidate")["passed"])
+            with self.assertRaises(ValueError):
+                cal.verify_saved_calibration(first)
 
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:

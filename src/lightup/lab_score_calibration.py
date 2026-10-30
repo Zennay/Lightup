@@ -6,6 +6,7 @@ network target selector. Original evidence remains private on disk.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import stat
@@ -20,9 +21,10 @@ from .lab_score_suite import _private_output_directory, _write_report, run_lab_s
 SCHEMA = "lightup.lab-score-calibration.v1"
 
 
-def _receipt(comparison: dict[str, Any]) -> dict[str, Any]:
+def _receipt(comparison: dict[str, Any],
+             source_sha256: dict[str, dict[str, str]] | None = None) -> dict[str, Any]:
     """Public-safe result, never an attestation or authorization."""
-    return {
+    report = {
         "schema": SCHEMA,
         "passed": comparison["passed"],
         "saved_runs": ["baseline", "candidate"],
@@ -31,6 +33,42 @@ def _receipt(comparison: dict[str, Any]) -> dict[str, Any]:
         "external_targets_contacted": False,
         "deployment": False,
     }
+    if source_sha256 is not None:
+        report["source_sha256"] = source_sha256
+    return report
+
+
+_SOURCE_FILES = ("report.json", "service_inventory.sqlite3",
+                 "tls_baseline.sqlite3", "http_baseline.sqlite3")
+
+
+def _source_hashes(root: Path) -> dict[str, dict[str, str]]:
+    """Bind the receipt to exact private files without exposing their bytes."""
+    digests: dict[str, dict[str, str]] = {}
+    for name in ("baseline", "candidate"):
+        directory_fd = _private_dir_fd(root / name)
+        try:
+            digests[name] = {}
+            for filename in _SOURCE_FILES:
+                size_limit = 1024 * 1024 if filename == "report.json" else 64 * 1024 * 1024
+                source_fd = _artifact_fd(directory_fd, filename, size_limit)
+                try:
+                    before = os.fstat(source_fd)
+                    checksum = hashlib.sha256()
+                    while chunk := os.read(source_fd, 65536):
+                        checksum.update(chunk)
+                    after = os.fstat(source_fd)
+                    if (before.st_dev, before.st_ino, before.st_size,
+                        before.st_mtime_ns, before.st_ctime_ns) != (
+                        after.st_dev, after.st_ino, after.st_size,
+                        after.st_mtime_ns, after.st_ctime_ns):
+                        raise ValueError("source changed during digest")
+                    digests[name][filename] = checksum.hexdigest()
+                finally:
+                    os.close(source_fd)
+        finally:
+            os.close(directory_fd)
+    return digests
 
 
 def _receipt_bytes(result: dict[str, Any]) -> bytes:
@@ -62,7 +100,8 @@ def verify_saved_calibration(output_dir: str | Path) -> dict[str, Any]:
                               entry.st_ctime_ns)
         comparison = compare_score_runs(root / "baseline", root / "candidate")
         result = _receipt(comparison)
-        if receipt_raw != _receipt_bytes(result):
+        bound_receipt = _receipt(comparison, _source_hashes(root))
+        if receipt_raw != _receipt_bytes(bound_receipt):
             raise ValueError("calibration receipt differs from saved evidence")
         receipt_fd = _artifact_fd(fd, "report.json", 65536)
         try:
@@ -108,7 +147,7 @@ def run_lab_score_calibration(output_dir: str | Path) -> dict[str, Any]:
     if receipt["passed"] is not True:
         raise ValueError("synthetic calibration drift or reused evaluation")
     # Atomic, owner-only and no-overwrite; partial failed runs have no receipt.
-    _write_report(root, receipt)
+    _write_report(root, _receipt(comparison, _source_hashes(root)))
     return verify_saved_calibration(root)
 
 
