@@ -20,7 +20,7 @@ from .lab_score_compare import (
     render_score_review,
 )
 from .lab_score_inspect import inspect_score_run
-from .lab_score_history_html import render_history_html, build_history_review_summary
+from .lab_score_history_html import render_history_html, build_history_review_summary, render_history_markdown
 from .lab_score_review_store import (save_private_review, verify_private_review,
                                      summary_bytes)
 from .lab_score_suite import _EXPECTED_FINDINGS
@@ -468,7 +468,7 @@ def main(argv: list[str] | None = None) -> int:
                       help="compare two fully verified private saved calibrations offline")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
-    parser.add_argument("--format", choices=("json", "text", "csv", "html", "review-json"),
+    parser.add_argument("--format", choices=("json", "text", "csv", "html", "review-json", "review-markdown"),
                         default="text")
     parser.add_argument("--html-output-dir",
                         help="new exclusive 0700 directory for private 0600 history.html")
@@ -480,8 +480,8 @@ def main(argv: list[str] | None = None) -> int:
     if (args.html_output_dir is not None or args.verify_html_output_dir is not None) and (
             args.format != "html" or args.compare_history is None):
         parser.error("saved HTML options require --compare-history and --format html")
-    if args.format in ("csv", "html", "review-json") and args.compare_history is None:
-        parser.error("CSV/HTML/review JSON export applies only to --compare-history")
+    if args.format in ("csv", "html", "review-json", "review-markdown") and args.compare_history is None:
+        parser.error("CSV/HTML/review export applies only to --compare-history")
     try:
         if args.compare_history is not None:
             anchor = Path.cwd()
@@ -503,7 +503,7 @@ def main(argv: list[str] | None = None) -> int:
         # may be disclosed. Never echo filesystem paths or raw exceptions.
         index = (exc.archive_index if args.compare_history is not None
                  and isinstance(exc, _HistoryArchiveError) else None)
-        if args.format in ("text", "csv", "html"):
+        if args.format in ("text", "csv", "html", "review-markdown"):
             if index is None:
                 message = "LightUp synthetic calibration: HOLD; saved evidence not verified."
             else:
@@ -516,7 +516,15 @@ def main(argv: list[str] | None = None) -> int:
                 rejected["archive_index"] = index
             print(json.dumps(rejected, sort_keys=True), file=sys.stderr)
         return 2
-    if args.format == "review-json":
+    if args.format == "review-markdown":
+        try:
+            brief = render_history_markdown(result)
+            print(brief, end="")
+        except Exception:
+            print("LightUp synthetic calibration: HOLD; review brief not verified.",
+                  file=sys.stderr)
+            return 2
+    elif args.format == "review-json":
         try:
             summary = build_history_review_summary(result)
             print(json.dumps(summary, indent=2, sort_keys=True, allow_nan=False))

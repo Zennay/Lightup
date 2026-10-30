@@ -263,3 +263,50 @@ def build_history_review_summary(report: dict[str, Any]) -> dict[str, Any]:
         "external_targets_contacted": False,
         "deployment": False,
     }
+
+
+def render_history_markdown(report: dict[str, Any]) -> str:
+    """Offline, source-free triage brief derived from validated original archives.
+
+    The only variable labels are bounded archive ordinals and fixed first-party
+    scorer/metric names. Never carry raw sources, hashes or original scores.
+    """
+    summary = build_history_review_summary(report)  # strict fail-closed validation
+    n = summary["archives_checked"]
+    holds = [pair for pair in summary["pairs"] if not pair["passed"]]
+    lines = [
+        "# LightUp synthetic lab history — " + ("PASS" if summary["passed"] else "HOLD"),
+        "",
+        f"{n} verified local archives; {summary['pairs_checked']} original pairs; {len(holds)} HOLD pairs.",
+        "",
+        "**LAB ONLY.** Source chronology and identity are not authenticated. No external "
+        "targets, scans, grants, consent, dispatch, deployment or release authority.",
+        "",
+        "## Operator review priorities", "",
+    ]
+    if summary["archive_review_queue"]:
+        lines += ["| Archive | HOLD pairs | Evidence reuse | Score drift |",
+                  "| --- | ---: | ---: | ---: |"]
+        for item in summary["archive_review_queue"]:
+            lines.append(f"| {item['index']} | {item['hold_pairs']} | "
+                         f"{item['reused_evidence_pairs']} | {item['score_drift_pairs']} |")
+    else:
+        lines.append("No archive requires review.")
+    lines += ["", "## First-party scorer hotspots", ""]
+    if summary["capability_hotspots"]:
+        lines += ["| Scorer | Affected pairs | Metrics |",
+                  "| --- | ---: | --- |"]
+        for item in summary["capability_hotspots"]:
+            lines.append(f"| {item['capability']} | {item['affected_pairs']} | "
+                         f"{', '.join(item['metrics'])} |")
+    else:
+        lines.append("No score-drift hotspot.")
+    lines += ["", "## Original pairwise verification", "",
+              "| Archives | Result | Evidence independent | Score stable |",
+              "| --- | --- | --- | --- |"]
+    for pair in summary["pairs"]:
+        lines.append(f"| {pair['previous_index']}–{pair['current_index']} | "
+                     f"{'PASS' if pair['passed'] else 'HOLD'} | "
+                     f"{'yes' if pair['independent_evaluations'] else 'no'} | "
+                     f"{'yes' if pair['score_stable'] else 'no'} |")
+    return "\n".join(lines) + "\n"

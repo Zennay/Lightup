@@ -303,6 +303,16 @@ substitute for `--verify-html-output-dir`, which additionally checks all three
 0600 private artifacts against their original receipt bindings.
 
 
+### Human operator handoff, without original evidence disclosure
+
+`lightup-lab-score-calibrate --compare-history ARCHIVE1 ARCHIVE2 --format review-markdown`
+re-verifies the original private localhost archives and prints an offline Markdown
+review brief: prioritized anonymous archive HOLD counts, evidence-reuse/drift,
+fixed scorer hotspots and every pairwise status. Genuine HOLD is reviewable
+with exit 2; corrupt originals yield no partial output, just a source-free
+refusal on stderr. There is no write, authenticated chronology, authorization,
+external target, scanning, consent, dispatch or deployment capability.
+
 ### Read-only verification of a previously saved review
 
 Use the same original private archived calibration inputs and
