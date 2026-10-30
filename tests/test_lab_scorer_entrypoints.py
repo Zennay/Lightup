@@ -183,7 +183,11 @@ class LabScorerEntrypointTests(unittest.TestCase):
             "checks": dict.fromkeys(lab_canary.SERVICE_CHECKS, True),
             "evaluation": {
                 "metrics": metrics, "run_id": "lab-run", "scenario_id": "lab-service-inventory-loopback",
-                "record_id": "lab-record",
+                "record_id": "lab-record", "engine_version": "m1-service-inventory",
+                "model_bindings": [], "evidence_ids": [
+                    "00000000-0000-4000-8000-000000000001",
+                    "00000000-0000-4000-8000-000000000002",
+                ],
             },
         }
         self.assertEqual(
@@ -195,6 +199,8 @@ class LabScorerEntrypointTests(unittest.TestCase):
             "fpr", "wrong_run", "wrong_record", "wrong_scenario",
             "coverage", "extra_metric",
             "runtime_nan", "runtime_negative_zero", "remediation",
+            "missing_evidence", "duplicate_evidence", "invalid_evidence_id",
+            "wrong_engine", "model_bindings",
         ):
             bad = deepcopy(good)
             if change == "missing":
@@ -223,6 +229,16 @@ class LabScorerEntrypointTests(unittest.TestCase):
                 bad["evaluation"]["metrics"]["runtime_seconds"] = float("nan")
             elif change == "runtime_negative_zero":
                 bad["evaluation"]["metrics"]["runtime_seconds"] = -0.0
+            elif change == "missing_evidence":
+                bad["evaluation"]["evidence_ids"] = []
+            elif change == "duplicate_evidence":
+                bad["evaluation"]["evidence_ids"][1] = bad["evaluation"]["evidence_ids"][0]
+            elif change == "invalid_evidence_id":
+                bad["evaluation"]["evidence_ids"][1] = "not-a-canonical-uuid"
+            elif change == "wrong_engine":
+                bad["evaluation"]["engine_version"] = "untrusted-producer"
+            elif change == "model_bindings":
+                bad["evaluation"]["model_bindings"] = ["unexpected-external-model"]
             else:
                 bad["evaluation"]["metrics"]["remediation_quality"] = 1.0
             with self.subTest(change=change), self.assertRaisesRegex(RuntimeError, "Offline safety gate denied"):

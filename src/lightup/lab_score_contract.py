@@ -6,6 +6,7 @@ No caller-selected target or scenario may change these source-defined contracts.
 from __future__ import annotations
 
 import math
+from uuid import UUID
 
 SERVICE_CHECKS = tuple('known_open_port_detected closed_control_port_not_detected repeat_observation_matches evidence_lineage_verified persisted_record_readback'.split())
 TLS_CHECKS = tuple('fixture_bound_to_loopback server_completed_expected_handshakes self_signed_chain_reported_untrusted default_trust_store_rejects_self_signed_fixture modern_tls_protocol_negotiated strong_cipher_negotiated repeat_observation_matches evidence_lineage_verified persisted_record_readback'.split())
@@ -17,6 +18,23 @@ EXPECTED_SCENARIOS = {
     "TLS": "lab-tls-baseline-self-signed-loopback",
     "HTTP": "lab-web-baseline-security-headers-loopback",
 }
+
+EXPECTED_ENGINES = {
+    "service": "m1-service-inventory",
+    "TLS": "m1-tls-baseline",
+    "HTTP": "m1-web-baseline",
+}
+
+
+def _canonical_uuid4(value: object) -> bool:
+    if type(value) is not str:
+        return False
+    try:
+        parsed = UUID(value)
+    except (ValueError, AttributeError):
+        return False
+    return parsed.version == 4 and str(parsed) == value
+
 
 
 def require_first_party_score(result: dict, label: str, valid: int, calls: int, required_checks: tuple[str, ...]) -> dict:
@@ -40,6 +58,14 @@ def require_first_party_score(result: dict, label: str, valid: int, calls: int, 
         if (type(linked) is not str or not linked.strip()
                 or linked != result.get(result_key)):
             raise RuntimeError(f"Offline safety gate denied: {label} evaluation lineage")
+    evidence = evaluation.get("evidence_ids")
+    if (type(evaluation.get("engine_version")) is not str
+            or evaluation["engine_version"] != EXPECTED_ENGINES[label]
+            or evaluation.get("model_bindings") != []
+            or type(evidence) is not list or len(evidence) != calls
+            or len(set(evidence)) != calls
+            or not all(_canonical_uuid4(item) for item in evidence)):
+        raise RuntimeError(f"Offline safety gate denied: {label} evidence and producer")
     metrics = evaluation["metrics"]
     expected = {
         "valid_findings": valid, "invalid_findings": 0, "missed_findings": 0,

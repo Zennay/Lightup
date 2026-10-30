@@ -110,13 +110,23 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                     forged = deepcopy(valid)
                     forged["evaluation"]["metrics"]["false_positive_rate"] = 0.75
                     forged["evaluation"]["run_id"] = "forged-canonical-run"
-                    for attack in ("fpr_and_run", "scenario_swap"):
-                        bad = deepcopy(forged)
+                    for attack in (
+                        "fpr_and_run", "scenario_swap", "missing_evidence",
+                        "duplicated_evidence", "untrusted_engine", "model_binding",
+                    ):
+                        bad = deepcopy(valid if attack not in ("fpr_and_run",) else forged)
                         if attack == "scenario_swap":
-                            bad["evaluation"]["metrics"]["false_positive_rate"] = 0.0
-                            bad["evaluation"]["run_id"] = valid["run_id"]
                             bad["scenario_id"] = "forged-lab-scenario"
                             bad["evaluation"]["scenario_id"] = "forged-lab-scenario"
+                        elif attack == "missing_evidence":
+                            bad["evaluation"]["evidence_ids"] = []
+                        elif attack == "duplicated_evidence":
+                            ids = bad["evaluation"]["evidence_ids"]
+                            bad["evaluation"]["evidence_ids"] = [ids[0]] * len(ids)
+                        elif attack == "untrusted_engine":
+                            bad["evaluation"]["engine_version"] = "untrusted-lab-producer"
+                        elif attack == "model_binding":
+                            bad["evaluation"]["model_bindings"] = ["unknown-model"]
                         with self.subTest(attack=attack), patch.object(
                             mod, api, return_value=bad
                         ):

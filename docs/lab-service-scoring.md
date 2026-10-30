@@ -165,3 +165,14 @@ identifier for service inventory, TLS baseline and HTTP security headers.
 A scorer cannot make a different scenario PASS merely by rewriting both
 top-level and persisted scenario IDs to the same forged value. Regression
 coverage exercises this swap through all three direct scorer CLI surfaces.
+
+### First-party evidence and engine completeness
+
+A direct scorer or the combined safety gate now admits PASS only if the saved
+evaluation contains the exact first-party engine version, no external model
+bindings, and exactly one distinct canonical UUIDv4 evidence ID per expected
+tool observation (2 service, 2 TLS, 4 HTTP). Reproduced false-green receipts
+with zero evidence, duplicate evidence and unknown engine names now fail
+closed. These checks validate the source-reported evidence envelope; they do
+not establish independent cryptographic provenance of persisted evidence or
+grant permission to run outside fixed loopback.
