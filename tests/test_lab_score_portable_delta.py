@@ -352,6 +352,106 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         self.assertEqual((denied[0], denied[1]), (2, ''))
         self.assertIn('not verified', denied[2])
 
+    def test_all_source_local_original_holds_direct_publish_reopen_and_csv(self):
+        from lightup.lab_score_action_batch import select_all_original_holds
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        checked = compare_portable_review_transports(str(self.hold), str(self.passing))
+        actions = build_review_actions(checked, str(self.hold), str(self.passing))
+        selector = select_all_original_holds(actions)
+        self.assertTrue(selector.startswith('baseline:'))
+        self.assertLessEqual(len(selector.split(',')), 16)
+        direct_auto = run('--compare-portable-reviews', self.hold, self.passing,
+                          '--focus-batch', 'ALL', '--format', 'actions-batch-json')
+        direct_explicit = run('--compare-portable-reviews', self.hold, self.passing,
+                              '--focus-batch', selector, '--format', 'actions-batch-json')
+        self.assertEqual(direct_auto, direct_explicit)
+        self.assertEqual((direct_auto[0], direct_auto[2]), (2, ''))
+        payload = json.loads(direct_auto[1])
+        self.assertEqual(payload['selected_pair_count'], len(selector.split(',')))
+        self.assertEqual(payload['global_review_status'], 'HOLD')
+        self.assertFalse(payload['authorization_granted'])
+        room = self.root / 'all-actual-original-HOLD'
+        flags = ('--focus-room-dir', room)
+        published = run('--publish-batch-focus', self.hold, self.passing,
+                        *flags, '--focus-batch', 'ALL')
+        self.assertEqual((published[0], published[2]), (2, ''))
+        self.assertIn('five private files', published[1])
+        before = {f.name:f.read_bytes() for f in room.iterdir()}
+        self.assertEqual(set(before),
+                         {'batch.json', 'batch.md', 'batch.html',
+                          'batch.csv', 'manifest.json'})
+        manifest = json.loads(before['manifest.json'])
+        self.assertEqual(manifest['selector'], selector)
+        self.assertNotIn('ALL', before['manifest.json'].decode())
+        for fmt,name in (('actions-batch-json','batch.json'),
+                         ('actions-batch-markdown','batch.md'),
+                         ('actions-batch-html','batch.html'),
+                         ('actions-batch-csv','batch.csv')):
+            recovered = run('--verify-batch-focus', self.hold, self.passing,
+                            *flags, '--format', fmt)
+            explicit = run('--verify-batch-focus', self.hold, self.passing,
+                           *flags, '--focus-batch', selector, '--format', fmt)
+            alias = run('--verify-batch-focus', self.hold, self.passing,
+                        *flags, '--focus-batch', 'ALL', '--format', fmt)
+            direct = run('--compare-portable-reviews', self.hold, self.passing,
+                         '--focus-batch', 'ALL', '--format', fmt)
+            self.assertEqual(recovered, direct)
+            self.assertEqual(recovered, explicit)
+            self.assertEqual(recovered, alias)
+            self.assertEqual((recovered[0], recovered[2]), (2, ''))
+            self.assertEqual(recovered[1].encode(), before[name])
+        self.assertEqual(before,{f.name:f.read_bytes() for f in room.iterdir()})
+        forged = run('--verify-batch-focus', self.passing, self.hold,
+                     *flags, '--format', 'actions-batch-json')
+        self.assertEqual((forged[0], forged[1]), (2, ''))
+        self.assertIn('not verified', forged[2])
+        (room/'batch.csv').write_text('forged APPROVAL')
+        refused = run('--verify-batch-focus', self.hold, self.passing,
+                      *flags, '--focus-batch', 'ALL', '--format', 'actions-batch-json')
+        self.assertEqual((refused[0],refused[1]),(2,''))
+        self.assertIn('not verified',refused[2])
+
+    def test_all_original_holds_rejects_pass_empty_and_excess_without_truncation(self):
+        from copy import deepcopy
+        from lightup.lab_score_action_batch import select_all_original_holds
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        original = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)),
+            str(self.hold), str(self.passing))
+        passing = deepcopy(original)
+        passing['review_status'] = 'PASS'
+        passing['hold_action_rows'] = 0
+        passing['actions'] = [original['actions'][-1]]
+        with self.assertRaises(ValueError):
+            select_all_original_holds(passing)
+        no_room = self.root / 'all-source-PASS-invalid'
+        result = run('--publish-batch-focus', self.passing, self.passing,
+                     '--focus-room-dir',no_room,'--focus-batch','ALL')
+        self.assertEqual((result[0],result[1]),(2,''))
+        self.assertFalse(no_room.exists())
+        self.assertIn('not verified',result[2])
+        original=build_review_actions(compare_portable_review_transports(
+            str(self.hold),str(self.passing)),str(self.hold),str(self.passing))
+        synthetic=deepcopy(original)
+        prototype=next(a for a in original['actions'][:-1]
+                       if a['reason']=='evidence_reused')
+        pairs=[(p,c) for p in range(1,9) for c in range(p+1,9)][:17]
+        synthetic['actions']=[
+            dict(prototype,transport='baseline',anonymous_previous=p,
+                 anonymous_current=c) for p,c in pairs] + [original['actions'][-1]]
+        synthetic['hold_action_rows']=17
+        self.assertEqual(synthetic['review_status'],'HOLD')
+        with self.assertRaisesRegex(ValueError,'exceeds 16'):
+            select_all_original_holds(synthetic)
+        for fmt in ('actions-batch-json','actions-batch-csv'):
+            from lightup.lab_score_action_batch import render_human_batch
+            with self.assertRaises(ValueError):
+                render_human_batch(synthetic,'ALL',fmt)
+        with self.assertRaises(ValueError):
+            select_all_original_holds(dict(synthetic,review_status='PASS'))
+
     def test_private_batch_reopen_from_saved_manifest_selector(self):
         from lightup.lab_score_review_actions import build_review_actions
         from lightup.lab_score_review_delta import compare_portable_review_transports

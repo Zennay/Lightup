@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 
 from .lab_score_action_focus import render_action_focus
-from .lab_score_action_batch import render_human_batch
+from .lab_score_action_batch import render_human_batch, select_all_original_holds
 from .lab_score_review_actions import build_review_actions
 from .lab_score_review_delta import compare_portable_review_transports
 from .lab_score_queue_workroom import _check_file
@@ -31,6 +31,8 @@ def _canonical(first: str, second: str, selector: tuple[str, str, str], *,
     actions = build_review_actions(comparison, first, second)
     is_batch = type(selector) is str
     if is_batch:
+        if selector == "ALL":
+            selector = select_all_original_holds(actions)
         formats = (("actions-batch-json", "batch.json"),
                    ("actions-batch-markdown", "batch.md"),
                    ("actions-batch-html", "batch.html"))

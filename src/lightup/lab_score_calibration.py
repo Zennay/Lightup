@@ -34,7 +34,7 @@ from .lab_score_review_delta import (compare_portable_review_transports, render_
                                      publish_private_comparison, verify_private_comparison)
 from .lab_score_review_actions import build_review_actions, render_review_actions
 from .lab_score_action_focus import render_action_focus
-from .lab_score_action_batch import render_human_batch
+from .lab_score_action_batch import render_human_batch, select_all_original_holds
 from .lab_score_focus_workroom import (publish_private_focus, verify_private_focus,
                                        read_private_batch_selection,
                                        read_private_action_selection)
@@ -510,7 +510,7 @@ def main(argv: list[str] | None = None) -> int:
                       help="reverify saved private HUMAN HOLD pair; --focus-action optional")
     mode.add_argument("--publish-batch-focus", nargs=2,
                       metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
-                      help="publish selected original HOLD pairs to a private four-file room")
+                      help="publish all or selected original HOLD pairs to a private five-file room")
     mode.add_argument("--verify-batch-focus", nargs=2,
                       metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
                       help="reverify saved private HOLD batch (selection optional via original manifest)")
@@ -521,7 +521,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--focus-room-dir", metavar="DIR",
                         help="new/existing private source-local HOLD review room")
     parser.add_argument("--focus-batch", metavar="SOURCE:PREVIOUS-CURRENT,...",
-                        help="select at most 16 existing original HOLD pairs for a HUMAN packet")
+                        help="select 1..16 original HOLD pairs, or ALL for every source-local HOLD (fail if over 16)")
     parser.add_argument("--focus-action", nargs=3, metavar=("TRANSPORT", "PREVIOUS", "CURRENT"),
                         help="read-only single original source-local HOLD pair")
     parser.add_argument("--focus-archive-index", type=int, metavar="N",
@@ -587,6 +587,10 @@ def main(argv: list[str] | None = None) -> int:
                 # every saved member against both original synthetic ZIPs.
                 selection = (args.focus_batch if args.focus_batch is not None else
                              read_private_batch_selection(*originals, args.focus_room_dir))
+                if selection == "ALL":
+                    independently_checked = compare_portable_review_transports(*originals)
+                    actions = build_review_actions(independently_checked, *originals)
+                    selection = select_all_original_holds(actions)
                 comparison, saved = verify_private_focus(*originals, args.focus_room_dir,
                                                          selection)
                 names = {"actions-batch-json": "batch.json",

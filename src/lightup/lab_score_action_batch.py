@@ -22,9 +22,35 @@ _HUMAN = ("Independent HUMAN source/security/privacy review, identity and "
           "separate authenticated consent remain mandatory.")
 
 
+def select_all_original_holds(data: dict) -> str:
+    """Select EVERY distinct original synthetic HOLD pair or refuse in full.
+
+    Never silently truncate or infer a cross-ZIP identity. The resulting
+    canonical explicit selector is stored in private rooms, not the ALL alias.
+    """
+    rows = admit_human_actions(data)
+    if data["review_status"] != "HOLD":
+        raise ValueError("no original HUMAN HOLD pairs to select")
+    found: set[tuple[str, int, int]] = set()
+    selection: list[str] = []
+    for row in rows[:-1]:
+        key = (row["transport"], row["anonymous_previous"], row["anonymous_current"])
+        if key not in found:
+            found.add(key)
+            selection.append(f"{key[0]}:{key[1]}-{key[2]}")
+            if len(selection) > 16:
+                raise ValueError("original HUMAN HOLD batch exceeds 16 pairs; no partial selection")
+    result = ",".join(selection)
+    if not result or len(result) > 256:
+        raise ValueError("original HUMAN HOLD selection unavailable or oversized")
+    return result
+
+
 def render_human_batch(data: dict, selection: str, fmt: str) -> str:
     """Select 1..16 distinct original HOLD pairs, reordered to source queue."""
     rows = admit_human_actions(data)
+    if selection == "ALL":
+        selection = select_all_original_holds(data)
     if (type(selection) is not str or not 1 <= len(selection) <= 256
             or not selection.isascii() or data["review_status"] != "HOLD"):
         raise ValueError("untrusted original HUMAN batch selection")
