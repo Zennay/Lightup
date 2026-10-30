@@ -468,7 +468,7 @@ def main(argv: list[str] | None = None) -> int:
                       help="compare two fully verified private saved calibrations offline")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
-    parser.add_argument("--format", choices=("json", "text", "csv", "html"),
+    parser.add_argument("--format", choices=("json", "text", "csv", "html", "review-json"),
                         default="text")
     parser.add_argument("--html-output-dir",
                         help="new exclusive 0700 directory for private 0600 history.html")
@@ -480,8 +480,8 @@ def main(argv: list[str] | None = None) -> int:
     if (args.html_output_dir is not None or args.verify_html_output_dir is not None) and (
             args.format != "html" or args.compare_history is None):
         parser.error("saved HTML options require --compare-history and --format html")
-    if args.format in ("csv", "html") and args.compare_history is None:
-        parser.error("CSV/HTML export applies only to --compare-history")
+    if args.format in ("csv", "html", "review-json") and args.compare_history is None:
+        parser.error("CSV/HTML/review JSON export applies only to --compare-history")
     try:
         if args.compare_history is not None:
             anchor = Path.cwd()
@@ -516,7 +516,15 @@ def main(argv: list[str] | None = None) -> int:
                 rejected["archive_index"] = index
             print(json.dumps(rejected, sort_keys=True), file=sys.stderr)
         return 2
-    if args.format == "html":
+    if args.format == "review-json":
+        try:
+            summary = build_history_review_summary(result)
+            print(json.dumps(summary, indent=2, sort_keys=True, allow_nan=False))
+        except Exception:
+            print(json.dumps({"schema": "lightup.lab-score-private-review-summary.v1",
+                              "passed": False}), file=sys.stderr)
+            return 2
+    elif args.format == "html":
         try:
             html = render_history_html(result)
             summary = build_history_review_summary(result)

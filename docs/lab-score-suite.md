@@ -285,6 +285,24 @@ purely offline and contains no original evidence or live authorization.
 for legacy uses.
 
 
+### Source-free machine-readable summary on stdout
+
+For an offline read-only dashboard that needs the validated private summary but
+must not create a review directory, use:
+
+```bash
+lightup-lab-score-calibrate --compare-history ARCHIVE1 ARCHIVE2 --format review-json
+```
+
+The command re-verifies each original synthetic archive and prints the exact
+index-only schema saved in `review_summary.json`. A genuine historical HOLD
+prints `passed: false` with exit 2; corrupt originals produce only a generic
+JSON refusal on stderr and no partial stdout. No private source/receipt hashes,
+paths, raw score values or external authorizations are exposed. This is not a
+substitute for `--verify-html-output-dir`, which additionally checks all three
+0600 private artifacts against their original receipt bindings.
+
+
 ### Read-only verification of a previously saved review
 
 Use the same original private archived calibration inputs and

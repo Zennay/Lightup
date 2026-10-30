@@ -237,6 +237,51 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
             self.assertEqual(out, "")
             self.assertNotIn(base, err)
 
+    def test_review_json_cli_preserves_hold_and_rejects_corrupt_sources(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            shutil.rmtree(roots[1])
+            shutil.copytree(roots[0], roots[1])
+            args = ["--compare-history", *map(str, roots),
+                    "--format", "review-json"]
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                status = cal.main(args)
+            self.assertEqual((status, err.getvalue()), (2, ""))
+            self.assertFalse(json.loads(out.getvalue())["passed"])
+            self.assertEqual(json.loads(out.getvalue())["archive_review_queue"][0]["hold_pairs"], 1)
+            self.assertNotIn(base, out.getvalue())
+            self.assertNotIn("sha256", out.getvalue())
+            (roots[0]/"report.json").write_bytes(b"corrupt original")
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                status = cal.main(args)
+            self.assertEqual((status, out.getvalue()), (2, ""))
+            self.assertIn('"passed": false', err.getvalue())
+            self.assertNotIn(base, err.getvalue())
+
+    def test_review_json_cli_matches_saved_private_summary_without_disclosure(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            dest = Path(base)/"private-review"
+            self.assertEqual(self.invoke(roots, dest), (0, "", ""))
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                code = cal.main(["--compare-history", *map(str, roots),
+                                 "--format", "review-json"])
+            self.assertEqual((code, err.getvalue()), (0, ""))
+            summary = json.loads(out.getvalue())
+            self.assertEqual(summary, json.loads((dest/"review_summary.json").read_bytes()))
+            self.assertEqual(summary["pairs_checked"], 1)
+            self.assertTrue(summary["passed"])
+            self.assertNotIn(base, out.getvalue())
+            self.assertNotIn("sha256", out.getvalue())
+            self.assertNotIn("source_receipt", out.getvalue())
+            self.assertEqual(set(dest.iterdir()), {
+                dest/"history.html", dest/"review_summary.json",
+                dest/"source_receipt.json"})
+
     def test_missing_or_tampered_private_summary_fails_reverification(self):
         with tempfile.TemporaryDirectory() as base:
             roots = self.archives(base)
