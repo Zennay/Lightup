@@ -14,8 +14,9 @@ from typing import Any, Callable
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 from .lab_score_portable_dashboard import render_portable_dashboard
+from .lab_score_portable_history import render_portable_history
 from .lab_score_history_html import (
-    build_history_review_summary, render_history_html,
+    build_history_review_summary,
 )
 from .lab_score_inspect import _private_dir_fd
 from .lab_score_portable_html_safety import admit_inert_html
@@ -24,17 +25,16 @@ from .lab_score_portable_text_safety import (
 )
 from .lab_score_suite import _private_output_directory
 
-_SCHEMA = "lightup.lab-score-portable-human-review.v2"
+_SCHEMA = "lightup.lab-score-portable-human-review.v3"
 _FILENAME = "LightUp-SYNTHETIC-OFFLINE-REVIEW.zip"
 _MAX_ZIP_BYTES = 2 * 1024 * 1024
 
 
 def _files(report: dict[str, Any]) -> dict[str, bytes]:
     summary = build_history_review_summary(report)
-    html = render_history_html(report).encode("utf-8")
     files = {
         "index.html": render_portable_dashboard(summary).encode("utf-8"),
-        "history.html": html,
+        "history.html": render_portable_history(summary).encode("utf-8"),
         "review.json": (
             json.dumps(summary, sort_keys=True, indent=2, allow_nan=False) + "\n"
         ).encode("utf-8"),

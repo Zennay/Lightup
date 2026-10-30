@@ -542,8 +542,8 @@ def main(argv: list[str] | None = None) -> int:
                   file=sys.stderr)
             return 2
         print("LightUp portable HUMAN review: TRANSPORT VERIFIED; "
-              + ("dashboard matched anonymous review; " if verified["dashboard_content_validated"]
-                 else "LEGACY dashboard contents NOT independently validated; ")
+              + ("dashboard AND history matched anonymous review; " if verified["history_content_validated"]
+                 else "LEGACY review HTML contents NOT fully independently validated; ")
               + "original source NOT authenticated; status "
               + verified["review_status"] + ".")
         return 0 if verified["review_status"] == "PASS" else 2

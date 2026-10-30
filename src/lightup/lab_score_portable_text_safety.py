@@ -14,8 +14,8 @@ README = (
     "Open index.html for global PASS/HOLD, priorities and pair navigation.\n"
     "Scriptless, offline, source-free display; no network/authorization.\n"
     "A PASS means only local consistency, NEVER external authority.\n"
-    "HTML may show first-party allowlisted numeric scorer changes.\n"
-    "CSV/JSON/Markdown omit raw numeric metric values.\n"
+    "Portable HTML shows only canonical anonymous flags and scorer labels.\n"
+    "Private original reports retain metric values; all ZIP members omit them.\n"
     "Private source archives, saved receipt bindings and source IDs "
     "are NOT included. ZIP hashes prove transport integrity only.\n"
 ).encode("utf-8")

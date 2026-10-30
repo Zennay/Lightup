@@ -171,10 +171,11 @@ private directory, and verifies the same source-bound report again after
 publication. The ZIP contains only scriptless index and history HTML,
 source-free JSON/CSV/Markdown, README and SHA-256 manifest for the exports.
 No original sources, paths, receipt identities, private bindings or target
-authority are included. HTML deliberately includes allowlisted numeric
-first-party score changes for HUMAN review; CSV/JSON/Markdown do not contain
-those raw numeric values. ZIP hashes check export integrity only, not source
-authenticity. A real original-evidence reuse HOLD remains a HOLD in the ZIP
+authority are included. The canonical v3 dashboard **and history** are built
+only from original pair PASS/HOLD flags and trusted first-party scorer labels:
+no original numeric metric values are exported. The owner-private original
+HTML report (outside the ZIP) remains the place for detailed numeric evidence.
+ZIP hashes check transport integrity, not original source authenticity. A real original-evidence reuse HOLD remains a HOLD in the ZIP
 and exit status 2; a corrupt original or receipt refuses publication. There is
 no live target, security scan, grant, consent, review approval or deployment.
 
@@ -194,17 +195,19 @@ rejected even if unsigned SHA-256 manifests are recomputed), inconsistent
 archive priorities or unapproved scorer labels, and *non-canonical ZIP
 bytes* (including otherwise ignored prepended/appended material). It returns
 TRANSPORT VERIFIED plus the original review PASS/HOLD state, never private source paths.
-The new v2 ZIP manifest binds the visible dashboard *byte-for-byte* to
-the first-party renderer and the canonical anonymous review flags. A
-rehashed ZIP with a passive, misleading PASS/HOLD headline is refused even
-when its HTML is scriptless and its manifest digests are consistent. Earlier
-v1 handoffs remain readable for manual inspection but deliberately report
-**HOLD** and `LEGACY dashboard contents NOT independently validated`; a
-schema downgrade cannot silently promote unverified content to PASS.
-Regenerate the private v2 ZIP from original synthetic archives and a verified
-saved report to get the stronger content check. Neither version authenticates
-the original source or its signer: recomputed unsigned hashes are never
-trusted original evidence or approval.
+The **v3** receiver independently re-renders both the visible dashboard
+and complete original-pair history byte-for-byte from admitted anonymous JSON.
+Its offline archive navigator, HOLD reasons and per-pair anchors remain
+keyboard-accessible and scriptless, without disclosing raw original metrics.
+Even a ZIP with inert-but-forged PASS/HOLD headlines, altered pair reasons or
+recomputed unsigned SHA-256 manifest hashes is refused.
+Earlier **v1/v2** handoffs can still be opened for manual inspection, but
+return **HOLD** with an explicit legacy content-warning because both displayed
+HTML documents cannot be established from the original anonymous summary;
+a schema downgrade cannot silently promote a forged report. Regenerate a v3
+ZIP from verified *synthetic* original archives for this stricter integrity
+check. No version authenticates original source identity, consent, reviewer
+approval, live authorization or release.
 Keep the ZIP in a 0700 directory as a 0600 file for this local checker.
 
 To open a verified portable HUMAN ZIP as scriptless files without manual ZIP

@@ -110,7 +110,7 @@ class PortableHTMLAdmissionTests(unittest.TestCase):
                 b"</body>", b"<script>/* synthetic */</script></body>"))
         self.assertEqual(invoke("--verify-portable-review", package)[0], 2)
 
-    def test_rehashed_passive_dashboard_misinformation_is_refused_for_v2(self):
+    def test_rehashed_passive_dashboard_misinformation_is_refused_for_v3(self):
         # This HTML is inert and looks innocuous, unlike script injection.
         # Its headline lies about the admitted anonymous summary.
         tamper = lambda b: b.replace(b"Synthetic PASS only", b"Live approval granted")
@@ -120,6 +120,36 @@ class PortableHTMLAdmissionTests(unittest.TestCase):
         code, output, error = invoke("--verify-portable-review", package)
         self.assertEqual((code, output), (2, ""))
         self.assertIn("HOLD", error)
+
+    def test_forged_passive_history_approval_and_pair_rewrite_refused(self):
+        changes = {
+            "fake-history-headline": lambda b: b.replace(
+                b"Canonical synthetic original history: PASS",
+                b"Original evidence authenticated: PASS"),
+            "fake-history-pair": lambda b: b.replace(
+                b"Evidence independent: yes",
+                b"Evidence independent: NOT CHECKED"),
+        }
+        for name, transform in changes.items():
+            with self.subTest(name=name):
+                package = self.forged(name, replace_history=transform)
+                with ZipFile(package) as reader:
+                    self.assertIsNone(reader.testzip())
+                code, output, error = invoke("--verify-portable-review", package)
+                self.assertEqual((code, output), (2, ""))
+                self.assertIn("HOLD", error)
+
+    def test_v2_downgrade_remains_inspectable_but_not_verified_pass(self):
+        package = self.forged(
+            "v2-false-history",
+            replace_history=lambda b: b.replace(
+                b"Canonical synthetic original history: PASS",
+                b"Approved to assess live targets"),
+            schema="lightup.lab-score-portable-human-review.v2")
+        code, output, error = invoke("--verify-portable-review", package)
+        self.assertEqual((code, error), (2, ""))
+        self.assertIn("LEGACY review HTML contents NOT fully independently validated", output)
+        self.assertIn("status HOLD", output)
 
     def test_unsigned_schema_downgrade_cannot_silently_promote_pass(self):
         # Even without active HTML, a forged v1 transport can never
@@ -132,7 +162,7 @@ class PortableHTMLAdmissionTests(unittest.TestCase):
         )
         code, output, error = invoke("--verify-portable-review", package)
         self.assertEqual((code, error), (2, ""))
-        self.assertIn("LEGACY dashboard contents NOT independently validated", output)
+        self.assertIn("LEGACY review HTML contents NOT fully independently validated", output)
         self.assertIn("status HOLD", output)
 
     def test_legacy_inert_bodyless_index_is_still_supported(self):
@@ -150,5 +180,5 @@ class PortableHTMLAdmissionTests(unittest.TestCase):
         code, output, error = invoke("--verify-portable-review", package)
         self.assertEqual((code, error), (2, ""))
         self.assertIn("TRANSPORT VERIFIED", output)
-        self.assertIn("LEGACY dashboard contents NOT independently validated", output)
+        self.assertIn("LEGACY review HTML contents NOT fully independently validated", output)
         self.assertIn("status HOLD", output)

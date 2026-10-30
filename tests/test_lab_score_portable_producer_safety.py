@@ -41,7 +41,7 @@ class ProducerHTMLAdmissionTests(unittest.TestCase):
                  valid.replace("</body>", "<script>/* synthetic */</script></body>")),
                 ("remote-link-in-dashboard", "render_portable_dashboard",
                  valid.replace("href='review.md'", "href='https://example.invalid/x'")),
-                ("script-in-history", "render_history_html",
+                ("script-in-history", "render_portable_history",
                  "<!doctype html><html lang='en'><meta charset='utf-8'>"
                  "<meta http-equiv='Content-Security-Policy' "
                  "content=\"default-src 'none'; style-src 'unsafe-inline'\">"

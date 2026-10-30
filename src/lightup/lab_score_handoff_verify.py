@@ -17,12 +17,14 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo, BadZipFile
 from .lab_score_inspect import _artifact_fd, _private_dir_fd
 from .lab_score_portable_html_safety import admit_inert_html
 from .lab_score_portable_dashboard import render_portable_dashboard
+from .lab_score_portable_history import render_portable_history
 from .lab_score_portable_text_safety import admit_text_exports
 from .lab_score_compare import _SCORE_FIELDS
 from .lab_score_suite import _EXPECTED_FINDINGS
 
-_SCHEMA = "lightup.lab-score-portable-human-review.v2"
+_SCHEMA = "lightup.lab-score-portable-human-review.v3"
 _LEGACY_SCHEMA = "lightup.lab-score-portable-human-review.v1"
+_PREVIOUS_SCHEMA = "lightup.lab-score-portable-human-review.v2"
 _SUMMARY_SCHEMA = "lightup.lab-score-private-review-summary.v1"
 _FILES = frozenset(("index.html", "history.html", "review.json",
                     "review.csv", "review.md", "README.txt", "manifest.json"))
@@ -209,7 +211,7 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
         "archives_checked", "pairs_checked", "files",
     }:
         raise ValueError("unexpected portable manifest metadata")
-    if (manifest.get("schema") not in (_SCHEMA, _LEGACY_SCHEMA)
+    if (manifest.get("schema") not in (_SCHEMA, _PREVIOUS_SCHEMA, _LEGACY_SCHEMA)
             or type(manifest.get("passed")) is not bool
             or manifest["passed"] is not summary["passed"]
             or type(manifest.get("archives_checked")) is not int
@@ -229,27 +231,29 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
         if (type(recorded) is not str or len(recorded) != 64
                 or not hmac.compare_digest(actual, recorded)):
             raise ValueError("modified portable export")
-    # A recomputed unsigned hash is not proof that the visually prominent
-    # dashboard truthfully reflects the anonymous comparison flags. v2 binds
-    # that human-facing landing page byte-for-byte to the admitted summary.
-    # v1 remains readable for earlier private handoffs but explicitly lacks
-    # this semantic content validation; legacy source cannot be authenticated.
-    is_v2 = manifest["schema"] == _SCHEMA
-    if is_v2 and payloads["index.html"] != render_portable_dashboard(summary).encode("utf-8"):
+    # v3 binds both human-facing HTML documents to the same admitted
+    # anonymous pair flags, rather than trusting forged unsigned digests.
+    # Old v1/v2 source-free handoffs remain inspectable but fail closed to
+    # global HOLD, since private original chronology cannot be authenticated.
+    is_v3 = manifest["schema"] == _SCHEMA
+    has_dashboard_binding = manifest["schema"] in (_SCHEMA, _PREVIOUS_SCHEMA)
+    if has_dashboard_binding and payloads["index.html"] != render_portable_dashboard(summary).encode("utf-8"):
         raise ValueError("offline HUMAN dashboard does not match verified summary")
+    if is_v3 and payloads["history.html"] != render_portable_history(summary).encode("utf-8"):
+        raise ValueError("offline HUMAN history does not match verified summary")
     result = {
         "schema": manifest["schema"],
-        "dashboard_content_validated": is_v2,
+        "dashboard_content_validated": has_dashboard_binding,
+        "history_content_validated": is_v3,
         "transport_integrity": True,
         "original_source_authenticated": False,
         "authorization_granted": False,
         "external_targets_contacted": False,
         "deployment": False,
         "synthetic_localhost_only": True,
-        # Older v1 transports can be opened for HUMAN inspection but cannot
-        # certify the displayed dashboard semantics. Fail closed to HOLD so a
-        # schema downgrade cannot promote a forged headline into PASS.
-        "review_status": "PASS" if (summary["passed"] and is_v2) else "HOLD",
+        # v1/v2 can be opened but cannot certify all visible human review.
+        # Downgrade cannot promote a forged headline into PASS.
+        "review_status": "PASS" if (summary["passed"] and is_v3) else "HOLD",
         "archives_checked": summary["archives_checked"],
         "pairs_checked": summary["pairs_checked"],
     }
