@@ -404,6 +404,37 @@ def compare_saved_calibration_history(
     }
 
 
+def _save_history_html(directory: str | Path, html: str) -> None:
+    """Atomically publish a new standalone review in a new private directory.
+
+    Never overwrite an existing report; the caller has already verified the
+    original offline archives before even creating the review directory.
+    """
+    root = _private_output_directory(directory)
+    root_fd = _private_dir_fd(root)
+    temp = ".history.html.tmp"
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+    try:
+        fd = os.open(temp, flags, 0o600, dir_fd=root_fd)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as output:
+                output.write(html)
+                output.flush()
+                os.fsync(output.fileno())
+            # Hard linking a fully written temporary inode refuses to
+            # overwrite another writer's destination.
+            os.link(temp, "history.html", src_dir_fd=root_fd,
+                    dst_dir_fd=root_fd, follow_symlinks=False)
+            os.fsync(root_fd)
+        finally:
+            try:
+                os.unlink(temp, dir_fd=root_fd)
+            except FileNotFoundError:
+                pass
+    finally:
+        os.close(root_fd)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="lightup-lab-score-calibrate",
@@ -421,7 +452,12 @@ def main(argv: list[str] | None = None) -> int:
                       help="compare 2 to 8 private archived calibrations offline")
     parser.add_argument("--format", choices=("json", "text", "csv", "html"),
                         default="text")
+    parser.add_argument("--html-output-dir",
+                        help="new exclusive 0700 directory for private 0600 history.html")
     args = parser.parse_args(argv)
+    if args.html_output_dir is not None and (
+            args.format != "html" or args.compare_history is None):
+        parser.error("--html-output-dir requires --compare-history and --format html")
     if args.format in ("csv", "html") and args.compare_history is None:
         parser.error("CSV/HTML export applies only to --compare-history")
     try:
@@ -452,7 +488,16 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(rejected, sort_keys=True), file=sys.stderr)
         return 2
     if args.format == "html":
-        print(render_history_html(result), end="")
+        try:
+            html = render_history_html(result)
+            if args.html_output_dir is not None:
+                _save_history_html(args.html_output_dir, html)
+            else:
+                print(html, end="")
+        except Exception:
+            print("LightUp synthetic calibration: HOLD; HTML review not saved.",
+                  file=sys.stderr)
+            return 2
     elif args.format == "csv":
         writer = csv.writer(sys.stdout, lineterminator="\n")
         writer.writerow(("previous_index", "current_index", "passed",

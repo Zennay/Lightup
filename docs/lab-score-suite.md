@@ -252,3 +252,24 @@ offline Content-Security-Policy prevent loading external assets.
 An invalid archived input produces only a private-safe stderr HOLD and
 no partial HTML. Open the file locally; do not publish its contents or
 misinterpret synthetic PASS as permission to assess real assets.
+
+
+### Private atomic HTML publication
+
+To keep a reviewed synthetic HTML report on disk without shell redirection
+or overwriting an existing file, use:
+
+```bash
+lightup-lab-score-calibrate --compare-history ARCHIVE1 ARCHIVE2 --format html --html-output-dir NEW_PRIVATE_REVIEW
+```
+
+The original archives are fully reverified before a new private destination
+directory is created. The output is `NEW_PRIVATE_REVIEW/history.html`
+inside a new owner-only 0700 directory; the atomically published HTML
+has mode 0600 and will never overwrite an existing report. Symlinked
+ancestors and parent traversal are refused. Corrupted originals produce
+a source-safe HOLD and create no report. Valid but nonindependent original
+archives create a private HOLD review and exit 2; the report remains
+purely offline and contains no original evidence or live authorization.
+``--format html`` without this option continues to print on stdout
+for legacy uses.
