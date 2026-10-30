@@ -6,6 +6,7 @@ network target selector. Original evidence remains private on disk.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import os
@@ -278,6 +279,7 @@ def compare_saved_calibration_history(
     identities = [_archived_root_identity(root) for root in roots]
     source_bindings = [_source_hashes(root) for root in roots]
     adjacent = []
+    pairs = []
     pairwise_holds = []
     independent, stable, all_passed = True, True, True
     compared = 0
@@ -289,6 +291,15 @@ def compare_saved_calibration_history(
             independent &= summary["independent_evaluations"] is True
             stable &= summary["score_stable"] is True
             all_passed &= pair["passed"] is True
+            # Bounded, source-free all-pairs status for machine-readable
+            # history exports, including passing non-adjacent combinations.
+            pairs.append({
+                "previous_index": i + 1,
+                "current_index": j + 1,
+                "passed": pair["passed"],
+                "independent_evaluations": summary["independent_evaluations"],
+                "score_stable": summary["score_stable"],
+            })
             if pair["passed"] is not True:
                 # Only canonical first-party capability and metric names from
                 # the existing verified comparator; never copy arbitrary keys.
@@ -328,6 +339,7 @@ def compare_saved_calibration_history(
         "independent_evaluations": bool(independent),
         "score_stable": bool(stable),
         "adjacent": adjacent,
+        "pairs": pairs,
         "pairwise_holds": pairwise_holds,
         "authorization_granted": False,
         "external_targets_contacted": False,
@@ -350,8 +362,10 @@ def main(argv: list[str] | None = None) -> int:
                       help="compare two fully verified private saved calibrations offline")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
-    parser.add_argument("--format", choices=("json", "text"), default="text")
+    parser.add_argument("--format", choices=("json", "text", "csv"), default="text")
     args = parser.parse_args(argv)
+    if args.format == "csv" and args.compare_history is None:
+        parser.error("CSV export applies only to --compare-history")
     try:
         if args.compare_history is not None:
             result = compare_saved_calibration_history(args.compare_history)
@@ -364,7 +378,7 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         # Do not reveal the user's original private output path, raw errors,
         # local lab identifiers or potentially confidential evidence payloads.
-        if args.format == "text":
+        if args.format in ("text", "csv"):
             print("LightUp synthetic calibration: HOLD; saved evidence not verified.",
                   file=sys.stderr)
         else:
@@ -372,7 +386,27 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"schema": schema, "passed": False}, sort_keys=True),
                   file=sys.stderr)
         return 2
-    if args.format == "text":
+    if args.format == "csv":
+        writer = csv.writer(sys.stdout, lineterminator="\n")
+        writer.writerow(("previous_index", "current_index", "passed",
+                         "independent_evaluations", "score_stable",
+                         "capability", "metric", "previous_value", "current_value"))
+        holds = {
+            (item["previous_index"], item["current_index"]): item["metric_deltas"]
+            for item in result["pairwise_holds"]
+        }
+        for item in result["pairs"]:
+            prefix = (item["previous_index"], item["current_index"],
+                      item["passed"], item["independent_evaluations"],
+                      item["score_stable"])
+            deltas = holds.get(prefix[:2]) or []
+            if deltas:
+                for delta in deltas:
+                    writer.writerow((*prefix, delta["capability"], delta["metric"],
+                                     delta["previous"], delta["current"]))
+            else:
+                writer.writerow((*prefix, "", "", "", ""))
+    elif args.format == "text":
         if args.compare_history is not None:
             print("LightUp synthetic calibration history:",
                   "PASS" if result["passed"] else "HOLD")

@@ -209,3 +209,15 @@ first-party capability and score metric fields: no arbitrary source keys are
 copied into JSON or text. No evidence payload, source path, checksum or run ID
 leaves the private directory.
 This is not real target, scanning, approval or deployment authority.
+
+
+### Spreadsheet-ready history comparison
+
+Use `--format csv` with `--compare-history` to export a single offline,
+headered CSV containing every bounded archive pair (including non-adjacent
+successful comparisons). Columns include only 1-based archive positions,
+PASS/HOLD, distinctness, score stability and allowlisted first-party metric
+changes when available. No identifiers, private paths, original evidence,
+digests, arbitrary source keys or active assessment permissions. A checked
+but failing comparison still prints bounded CSV and exits 2; invalid input
+prints a generic HOLD on stderr and does not emit a partial CSV.

@@ -1,4 +1,5 @@
 """Synthetic-only two-run calibration integration and safety checks."""
+import csv
 import io
 import json
 import os
@@ -452,6 +453,51 @@ class CalibrationTests(unittest.TestCase):
             }])
             self.assertNotIn(base, str(result))
             self.assertNotIn("PRIVATE_SOURCE_KEY", str(result))
+            out = io.StringIO()
+            with patch.object(cal, "compare_saved_calibrations",
+                              side_effect=synthetic_drift):
+                with redirect_stdout(out):
+                    code = cal.main(["--compare-history", str(first),
+                                     str(second), "--format", "csv"])
+            self.assertEqual(code, 2)
+            rows = list(csv.DictReader(io.StringIO(out.getvalue())))
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["capability"], "service_inventory")
+            self.assertEqual(rows[0]["metric"], "coverage_assessed")
+            self.assertEqual((rows[0]["previous_value"], rows[0]["current_value"]),
+                             ("1", "2"))
+            self.assertNotIn(base, out.getvalue())
+            self.assertNotIn("PRIVATE_SOURCE_KEY", out.getvalue())
+
+    def test_csv_history_exports_all_pairs_without_private_sources(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(3)]
+            for root in roots:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            out = io.StringIO()
+            with redirect_stdout(out):
+                status = cal.main(["--compare-history", *map(str, roots),
+                                   "--format", "csv"])
+            self.assertEqual(status, 0)
+            rows = list(csv.DictReader(io.StringIO(out.getvalue())))
+            self.assertEqual(len(rows), 3)
+            self.assertEqual({(r["previous_index"], r["current_index"])
+                              for r in rows}, {("1", "2"), ("1", "3"), ("2", "3")})
+            self.assertTrue(all(r["passed"] == "True" for r in rows))
+            self.assertNotIn(base, out.getvalue())
+            shutil.rmtree(roots[2])
+            shutil.copytree(roots[0], roots[2])
+            out = io.StringIO()
+            with redirect_stdout(out):
+                status = cal.main(["--compare-history", *map(str, roots),
+                                   "--format", "csv"])
+            self.assertEqual(status, 2)
+            rows = list(csv.DictReader(io.StringIO(out.getvalue())))
+            self.assertEqual([r["passed"] for r in rows],
+                             ["True", "False", "True"])
+            self.assertNotIn(base, out.getvalue())
+            self.assertNotIn("sha256", out.getvalue())
 
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:
