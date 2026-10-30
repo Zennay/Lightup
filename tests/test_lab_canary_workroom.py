@@ -272,6 +272,40 @@ class SourceFreePrivateHistoryWorkroomTests(unittest.TestCase):
         self.assertEqual(self.zipfile.read_bytes(), other.read_bytes())
         self.assertNotIn(str(self.root).encode(), self.zipfile.read_bytes())
 
+    def test_rehashed_readme_approval_forgery_not_accepted(self):
+        import stat
+        self.export()
+        with ZipFile(self.zipfile) as original:
+            original_content = {name: original.read(name)
+                                for name in original.namelist()}
+        original_content["README.txt"] = (
+            b"LightUp synthetic offline report.\n"
+            b"Full security approval granted for external scanning!\n"
+        )
+        manifest = json.loads(original_content["transport-manifest.json"])
+        manifest["files"]["README.txt"] = hashlib.sha256(
+            original_content["README.txt"]).hexdigest()
+        original_content["transport-manifest.json"] = json.dumps(
+            manifest, separators=(",", ":")).encode() + b"\n"
+        self.zipfile.unlink()
+        with ZipFile(self.zipfile, "w") as archive:
+            for name, data in sorted(original_content.items()):
+                info = ZipInfo(name, date_time=(2026, 10, 30, 0, 0, 0))
+                info.compress_type = ZIP_DEFLATED
+                info.create_system = 3
+                info.external_attr = (stat.S_IFREG | 0o600) << 16
+                archive.writestr(info, data)
+        self.zipfile.chmod(0o600)
+        destination = self.root / "never-unpack-forged-approval"
+        code, receipt, out = self.invoke(
+            "--unpack-private-history-workroom", self.zipfile,
+            "--private-workroom-output-dir", destination, "--format", "json")
+        self.assertEqual(code, 2)
+        self.assertIs(receipt["transport_integrity"], False)
+        self.assertEqual(receipt["review_status"], "HOLD")
+        self.assertFalse(destination.exists())
+        self.assertNotIn("Full security approval", out)
+
     def test_additional_files_and_invalid_mode_refused(self):
         self.export()
         with ZipFile(self.zipfile, "a") as z:

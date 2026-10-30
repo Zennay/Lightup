@@ -211,8 +211,9 @@ passwords, logs and IDs are never exported. HOLD stays HOLD globally.
 The independent verifier never extracts or executes the ZIP: it imposes
 limits on ZIP size, entry count, paths, permissions, compression and
 per-entry size; rejects duplicate/unexpected members, altered bytes,
-bogus original snapshot metrics, HTML approval forgeries even after hashes
-are recomputed, and changed index labels; then returns one anonymous
+bogus original snapshot metrics, HTML *and README approval forgeries*
+even after unsigned hashes are recomputed, and changed index labels;
+then returns one anonymous
 machine-readable PASS/HOLD transport receipt with all source/authorization/
 consent/deployment flags false. A semantic HOLD returns exit 2 even when
 bytes are verified, while a truly unverified ZIP returns

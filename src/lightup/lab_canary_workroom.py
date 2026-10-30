@@ -51,6 +51,17 @@ def _index(statuses: tuple[str, ...]) -> bytes:
     ).encode()
 
 
+def _readme() -> bytes:
+    """Only the fixed first-party warning may be displayed as operator guidance."""
+    return (
+        "LightUp M1 SYNTHETIC LOOPBACK ONLY - HUMAN offline review.\n"
+        "Status is not independent evidence, consent, source authentication, "
+        "scope, security clearance or deployment authorization.\n"
+        "All SHA256 manifests are UNSIGNED local byte consistency checks.\n"
+        "Open index.html locally without network; no scripts or active content.\n"
+    ).encode()
+
+
 def _admit_files(files: dict[str, bytes]) -> str:
     """Admit original anonymous snapshot using exactly its canonical bytes."""
     if set(files) != set(MEMBER_FILES):
@@ -109,13 +120,7 @@ def export_private_history_workroom(source_dirs: list[str], output: str) -> dict
             members[f"reports/{number:02d}/{name}"] = data
     anonymous = tuple(statuses)
     members["index.html"] = _index(anonymous)
-    members["README.txt"] = (
-        "LightUp M1 SYNTHETIC LOOPBACK ONLY - HUMAN offline review.\n"
-        "Status is not independent evidence, consent, source authentication, "
-        "scope, security clearance or deployment authorization.\n"
-        "All SHA256 manifests are UNSIGNED local byte consistency checks.\n"
-        "Open index.html locally without network; no scripts or active content.\n"
-    ).encode()
+    members["README.txt"] = _readme()
     manifest = {
         "schema": KIT, "signed": False, "source_authenticated": False,
         "authorization_granted": False, "deployment": False,
@@ -226,8 +231,10 @@ def _read_private_history_workroom(path: str) -> tuple[dict, dict[str, bytes]]:
             actual.append(_admit_files(originals))
         if statuses != actual or files["index.html"] != _index(tuple(actual)):
             raise ValueError("forged workroom labels or index")
-        if b"<script" in files["README.txt"] or b"/home/" in files["README.txt"]:
-            raise ValueError("unsafe workroom instructions")
+        # The transport manifest is UNSIGNED and can be recomputed.
+        # Reject even a rehashed passive HUMAN authorization instruction.
+        if files["README.txt"] != _readme():
+            raise ValueError("noncanonical private workroom instructions")
         return _receipt(tuple(actual), hashlib.sha256(raw).hexdigest()), files
 
 
