@@ -98,6 +98,17 @@ def render_history_html(report: dict[str, Any]) -> str:
                         + "<p>" + "; ".join(reasons) + "</p>"
                         + ("<ul>" + "".join(details) + "</ul>" if details else "")
                         + "</section>")
+    # Human review order is based only on anonymous archive indices and
+    # verified pair flags; no path, receipt, hash or original identity escapes.
+    archive_issues = {index: {"pairs": set(), "reused": 0, "drift": 0}
+                      for index in range(1, n + 1)}
+    for item in report.get("pairwise_holds", []):
+        i, j = item["previous_index"], item["current_index"]
+        for index in (i, j):
+            state = archive_issues[index]
+            state["pairs"].add((i, j))
+            state["reused"] += item.get("independent_evaluations") is False
+            state["drift"] += item.get("score_stable") is False
     if seen_holds != {pair for pair, passed in lookup.items() if not passed}:
         raise ValueError("incomplete or mismatched HOLD details")
     if type(report.get("passed")) is not bool or report["passed"] != all(lookup.values()):
@@ -114,10 +125,33 @@ def render_history_html(report: dict[str, Any]) -> str:
             + f"<td>{len(info['pairs'])}</td><td>{escape(metrics)}</td>"
             + f"<td><a href='#pair-{first_i}-{first_j}'>Review {first_i} versus {first_j}</a></td></tr>"
         )
+    archive_rows = []
+    ordered_archives = sorted(archive_issues.items(),
+                              key=lambda pair: (-len(pair[1]["pairs"]), pair[0]))
+    for index, issue in ordered_archives:
+        if not issue["pairs"]:
+            continue
+        first_i, first_j = min(issue["pairs"])
+        archive_rows.append(
+            f"<tr><th scope='row'>Archive {index}</th>"
+            + f"<td>{len(issue['pairs'])}</td>"
+            + f"<td>{issue['reused']}</td><td>{issue['drift']}</td>"
+            + f"<td><a href='#pair-{first_i}-{first_j}'>First HOLD pair {first_i} versus {first_j}</a></td></tr>"
+        )
+    archive_queue = (
+        "<h3>Archive review queue</h3>"
+        + ("<table><caption>Most affected anonymous archives first</caption>"
+           "<thead><tr><th scope='col'>Archive</th><th scope='col'>HOLD pairs</th>"
+           "<th scope='col'>Evidence reuse</th><th scope='col'>Score drift</th>"
+           "<th scope='col'>First issue</th></tr></thead><tbody>"
+           + "".join(archive_rows) + "</tbody></table>"
+           if archive_rows else "<p>No archives require review.</p>")
+    )
     attention = (
         "<h2>Review priorities</h2>"
         + f"<p>{len(seen_holds)} HOLD pairs; {reused_pairs} with original evidence reuse; "
         + f"{drift_pairs} with score drift.</p>"
+        + archive_queue
         + ("<table><caption>First-party score-drift hotspots</caption><thead><tr>"
            "<th scope='col'>Capability</th><th scope='col'>Affected pairs</th>"
            "<th scope='col'>Changed metrics</th><th scope='col'>First review</th>"
@@ -133,6 +167,8 @@ th{background:#edf2f7}a{color:#064f9e}a:focus-visible{outline:3px solid #0758b5}
 .pass{color:#155b31;border-color:#155b31}.hold{color:#992a19;border-color:#992a19}
 .unused{color:#566575}section{padding:.5rem 1rem;border-left:4px solid #992a19;margin:1rem 0}
 footer{border-top:1px solid #9ba9b8;margin-top:2rem;padding-top:1rem;font-size:.9rem}
+.table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+.table-scroll:focus-visible{outline:3px solid #0758b5}
 @media(prefers-color-scheme:dark){body{background:#131b24;color:#f1f5fa}th{background:#293746}
 a{color:#a3d0ff}.pass{color:#8ee9aa;border-color:#8ee9aa}.hold{color:#ffb7a7;border-color:#ffb7a7}
 .unused{color:#a8b4c0}}"""
@@ -148,9 +184,9 @@ a{color:#a3d0ff}.pass{color:#8ee9aa;border-color:#8ee9aa}.hold{color:#ffb7a7;bor
             + "<p>All sources are private fixed-loopback lab fixtures. "
             + "PASS does not authorize external assessment or deployment.</p>"
             + attention
-            + "<h2>All-pairs review</h2><table><caption>Original synthetic "
+            + "<h2>All-pairs review</h2><div class='table-scroll' role='region' tabindex='0' aria-label='Original archive comparison matrix'><table><caption>Original synthetic "
             + "calibration comparisons</caption><thead>" + rows[0] + "</thead>"
-            + "<tbody>" + "".join(rows[1:]) + "</tbody></table>"
+            + "<tbody>" + "".join(rows[1:]) + "</tbody></table></div>"
             + ("<h2>Pairs requiring attention</h2>" + "".join(problems)
                if problems else "<p>All original archive pairs passed.</p>")
             + "</main><footer>Authority: none; fixed localhost fixtures only. "
