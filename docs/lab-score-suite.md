@@ -124,3 +124,24 @@ The comparator requests validated numeric metrics internally; the established in
 All targets are fixed by the individual scorers to loopback fixtures; the suite accepts no target argument and does not add any network, model-provider or authorization path. It does not issue grants, dispatch workers, run remediation/retests, authorize real assets or deploy. Exit status `0` means the three local calibration contracts passed. It is **not** proof of external authorization, trusted origin, production readiness or permission to contact a real target.
 
 Treat the output directory as local evidence storage. The SQLite databases are deliberately retained so the evaluation records remain inspectable; remove the directory only when its evidence is no longer needed.
+
+## One-command repeat calibration (synthetic localhost only)
+
+`lightup-lab-score-calibrate --output-dir ./new-private-calibration`
+creates a fresh 0700 parent plus two separate 0700 saved-run directories
+(`baseline/` and `candidate/`), each with four 0600 reports/evidence stores.
+It then *reopens and verifies* both stored results with the existing
+pinned/immutable read-only inspector and compares the nine first-party
+metrics. The final default private-safe text report contains verified
+PASS/HOLD, evidence counts and score differences without source paths,
+run IDs, record hashes or evidence content. Use `--format json` for
+structured non-authorizing output; the legacy score-suite and comparator
+interfaces are unchanged.
+
+Any failed scorer, bad stored evidence, alias, score drift or pre-existing
+output directory yields exit 2 rather than a false PASS. Existing files
+are never overwritten; partial first-party data is retained privately for
+local diagnosis but is **not** a successful calibration. Inputs are the
+output directory only: no target address, client scope, scan, external
+request, grant, dispatch, remediation or release is accepted. This is
+synthetic local calibration, not authorization or independent review.
