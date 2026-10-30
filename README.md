@@ -136,6 +136,13 @@ verify the original source bindings, saved HTML, JSON and receipt; tampered
 reports produce no substitute output. This never grants test or release
 authorization. For stdout-only automation without creating a review directory, use `--compare-history ARCHIVE1 ARCHIVE2 ... --format review-json`; it prints the exact same anonymous, validated `review_summary.json` schema and emits a safe HOLD on invalid original evidence. Verify the private report read-only with the *same original archives* using `--verify-html-output-dir EXISTING_PRIVATE_REVIEW_DIR` instead of `--html-output-dir`; this is synthetic localhost evidence review, not target or release authorization.
 
+The portable receiver also checks both HTML documents for a strict, local-only
+content policy, inert HTML elements/attributes, and bounded offline navigation.
+Even a canonical ZIP with recomputed unsigned SHA-256 manifest digests is
+refused if it includes scripts, redirects, event handlers, external resources
+or active CSS. Existing inert legacy HTML handoffs remain supported. This is
+content safety, **not** original-source authentication or consent.
+
 The source-free portable ZIP now opens with an **accessible, scriptless offline
 operator dashboard** (`index.html`). It shows anonymous original archive and
 pair totals, global PASS/HOLD, prioritized evidence-reuse/score-drift cases,

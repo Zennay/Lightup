@@ -15,6 +15,7 @@ from typing import Any
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo, BadZipFile
 
 from .lab_score_inspect import _artifact_fd, _private_dir_fd
+from .lab_score_portable_html_safety import admit_inert_html
 
 _SCHEMA = "lightup.lab-score-portable-human-review.v1"
 _SUMMARY_SCHEMA = "lightup.lab-score-private-review-summary.v1"
@@ -170,6 +171,10 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
         "archives_checked": summary["archives_checked"],
         "pairs_checked": summary["pairs_checked"],
     }
+    # Unsigned transport digests are attacker-recomputable. Independently
+    # enforce inert, local-only HTML for the files a HUMAN will open.
+    admit_inert_html(payloads["index.html"])
+    admit_inert_html(payloads["history.html"])
     return result, payloads
 
 
