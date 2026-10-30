@@ -526,7 +526,10 @@ def main(argv: list[str] | None = None) -> int:
             elif args.verify_html_output_dir is not None:
                 _refuse_review_source_overlap(roots, args.verify_html_output_dir)
                 source_binding = _private_source_binding(roots, html)
-                verify_private_review(args.verify_html_output_dir, html, source_binding)
+                verify_private_review(
+                    args.verify_html_output_dir, html, source_binding,
+                    lambda: _private_source_binding(roots, html),
+                )
                 print("LightUp saved synthetic HTML: VERIFIED; original comparison "
                       + ("PASS" if result["passed"] else "HOLD"))
             else:

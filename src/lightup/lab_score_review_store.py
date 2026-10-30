@@ -108,7 +108,10 @@ def save_private_review(
         os.close(fd)
 
 
-def verify_private_review(directory: str | Path, html: str, source_receipt: dict[str, Any]) -> None:
+def verify_private_review(
+    directory: str | Path, html: str, source_receipt: dict[str, Any],
+    verify_original_source: Callable[[], dict[str, Any]],
+) -> None:
     """Recompare both private files with fresh original-source verification."""
     expected = _payloads(html, source_receipt)
     fd = _private_dir_fd(directory)
@@ -119,5 +122,11 @@ def verify_private_review(directory: str | Path, html: str, source_receipt: dict
             _check_saved(fd, name, expected[name])
         if set(os.listdir(fd)) != set(_FILES):
             raise ValueError("review changed during readback")
+        # Evidence may change while either saved report file is inspected.
+        # A pre-read source binding alone could return a false VERIFIED.
+        if verify_original_source() != source_receipt:
+            raise ValueError("original evidence changed during review verification")
+        for name in _FILES:
+            _check_saved(fd, name, expected[name])
     finally:
         os.close(fd)

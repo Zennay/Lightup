@@ -133,6 +133,49 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
             self.assertFalse((saved/"history.html").exists())
             self.assertFalse((saved/"source_receipt.json").exists())
 
+    def test_source_mutated_during_saved_review_readback_is_hold(self):
+        from lightup import lab_score_review_store as storage
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            saved = Path(base)/"bound-review"
+            self.assertEqual(self.invoke(roots, saved)[0], 0)
+            original = storage._check_saved
+            calls = 0
+            def mutate_after_read(*args, **kwargs):
+                nonlocal calls
+                original(*args, **kwargs)
+                calls += 1
+                if calls == 2:
+                    (roots[0]/"candidate"/"report.json").write_bytes(b"changed during readback")
+            with patch.object(storage, "_check_saved", side_effect=mutate_after_read):
+                code, out, err = self.verify(roots, saved)
+            self.assertEqual((code, out), (2, ""))
+            self.assertIn("HOLD", err)
+            self.assertNotIn(base, err)
+
+    def test_source_root_swapped_during_saved_review_readback_is_hold(self):
+        from lightup import lab_score_review_store as storage
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            saved = Path(base)/"bound-review"
+            self.assertEqual(self.invoke(roots, saved)[0], 0)
+            other = Path(base)/"independent"
+            self.assertTrue(cal.run_lab_score_calibration(other)["passed"])
+            original = storage._check_saved
+            calls = 0
+            def swap_after_read(*args, **kwargs):
+                nonlocal calls
+                original(*args, **kwargs)
+                calls += 1
+                if calls == 2:
+                    roots[1].rename(Path(base)/"old-original")
+                    other.rename(roots[1])
+            with patch.object(storage, "_check_saved", side_effect=swap_after_read):
+                code, out, err = self.verify(roots, saved)
+            self.assertEqual((code, out), (2, ""))
+            self.assertIn("HOLD", err)
+            self.assertNotIn(base, err)
+
     def test_different_original_archives_cannot_reverify_same_score_report(self):
         with tempfile.TemporaryDirectory() as base:
             originals = [Path(base)/str(i) for i in range(4)]
