@@ -1,5 +1,6 @@
 """Original offline archive focus must preserve global HOLD and source custody."""
 import csv
+import gc
 import io
 import json
 import shutil
@@ -15,6 +16,10 @@ def invoke(roots, fmt, focus=3, saved=None):
             "--focus-archive-index", str(focus)]
     if saved is not None:
         args += ["--verify-html-output-dir", str(saved)]
+    # Older, unrelated SQLite/TemporaryDirectory tests may finalize during the
+    # CLI's stderr capture. Collect them first so only this invocation's
+    # diagnostics are judged, never spurious prior-test ResourceWarnings.
+    gc.collect()
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
         status = cal.main(args)
