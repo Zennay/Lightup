@@ -228,6 +228,48 @@ class PortableHTMLAdmissionTests(unittest.TestCase):
         self.assertEqual((code, out), (2, ""))
         self.assertIn("HOLD", err)
 
+    def test_machine_receipt_distinguishes_verified_v3_from_legacy_hold(self):
+        import json
+        code, out, err = invoke("--verify-portable-review", self.archive,
+                                "--format", "json")
+        self.assertEqual((code, err), (0, ""))
+        receipt = json.loads(out)
+        self.assertTrue(receipt["transport_integrity"])
+        self.assertTrue(receipt["history_content_validated"])
+        self.assertEqual(receipt["review_status"], "PASS")
+        self.assertFalse(receipt["original_source_authenticated"])
+        self.assertFalse(receipt["authorization_granted"])
+        self.assertFalse(receipt["deployment"])
+        self.assertEqual(receipt["portable_schema"],
+                         "lightup.lab-score-portable-human-review.v3")
+        self.assertNotIn("legacy_read_only_triage", receipt)
+        self.assertNotIn(str(self.base), out)
+        legacy = self.forged(
+            "machine-legacy", schema="lightup.lab-score-portable-human-review.v2")
+        code, out, err = invoke("--verify-portable-review", legacy,
+                                "--format", "json")
+        self.assertEqual((code, err), (2, ""))
+        older = json.loads(out)
+        self.assertTrue(older["transport_integrity"])
+        self.assertFalse(older["history_content_validated"])
+        self.assertEqual(older["review_status"], "HOLD")
+        self.assertNotIn("legacy_read_only_triage", older)
+        self.assertNotIn("claimed", out)
+
+    def test_invalid_zip_machine_receipt_never_claims_authentication(self):
+        import json
+        from pathlib import Path
+        bad = self.base / "INVALID-ZIP.bin"
+        bad.write_bytes(b"not even a ZIP")
+        code, out, err = invoke("--verify-portable-review", bad, "--format", "json")
+        self.assertEqual((code, err), (2, ""))
+        receipt = json.loads(out)
+        self.assertFalse(receipt["transport_integrity"])
+        self.assertFalse(receipt["original_source_authenticated"])
+        self.assertFalse(receipt["authorization_granted"])
+        self.assertEqual(receipt["review_status"], "HOLD")
+        self.assertNotIn(str(self.base), out)
+
     def test_legacy_inert_bodyless_index_is_still_supported(self):
         def legacy(b):
             return (

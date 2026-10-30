@@ -530,7 +530,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.unpack_output_dir is not None:
         parser.error("--unpack-output-dir requires --unpack-portable-review")
     if args.verify_portable_review is not None:
-        if (args.format != "text" or args.focus_archive_index is not None
+        if (args.format not in ("text", "json") or args.focus_archive_index is not None
                 or args.html_output_dir is not None
                 or args.verify_html_output_dir is not None
                 or args.portable_review_output_dir is not None):
@@ -538,9 +538,34 @@ def main(argv: list[str] | None = None) -> int:
         try:
             verified = verify_portable_review(args.verify_portable_review)
         except Exception:
-            print("LightUp portable HUMAN review: HOLD; transport not verified.",
-                  file=sys.stderr)
+            if args.format == "json":
+                print(json.dumps({
+                    "schema": "lightup.lab-score-portable-verification-receipt.v1",
+                    "transport_integrity": False,
+                    "history_content_validated": False,
+                    "original_source_authenticated": False,
+                    "authorization_granted": False,
+                    "external_targets_contacted": False,
+                    "deployment": False,
+                    "review_status": "HOLD",
+                }, sort_keys=True, allow_nan=False))
+            else:
+                print("LightUp portable HUMAN review: HOLD; transport not verified.",
+                      file=sys.stderr)
             return 2
+        if args.format == "json":
+            # Whitelist stable, bounded values; never serialize arbitrary
+            # legacy triage prose or any original source identifiers.
+            keys = ("schema", "transport_integrity", "history_content_validated",
+                    "dashboard_content_validated", "original_source_authenticated",
+                    "authorization_granted", "external_targets_contacted",
+                    "deployment", "synthetic_localhost_only", "review_status",
+                    "archives_checked", "pairs_checked")
+            receipt = {key: verified[key] for key in keys}
+            receipt["schema"] = "lightup.lab-score-portable-verification-receipt.v1"
+            receipt["portable_schema"] = verified["schema"]
+            print(json.dumps(receipt, sort_keys=True, allow_nan=False))
+            return 0 if verified["review_status"] == "PASS" else 2
         print("LightUp portable HUMAN review: TRANSPORT VERIFIED; "
               + ("dashboard AND history matched anonymous review; " if verified["history_content_validated"]
                  else "LEGACY review HTML contents NOT fully independently validated; ")

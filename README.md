@@ -214,6 +214,16 @@ HTML workspace. Regenerate a v3
 ZIP from verified *synthetic* original archives for this stricter integrity
 check. No version authenticates original source identity, consent, reviewer
 approval, live authorization or release.
+For read-only automation, add `--format json` to
+`--verify-portable-review`. The single stdout JSON object is an allowlisted
+synthetic `lightup.lab-score-portable-verification-receipt.v1`, with distinct
+`transport_integrity`, `history_content_validated`,
+`original_source_authenticated: false`, `authorization_granted: false`,
+`deployment: false` and `review_status` flags. Valid v3 synthetic PASS exits
+0; actual/legacy HOLD or malformed transport exits 2. Invalid ZIPs emit a
+minimal machine-readable HOLD receipt with `transport_integrity: false`;
+legacy read-only triage prose and private source identifiers are never copied
+to JSON. This output is **not** an original source signature or release grant.
 Keep the ZIP in a 0700 directory as a 0600 file for this local checker.
 
 To open a verified portable HUMAN ZIP as scriptless files without manual ZIP
