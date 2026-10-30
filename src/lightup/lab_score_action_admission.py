@@ -50,7 +50,8 @@ def admit_human_actions(data: dict) -> list[dict]:
 
     seen = set()
     prior_origin = 0
-    prior_pair = {"baseline": (0, 0), "candidate": (0, 0)}
+    groups = {"baseline": [], "candidate": []}
+    seen_pairs = {"baseline": set(), "candidate": set()}
     for row in rows[:-1]:
         if type(row) is not dict or row.keys() != _ROW_FIELDS:
             raise ValueError("untrusted HUMAN action row fields")
@@ -70,12 +71,30 @@ def admit_human_actions(data: dict) -> list[dict]:
             raise ValueError("untrusted anonymous original HOLD action")
         current_origin = 0 if origin == "baseline" else 1
         key = (origin, p, c, reason)
-        if (current_origin < prior_origin
-                or (p, c) < prior_pair[origin] or key in seen):
-            raise ValueError("reordered or duplicated original HOLD action")
+        if current_origin < prior_origin or key in seen:
+            raise ValueError("interleaved or duplicated original HOLD action")
         prior_origin = current_origin
-        prior_pair[origin] = (p, c)
         seen.add(key)
+        group = groups[origin]
+        if group and group[-1][0] == (p, c):
+            group[-1][1].append(reason)
+        else:
+            if (p, c) in seen_pairs[origin]:
+                raise ValueError("noncontiguous original HOLD pair")
+            seen_pairs[origin].add((p, c))
+            group.append(((p, c), [reason]))
+    # Match the original canonical HOLD-first queue, which sorts causes
+    # before anonymous pair ordinals; never silently discard an original.
+    for group in groups.values():
+        for _, reasons in group:
+            if reasons not in (["evidence_reused"], ["score_drift"],
+                               ["evidence_reused", "score_drift"]):
+                raise ValueError("noncanonical original pair reason order")
+        expected = sorted(group, key=lambda item: (
+            "evidence_reused" not in item[1],
+            "score_drift" not in item[1], *item[0]))
+        if group != expected:
+            raise ValueError("noncanonical original HOLD-first queue order")
 
     gate = rows[-1]
     if (

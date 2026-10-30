@@ -400,6 +400,49 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
                 with self.subTest(case=idx, fmt=fmt), self.assertRaises(ValueError):
                     render(value, fmt)
 
+    def test_multi_hold_uses_canonical_priority_and_rejects_reordering(self):
+        from copy import deepcopy
+        from lightup.lab_score_review_actions import build_review_actions, render_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_action_brief import render_action_brief
+        canonical = build_review_actions(
+            compare_portable_review_transports(str(self.hold), str(self.passing)),
+            str(self.hold), str(self.passing))
+        replay = deepcopy(canonical['actions'][0])
+        self.assertEqual(replay['reason'], 'evidence_reused')
+        drift = dict(replay, anonymous_previous=1, anonymous_current=2,
+                     reason='score_drift',
+                     human_action='REVIEW_ISOLATED_SYNTHETIC_SCORER_DRIFT')
+        multi = deepcopy(canonical)
+        multi['actions'].insert(1, drift)
+        multi['hold_action_rows'] += 1
+        both = deepcopy(canonical)
+        both['actions'].insert(1, dict(drift,
+            anonymous_previous=replay['anonymous_previous'],
+            anonymous_current=replay['anonymous_current']))
+        both['hold_action_rows'] += 1
+        def validate_all(value, succeeds):
+            for fmt in ('actions-json','actions-csv','actions-html',
+                        'actions-brief-markdown','actions-brief-html'):
+                renderer = (render_action_brief if fmt.startswith('actions-brief')
+                            else render_review_actions)
+                with self.subTest(fmt=fmt, succeeds=succeeds):
+                    if succeeds:
+                        self.assertIn('NOT_VERIFIED',renderer(value,fmt))
+                    else:
+                        with self.assertRaises(ValueError):
+                            renderer(value,fmt)
+        validate_all(multi,True)
+        validate_all(both,True)
+        for item in (multi,both):
+            reversed_item=deepcopy(item)
+            reversed_item['actions'][:2]=reversed_item['actions'][1::-1]
+            validate_all(reversed_item,False)
+        interleaved=deepcopy(multi)
+        interleaved['actions'].insert(2,deepcopy(replay))
+        interleaved['hold_action_rows'] += 1
+        validate_all(interleaved,False)
+
     def test_atomic_ten_file_original_bound_human_brief_room(self):
         from hashlib import sha256
         room=self.root/'full-private-ten-view-room'
