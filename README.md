@@ -136,6 +136,28 @@ verify the original source bindings, saved HTML, JSON and receipt; tampered
 reports produce no substitute output. This never grants test or release
 authorization. For stdout-only automation without creating a review directory, use `--compare-history ARCHIVE1 ARCHIVE2 ... --format review-json`; it prints the exact same anonymous, validated `review_summary.json` schema and emits a safe HOLD on invalid original evidence. Verify the private report read-only with the *same original archives* using `--verify-html-output-dir EXISTING_PRIVATE_REVIEW_DIR` instead of `--html-output-dir`; this is synthetic localhost evidence review, not target or release authorization.
 
+For a deterministic one-command **portable offline HUMAN review ZIP** of the already
+saved three-file private review, run:
+
+```sh
+lightup-lab-score-calibrate --compare-history ARCHIVE1 ARCHIVE2 \
+  --format html --verify-html-output-dir EXISTING_PRIVATE_REVIEW_DIR \
+  --portable-review-output-dir NEW_PRIVATE_HANDOFF_DIR
+```
+
+The CLI **first** verifies the original archives and exact saved private HTML,
+JSON and receipt, then produces one no-overwrite 0600 ZIP in a fresh 0700
+private directory, and verifies the same source-bound report again after
+publication. The ZIP contains only scriptless index and history HTML,
+source-free JSON/CSV/Markdown, README and SHA-256 manifest for the exports.
+No original sources, paths, receipt identities, private bindings or target
+authority are included. HTML deliberately includes allowlisted numeric
+first-party score changes for HUMAN review; CSV/JSON/Markdown do not contain
+those raw numeric values. ZIP hashes check export integrity only, not source
+authenticity. A real original-evidence reuse HOLD remains a HOLD in the ZIP
+and exit status 2; a corrupt original or receipt refuses publication. There is
+no live target, security scan, grant, consent, review approval or deployment.
+
 For privacy-minimal spreadsheet handoff use `--compare-history ARCHIVE1 ARCHIVE2 --format review-csv`: only archive ordinals, PASS/HOLD and two boolean evidence/score flags. Add `--verify-html-output-dir` to bind it to the already saved private three-file review; unlike regular `--format csv`, this never exports original score values.
 
 

@@ -24,6 +24,7 @@ from .lab_score_inspect import inspect_score_run
 from .lab_score_history_html import render_history_html, build_history_review_summary, render_history_markdown, focus_archive_review
 from .lab_score_review_store import (save_private_review, verify_private_review,
                                      summary_bytes)
+from .lab_score_handoff import save_portable_review
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
@@ -478,12 +479,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--verify-html-output-dir",
                         help="reverify existing private HTML, receipt and JSON against originals; "
                              "allows source-free review-json, review-markdown and review-csv output")
+    parser.add_argument("--portable-review-output-dir",
+                        help="create an owner-private, source-free offline HUMAN review ZIP "
+                             "after verifying the existing private three-file review")
     args = parser.parse_args(argv)
     if args.focus_archive_index is not None and (
             args.compare_history is None or args.format not in
             ("review-json", "review-markdown", "review-csv", "html")):
         parser.error("focus requires --compare-history and review-json, "
                      "review-markdown, review-csv or html")
+    if args.portable_review_output_dir is not None and (
+            args.verify_html_output_dir is None or args.format != "html"
+            or args.compare_history is None or args.focus_archive_index is not None):
+        parser.error("portable ZIP requires --compare-history, --format html, "
+                     "--verify-html-output-dir and no focus")
     if args.html_output_dir is not None and args.verify_html_output_dir is not None:
         parser.error("create and verify must be separate operations")
     if args.html_output_dir is not None and args.focus_archive_index is not None:
@@ -635,6 +644,18 @@ def main(argv: list[str] | None = None) -> int:
                     review_dir, html, source_binding, summary,
                     lambda: _private_source_binding(roots, html, summary),
                 )
+                if args.portable_review_output_dir is not None:
+                    kit_dir = Path(args.portable_review_output_dir).expanduser()
+                    if not kit_dir.is_absolute():
+                        kit_dir = anchor / kit_dir
+                    _refuse_review_source_overlap([*roots, review_dir], kit_dir)
+                    def reverify():
+                        current = _private_source_binding(roots, html, summary)
+                        verify_private_review(
+                            review_dir, html, current, summary,
+                            lambda: _private_source_binding(roots, html, summary),
+                        )
+                    save_portable_review(kit_dir, result, reverify)
                 if args.focus_archive_index is None:
                     print("LightUp saved synthetic HTML: VERIFIED; original comparison "
                           + ("PASS" if result["passed"] else "HOLD"))

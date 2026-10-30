@@ -1,0 +1,148 @@
+"""Portable, source-free, scriptless HUMAN review of verified synthetic runs.
+
+The portable ZIP is not a source receipt, signature, grant or live assessment.
+Original archives and private three-file report stay outside this package.
+"""
+from __future__ import annotations
+
+import csv
+import hashlib
+import io
+import json
+import os
+from pathlib import Path
+from typing import Any, Callable
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
+
+from .lab_score_history_html import (
+    build_history_review_summary, render_history_html, render_history_markdown,
+)
+from .lab_score_inspect import _private_dir_fd
+from .lab_score_suite import _private_output_directory
+
+_SCHEMA = "lightup.lab-score-portable-human-review.v1"
+_FILENAME = "LightUp-SYNTHETIC-OFFLINE-REVIEW.zip"
+_MAX_ZIP_BYTES = 2 * 1024 * 1024
+
+
+def _csv_bytes(summary: dict[str, Any]) -> bytes:
+    text = io.StringIO()
+    writer = csv.writer(text, lineterminator="\n")
+    writer.writerow(("previous_index", "current_index", "status",
+                     "independent_evaluations", "score_stable"))
+    for pair in summary["pairs"]:
+        writer.writerow((
+            pair["previous_index"], pair["current_index"],
+            "PASS" if pair["passed"] else "HOLD",
+            pair["independent_evaluations"], pair["score_stable"],
+        ))
+    return text.getvalue().encode("utf-8")
+
+
+def _files(report: dict[str, Any]) -> dict[str, bytes]:
+    summary = build_history_review_summary(report)
+    html = render_history_html(report).encode("utf-8")
+    files = {
+        "index.html": (
+            "<!doctype html><html lang='en'><meta charset='utf-8'>"
+            "<meta http-equiv='Content-Security-Policy' "
+            "content=\"default-src 'none'; style-src 'unsafe-inline'\">"
+            "<title>LightUp — synthetic offline HUMAN review</title>"
+            "<h1>LightUp — synthetic offline HUMAN review</h1>"
+            "<p>No assessment authorization, external target, source identity, "
+            "consent, grant or deployment. Evidence is synthetic localhost only.</p>"
+            "<p>All results require independent qualified source/privacy review.</p>"
+            "<ul><li><a href='history.html'>Full offline review matrix</a></li>"
+            "<li><a href='review.md'>Human review brief</a></li>"
+            "<li><a href='review.csv'>Source-free pair table</a></li>"
+            "<li><a href='review.json'>Source-free machine summary</a></li></ul>"
+            "</html>\n"
+        ).encode("utf-8"),
+        "history.html": html,
+        "review.json": (
+            json.dumps(summary, sort_keys=True, indent=2, allow_nan=False) + "\n"
+        ).encode("utf-8"),
+        "review.csv": _csv_bytes(summary),
+        "review.md": render_history_markdown(report).encode("utf-8"),
+        "README.txt": (
+            "LightUp synthetic fixed-loopback offline review, HUMAN only.\n"
+            "Open index.html locally. No network/scripts/original evidence.\n"
+            "A PASS means only local consistency, NEVER external authority.\n"
+            "HTML may show first-party allowlisted numeric scorer changes.\n"
+            "CSV/JSON/Markdown omit raw numeric metric values.\n"
+            "Private source archives, saved receipt bindings and source IDs "
+            "are NOT included. ZIP hashes prove transport integrity only.\n"
+        ).encode("utf-8"),
+    }
+    manifest = {
+        "schema": _SCHEMA,
+        "synthetic_localhost_only": True,
+        "authorization_granted": False,
+        "external_targets_contacted": False,
+        "deployment": False,
+        "passed": summary["passed"],
+        "archives_checked": summary["archives_checked"],
+        "pairs_checked": summary["pairs_checked"],
+        "files": {name: hashlib.sha256(value).hexdigest()
+                  for name, value in sorted(files.items())},
+    }
+    files["manifest.json"] = (
+        json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    ).encode("utf-8")
+    return files
+
+
+def save_portable_review(
+    output_directory: str | Path,
+    report: dict[str, Any],
+    reverify_original_private_report: Callable[[], None],
+) -> Path:
+    """Create a no-overwrite owner-private ZIP only for an admitted review.
+
+    Reverify original evidence and saved report both before and after writing;
+    no partial package survives a refusal. ZIP contains strictly allowlisted
+    anonymous exports, not original paths, hashes or private receipts.
+    """
+    reverify_original_private_report()
+    files = _files(report)
+    if len(files) != 7 or any(len(value) > 1024 * 1024 for value in files.values()):
+        raise ValueError("portable review exceeds fixed allowlist or size bound")
+    buffer = io.BytesIO()
+    with ZipFile(buffer, mode="w", compression=ZIP_DEFLATED) as archive:
+        for name, content in sorted(files.items()):
+            entry = ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
+            entry.compress_type = ZIP_DEFLATED
+            entry.external_attr = 0o600 << 16
+            archive.writestr(entry, content)
+    data = buffer.getvalue()
+    if len(data) > _MAX_ZIP_BYTES:
+        raise ValueError("portable review archive too large")
+    directory = _private_output_directory(output_directory)
+    dirfd = _private_dir_fd(directory)
+    made: tuple[int, int] | None = None
+    try:
+        fd = os.open(_FILENAME, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                     os.O_NOFOLLOW, 0o600, dir_fd=dirfd)
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+            meta = os.stat(_FILENAME, dir_fd=dirfd, follow_symlinks=False)
+            made = (meta.st_dev, meta.st_ino)
+            reverify_original_private_report()
+            with os.fdopen(os.open(_FILENAME, os.O_RDONLY | os.O_NOFOLLOW,
+                                   dir_fd=dirfd), "rb") as handle:
+                if handle.read(_MAX_ZIP_BYTES + 1) != data:
+                    raise ValueError("portable review changed during publication")
+            if os.listdir(dirfd) != [_FILENAME]:
+                raise ValueError("unexpected portable review files")
+            os.fsync(dirfd)
+        except Exception:
+            meta = os.stat(_FILENAME, dir_fd=dirfd, follow_symlinks=False)
+            if made is not None and (meta.st_dev, meta.st_ino) == made:
+                os.unlink(_FILENAME, dir_fd=dirfd)
+            raise
+    finally:
+        os.close(dirfd)
+    return directory / _FILENAME
