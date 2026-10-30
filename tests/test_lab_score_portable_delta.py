@@ -94,3 +94,49 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
                                a,b,'--format','json')
             self.assertEqual((status,out),(2,''))
             self.assertIn('not verified',err)
+
+    def test_atomic_five_file_human_comparison_pub_and_read_only_verify(self):
+        import hashlib
+        from lightup.lab_score_review_delta import verify_private_comparison
+        directory=self.root/'source-free-comparison-room'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',directory)
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('five private files saved',out)
+        expected={'comparison.json','comparison.txt','comparison.csv',
+                  'comparison.html','manifest.json'}
+        self.assertEqual({p.name for p in directory.iterdir()},expected)
+        self.assertEqual(directory.stat().st_mode&0o777,0o700)
+        self.assertTrue(all(p.stat().st_mode&0o777==0o600
+                            for p in directory.iterdir()))
+        stored={p.name:p.read_bytes() for p in directory.iterdir()}
+        manifest=json.loads(stored['manifest.json'])
+        self.assertEqual(set(manifest['file_sha256']),expected-{'manifest.json'})
+        for name,digest in manifest['file_sha256'].items():
+            self.assertEqual(hashlib.sha256(stored[name]).hexdigest(),digest)
+        self.assertFalse(manifest['authorization_granted'])
+        self.assertFalse(manifest['remediation_verified'])
+        code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                         '--comparison-output-dir',directory)
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('five saved files reverified',out)
+        self.assertEqual(verify_private_comparison(self.hold,self.passing,directory)
+                         ['review_status'],'HOLD')
+        self.assertEqual(stored,{p.name:p.read_bytes() for p in directory.iterdir()})
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',directory)
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)
+        (directory/'comparison.html').write_text('tampered')
+        code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                         '--comparison-output-dir',directory)
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)
+
+    def test_reject_bad_originals_without_creating_a_private_comparison_room(self):
+        dest=self.root/'must-not-be-created'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.hold,
+                         '--comparison-output-dir',dest)
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)
+        self.assertFalse(dest.exists())

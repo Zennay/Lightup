@@ -394,3 +394,24 @@ The report exposes only anonymous totals and unsigned transport SHA-256,
 never original private source paths or findings. A missing, corrupted,
 identical or changed ZIP refuses all partial output. No external targets,
 scans, state changes or deployments are performed.
+
+### Atomic private two-ZIP HUMAN handoff (five files)
+
+`lightup-lab-score-calibrate --compare-portable-reviews BASELINE_PRIVATE.zip
+CANDIDATE_PRIVATE.zip --comparison-output-dir NEW_OWNER_PRIVATE_DIR`
+publishes a source-free, owner-private **five-file** 0700 folder:
+`comparison.json`, `comparison.txt`, `comparison.csv`,
+inert `comparison.html`, and `manifest.json`. Every member is 0600,
+exclusively created, and digest-bound to two fully admitted synthetic ZIPs.
+The publisher never overwrites; failed publication rolls back only owned
+files and does not alter either original ZIP. The manifests contain unsigned
+transport-consistency digests, not identity or remediation certificates.
+
+Later re-admit BOTH canonical original ZIPs and all saved private files,
+read-only, using `--verify-comparison-workroom BASELINE_PRIVATE.zip
+CANDIDATE_PRIVATE.zip --comparison-output-dir EXISTING_PRIVATE_DIR`.
+Stored files receive two full descriptor-bound identity/content passes and
+original ZIPs are rechecked. Missing or modified originals/outputs result
+in HOLD with no success output. Both commands remain HUMAN-only, with global
+original HOLD immutable and no source identity, consent, authorization,
+external target or deployment authority.

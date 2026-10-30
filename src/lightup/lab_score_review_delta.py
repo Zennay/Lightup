@@ -123,3 +123,127 @@ def render_comparison(result: dict[str, Any], fmt: str) -> str:
         "</main></body></html>")
     admit_inert_html(html.encode('utf-8'))
     return html
+
+
+def publish_private_comparison(first: str, second: str, destination: str) -> dict[str, Any]:
+    """Atomically publish complete HUMAN views from two admitted ZIPs."""
+    import os
+    import hashlib
+    from pathlib import Path
+    from .lab_score_suite import _private_output_directory
+    from .lab_score_inspect import _private_dir_fd
+    from .lab_score_queue_workroom import _check_file
+
+    sources = [Path(p).expanduser().absolute() for p in (first, second)]
+    target = Path(destination).expanduser().absolute()
+    if ('..' in Path(destination).parts or any(
+            target == source.parent or target in source.parents
+            or source in target.parents for source in sources)):
+        raise ValueError('offline comparison output overlaps source ZIPs')
+    result = compare_portable_review_transports(first, second)
+    names = ('comparison.json','comparison.txt','comparison.csv','comparison.html')
+    formats = ('json','text','csv','html')
+    payloads = {name: render_comparison(result, fmt).encode('utf-8')
+                for name, fmt in zip(names, formats)}
+    receipt = {
+        'schema': 'lightup.lab-score-human-two-transport-workroom.v1',
+        'unsigned_local_consistency_only': True,
+        'source_zip_sha256': [result['baseline']['unsigned_transport_sha256'],
+                              result['candidate']['unsigned_transport_sha256']],
+        'file_sha256': {name: hashlib.sha256(data).hexdigest()
+                        for name, data in payloads.items()},
+        'authorization_granted': False,
+        'remediation_verified': False,
+        'deployment': False,
+    }
+    payloads['manifest.json']=(json.dumps(receipt,sort_keys=True,indent=2)+'\n').encode()
+    if any(not 0 < len(data) <= 65536 for data in payloads.values()):
+        raise ValueError('oversized HUMAN comparison package')
+    root = _private_output_directory(target)
+    directory = _private_dir_fd(root)
+    created = []
+    try:
+        try:
+            for name, data in payloads.items():
+                temporary='.'+name+'.tmp'
+                writer=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,
+                               0o600,dir_fd=directory)
+                try:
+                    with os.fdopen(writer,'wb') as output:
+                        output.write(data)
+                        output.flush()
+                        os.fsync(output.fileno())
+                    stamp=os.stat(temporary,dir_fd=directory,follow_symlinks=False)
+                    identity=(stamp.st_dev,stamp.st_ino)
+                    os.link(temporary,name,src_dir_fd=directory,dst_dir_fd=directory,
+                            follow_symlinks=False)
+                    created.append((name,identity))
+                    os.unlink(temporary,dir_fd=directory)
+                    if _check_file(directory,name,data)[:2]!=identity:
+                        raise ValueError('saved HUMAN comparison replaced')
+                finally:
+                    try:os.unlink(temporary,dir_fd=directory)
+                    except FileNotFoundError:pass
+            os.fsync(directory)
+            if compare_portable_review_transports(first, second)!=result:
+                raise ValueError('source ZIP changed during publication')
+        except Exception:
+            for name,identity in reversed(created):
+                try:
+                    current=os.stat(name,dir_fd=directory,follow_symlinks=False)
+                    if (current.st_dev,current.st_ino)==identity:
+                        os.unlink(name,dir_fd=directory)
+                except FileNotFoundError:pass
+            try:
+                pinned=os.fstat(directory)
+                actual=os.stat(root,follow_symlinks=False)
+                if ((pinned.st_dev,pinned.st_ino)==(actual.st_dev,actual.st_ino)
+                        and not os.listdir(directory)):
+                    os.rmdir(root)
+            except OSError:pass
+            raise
+    finally:
+        os.close(directory)
+    return result
+
+
+def verify_private_comparison(first: str, second: str, directory: str) -> dict[str, Any]:
+    """Reopen all five saved private files and both original ZIPs, read only."""
+    import os
+    import hashlib
+    from .lab_score_inspect import _private_dir_fd
+    from .lab_score_queue_workroom import _check_file
+
+    result=compare_portable_review_transports(first,second)
+    views={('comparison.txt' if fmt=='text' else 'comparison.'+fmt):
+           render_comparison(result,fmt).encode('utf-8')
+           for fmt in ('json','text','csv','html')}
+    manifest={
+        'schema':'lightup.lab-score-human-two-transport-workroom.v1',
+        'unsigned_local_consistency_only':True,
+        'source_zip_sha256':[result['baseline']['unsigned_transport_sha256'],
+                             result['candidate']['unsigned_transport_sha256']],
+        'file_sha256':{k:hashlib.sha256(v).hexdigest() for k,v in views.items()},
+        'authorization_granted':False,
+        'remediation_verified':False,
+        'deployment':False,
+    }
+    views['manifest.json']=(json.dumps(manifest,sort_keys=True,indent=2)+'\n').encode()
+    fd=_private_dir_fd(directory)
+    try:
+        original={}
+        for _ in range(2):
+            if set(os.listdir(fd))!=set(views):
+                raise ValueError('saved HUMAN comparison inventory changed')
+            for name,expected in views.items():
+                identity=_check_file(fd,name,expected)
+                if name in original and original[name]!=identity:
+                    raise ValueError('saved comparison changed between reads')
+                original[name]=identity
+        if set(os.listdir(fd))!=set(views):
+            raise ValueError('saved comparison inventory replaced')
+    finally:
+        os.close(fd)
+    if compare_portable_review_transports(first,second)!=result:
+        raise ValueError('original review transports changed during receipt inspection')
+    return result
