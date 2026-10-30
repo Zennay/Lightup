@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp PRIVATE Human Follow-up Calendar</title>
+<link rel="stylesheet" href="./style.css">
+<script src="./app.js" defer></script>
+</head>
+<body>
+<header><div class="eyebrow">LIGHTUP / ASSESSMENT RUNTIME / PRIVATE / OFFLINE</div><h1>Human Follow-up Calendar</h1>
+<p>Turn an <strong>already-produced</strong> seven-column HUMAN worksheet into a private follow-up schedule and a deliberately optional calendar export. <strong>REVIEW ONLY · NO ASSESSMENT AUTHORITY.</strong></p></header>
+<main>
+<section class="notice"><strong>INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.</strong> Source severity is self-reported. Calendar reminders are HUMAN plans, never evidence of approval, verified risk, remediation, scope, current consent or permission to scan. DST gaps, repeated local hours and appointments crossing a clock change are rejected; move tentative times outside a clock transition. Files remain PRIVATE, even without target names. Nothing is uploaded or stored by this application. Importing calendar entries into cloud calendars may disclose them; use an authorized PRIVATE calendar only.</section>
+<section class="panel" aria-labelledby="importHeading"><h2 id="importHeading">1 · Open original HUMAN worksheet</h2>
+<p>Use <code>human-followup.csv</code> from the original PRIVATE Assessment Briefing (held PR #1672). Strict original 7-column order, max 2,048 rows / 1 MiB. Includes anonymous ordinal, source-reported severity, evidence-reference count and HUMAN-only follow-up fields; no original target or evidence required.</p>
+<div class="row"><label class="file">Original worksheet CSV <input id="worksheet" type="file" accept=".csv,text/csv"></label><span id="identity" class="subtle">No worksheet loaded</span></div>
+<div class="notice" id="portableVault">
+<strong>Portable encrypted original HUMAN workroom (.luhv)</strong>
+<p>One self-contained private file with the <em>original imported HUMAN-only CSV bytes</em>, every
+proposed HUMAN reminder and each declared group-availability rule. Unlike a plan-only backup,
+this reopens on a different private device <strong>without locating the original worksheet separately</strong>.
+The encrypted source may itself contain confidential HUMAN text; keep the file/password separate
+and never publish. This is not authentication of the producer, consent or security findings.
+<strong>The original local IANA timezone must match when reopening.</strong> Different device timezones are
+intentionally refused rather than silently converting tentative appointments through DST.</p>
+<div class="row">
+<label>Portable vault passphrase <input id="vaultPassword" type="password" minlength="16" maxlength="256" autocomplete="off"></label>
+<label>Confirm new vault password <input id="vaultConfirm" type="password" minlength="16" maxlength="256" autocomplete="off"></label>
+</div>
+<div class="row">
+<button id="savePortableVault" type="button" disabled>Save portable encrypted original + workroom</button>
+<label class="file">Open portable private workroom <input id="restorePortableVault" type="file" accept=".luhv,application/octet-stream"></label>
+</div>
+<p id="vaultStatus" class="subtle" role="status" aria-live="polite">Opening a valid portable vault does not require a worksheet to be loaded first.</p>
+<details id="vaultRekeyDetails"><summary>Change the passphrase for an existing portable PRIVATE vault</summary>
+<p>Enter the <strong>current</strong> vault passphrase above, then a different new passphrase below.
+The entire source-bound HUMAN workroom is admitted and encrypted locally using fresh parameters;
+your current open browser workspace is not replaced, edited or saved. Existing encrypted copies
+keep their old passphrases: revoke them separately according to your own retention policy.</p>
+<div class="row">
+<label>New portable vault passphrase <input type="password" id="vaultNewPassword" minlength="16" maxlength="256" autocomplete="off"></label>
+<label>Confirm new vault passphrase <input type="password" id="vaultNewConfirm" minlength="16" maxlength="256" autocomplete="off"></label>
+<label class="file">Rotate private encrypted vault <input id="rekeyPortableVault" type="file" accept=".luhv,application/octet-stream"></label>
+</div>
+<p class="subtle">No accounts, real identity, external calendars, client authority or verified security findings are established by passphrase rotation.</p>
+</details>
+<details id="vaultExtractDetails"><summary>Recover one original HUMAN file from portable encrypted vault</summary>
+<p>Enter the existing vault passphrase above, select one original component and confirm a separate
+PRIVATE local download. No currently open browser workroom is replaced. The unchanged ORIGINAL
+HUMAN CSV may contain confidential action/blocker text and should never be shared publicly.</p>
+<div class="row">
+<label>Recover <select id="vaultExtractKind">
+<option value="source">Exact original HUMAN worksheet bytes (.csv)</option>
+<option value="plan">Original private calendar plan (.csv)</option>
+<option value="capacity">Original declared HUMAN group rules (.csv)</option>
+</select></label>
+<label class="file">Choose encrypted portable vault <input id="extractPortableVault" type="file" accept=".luhv,application/octet-stream"></label>
+</div>
+</details>
+</div>
+<p><button id="reset" type="button" class="ghost" disabled>Discard workroom</button> <span id="notice" role="status" aria-live="polite">Import a worksheet to begin.</span></p></section>
+<section id="desk" class="panel" hidden aria-labelledby="deskHeading">
+<h2 id="deskHeading">2 · Plan HUMAN follow-ups</h2>
+<p id="summary"></p>
+<div class="toolbar">
+<label>Severity <select id="severity"><option value="">All</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
+<label>HUMAN stage <select id="stage"><option value="">All</option><option value="needs_review">needs_review</option><option value="discussing">discussing</option><option value="blocked">blocked</option><option value="documented">documented</option><option value="(blank)">(blank)</option></select></label>
+<label>Schedule <select id="status"><option value="">All</option><option value="unscheduled">Unscheduled</option><option value="scheduled">Scheduled</option><option value="overdue">Overdue</option></select></label>
+<label>Search group / HUMAN action <input id="query" type="search" maxlength="120" placeholder="Local only"></label>
+</div>
+<div class="bulk"><strong>Apply date to the current filtered group</strong><label>Date <input id="bulkDate" type="date"></label><label>Time <input id="bulkTime" type="time" value="09:00"></label><label>Minutes <select id="bulkDuration"><option>15</option><option selected>30</option><option>60</option><option>90</option></select></label><label>Reminder <select id="bulkReminder"><option value="0">None</option><option value="15" selected>15 min</option><option value="60">60 min</option><option value="1440">1 day</option></select></label><button id="bulkApply" type="button">Set on filtered rows</button><button id="bulkClear" type="button" class="ghost">Clear filtered dates</button></div>
+<div class="bulk"><div><strong>Suggest weekday reminders</strong><br><small>Only currently filtered, unscheduled, unblocked HUMAN rows. Self-reported severity is used only as a sorting hint. Never modifies original worksheet.</small></div>
+<label>First day <input id="suggestDate" type="date"></label><label>Maximum per weekday <select id="suggestDaily"><option>4</option><option selected>6</option><option>8</option><option>12</option><option>16</option></select></label><button id="suggest" type="button">Prepare suggested dates</button></div>
+<p id="paging" class="subtle"></p>
+<div class="tablebox"><table><thead><tr><th>Original ordinal</th><th>Source severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Local date</th><th>Time</th><th>Duration</th><th>Reminder</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="row"><button id="prev" type="button" class="ghost">Previous</button><button id="next" type="button" class="ghost">Next</button></div>
+</section>
+<section id="agenda" class="panel" hidden aria-labelledby="agendaHeading"><h2 id="agendaHeading">3 · Upcoming HUMAN agenda</h2>
+<p>Human-proposed dates only, ordered by local scheduled time. Past-due does not prove an unresolved vulnerability. Select any event to edit the original ordinal in the private planning desk.</p>
+<div class="toolbar"><label>View <select id="agendaHorizon"><option value="all">All scheduled</option><option value="7" selected>Next 7 days</option><option value="30">Next 30 days</option><option value="overdue">Past due</option><option value="conflicts">Colliding plans</option></select></label><label>Search HUMAN group / action <input type="search" id="agendaQuery" maxlength="120" placeholder="Local only"></label></div>
+<div class="notice" id="conflictPanel" hidden>
+<strong>HUMAN scheduling collisions</strong>
+<p id="conflictSummary" role="status" aria-live="polite"></p>
+<div class="row"><button type="button" id="conflictFocus" class="ghost">Show conflicts in agenda</button>
+<button type="button" id="resolveConflicts">Preview group-aware conflict resolution</button>
+<button type="button" id="applyConflictResolution" disabled>Apply all reviewed HUMAN changes (confirm)</button>
+<button type="button" id="exportConflictProposal" class="ghost" disabled>Download PRIVATE conflict proposal (.csv)</button>
+<button type="button" id="discardConflictResolution" class="ghost">Discard preview</button></div>
+<details id="conflictPreviewDetails"><summary>Inspect exact conflicting HUMAN appointments and alternative local times</summary>
+<p id="conflictPreviewSummary" class="subtle" role="status">No schedule changes prepared.</p>
+<div class="tablebox"><table><thead><tr><th>Original HUMAN ordinal</th><th>Previous proposal</th>
+<th>Alternative local reminder</th><th>Declared group</th></tr></thead><tbody id="conflictPreviewRows"></tbody></table></div>
+</details>
+<p class="subtle">Rescheduling suggestions respect declared HUMAN group weekdays, hours, blackout dates and
+daily capacity, and avoid all existing local workroom appointments. They are bounded to 32 moves per
+confirmation and 90 local calendar days. A blocked original HUMAN stage is never rescheduled automatically.
+One unsuitable appointment blocks the entire preview. No real staff calendar is checked, no external appointment
+is updated or cancelled, and no authority or security result is inferred.</p></div>
+<p id="agendaSummary" class="subtle"></p><div class="tablebox"><table><thead><tr><th>Local date &amp; time</th><th>Original ordinal</th><th>Source-reported severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Edit</th></tr></thead><tbody id="agendaRows"></tbody></table></div>
+<div class="row"><button id="agendaPrev" class="ghost" type="button">Previous</button><button id="agendaNext" class="ghost" type="button">Next</button></div>
+</section>
+<section id="transitionDesk" class="panel" hidden aria-labelledby="transitionHeading">
+<h2 id="transitionHeading">3a · PRIVATE HUMAN clock-change review</h2>
+<p>Local proposed reminders close to an OS-reported clock change. These are HUMAN planning warnings, not verified recipient/calendar conflicts or approved security risk. Ambiguous or missing hours and appointments spanning a clock change are rejected. Nothing is uploaded.</p>
+<p id="transitionSummary" class="subtle" role="status" aria-live="polite"></p>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Tentative local time</th><th>Unverified HUMAN group</th><th>Edit</th></tr></thead><tbody id="transitionRows"></tbody></table></div>
+<p id="transitionRemainder" class="subtle"></p>
+<button id="exportTransitions" type="button" class="ghost" disabled>Export PRIVATE clock-change review (.csv)</button>
+<p class="subtle">PRIVATE unsigned source-bound file; proposed times and HUMAN groups may be confidential. Authority, verification and consent always false.</p>
+</section>
+<section id="recipientDesk" class="panel" hidden aria-labelledby="recipientHeading">
+<h2 id="recipientHeading">3b · PRIVATE HUMAN alternate-timezone preview</h2>
+<p>View proposed local HUMAN reminders as wall-clock times in another manually chosen IANA timezone, with the current browser's OS timezone rules. This is read-only: it does not adjust the original private plan, verify a real recipient, detect external availability, contact a server or send an appointment.</p>
+<div class="row"><label>Other HUMAN recipient timezone (unverified)
+<input id="recipientZone" type="text" maxlength="64" placeholder="e.g. Europe/London" autocomplete="off" spellcheck="false"></label>
+<button type="button" id="recipientExport" class="ghost" disabled>Export PRIVATE converted schedule (.csv)</button></div>
+<div class="row">
+<button type="button" id="recipientPolicyExport" class="ghost">Save PRIVATE source-bound recipient window (.csv)</button>
+<label class="file">Restore PRIVATE recipient window (.csv)
+<input id="recipientPolicyImport" type="file" accept=".csv,text/csv"></label>
+</div>
+<p id="recipientPolicyStatus" class="subtle" role="status" aria-live="polite">Optional recipient hours and timezone are not included in the original HUMAN plan backup; save this separate PRIVATE unsigned source-bound file to reopen them later.</p>
+<div class="toolbar">
+<label>HUMAN-declared recipient local start <input id="recipientStart" type="time" min="06:00" max="20:30" step="900" value="09:00"></label>
+<label>HUMAN-declared recipient local end <input id="recipientEnd" type="time" min="06:30" max="21:00" step="900" value="17:00"></label>
+<label>HUMAN-declared days <select id="recipientDays"><option value="weekdays">Monday–Friday</option><option value="all">All seven weekdays</option></select></label>
+</div>
+<div class="toolbar">
+<label>Unverified recipient unavailable local dates (max 60, YYYY-MM-DD; separate by comma, spaces or newlines)<br>
+<textarea id="recipientBlackouts" rows="2" maxlength="700" spellcheck="false" placeholder="2026-12-25, 2026-12-26"></textarea></label>
+</div>
+<div class="toolbar">
+<label>Recipient local window status <select id="recipientView">
+<option value="all">All proposed HUMAN reminders</option>
+<option value="outside_hours">Outside declared daily hours</option>
+<option value="weekend">Outside declared weekday policy</option>
+<option value="unavailable_date">Recipient local unavailable date</option>
+<option value="clock_change">Recipient local clock-change overlap</option>
+<option value="within_hours">Within declared recipient time window</option>
+</select></label>
+<label>HUMAN ordinal / group <input id="recipientQuery" type="search" maxlength="120" placeholder="PRIVATE local filter"></label>
+</div>
+<p class="subtle">For review only: 09:00–17:00 Monday–Friday is the DEFAULT manually adjustable HUMAN availability proposal, NOT independently verified recipient working hours, holidays or permission. No overnight windows; 15-minute increments, 06:00–21:00 range. Up to 60 manually declared unavailable recipient-local dates are applied at BOTH the start and end of each tentative appointment. End times include original proposed duration. Filters apply to the PRIVATE CSV export too.</p>
+<p id="recipientSummary" class="subtle" role="status" aria-live="polite">Type an IANA timezone to preview HUMAN reminders in another local zone.</p>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Proposed source time</th><th>Displayed alternate zone (start → end)</th><th>HUMAN-declared window / unavailable dates / clock change</th><th>Unverified group</th><th>Review original</th></tr></thead><tbody id="recipientRows"></tbody></table></div>
+<p id="recipientRemainder" class="subtle"></p>
+<div class="row"><button id="recipientPrev" type="button" class="ghost" disabled>Previous matching reminders</button>
+<button id="recipientNext" type="button" class="ghost" disabled>Next matching reminders</button></div>
+<p class="subtle">The PRIVATE CSV includes original worksheet digest, anonymous original ordinals, unverified group labels and both local and converted times. Disclosure may reveal sensitive appointment patterns. Actual recipient locale and timezone rules are NOT authenticated. Never treat the converted date as accepted calendar delivery, scope or consent.</p>
+<details id="recipientGroupsDetails">
+<summary>PRIVATE HUMAN cross-zone group workload — exact group focus</summary>
+<p>Aggregated counts of already-scheduled original HUMAN ordinal proposals in the chosen recipient zone, grouped by unverified worksheet group labels. Source-reported groups are NOT authenticated recipient names, calendar permissions, availability or security findings. Focus one group to review its original ordinals; filters and PRIVATE schedule CSV then apply only to the chosen group.</p>
+<p id="recipientGroupSummary" class="subtle" role="status">No HUMAN group preview loaded.</p>
+<div class="row">
+<button id="recipientGroupNextAttention" type="button" class="ghost" disabled>Review next HUMAN group outside declared window</button>
+<button id="recipientGroupCsv" type="button" class="ghost" disabled>Download anonymous group workload (.csv)</button>
+<button id="recipientGroupPrint" type="button" class="ghost" disabled>Download scriptless group review (.html)</button>
+</div>
+<p class="subtle">These anonymous handoffs contain only group slots and aggregate counts: no original group names, ordinals, source SHA, source dates, targets or free HUMAN notes. Very small groups may still be re-identifiable when combined with outside information. Only use a trusted PRIVATE device and HUMAN disclosure review. No recipient authorization or consent is checked.</p>
+<div class="row">
+<button id="recipientGroupClear" class="ghost" type="button" disabled>Clear exact group focus</button>
+<button id="recipientGroupPrev" class="ghost" type="button" disabled>Previous groups</button>
+<button id="recipientGroupNext" class="ghost" type="button" disabled>Next groups</button>
+</div>
+
+<div class="row">
+<label class="file">Reopen previous anonymous group counts (.csv)
+<input id="recipientCountImport" type="file" accept=".csv,text/csv"></label>
+<button id="recipientCountExport" type="button" class="ghost" disabled>Download unbound category comparison (.csv)</button>
+<button id="recipientCountClear" type="button" class="ghost" disabled>Discard previous counts</button>
+</div>
+<p id="recipientCountSummary" role="status" class="subtle">No previous anonymous group counts loaded.</p>
+<div class="tablebox"><table><thead><tr><th>Aggregate HUMAN category</th><th>Earlier unverified count</th><th>Current unverified count</th><th>Difference</th></tr></thead><tbody id="recipientCountRows"></tbody></table></div>
+<p class="subtle">An anonymous export contains no stable group identity or source credential. Earlier and current files MAY be different cohorts, dates or manually declared availability. Deltas are merely differences between two HUMAN-provided count tables, never a regression, finding, remediation or permission verdict.</p>
+<div class="tablebox"><table><thead><tr><th>Unverified HUMAN group</th>
+<th>Planned</th><th>Within window</th><th>Outside hours</th>
+<th>Outside weekdays</th><th>Unavailable date</th><th>Recipient clock change</th>
+<th>Review group</th></tr></thead><tbody id="recipientGroupRows"></tbody></table></div>
+</details>
+<details id="recipientProposalDetails"><summary>Preview LOCAL HUMAN common-hours adjustment — no external calendar</summary>
+<p>For up to 12 currently filtered, not-human-blocked reminders outside the currently declared recipient local time window, search the next 30 local days for a later meeting satisfying BOTH manually declared recipient local availability and existing declared source-group weekday/blackout/window/cap rules. All proposals avoid already scheduled local appointments. A single unavailable ordinal blocks the complete preview. Then select only the ordinals you want to hand off or apply. Exact selected-only collision and declared-capacity gates run again before any local changes; the existing plan remains unchanged until separate HUMAN confirmation.</p>
+<div class="row">
+<button id="recipientPrepare" type="button">Prepare HUMAN common-hours moves</button>
+<button id="recipientApply" type="button" disabled>Apply SELECTED HUMAN draft moves (confirm)</button>
+<button id="recipientProposalExport" type="button" class="ghost" disabled>Export selected PRIVATE proposals (.csv)</button>
+<button id="recipientProposalPrint" type="button" class="ghost" disabled>Download selected PRIVATE print review (.html)</button>
+<button id="recipientDiscard" type="button" class="ghost">Discard preview</button>
+<button id="recipientUndo" type="button" class="ghost" disabled>Undo last HUMAN draft adjustment</button>
+</div>
+<p id="recipientProposalSummary" class="subtle" role="status">No pending HUMAN common-hours proposal.</p>
+<div class="tablebox"><table><thead><tr><th>Include?</th><th>Original ordinal</th><th>Current local proposal</th><th>Alternative local proposal</th><th>Unverified group</th></tr></thead>
+<tbody id="recipientProposalRows"></tbody></table></div>
+<p class="subtle">This is NOT recipient calendar integration, confirmed staffing, verified security urgency, scope approval or consent. Save the changed PRIVATE plan separately and manually reconcile already-exported calendar events. Previously distributed events are NOT cancelled.</p>
+</details>
+</section>
+<section id="week" class="panel" hidden aria-labelledby="weekHeading">
+<h2 id="weekHeading">3a · PRIVATE HUMAN week board</h2>
+<p>Seven days of tentative local HUMAN reminders. Open any ordinal in the planning desk. Overlap means a local time collision, not a verified security finding or external calendar conflict. PRIVATE owner labels are unverified.</p>
+<div class="toolbar">
+<label>Any date in week <input id="weekDate" type="date"></label>
+<button id="weekBack" class="ghost" type="button">Previous week</button>
+<button id="weekToday" class="ghost" type="button">Current week</button>
+<button id="weekForward" class="ghost" type="button">Next week</button>
+<button id="weekNextDue" class="ghost" type="button">Next matching scheduled week</button>
+<button id="weekPrevDue" class="ghost" type="button">Previous matching week</button>
+<label>HUMAN group <select id="weekGroup"><option value="">All groups</option></select></label>
+<label><input id="weekConflicts" type="checkbox"> Local overlaps only</label>
+<label><input id="weekConstraints" type="checkbox"> HUMAN availability mismatches only</label>
+</div>
+<p id="weekSummary" class="subtle" role="status" aria-live="polite"></p>
+<div id="weekDays" class="week-grid" aria-label="PRIVATE HUMAN weekly proposed reminders"></div>
+<p class="subtle">Dates and weekdays use this browser's local timezone. Only scheduled rows are displayed; the original complete worksheet remains in the planner. At most 24 events are shown per day. Declared group weekdays, daily appointment cap, local time window and blackout dates are compared against this local proposed schedule; mismatch markers do not reflect real staff availability. No external calendar is queried.</p>
+</section>
+<section id="month" class="panel" hidden aria-labelledby="monthHeading">
+<h2 id="monthHeading">3b · PRIVATE HUMAN month overview</h2>
+<p>Monthly tentative HUMAN reminders and local overlap counts, not verified availability, remediation or consent.</p>
+<div class="toolbar">
+<button id="monthBack" type="button" class="ghost">Previous month</button>
+<label>Month <input type="month" id="monthSelect"></label>
+<button id="monthNext" type="button" class="ghost">Next month</button>
+<button id="monthToday" type="button" class="ghost">Current month</button>
+<label>HUMAN group <select id="monthGroup"><option value="">All groups</option></select></label>
+</div><div class="row"><button id="monthBrief" type="button" class="ghost">Download PRIVATE month summary (.html)</button>
+<button id="monthCounts" type="button" class="ghost">Download daily HUMAN counts (.csv)</button></div>
+<p id="monthSummary" role="status" class="subtle"></p>
+<div id="monthGrid" class="month-grid" role="group" aria-label="Private monthly HUMAN proposal calendar"></div>
+<p class="subtle">Select a date to open its HUMAN week. No external calendar or identity check occurs.</p>
+</section>
+<section id="workload" class="panel" hidden aria-labelledby="workloadHeading">
+<h2 id="workloadHeading">4 · HUMAN owner workload</h2>
+<p>PRIVATE human group names from the original worksheet, not verified personnel or assigned authority. Counts are appointment planning, never proof of remediation or accepted scope.</p>
+<div class="toolbar"><label>Filter HUMAN groups <input type="search" id="workloadQuery" maxlength="120" placeholder="Private group name"></label>
+<button type="button" id="clearGroup" class="ghost">Clear group focus</button><span id="focusedGroup" class="subtle">All groups</span></div>
+<p id="workloadSummary" class="subtle"></p><div class="tablebox">
+<table><thead><tr><th>HUMAN owner group</th><th>Rows</th><th>Unscheduled</th><th>Past planned time</th><th>HUMAN blocked</th><th>Overlapping</th><th>Nearest next reminder</th><th>Open in planner</th><th>Private calendar handoff</th></tr></thead><tbody id="workloadRows"></tbody></table></div>
+<div class="row"><button type="button" id="workloadPrev" class="ghost">Previous</button><button type="button" id="workloadNext" class="ghost">Next</button></div>
+</section>
+<section id="backlog" class="panel" hidden aria-labelledby="backlogHeading">
+<h2 id="backlogHeading">4a · Unscheduled HUMAN review queue</h2>
+<p>Source-reported HUMAN rows not yet given a tentative reminder. Blocked HUMAN stages remain visible but cannot receive automatic proposed dates. Owner/group labels and source severity are unverified.</p>
+<div class="toolbar">
+<label>Queue view <select id="backlogView">
+<option value="open">Open HUMAN unblocked</option>
+<option value="blocked">Blocked HUMAN rows</option>
+<option value="all">All unscheduled</option>
+</select></label>
+<label>Group <select id="backlogGroup"><option value="">All groups</option></select></label>
+<label>Search ordinal, HUMAN action or blocker <input type="search" id="backlogQuery" maxlength="120" placeholder="Local only"></label>
+<label>Earliest proposed date <input type="date" id="backlogStart"></label>
+</div>
+<div class="row"><button id="backlogPrepare" type="button">Prepare up to 12 unblocked HUMAN suggestions</button>
+<button id="backlogApply" type="button" disabled>Apply these local proposals (confirm)</button>
+<button id="backlogDiscard" type="button" class="ghost">Discard proposal</button></div>
+<details id="backlogPreviewDetails"><summary>Review exact pending HUMAN appointment proposals</summary>
+<p id="backlogPreviewStatus" class="subtle">No batch proposal prepared.</p>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>HUMAN group</th><th>Proposed day</th><th>Time</th><th>Duration</th></tr></thead>
+<tbody id="backlogPreviewRows"></tbody></table></div></details>
+<p id="backlogSummary" role="status" class="subtle"></p>
+<div class="tablebox"><table>
+<thead><tr><th>Original ordinal</th><th>Unverified severity</th><th>HUMAN group</th>
+<th>Original HUMAN stage</th><th>HUMAN next action</th><th>Propose time</th><th>Open in planner</th></tr></thead>
+<tbody id="backlogRows"></tbody></table></div>
+<div class="row"><button id="backlogPrev" class="ghost" type="button">Previous</button>
+<button id="backlogNext" class="ghost" type="button">Next</button></div>
+<p class="subtle">Single-time proposals use only your declared group weekdays, time window, blackout dates, daily cap and this local workroom's existing appointments. They cannot check real availability, identity, consent, verified security status or external calendars. Every schedule proposal requires HUMAN confirmation.</p>
+</section>
+<section id="capacity" class="panel" hidden aria-labelledby="capacityHeading">
+<h2 id="capacityHeading">5 · PRIVATE HUMAN capacity and blackout planner</h2>
+<p>Set source-free operational availability for each self-reported HUMAN owner group. A group is <strong>not</strong> an authenticated person or authorization role. Rules determine suggested HUMAN appointments only; no workload, risk or availability is independently verified.</p>
+<div class="toolbar"><label>HUMAN group <select id="capacityGroup"></select></label>
+<label>Maximum proposed appointments/day <select id="capacityDaily"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option><option>12</option></select></label>
+<label>From <input id="capacityStart" type="time" value="09:00"></label>
+<label>Until <input id="capacityEnd" type="time" value="17:00"></label></div>
+<div class="toolbar" id="capacityDays"><label><input type="checkbox" value="1" checked>Monday</label>
+<label><input type="checkbox" value="2" checked>Tuesday</label>
+<label><input type="checkbox" value="3" checked>Wednesday</label>
+<label><input type="checkbox" value="4" checked>Thursday</label>
+<label><input type="checkbox" value="5" checked>Friday</label>
+<label><input type="checkbox" value="6">Saturday</label><label><input type="checkbox" value="0">Sunday</label></div>
+<label>Unavailable local dates, comma-separated (YYYY-MM-DD; maximum 60)
+<textarea id="capacityBlackout" rows="2" maxlength="850" placeholder="2026-12-25, 2026-12-26"></textarea></label>
+<div class="row"><button id="capacityStore" type="button">Save local HUMAN group availability</button><button id="capacityDefault" type="button" class="ghost">Reset selected group to defaults</button></div>
+<div class="row"><label>First date for proposals <input id="capacityFirst" type="date"></label>
+<label>Scheduling scope <select id="capacityMode"><option value="unscheduled" selected>Only unscheduled HUMAN rows</option><option value="overdue">Only past-due HUMAN reminders</option><option value="combined">Both unscheduled and past-due</option></select></label>
+<label>Horizon in local calendar days <select id="capacityHorizon"><option value="14">14</option><option value="30" selected>30</option><option value="60">60</option><option value="90">90</option></select></label>
+<button id="capacityPreview" type="button">Preview group-aware open HUMAN reminders</button>
+<button id="capacityApply" type="button" disabled>Apply preview to local plan (confirm)</button></div>
+<p id="capacityMessage" role="status" aria-live="polite">Rules are local only. Save them explicitly before leaving this page.</p>
+<details id="capacityProposalDetails"><summary>Inspect exact pending HUMAN proposed appointments before applying</summary>
+<p id="capacityPreviewSummary" class="subtle">No HUMAN capacity proposal prepared.</p>
+<div class="tablebox"><table><thead><tr><th>Original ordinal</th><th>HUMAN group</th><th>Unverified source severity</th><th>Current / previous local HUMAN date</th><th>Proposed local date &amp; time</th><th>Duration</th></tr></thead><tbody id="capacityPreviewRows"></tbody></table></div>
+</details>
+<div class="tablebox"><table><thead><tr><th>HUMAN group</th><th>Availability</th><th>Unavailable dates</th><th>Unscheduled HUMAN rows</th></tr></thead><tbody id="capacityRows"></tbody></table></div>
+<div class="row"><button id="capacityDownload" type="button" class="ghost">Download PRIVATE group rules (.csv)</button>
+<label class="file">Restore PRIVATE group rules <input id="capacityImport" type="file" accept=".csv,text/csv"></label></div>
+<p class="subtle">An optional PRIVATE rules CSV is bound to the exact original worksheet bytes, local timezone and private calendar series. Do not share externally. The default mode never overwrites scheduled ordinals. A separately selected **past-due** mode can propose replacing only HUMAN reminders whose planned start time is already in the past, after explicit human confirmation; past due never means an unresolved finding or an authorization change. Original lab source is never altered and no scans/grants occur. Available slots are suggestions, not external calendar availability.</p>
+</section>
+<section id="brief" class="panel" hidden aria-labelledby="briefHeading">
+<h2 id="briefHeading">6 · Offline HUMAN weekly coordinator brief</h2>
+<p>Build a self-contained scriptless PRIVATE print-friendly human work agenda from this current worksheet and your proposed scheduling only. A human stage or source-reported severity is <strong>never</strong> a verified vulnerability or grant. No network or calendar connection.</p>
+<div class="row"><label>Any day of week <input type="date" id="briefDate"></label>
+<label>Source-free HUMAN scope <select id="briefScope"><option value="all">All original HUMAN groups</option><option value="focused">Only currently focused HUMAN group</option></select></label>
+<label><input type="checkbox" id="briefNotes"> Include HUMAN next-action / blocker text (private disclosure)</label>
+<button type="button" id="exportBrief">Download PRIVATE weekly briefing (.html)</button></div>
+<p class="subtle">Choose a valid local date; output covers Monday–Sunday in the displayed timezone. Includes original anonymous ordinals and HUMAN self-reported fields, not original lab findings/evidence/targets. HTML has a deny-all CSP and no JavaScript or external resources. Use an authorized private device and printer only.</p>
+</section>
+<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">7 · Save / resume or export calendar</h2>
+<p>Scheduled events use original anonymous ordinals and source-reported severity, with your own HUMAN next-action text only when explicitly opted in. <strong>Original lab-source fields are never imported here, but HUMAN notes can themselves mention private targets, clients or evidence. Review before exporting.</strong> Each calendar export is an explicit PRIVATE local download. Dates are interpreted in <strong id="tz"></strong>; re-import rejects a different timezone.</p>
+<div class="row"><label class="file">Restore your PRIVATE plan CSV <input id="restore" type="file" accept=".csv,text/csv"></label><button id="savePlan" type="button">Save private plan CSV</button></div>
+<div class="notice">
+<strong>Optional PRIVATE encrypted handoff (.luhc)</strong>
+<p>Encrypt the complete worksheet-byte-bound v2 HUMAN plan locally using AES-256-GCM with a fresh nonce and PBKDF2-SHA256 (310,000 iterations). This protects plan bytes against casual disclosure in transit; it does not authenticate the human operator, original source, consent, scope or risk. Keep the password separate from the file. Lost passwords cannot be recovered; cryptography has not received independent security review.</p>
+<div class="row"><label>Handoff passphrase (16–256 characters) <input id="handoffPassword" type="password" minlength="16" maxlength="256" autocomplete="off"></label>
+<label>Confirm for new encrypted export <input id="handoffConfirm" type="password" minlength="16" maxlength="256" autocomplete="off"></label>
+<button id="encryptPlan" type="button">Save encrypted PRIVATE plan</button></div>
+<div class="row"><label class="file">Restore encrypted plan (.luhc) <input id="restoreEncrypted" type="file" accept=".luhc,application/octet-stream"></label><span class="subtle">Enter the passphrase before opening this file. Files never leave this browser.</span></div>
+</div>
+<div class="notice" id="completeWorkroom">
+<strong>Complete encrypted PRIVATE HUMAN workroom (.luhw)</strong>
+<p>Save or reopen both the original-worksheet-bound appointments and every declared
+HUMAN group availability rule in one local encrypted file. Use the passphrase above.
+This format is separate from existing plan-only .luhc backups. Encryption protects
+file bytes, not original source identity, verified risk, true consent or actual staff availability.</p>
+<div class="row">
+<button id="encryptWorkroom" type="button">Save complete encrypted workroom</button>
+<label class="file">Restore complete workroom <input id="restoreWorkroom" type="file" accept=".luhw,application/octet-stream"></label>
+</div>
+<p id="workspaceSaveStatus" class="subtle" role="status" aria-live="polite">Load original HUMAN worksheet first.</p>
+<details id="compareWorkroomDetails">
+<summary>Compare another encrypted PRIVATE workroom without importing it</summary>
+<p>Uses the same local passphrase field. Nothing is changed or sent. Only the exact original
+worksheet and timezone are accepted. Comparison is invalidated if this workroom changes.</p>
+<div class="row">
+<label class="file">Compare encrypted .luhw <input type="file" id="compareWorkroom" accept=".luhw,application/octet-stream"></label>
+<button id="clearWorkroomComparison" class="ghost" type="button">Forget compared workroom</button>
+</div>
+<div class="toolbar">
+<label>Review type <select id="workroomCompareKind">
+<option value="all">All HUMAN proposal changes</option>
+<option value="appointment">Appointment time changes</option>
+<option value="group">Declared group rule changes</option></select></label>
+<label>Search original ordinal or HUMAN group <input id="workroomCompareQuery" type="search" maxlength="120" placeholder="Local browser only"></label>
+<button id="exportWorkroomDiff" type="button" class="ghost">Export PRIVATE changed-only CSV</button>
+</div>
+<p id="workroomCompareStatus" class="subtle" role="status" aria-live="polite">No compared PRIVATE workroom loaded.</p>
+<div class="tablebox"><table><thead><tr>
+<th>Select HUMAN schedule or group rule</th><th>HUMAN change type</th><th>Original ordinal / unverified group label</th>
+<th>Current local proposal</th><th>Compared local proposal</th></tr></thead>
+<tbody id="workroomCompareRows"></tbody></table></div>
+<div class="row"><button id="comparePrev" class="ghost" type="button">Previous differences</button>
+<button id="compareNext" class="ghost" type="button">Next differences</button></div>
+<div class="row">
+<button id="prepareWorkroomReconcile" type="button">Preview selected HUMAN schedule + group policy changes</button>
+<button id="applyWorkroomReconcile" type="button" disabled>Apply reviewed HUMAN changes (confirm)</button>
+<button id="discardWorkroomReconcile" type="button" class="ghost">Clear selection</button>
+</div>
+<details id="workroomReconcileDetails"><summary>Review local proposed appointment changes before applying</summary>
+<p id="workroomReconcileSummary" class="subtle" role="status">Select changed appointment rows above to create a preview.</p>
+<div class="tablebox"><table><thead><tr><th>HUMAN ordinal / unverified group</th><th>Current proposal</th>
+<th>Compared proposal</th><th>Local scheduling advisory</th></tr></thead>
+<tbody id="workroomReconcileRows"></tbody></table></div>
+</details>
+<p class="subtle">Selecting an appointment changes only its local HUMAN reminder. Selecting a group changes only its
+declared local availability; it does NOT grant authority or verify real staff. Exact original worksheet and calendar
+series must match. The combined preview blocks newly conflicting, blocked, outside-hour/weekday or
+over-capacity reminders. Local removal does not cancel a previously published external appointment.</p>
+<p class="subtle">Up to 50 changed entries per page; all matching changes can be navigated. Zero differences do not prove a
+fixed finding, consent, real availability, security review or an authenticated human source.</p>
+</details>
+</div>
+<div class="notice" id="changeDesk">
+<strong>PRIVATE calendar change desk · comparing two exact-sheet HUMAN plans</strong>
+<p>To reconcile a calendar previously imported by a HUMAN, load a separate copy of that previously published <strong>v2 PRIVATE plan CSV</strong>. It must match this exact worksheet byte digest, timezone and private calendar series ID. No network, attendee, grant or source authentication. Compare before export; changed plan dates never prove any target's risk changed.</p>
+<div class="row"><label class="file">Previously published PRIVATE v2 plan <input id="baselinePlan" type="file" accept=".csv,text/csv"></label><span id="baselineStatus" class="subtle">No previous publication loaded.</span><button type="button" id="clearBaseline" class="ghost" disabled>Clear previous snapshot</button></div>
+<div class="row"><label>Previous encrypted-plan passphrase <input id="baselinePassword" type="password" minlength="16" maxlength="256" autocomplete="off"></label>
+<label class="file">OR previous encrypted PRIVATE plan (.luhc) <input id="encryptedBaseline" type="file" accept=".luhc,application/octet-stream"></label></div>
+<p class="subtle">The encrypted comparison baseline decrypts only into local memory. The currently open HUMAN schedule is never replaced by this separate input. Clear the passphrase input after admission or failure.</p>
+<p id="changesSummary" role="status" aria-live="polite">Load a previous PRIVATE plan to see what changed.</p>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Change</th><th>Previously planned</th><th>Current HUMAN plan</th></tr></thead><tbody id="changesRows"></tbody></table></div>
+<div class="row"><button id="changePrev" type="button" class="ghost">Previous</button><button id="changeNext" type="button" class="ghost">Next</button></div>
+<div class="row"><button type="button" id="exportUpdated">Download added/changed event updates (.ics)</button><button type="button" id="exportCancelled" class="ghost">Download separate cancelled events (.ics)</button><button type="button" id="exportChangesCsv" class="ghost">Download PRIVATE change register (.csv)</button></div>
+<p class="subtle">Calendar updates and cancellations are <strong>separate explicit PRIVATE downloads</strong>. Import them into the same authorized local/private calendar as the original; some providers may ignore updates or cancellations. No sync confirmation or automatic calendar deletion exists. Baseline is never overwritten by current changes. Repeated multi-revision sync is NOT guaranteed.</p>
+</div>
+<div class="row"><label><input id="includeAction" type="checkbox"> Include HUMAN next-action text in calendar descriptions (more disclosure)</label></div>
+<div class="row"><button id="calendar" type="button">Export PRIVATE calendar (.ics)</button><button id="summaryExport" type="button" class="ghost">Export counts only (.json)</button></div>
+<p class="subtle">Save the PRIVATE plan <strong>before each calendar export</strong> to preserve opaque, stable event IDs on re-import, reducing duplicates in calendar clients that honor UID. Legacy plans can be imported but need saving in the new format. Calendar software may still duplicate events or ignore updates.<br>Plans bind to the exact bytes of this worksheet using an <em>unsigned</em> SHA-256 fingerprint; this does not authenticate its producer. Calendar entries are tentative reminders. Restoring a plan NEVER changes worksheet fields, source risk, permissions or a scan. No browser storage, fetch, tracking, local server, model, or network.</p>
+</section>
+</main><footer>LightUp · PRIVATE HUMAN operations companion · Not an execution endpoint. All release, review, consent, revocation and HUMAN GO gates remain unchanged.</footer>
+</body></html>
