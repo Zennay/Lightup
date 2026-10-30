@@ -16,6 +16,7 @@ web = ["gunicorn>=23,<24"]
 [project.scripts]
 lightup = "lightup.cli:main"
 lightup-lab-fixture-replay = "lightup.lab_replay:main"
+lightup-lab-bundle-inspect = "lightup.lab_bundle_inspect:main"
 lightup-lab-service-score = "lightup.lab_service_score:main"
 lightup-lab-tls-score = "lightup.lab_tls_score:main"
 
