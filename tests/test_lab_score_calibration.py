@@ -158,6 +158,61 @@ class CalibrationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 cal.verify_saved_calibration(first)
 
+    def test_relative_calibration_path_cannot_be_redirected_by_cwd_change(self):
+        with tempfile.TemporaryDirectory() as base:
+            first, second = Path(base) / "first", Path(base) / "second"
+            first.mkdir(mode=0o700)
+            second.mkdir(mode=0o700)
+            original = first / "calibration"
+            alternate = second / "calibration"
+            self.assertTrue(cal.run_lab_score_calibration(original)["passed"])
+            self.assertTrue(cal.run_lab_score_calibration(alternate)["passed"])
+            # Original is now bound to a different valid saved receipt; a
+            # process-wide chdir must not redirect its later source checks.
+            (original / "report.json").write_bytes(
+                (alternate / "report.json").read_bytes()
+            )
+            previous_cwd = Path.cwd()
+            actual_compare = cal.compare_score_runs
+            try:
+                os.chdir(first)
+                def change_cwd(*args):
+                    os.chdir(second)
+                    return actual_compare(*args)
+                with patch.object(cal, "compare_score_runs", side_effect=change_cwd):
+                    with self.assertRaises(ValueError):
+                        cal.verify_saved_calibration("calibration")
+            finally:
+                os.chdir(previous_cwd)
+
+    def test_standalone_comparator_freezes_both_relative_paths_before_read(self):
+        from lightup import lab_score_compare as compare
+        from lightup.lab_score_suite import run_lab_score_suite
+        with tempfile.TemporaryDirectory() as base:
+            first, second = Path(base) / "first", Path(base) / "second"
+            first.mkdir(mode=0o700)
+            second.mkdir(mode=0o700)
+            self.assertTrue(run_lab_score_suite(first / "baseline")["passed"])
+            self.assertTrue(run_lab_score_suite(first / "candidate")["passed"])
+            previous_cwd = Path.cwd()
+            original_inspect = compare.inspect_score_run
+            inspected = []
+            try:
+                os.chdir(first)
+                def change_cwd(path, **kwargs):
+                    inspected.append(Path(path))
+                    if len(inspected) == 1:
+                        os.chdir(second)
+                    return original_inspect(path, **kwargs)
+                with patch.object(compare, "inspect_score_run", side_effect=change_cwd):
+                    report = compare.compare_score_runs("baseline", "candidate")
+                self.assertTrue(report["passed"])
+                self.assertEqual(inspected, [
+                    first / "baseline", first / "candidate"
+                ])
+            finally:
+                os.chdir(previous_cwd)
+
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:
             with patch.object(cal, "run_lab_score_suite", return_value={"passed": False}) as fn:

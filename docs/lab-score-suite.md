@@ -148,7 +148,10 @@ For read-only follow-up on saved baseline and candidate evidence, use
 `lightup-lab-score-calibrate --verify-output-dir ./existing-private-calibration`.
 This option never starts scorers or changes saved files, checks the owner-private
 root, exact two saved-run children and one owner-only root receipt without
-following symlinks. It reuses the pinned read-only artifact inspector and
+following symlinks. Relative paths for the comparator and saved-calibration
+verifier are anchored to the original working directory before opening
+evidence; another thread changing the process working directory cannot
+redirect subsequent reads to a different private calibration. It reuses the pinned read-only artifact inspector and
 recomputes the result plus every source-file SHA-256, requiring an exact
 canonical-byte match against the root receipt. A missing, symlinked, extra,
 replaced, modified or non-private saved

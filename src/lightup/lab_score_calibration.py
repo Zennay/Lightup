@@ -79,6 +79,11 @@ def _receipt_bytes(result: dict[str, Any]) -> bytes:
 def verify_saved_calibration(output_dir: str | Path) -> dict[str, Any]:
     """Reopen both private saved runs without executing any fixture/worker."""
     root = Path(output_dir).expanduser()
+    if ".." in root.parts:
+        raise ValueError("parent traversal rejected")
+    # Freeze relative path resolution before the first descriptor is opened.
+    # A concurrent cwd change must not redirect the later comparison/digests.
+    root = Path(os.path.abspath(root))
     fd = _private_dir_fd(root)  # pinned, owner-private, no-follow ancestors
     try:
         original = os.fstat(fd)

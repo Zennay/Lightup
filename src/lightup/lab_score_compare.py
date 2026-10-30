@@ -25,6 +25,13 @@ _SCORE_FIELDS = (
 
 
 def compare_score_runs(baseline_dir: str | Path, candidate_dir: str | Path) -> dict[str, Any]:
+    # Freeze both path anchors before reading either saved run. The caller's
+    # cwd is process-global and must not silently substitute another source.
+    baseline_path, candidate_path = Path(baseline_dir).expanduser(), Path(candidate_dir).expanduser()
+    if ".." in baseline_path.parts or ".." in candidate_path.parts:
+        raise ValueError("parent traversal rejected")
+    baseline_dir = Path(os.path.abspath(baseline_path))
+    candidate_dir = Path(os.path.abspath(candidate_path))
     baseline = inspect_score_run(baseline_dir, include_metrics=True)
     candidate = inspect_score_run(candidate_dir, include_metrics=True)
     # Both inputs were opened and validated without following links. Reject
