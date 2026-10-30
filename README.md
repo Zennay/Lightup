@@ -189,7 +189,20 @@ manifest, bounded members and anonymous status from a single immutable read
 before publishing anything. It creates a new 0700 directory containing exactly
 seven fixed-name 0600 source-free files, including `index.html` for local
 browser review, and refuses overwrite, symlinks, unknown entries, appended ZIP
-bytes and source/output overlap. A genuine evidence-reuse HOLD still publishes
+bytes and source/output overlap. To re-open the same offline review later, revalidate all seven existing
+files read-only against the canonical source-free ZIP (no rescoring):
+
+```sh
+lightup-lab-score-calibrate --verify-unpacked-review \
+  PRIVATE_DIR/LightUp-SYNTHETIC-OFFLINE-REVIEW.zip \
+  --unpacked-review-dir EXISTING_PRIVATE_BROWSE_DIR
+```
+
+Reinspection rejects modified, added, missing or symlinked files and a changed
+ZIP; PASS/HOLD is preserved. This is transport comparison only and does not
+authenticate original evidence or authorize assessments.
+
+A genuine evidence-reuse HOLD still publishes
 an inspectable HOLD review with exit 2, never a PASS. Corrupt inputs produce no
 files. No original source identity, external target permission or human review
 approval is gained from verification or unpacking.

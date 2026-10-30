@@ -125,3 +125,56 @@ class UnpackPortableReviewTests(unittest.TestCase):
             self.assertIn("HOLD", err)
             self.assertEqual(list(dest.iterdir()), [])
             self.assertEqual(count[0], 3)
+
+    def test_read_only_reopen_detects_change_and_preserves_original_zip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            sources, saved = self.original_pair(base)
+            archive = self.zip_from_originals(base, sources, saved, "portable")
+            workspace = base / "review"
+            self.assertEqual(cli("--unpack-portable-review", archive,
+                                 "--unpack-output-dir", workspace)[0], 0)
+            before = {p.name: (p.stat().st_ino, p.stat().st_mtime_ns, p.read_bytes())
+                      for p in workspace.iterdir()}
+            zip_before = archive.read_bytes()
+            status, output, err = cli("--verify-unpacked-review", archive,
+                                      "--unpacked-review-dir", workspace)
+            self.assertEqual((status, err), (0, ""))
+            self.assertIn("OFFLINE FILES VERIFIED", output)
+            after = {p.name: (p.stat().st_ino, p.stat().st_mtime_ns, p.read_bytes())
+                     for p in workspace.iterdir()}
+            self.assertEqual(before, after)
+            self.assertEqual(zip_before, archive.read_bytes())
+            report = workspace / "review.md"
+            report.write_bytes(b"SYNTHETIC-ALTERED-HUMAN-REVIEW")
+            status, output, err = cli("--verify-unpacked-review", archive,
+                                      "--unpacked-review-dir", workspace)
+            self.assertEqual((status, output), (2, ""))
+            self.assertIn("HOLD", err)
+            self.assertNotIn(str(base), err)
+            self.assertEqual(report.read_bytes(), b"SYNTHETIC-ALTERED-HUMAN-REVIEW")
+
+    def test_reopen_rejects_extra_file_and_symlink_without_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            sources, saved = self.original_pair(base)
+            archive = self.zip_from_originals(base, sources, saved, "portable")
+            workspace = base / "review"
+            self.assertEqual(cli("--unpack-portable-review", archive,
+                                 "--unpack-output-dir", workspace)[0], 0)
+            extra = workspace / "unlisted.txt"
+            extra.write_text("SYNTHETIC UNSIGNED CONTENT")
+            self.assertEqual(cli("--verify-unpacked-review", archive,
+                                 "--unpacked-review-dir", workspace)[0], 2)
+            extra.unlink()
+            target = workspace / "review.csv"
+            data = target.read_bytes()
+            target.unlink()
+            target.symlink_to(workspace / "review.md")
+            self.assertEqual(cli("--verify-unpacked-review", archive,
+                                 "--unpacked-review-dir", workspace)[0], 2)
+            target.unlink()
+            target.write_bytes(data)
+            target.chmod(0o600)
+            self.assertEqual(cli("--verify-unpacked-review", archive,
+                                 "--unpacked-review-dir", workspace)[0], 0)
