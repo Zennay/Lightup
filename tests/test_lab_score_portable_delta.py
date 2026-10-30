@@ -51,6 +51,56 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.tmp.cleanup()
 
+    def test_source_local_human_hold_focus_direct_saved_and_fail_closed(self):
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        comparison = compare_portable_review_transports(str(self.hold), str(self.passing))
+        actions = build_review_actions(comparison, str(self.hold), str(self.passing))
+        row = next(a for a in actions["actions"][:-1] if a["transport"] == "baseline")
+        selector = ("baseline", str(row["anonymous_previous"]),
+                    str(row["anonymous_current"]))
+        room = self.root / "source-local-focus-room"
+        status, out, err = run("--compare-portable-reviews", self.hold,
+                               self.passing, "--comparison-output-dir", room,
+                               "--include-actions", "--include-briefs")
+        self.assertEqual((status, err), (2, ""))
+        before = {p.name: p.read_bytes() for p in room.iterdir()}
+        for fmt in ("actions-focus-json", "actions-focus-text", "actions-focus-html"):
+            direct = run("--compare-portable-reviews", self.hold, self.passing,
+                         "--format", fmt, "--focus-action", *selector)
+            saved = run("--verify-comparison-workroom", self.hold, self.passing,
+                        "--comparison-output-dir", room, "--export-comparison",
+                        "--format", fmt, "--focus-action", *selector)
+            self.assertEqual(direct, saved)
+            self.assertEqual((direct[0], direct[2]), (2, ""))
+            self.assertIn("HOLD", direct[1])
+            self.assertNotIn(str(self.root), direct[1])
+            if fmt.endswith("json"):
+                data = json.loads(direct[1])
+                self.assertTrue(data["other_original_pairs_hidden"])
+                self.assertFalse(data["authorization_granted"])
+                self.assertFalse(data["remediation_verified"])
+                self.assertEqual(data["source"], "baseline")
+            if fmt.endswith("html"):
+                admit_inert_html(direct[1].encode())
+        self.assertEqual(before, {p.name: p.read_bytes() for p in room.iterdir()})
+        for invalid in (("candidate", *selector[1:]),
+                        ("baseline", "01", selector[2]),
+                        ("baseline", "1", "1"),
+                        ("baseline", "-1", "2")):
+            status, out, err = run("--compare-portable-reviews", self.hold,
+                                   self.passing, "--format", "actions-focus-json",
+                                   "--focus-action", *invalid)
+            self.assertEqual((status, out), (2, ""))
+            self.assertIn("not verified", err)
+        (room / "actions.csv").write_text("tampered unrelated saved HUMAN row")
+        status, out, err = run("--verify-comparison-workroom", self.hold, self.passing,
+                               "--comparison-output-dir", room, "--export-comparison",
+                               "--format", "actions-focus-json", "--focus-action", *selector)
+        self.assertEqual((status, out), (2, ""))
+        self.assertIn("not verified", err)
+
     def test_count_delta_never_closes_old_hold(self):
         status,out,err=run('--compare-portable-reviews',
                            self.hold,self.passing,'--format','json')
