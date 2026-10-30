@@ -43,6 +43,45 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                 underlying_bind.assert_not_called()
                 underlying_send.assert_not_called()
 
+    def test_preconnected_socket_send_paths_refuse_non_loopback_peer(self):
+        # Synthetic peer only: never open a real external connection.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            with patch.object(socket.socket, "getpeername", return_value=("203.0.113.5", 443)):
+                with patch.object(socket.socket, "send", return_value=1) as raw_send, patch.object(
+                    socket.socket, "sendall", return_value=None
+                ) as raw_sendall, patch.object(
+                    socket.socket, "sendfile", return_value=1
+                ) as raw_sendfile:
+                    with fixed_loopback_socket_boundary():
+                        for action in (
+                            lambda: sock.send(b"x"),
+                            lambda: sock.sendall(b"x"),
+                            lambda: sock.sendfile(io.BytesIO(b"x")),
+                        ):
+                            with self.subTest(action=repr(action)), self.assertRaises(
+                                LabSocketBoundaryError
+                            ):
+                                action()
+                    raw_send.assert_not_called()
+                    raw_sendall.assert_not_called()
+                    raw_sendfile.assert_not_called()
+
+    def test_preconnected_loopback_peer_send_paths_remain_usable(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            with patch.object(socket.socket, "getpeername", return_value=("127.0.0.1", 53111)):
+                with patch.object(socket.socket, "send", return_value=1) as raw_send, patch.object(
+                    socket.socket, "sendall", return_value=None
+                ) as raw_sendall, patch.object(
+                    socket.socket, "sendfile", return_value=1
+                ) as raw_sendfile:
+                    with fixed_loopback_socket_boundary():
+                        self.assertEqual(sock.send(b"x"), 1)
+                        self.assertIsNone(sock.sendall(b"x"))
+                        self.assertEqual(sock.sendfile(io.BytesIO(b"x")), 1)
+                    raw_send.assert_called_once()
+                    raw_sendall.assert_called_once()
+                    raw_sendfile.assert_called_once()
+
     def test_non_getaddrinfo_dns_and_reverse_dns_are_blocked(self):
         resolver_names = (
             "gethostbyname", "gethostbyname_ex", "gethostbyaddr",

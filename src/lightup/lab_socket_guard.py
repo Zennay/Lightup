@@ -42,6 +42,9 @@ def fixed_loopback_socket_boundary():
     original_connect_ex = socket.socket.connect_ex
     original_bind = socket.socket.bind
     original_sendto = socket.socket.sendto
+    original_send = socket.socket.send
+    original_sendall = socket.socket.sendall
+    original_sendfile = socket.socket.sendfile
     original_getaddrinfo = socket.getaddrinfo
 
     def connect(sock, address):
@@ -62,6 +65,29 @@ def fixed_loopback_socket_boundary():
         _require_fixed_loopback_address(sock, args[-1])
         return original_sendto(sock, *args)
 
+    def require_connected_loopback(sock):
+        # A socket can have been connected before this temporary boundary.
+        # Guard every connected write, not only connect() and sendto().
+        if sock.family != socket.AF_INET:
+            raise LabSocketBoundaryError("Offline lab refuses non-IPv4 socket peer")
+        try:
+            address = sock.getpeername()
+        except OSError:
+            raise LabSocketBoundaryError("Offline lab refuses unverified socket peer") from None
+        _require_fixed_loopback_address(sock, address)
+
+    def send(sock, *args, **kwargs):
+        require_connected_loopback(sock)
+        return original_send(sock, *args, **kwargs)
+
+    def sendall(sock, *args, **kwargs):
+        require_connected_loopback(sock)
+        return original_sendall(sock, *args, **kwargs)
+
+    def sendfile(sock, *args, **kwargs):
+        require_connected_loopback(sock)
+        return original_sendfile(sock, *args, **kwargs)
+
     def getaddrinfo(host, *args, **kwargs):
         if host != "127.0.0.1":
             raise LabSocketBoundaryError("Offline lab refuses DNS and non-loopback hosts")
@@ -81,7 +107,11 @@ def fixed_loopback_socket_boundary():
         socket.socket, "connect_ex", connect_ex
     ), patch.object(socket.socket, "bind", bind), patch.object(
         socket.socket, "sendto", sendto
-    ), patch.object(socket, "getaddrinfo", getaddrinfo), patch.object(
+    ), patch.object(socket.socket, "send", send), patch.object(
+        socket.socket, "sendall", sendall
+    ), patch.object(socket.socket, "sendfile", sendfile), patch.object(
+        socket, "getaddrinfo", getaddrinfo
+    ), patch.object(
         socket, "gethostbyname", refuse_name_resolution
     ), patch.object(socket, "gethostbyname_ex", refuse_name_resolution), patch.object(
         socket, "gethostbyaddr", refuse_name_resolution
