@@ -125,15 +125,26 @@ def fixed_loopback_socket_boundary():
 
         return guarded
 
+    # TLS handshakes and close-notify can emit encrypted bytes directly via
+    # OpenSSL, bypassing all Python-level send methods.
     tls_overrides = {
         name: guarded_tls_writer(name)
-        for name in ("send", "sendall", "sendfile", "write")
+        for name in ("send", "sendall", "sendfile", "write", "do_handshake", "unwrap")
     }
+
+    original_wrap_socket = ssl.SSLContext.wrap_socket
+
+    def guarded_tls_wrap(context, sock, *args, **kwargs):
+        # wrap_socket can implicitly start a handshake immediately.
+        require_connected_loopback(sock)
+        return original_wrap_socket(context, sock, *args, **kwargs)
     tls_overrides.update({
         name: guarded_tls_connector(name) for name in ("connect", "connect_ex")
     })
 
     with patch.multiple(ssl.SSLSocket, **tls_overrides), patch.object(
+        ssl.SSLContext, "wrap_socket", guarded_tls_wrap
+    ), patch.object(
         socket.socket, "connect", connect
     ), patch.object(
         socket.socket, "connect_ex", connect_ex

@@ -128,6 +128,42 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                     )
                 underlying.assert_called_once()
 
+    def test_tls_wrap_and_handshake_cannot_use_preconnected_external_peer(self):
+        import ssl
+        from types import SimpleNamespace
+        external = SimpleNamespace(family=socket.AF_INET,
+                                   getpeername=lambda: ("203.0.113.5", 443))
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        with patch.object(ssl.SSLContext, "wrap_socket", return_value="wrapped") as underlying:
+            with fixed_loopback_socket_boundary():
+                with self.assertRaises(LabSocketBoundaryError):
+                    ssl.SSLContext.wrap_socket(context, external, server_hostname="example.invalid")
+            underlying.assert_not_called()
+        for method in ("do_handshake", "unwrap"):
+            with self.subTest(method=method), patch.object(
+                ssl.SSLSocket, method, return_value=None
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(ssl.SSLSocket, method)(external)
+                underlying.assert_not_called()
+
+    def test_tls_wrap_and_handshake_allow_preconnected_loopback_peer(self):
+        import ssl
+        from types import SimpleNamespace
+        loopback = SimpleNamespace(family=socket.AF_INET,
+                                   getpeername=lambda: ("127.0.0.1", 53111))
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        with patch.object(ssl.SSLContext, "wrap_socket", return_value="wrapped"):
+            with fixed_loopback_socket_boundary():
+                self.assertEqual(ssl.SSLContext.wrap_socket(context, loopback), "wrapped")
+        for method in ("do_handshake", "unwrap"):
+            with self.subTest(method=method), patch.object(
+                ssl.SSLSocket, method, return_value="ok"
+            ):
+                with fixed_loopback_socket_boundary():
+                    self.assertEqual(getattr(ssl.SSLSocket, method)(loopback), "ok")
+
     def test_non_getaddrinfo_dns_and_reverse_dns_are_blocked(self):
         resolver_names = (
             "gethostbyname", "gethostbyname_ex", "gethostbyaddr",
