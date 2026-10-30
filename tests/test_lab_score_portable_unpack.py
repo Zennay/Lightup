@@ -1,5 +1,6 @@
 """Offline recipient workflow for canonical portable synthetic HUMAN reviews."""
 import io
+import gc
 import os
 import shutil
 import tempfile
@@ -13,6 +14,12 @@ from lightup import lab_score_portable_unpack as unpack
 
 
 def cli(*args):
+    # Python 3.14 warns when unrelated, older SQLite connections from
+    # previous tests are garbage-collected. Flush those objects *before*
+    # capturing the current CLI's stderr, so an unrelated destructor warning
+    # cannot be mistaken for a private-path disclosure from this operation.
+    # Still assert the real command emits no unexpected stderr.
+    gc.collect()
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
         status = cal.main(list(map(str, args)))
