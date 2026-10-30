@@ -21,7 +21,7 @@ from .lab_score_compare import (
     render_score_review,
 )
 from .lab_score_inspect import inspect_score_run
-from .lab_score_history_html import render_history_html, build_history_review_summary, render_history_markdown
+from .lab_score_history_html import render_history_html, build_history_review_summary, render_history_markdown, focus_archive_review
 from .lab_score_review_store import (save_private_review, verify_private_review,
                                      summary_bytes)
 from .lab_score_suite import _EXPECTED_FINDINGS
@@ -471,12 +471,18 @@ def main(argv: list[str] | None = None) -> int:
                       help="compare 2 to 8 private archived calibrations offline")
     parser.add_argument("--format", choices=("json", "text", "csv", "html", "review-json", "review-markdown", "review-csv"),
                         default="text")
+    parser.add_argument("--focus-archive-index", type=int, metavar="N",
+                        help="show original archive N in source-free review exports")
     parser.add_argument("--html-output-dir",
                         help="new exclusive 0700 directory for private 0600 history.html")
     parser.add_argument("--verify-html-output-dir",
                         help="reverify existing private HTML, receipt and JSON against originals; "
                              "allows source-free review-json, review-markdown and review-csv output")
     args = parser.parse_args(argv)
+    if args.focus_archive_index is not None and (
+            args.compare_history is None or args.format not in
+            ("review-json", "review-markdown", "review-csv")):
+        parser.error("focus requires --compare-history and a source-free review format")
     if args.html_output_dir is not None and args.verify_html_output_dir is not None:
         parser.error("create and verify must be separate operations")
     if args.html_output_dir is not None and (
@@ -499,6 +505,10 @@ def main(argv: list[str] | None = None) -> int:
                     raise ValueError("parent traversal rejected")
                 roots.append(path if path.is_absolute() else anchor / path)
             result = compare_saved_calibration_history(roots)
+            if (args.focus_archive_index is not None and not
+                    1 <= args.focus_archive_index <= result["archives_checked"]):
+                raise ValueError("invalid archive focus")
+
         elif args.compare_calibrations is not None:
             result = compare_saved_calibrations(*args.compare_calibrations)
         elif args.verify_output_dir is not None:
@@ -556,11 +566,23 @@ def main(argv: list[str] | None = None) -> int:
             writer = csv.writer(output, lineterminator="\n")
             writer.writerow(("previous_index", "current_index", "status",
                              "independent_evaluations", "score_stable"))
-            for pair in summary["pairs"]:
+            focus = (focus_archive_review(summary, args.focus_archive_index)
+                     if args.focus_archive_index is not None else None)
+            if focus is not None:
+                # Selected PASSes never conceal an unrelated global HOLD.
+                output = StringIO()
+                writer = csv.writer(output, lineterminator="\n")
+                writer.writerow(("previous_index", "current_index", "status",
+                                 "independent_evaluations", "score_stable",
+                                 "focus_archive_index", "global_status", "global_hold_pairs"))
+            for pair in (focus["pairs"] if focus is not None else summary["pairs"]):
                 writer.writerow((
                     pair["previous_index"], pair["current_index"],
                     "PASS" if pair["passed"] else "HOLD",
                     pair["independent_evaluations"], pair["score_stable"],
+                    *((focus["archive_index"],
+                       "PASS" if focus["global_passed"] else "HOLD",
+                       focus["global_hold_pairs"]) if focus is not None else ()),
                 ))
             print(output.getvalue(), end="")
         except Exception:
@@ -569,7 +591,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
     elif args.format == "review-markdown":
         try:
-            brief = render_history_markdown(result)
+            brief = render_history_markdown(result, args.focus_archive_index)
             print(brief, end="")
         except Exception:
             print("LightUp synthetic calibration: HOLD; review brief not verified.",
@@ -578,6 +600,8 @@ def main(argv: list[str] | None = None) -> int:
     elif args.format == "review-json":
         try:
             summary = build_history_review_summary(result)
+            if args.focus_archive_index is not None:
+                summary["review_focus"] = focus_archive_review(summary, args.focus_archive_index)
             print(json.dumps(summary, indent=2, sort_keys=True, allow_nan=False))
         except Exception:
             print(json.dumps({"schema": "lightup.lab-score-private-review-summary.v1",

@@ -137,3 +137,10 @@ reports produce no substitute output. This never grants test or release
 authorization. For stdout-only automation without creating a review directory, use `--compare-history ARCHIVE1 ARCHIVE2 ... --format review-json`; it prints the exact same anonymous, validated `review_summary.json` schema and emits a safe HOLD on invalid original evidence. Verify the private report read-only with the *same original archives* using `--verify-html-output-dir EXISTING_PRIVATE_REVIEW_DIR` instead of `--html-output-dir`; this is synthetic localhost evidence review, not target or release authorization.
 
 For privacy-minimal spreadsheet handoff use `--compare-history ARCHIVE1 ARCHIVE2 --format review-csv`: only archive ordinals, PASS/HOLD and two boolean evidence/score flags. Add `--verify-html-output-dir` to bind it to the already saved private three-file review; unlike regular `--format csv`, this never exports original score values.
+
+
+For many archives, add `--focus-archive-index N` to the source-free
+`--format review-json`, `--format review-csv` or `--format review-markdown`
+handoff. This prioritizes comparisons involving the selected 1-based archive
+but never narrows original source verification or the global HOLD status.
+Focused CSV rows explicitly retain the full-history status and HOLD count.

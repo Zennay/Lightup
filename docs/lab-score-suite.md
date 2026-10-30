@@ -365,3 +365,19 @@ to the machine-readable summary: deleting or modifying it causes generic HOLD.
 ### Source-free CSV for lab handoff
 
 `--compare-history ARCHIVE1 ARCHIVE2 [ARCHIVE3 ...] --format review-csv` prints only anonymous archive ordinals, PASS/HOLD, original-evidence-independence and score-stability booleans. It deliberately omits original metric scores, hashes, source identities and paths. Add `--verify-html-output-dir PRIVATE_REVIEW_DIR` to require a valid source-bound HTML/JSON/receipt package before any CSV output. Tamper yields HOLD with no partial output; no external access or authorization.
+
+
+### Focused offline per-archive triage
+
+After all 2–8 original archives have been verified, operators may add
+`--focus-archive-index N` to `--format review-json`, `--format review-csv`
+or `--format review-markdown`. Only anonymous comparisons involving N appear
+in the focused CSV/Markdown presentation; JSON retains the canonical global
+summary and adds `review_focus` with prioritized original pair statuses.
+Every format retains the **global** PASS/HOLD result, including an unrelated
+nonadjacent evidence-reuse HOLD. CSV includes explicit global status and
+global HOLD count on each focused row; an all-PASS subset is never presented
+as approval. Index N is one-based and bounded by the original archive count.
+`--verify-html-output-dir` still verifies the entire saved 0700/0600 private
+HTML/JSON/receipt bundle before any focused stdout. This is review-only;
+neither a source identity nor authenticated chronology nor external consent.

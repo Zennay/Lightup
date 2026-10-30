@@ -265,7 +265,35 @@ def build_history_review_summary(report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def render_history_markdown(report: dict[str, Any]) -> str:
+
+def focus_archive_review(summary: dict[str, Any], index: int) -> dict[str, Any]:
+    """Select one anonymous archive for triage without changing global HOLD.
+
+    Only call with a fully verified, source-free history summary. The focus is
+    an operator display selection, never a new claim of original verification.
+    """
+    n = summary["archives_checked"]
+    if type(index) is not int or not 1 <= index <= n:
+        raise ValueError("invalid original archive focus")
+    relevant = [pair for pair in summary["pairs"]
+                if index in (pair["previous_index"], pair["current_index"])]
+    relevant.sort(key=lambda item: (item["passed"],
+                                    item["independent_evaluations"],
+                                    item["score_stable"],
+                                    item["previous_index"], item["current_index"]))
+    if len(relevant) != n - 1:
+        raise ValueError("incomplete original archive focus")
+    return {
+        "archive_index": index,
+        "pairs": relevant,
+        "pairs_checked": len(relevant),
+        "hold_pairs": sum(not item["passed"] for item in relevant),
+        "global_passed": summary["passed"],
+        "global_hold_pairs": sum(not item["passed"] for item in summary["pairs"]),
+    }
+
+
+def render_history_markdown(report: dict[str, Any], focus_index: int | None = None) -> str:
     """Offline, source-free triage brief derived from validated original archives.
 
     The only variable labels are bounded archive ordinals and fixed first-party
@@ -274,6 +302,7 @@ def render_history_markdown(report: dict[str, Any]) -> str:
     summary = build_history_review_summary(report)  # strict fail-closed validation
     n = summary["archives_checked"]
     holds = [pair for pair in summary["pairs"] if not pair["passed"]]
+    focus = focus_archive_review(summary, focus_index) if focus_index is not None else None
     lines = [
         "# LightUp synthetic lab history — " + ("PASS" if summary["passed"] else "HOLD"),
         "",
@@ -284,10 +313,16 @@ def render_history_markdown(report: dict[str, Any]) -> str:
         "",
         "## Operator review priorities", "",
     ]
-    if summary["archive_review_queue"]:
+    if focus is not None:
+        lines += [f"**Focused archive {focus_index}: {focus['pairs_checked']} pairs; "
+                  f"{focus['hold_pairs']} HOLD. Global HOLD count remains {len(holds)}.**", ""]
+    queue = (item for item in summary["archive_review_queue"]
+             if focus is None or item["index"] == focus_index)
+    queue = list(queue)
+    if queue:
         lines += ["| Archive | HOLD pairs | Evidence reuse | Score drift |",
                   "| --- | ---: | ---: | ---: |"]
-        for item in summary["archive_review_queue"]:
+        for item in queue:
             lines.append(f"| {item['index']} | {item['hold_pairs']} | "
                          f"{item['reused_evidence_pairs']} | {item['score_drift_pairs']} |")
     else:
@@ -304,7 +339,7 @@ def render_history_markdown(report: dict[str, Any]) -> str:
     lines += ["", "## Original pairwise verification", "",
               "| Archives | Result | Evidence independent | Score stable |",
               "| --- | --- | --- | --- |"]
-    for pair in summary["pairs"]:
+    for pair in (focus["pairs"] if focus is not None else summary["pairs"]):
         lines.append(f"| {pair['previous_index']}–{pair['current_index']} | "
                      f"{'PASS' if pair['passed'] else 'HOLD'} | "
                      f"{'yes' if pair['independent_evaluations'] else 'no'} | "
