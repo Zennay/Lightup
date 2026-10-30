@@ -11,6 +11,7 @@ from pathlib import Path
 import shutil
 import subprocess
 from contextlib import ExitStack, contextmanager
+from contextvars import ContextVar
 import socket
 import ssl
 from unittest.mock import patch
@@ -127,6 +128,10 @@ def fixed_loopback_socket_boundary():
     # party child needed by the three fixed scorers is the local certificate
     # generator. This is still process-local defense in depth, not OS sandboxing.
     original_popen = subprocess.Popen
+    # The low-level posix_spawn path is only valid while the already-vetted
+    # Popen call is actually constructing its own local certificate child.
+    # ContextVar scopes this grant to the current thread and call context.
+    validated_popen = ContextVar("lightup_m1_pinned_popen", default=False)
 
     def approved_local_certificate_command(argv):
         if type(argv) is not list or len(argv) != 18 or not all(
@@ -161,7 +166,11 @@ def fixed_loopback_socket_boundary():
                 or kwargs.get("preexec_fn") is not None
                 or kwargs.get("pass_fds", ()) != ()):
             raise LabSocketBoundaryError("Offline lab refuses unapproved child process")
-        return original_popen(*args, **kwargs)
+        grant = validated_popen.set(True)
+        try:
+            return original_popen(*args, **kwargs)
+        finally:
+            validated_popen.reset(grant)
 
     original_spawn = os.posix_spawn
     original_spawnp = os.posix_spawnp
@@ -169,13 +178,17 @@ def fixed_loopback_socket_boundary():
     def guarded_spawn(path, argv, env, **kwargs):
         # CPython subprocess.Popen can use posix_spawn beneath the validated
         # Popen call. Independently validate that low-level command as well.
-        if (type(path) is not str or type(argv) is not list or path != argv[0]
+        if (not validated_popen.get()
+                or type(path) is not str or type(argv) is not list
+                or path != argv[0]
                 or not approved_local_certificate_command(argv)):
             raise LabSocketBoundaryError("Offline lab refuses unapproved child process")
         return original_spawn(path, argv, env, **kwargs)
 
     def guarded_spawnp(path, argv, env, **kwargs):
-        if (type(path) is not str or type(argv) is not list or path != argv[0]
+        if (not validated_popen.get()
+                or type(path) is not str or type(argv) is not list
+                or path != argv[0]
                 or not approved_local_certificate_command(argv)):
             raise LabSocketBoundaryError("Offline lab refuses unapproved child process")
         return original_spawnp(path, argv, env, **kwargs)

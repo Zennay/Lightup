@@ -275,6 +275,35 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                         getattr(ssl.SSLSocket, method)(fake, *args)
                 underlying.assert_not_called()
 
+    def test_exact_openssl_cannot_be_spawned_directly_outside_validated_popen(self):
+        # A forged environment and direct spawn must not inherit the Popen grant.
+        import os
+        import shutil
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        openssl = shutil.which("openssl")
+        if openssl is None:
+            self.skipTest("openssl not installed")
+        with TemporaryDirectory(prefix="lightup-tls-lab-") as d:
+            cmd = [openssl, "req", "-x509", "-newkey", "rsa:2048",
+                   "-nodes", "-keyout", str(Path(d) / "fixture-key.pem"),
+                   "-out", str(Path(d) / "fixture-cert.pem"), "-days", "1",
+                   "-subj", "/CN=127.0.0.1", "-addext",
+                   "subjectAltName=IP:127.0.0.1", "-addext",
+                   "basicConstraints=critical,CA:FALSE"]
+            with patch.object(os, "posix_spawn", return_value=100) as raw, patch.object(
+                os, "posix_spawnp", return_value=100
+            ) as rawp:
+                with fixed_loopback_socket_boundary():
+                    for name in ("posix_spawn", "posix_spawnp"):
+                        with self.subTest(name=name), self.assertRaises(
+                            LabSocketBoundaryError
+                        ):
+                            getattr(os, name)(openssl, cmd,
+                                              {"OPENSSL_CONF": "/tmp/untrusted.conf"})
+                raw.assert_not_called()
+                rawp.assert_not_called()
+
     def test_non_getaddrinfo_dns_and_reverse_dns_are_blocked(self):
         resolver_names = (
             "gethostbyname", "gethostbyname_ex", "gethostbyaddr",
