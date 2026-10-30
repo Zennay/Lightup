@@ -564,3 +564,12 @@ to the saved workroom, and its existing canonical files remain byte-identical.
 Legacy unsigned or corrupted ZIPs and modified saved workrooms refuse the
 worksheet, return HOLD/exit 2 and emit **no Markdown**. The checklist is
 never an approval or grant, even if human boxes are ticked later.
+
+A printable script-free HTML version of the HUMAN follow-up checklist is
+available with `--verify-portable-review SOURCE.zip --review-queue --format
+triage-html` or `--verify-queue-workroom SOURCE.zip --queue-workroom-dir
+EXISTING_DIR --format triage-html`. The HTML is independently checked by the
+strict first-party inert-content validator and CSP; no scripts, remote links,
+fetch, real targets or automatic state transition. Legacy original ZIPs and
+modified owner-private workrooms fail closed without an HTML body. Existing
+canonical saved v1/v2 files remain byte-identical; HTML is derived on read.

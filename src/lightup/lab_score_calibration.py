@@ -30,7 +30,7 @@ from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_portable_focus import render_portable_focus, render_portable_pair
 from .lab_score_portable_queue import render_portable_queue, render_portable_queue_html
 from .lab_score_queue_csv import render_queue_csv
-from .lab_score_queue_triage import render_human_triage_plan
+from .lab_score_queue_triage import render_human_triage_plan, render_human_triage_html
 from .lab_score_queue_workroom import publish_queue_workroom, verify_queue_workroom, export_verified_queue_workroom
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
@@ -487,7 +487,7 @@ def main(argv: list[str] | None = None) -> int:
                       help="read-only reread saved HUMAN review room vs original ZIP")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
-    parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "review-csv"),
+    parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "review-csv"),
                         default="text")
     parser.add_argument("--focus-archive-index", type=int, metavar="N",
                         help="show anonymous original archive N in history or "
@@ -513,7 +513,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.publish_queue_workroom is not None or args.verify_queue_workroom is not None:
         if (args.queue_workroom_dir is None
                 or args.format not in (("text",) if args.publish_queue_workroom is not None
-                                       else ("text", "csv", "review-csv", "review-json", "html", "navigator-html", "triage-markdown"))
+                                       else ("text", "csv", "review-csv", "review-json", "html", "navigator-html", "triage-markdown", "triage-html"))
                 or args.review_queue or args.focus_pair is not None
                 or args.focus_archive_index is not None or args.html_output_dir is not None
                 or args.unpack_output_dir is not None or args.unpacked_review_dir is not None
@@ -525,7 +525,7 @@ def main(argv: list[str] | None = None) -> int:
                 result = publish_queue_workroom(args.publish_queue_workroom,
                                                 args.queue_workroom_dir)
             else:
-                if args.format in ("text", "navigator-html", "triage-markdown"):
+                if args.format in ("text", "navigator-html", "triage-markdown", "triage-html"):
                     result = verify_queue_workroom(args.verify_queue_workroom,
                                                    args.queue_workroom_dir)
                     if args.format == "navigator-html":
@@ -534,6 +534,10 @@ def main(argv: list[str] | None = None) -> int:
                             navigation=True).encode("utf-8")
                     elif args.format == "triage-markdown":
                         export = render_human_triage_plan(
+                            result["review_queue"], global_status=result["review_status"],
+                            source_zip_sha256=result["portable_transport_sha256"]).encode("utf-8")
+                    elif args.format == "triage-html":
+                        export = render_human_triage_html(
                             result["review_queue"], global_status=result["review_status"],
                             source_zip_sha256=result["portable_transport_sha256"]).encode("utf-8")
                 else:
@@ -600,7 +604,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.unpack_output_dir is not None:
         parser.error("--unpack-output-dir requires --unpack-portable-review")
     if args.verify_portable_review is not None:
-        if (args.format not in (("text", "json", "html", "navigator-html", "triage-markdown", "review-csv") if args.review_queue else ("text", "json"))
+        if (args.format not in (("text", "json", "html", "navigator-html", "triage-markdown", "triage-html", "review-csv") if args.review_queue else ("text", "json"))
                 or args.html_output_dir is not None
                 or args.verify_html_output_dir is not None
                 or args.portable_review_output_dir is not None):
@@ -627,11 +631,12 @@ def main(argv: list[str] | None = None) -> int:
                 print("LightUp portable HUMAN review: HOLD; transport not verified.",
                       file=sys.stderr)
             return 2
-        if args.format == "triage-markdown":
+        if args.format in ("triage-markdown", "triage-html"):
             if not verified["history_content_validated"]:
                 print("Legacy review queue: HOLD; worksheet NOT admitted.", file=sys.stderr)
                 return 2
-            sys.stdout.write(render_human_triage_plan(
+            renderer = render_human_triage_html if args.format == "triage-html" else render_human_triage_plan
+            sys.stdout.write(renderer(
                 verified["review_queue"], global_status=verified["review_status"],
                 source_zip_sha256=verified["portable_transport_sha256"]))
             return 0 if verified["review_status"] == "PASS" else 2

@@ -69,3 +69,74 @@ def render_human_triage_plan(queue: dict[str, Any], *, global_status: str,
     if len(result.encode('utf-8')) > 65536:
         raise ValueError('triage worksheet too large')
     return result
+
+
+def render_human_triage_html(queue: dict[str, Any], *, global_status: str,
+                             source_zip_sha256: str) -> str:
+    """Inert printable HUMAN follow-up page derived only from admitted values."""
+    from .lab_score_portable_html_safety import admit_inert_html
+    # Shared validation binds this output to the exact same anonymous source
+    # and global HOLD/PASS as the private Markdown worksheet.
+    render_human_triage_plan(queue, global_status=global_status,
+                             source_zip_sha256=source_zip_sha256)
+    archive_rows = ''.join(
+        f"<li>☐ Archive {a['index']}: {a['hold_pairs']} HOLD pairs; "
+        f"{a['reused_evidence_pairs']} replay; {a['score_drift_pairs']} drift. "
+        "Privately inspect original records; never embed private evidence here.</li>"
+        for a in queue['archive_priorities'])
+    if not archive_rows:
+        archive_rows = '<li>No local HOLD pairs. Human review still required.</li>'
+    pairs = []
+    for p in queue['pairs']:
+        a, b = p['previous_index'], p['current_index']
+        actions = []
+        if 'evidence_reused' in p['hold_reasons']:
+            actions.append('☐ Evidence reuse: produce independent synthetic localhost '
+                           'baseline/candidate captures in new private storage; '
+                           'preserve this original HOLD.')
+        if 'score_drift' in p['hold_reasons']:
+            actions.append('☐ Score drift: inspect synthetic scorer calibration '
+                           'against isolated localhost fixtures; retain original HOLD.')
+        if p['review_status'] == 'HOLD':
+            actions.append('☐ HUMAN: compare owner-private original records offline '
+                           'and record unresolved concerns separately.')
+        else:
+            actions.append('☐ Local PASS only: verify privately; does not clear '
+                           'other HOLD pairs or authorize external activity.')
+        checklist = ''.join(f'<li>{item}</li>' for item in actions)
+        pairs.append(f"<section id='pair-{a}-{b}'><h3>Pair {a}-{b}: "
+                     f"{p['review_status']}</h3><ul>{checklist}</ul></section>")
+    html = (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+        "<meta http-equiv='Content-Security-Policy' "
+        "content=\"default-src 'none'; style-src 'unsafe-inline'\">"
+        "<title>LightUp offline HUMAN triage worksheet</title>"
+        "<style>body{font:1rem/1.5 system-ui;max-width:65rem;"
+        "margin:2rem auto;padding:0 1rem}section{margin:1.3rem 0}"
+        "li{margin:.5rem 0}h3{border-top:1px solid;padding-top:.5rem}"
+        "a:focus-visible{outline:3px solid currentColor}"
+        "@media print{body{margin:0}section{break-inside:avoid}}"
+        "</style></head><body><main id='content'>"
+        "<h1>LightUp synthetic offline HUMAN triage worksheet</h1>"
+        f"<p><strong>GLOBAL STATUS {global_status}</strong>; "
+        f"{queue['pairs_checked']} original pairs; "
+        f"{queue['hold_pairs']} HOLD; {queue['pass_pairs']} PASS.</p>"
+        f"<p>Source-free unsigned local ZIP SHA-256: {source_zip_sha256}. "
+        "This digest is NOT provenance or source identity proof.</p>"
+        "<p><strong>NOT AUTHORIZATION</strong>: HUMAN-only offline comparison; "
+        "no consent, scope grant, real targets, external scans or deployment. "
+        "Local PASS never clears global HOLD.</p>"
+        f"<section><h2>Affected archive priorities</h2><ul>{archive_rows}</ul></section>"
+        f"<section><h2>All original pair follow-ups (HOLD first)</h2>"
+        f"{''.join(pairs)}</section>"
+        "<section><h2>Independent HUMAN closure gate</h2><ul>"
+        "<li>☐ Qualified independent source/security/privacy reviewer must "
+        "check original owner-private records and unresolved HOLDs.</li>"
+        "<li>☐ Separate scope, owner consent and release gates remain enforced "
+        "outside this worksheet.</li></ul></section>"
+        "<p><strong>No approval, action, or state transition is issued by "
+        "this document.</strong></p></main></body></html>"
+    )
+    admit_inert_html(html.encode('utf-8'))
+    return html

@@ -421,6 +421,36 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual((room / "queue.html").read_bytes(), old_saved)
         self.assertNotIn(b"id='pair-1-4'", old_saved)
 
+    def test_human_triage_html_source_bound_and_inert(self):
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        code, page, err = invoke("--verify-portable-review", self.archive,
+                                 "--review-queue", "--format", "triage-html")
+        self.assertEqual((code, err), (2, ""))
+        admit_inert_html(page.encode())
+        self.assertIn("GLOBAL STATUS HOLD", page)
+        self.assertIn("Evidence reuse:", page)
+        self.assertIn("Qualified independent source/security/privacy reviewer", page)
+        self.assertIn(hashlib.sha256(self.archive.read_bytes()).hexdigest(), page)
+        self.assertNotIn("<script", page)
+        self.assertNotIn("http://", page)
+        self.assertNotIn(str(self.root), page)
+        room = self.root / "printable-triage-room"
+        self.assertEqual(invoke("--publish-queue-workroom", self.archive,
+                                "--queue-workroom-dir", room)[0], 2)
+        pristine = {f.name: f.read_bytes() for f in room.iterdir()}
+        code, saved, err = invoke("--verify-queue-workroom", self.archive,
+                                  "--queue-workroom-dir", room,
+                                  "--format", "triage-html")
+        self.assertEqual((code, err), (2, ""))
+        self.assertEqual(saved, page)
+        self.assertEqual(pristine, {f.name: f.read_bytes() for f in room.iterdir()})
+        (room / "queue_pairs.csv").write_text("=unsafe")
+        code, rendered, err = invoke("--verify-queue-workroom", self.archive,
+                                     "--queue-workroom-dir", room,
+                                     "--format", "triage-html")
+        self.assertEqual((code, rendered), (2, ""))
+        self.assertIn("not verified", err)
+
     def test_worksheet_handles_drift_and_rejects_unsafe_source_claim(self):
         from copy import deepcopy
         from lightup.lab_score_handoff_verify import verify_portable_review
@@ -484,6 +514,13 @@ class FocusedPortableReviewTests(unittest.TestCase):
                                      "--format", "triage-markdown")
         self.assertEqual((code, err), (2, ""))
         self.assertEqual(previous, direct)
+        code, html, err = invoke("--verify-queue-workroom", self.archive,
+                                 "--queue-workroom-dir", old,
+                                 "--format", "triage-html")
+        self.assertEqual((code, err), (2, ""))
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        admit_inert_html(html.encode())
+        self.assertIn("GLOBAL STATUS HOLD", html)
         (room / "queue.json").write_text("tampered!")
         code, content, err = invoke("--verify-queue-workroom", source,
                                     "--queue-workroom-dir", room,
@@ -643,6 +680,10 @@ class FocusedPortableReviewTests(unittest.TestCase):
         status, worksheet, err = invoke("--verify-portable-review", legacy_zip,
                                         "--review-queue", "--format", "triage-markdown")
         self.assertEqual((status, worksheet), (2, ""))
+        self.assertIn("worksheet NOT admitted", err)
+        code, output, err = invoke("--verify-portable-review", legacy_zip,
+                                    "--review-queue", "--format", "triage-html")
+        self.assertEqual((code, output), (2, ""))
         self.assertIn("worksheet NOT admitted", err)
         self.assertTrue(legacy_queue["review_queue_untrusted_legacy_claim"])
         self.assertFalse(legacy_queue["history_content_validated"])
