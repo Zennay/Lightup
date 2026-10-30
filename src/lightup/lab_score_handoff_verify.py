@@ -263,7 +263,7 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
     # enforce inert, local-only HTML for the files a HUMAN will open.
     admit_inert_html(payloads["index.html"])
     admit_inert_html(payloads["history.html"])
-    admit_text_exports(summary, payloads)
+    admit_text_exports(summary, payloads, schema=manifest['schema'])
     return result, payloads
 
 

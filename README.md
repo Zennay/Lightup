@@ -206,7 +206,9 @@ and return **HOLD** with an explicit legacy content-warning; the receiver
 refuses **unpacking or reopening** their unverified HTML, so a recomputed
 legacy ZIP cannot persuade a HUMAN with a false PASS/approval headline. A
 schema downgrade cannot silently promote a forged report. The read-only
-legacy verifier prints a bounded, explicitly **untrusted anonymous** console
+legacy verifier still admits the *exact first-party* earlier README (and
+rejects edited handling instructions), then prints a bounded, explicitly
+**untrusted anonymous** console
 triage of claimed HOLD pairs and priority ordinals, never an approval or an
 HTML workspace. Regenerate a v3
 ZIP from verified *synthetic* original archives for this stricter integrity

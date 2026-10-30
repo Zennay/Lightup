@@ -202,6 +202,32 @@ class PortableHTMLAdmissionTests(unittest.TestCase):
         self.assertIn("HOLD", error)
         self.assertFalse(dest.exists())
 
+    def test_v3_rehashed_legacy_readme_is_never_admitted(self):
+        from lightup.lab_score_portable_text_safety import README_LEGACY
+        import hashlib
+        import json
+        from zipfile import ZIP_DEFLATED, ZipInfo
+        files = self.payloads.copy()
+        files["README.txt"] = README_LEGACY
+        manifest = json.loads(files["manifest.json"])
+        manifest["files"]["README.txt"] = hashlib.sha256(README_LEGACY).hexdigest()
+        files["manifest.json"] = (
+            json.dumps(manifest, sort_keys=True, indent=2, allow_nan=False) + "\n"
+        ).encode()
+        target = self.base / "fake-v3-old-handling"
+        target.mkdir(mode=0o700)
+        path = target / self.archive.name
+        with ZipFile(path, "w", compression=ZIP_DEFLATED) as z:
+            for name, value in sorted(files.items()):
+                entry = ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
+                entry.compress_type = ZIP_DEFLATED
+                entry.external_attr = 0o600 << 16
+                z.writestr(entry, value)
+        path.chmod(0o600)
+        code, out, err = invoke("--verify-portable-review", path)
+        self.assertEqual((code, out), (2, ""))
+        self.assertIn("HOLD", err)
+
     def test_legacy_inert_bodyless_index_is_still_supported(self):
         def legacy(b):
             return (

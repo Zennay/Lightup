@@ -21,6 +21,23 @@ README = (
 ).encode("utf-8")
 
 
+# Exact first-party pre-v3 README, previously issued with v1/v2 ZIPs.
+# Accept only in the old schema, never as a downgrade of v3; arbitrary
+# forged instructions are never admitted even with recomputed ZIP hashes.
+README_LEGACY = (
+    "LightUp synthetic fixed-loopback offline review, HUMAN only.\n"
+    "Open index.html for global PASS/HOLD, priorities and pair navigation.\n"
+    "Scriptless, offline, source-free display; no network/authorization.\n"
+    "A PASS means only local consistency, NEVER external authority.\n"
+    "HTML may show first-party allowlisted numeric scorer changes.\n"
+    "CSV/JSON/Markdown omit raw numeric metric values.\n"
+    "Private source archives, saved receipt bindings and source IDs "
+    "are NOT included. ZIP hashes prove transport integrity only.\n"
+).encode("utf-8")
+_LEGACY = frozenset(("lightup.lab-score-portable-human-review.v1",
+                     "lightup.lab-score-portable-human-review.v2"))
+
+
 def csv_bytes(summary: dict[str, Any]) -> bytes:
     buffer = io.StringIO()
     writer = csv.writer(buffer, lineterminator="\n")
@@ -79,7 +96,10 @@ def markdown_bytes(summary: dict[str, Any]) -> bytes:
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
-def admit_text_exports(summary: dict[str, Any], files: dict[str, bytes]) -> None:
+def admit_text_exports(
+    summary: dict[str, Any], files: dict[str, bytes], *,
+    schema: str = "lightup.lab-score-portable-human-review.v3",
+) -> None:
     """Reject rewritten CSV formulas, Markdown links, and false handling text."""
     expected = {
         "review.csv": csv_bytes(summary),
@@ -87,5 +107,9 @@ def admit_text_exports(summary: dict[str, Any], files: dict[str, bytes]) -> None
         "README.txt": README,
     }
     for name, canonical in expected.items():
-        if files.get(name) != canonical:
-            raise ValueError("non-canonical portable human-readable export")
+        if files.get(name) == canonical:
+            continue
+        if (name == "README.txt" and schema in _LEGACY
+                and files.get(name) == README_LEGACY):
+            continue
+        raise ValueError("non-canonical portable human-readable export")
