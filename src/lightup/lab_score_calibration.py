@@ -19,6 +19,7 @@ from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
 
 SCHEMA = "lightup.lab-score-calibration.v1"
+HISTORY_SCHEMA = "lightup.lab-score-calibration-history.v1"
 
 
 def _receipt(comparison: dict[str, Any],
@@ -252,6 +253,66 @@ def compare_saved_calibrations(
     return result
 
 
+
+def compare_saved_calibration_history(
+    directories: list[str | Path],
+) -> dict[str, Any]:
+    """Compare 2–8 original private archives, rejecting even non-adjacent replay.
+
+    Comparing only consecutive calibrations lets archive 3 reuse archive 1's
+    evidence while both adjacent comparisons appear independent. Verify every
+    pair and recheck all source bindings after the entire history review.
+    """
+    if not 2 <= len(directories) <= 8:
+        raise ValueError("history requires 2 to 8 saved calibrations")
+    anchor = Path.cwd()
+    roots = []
+    for raw in directories:
+        path = Path(raw).expanduser()
+        if ".." in path.parts:
+            raise ValueError("parent traversal rejected")
+        roots.append(path if path.is_absolute() else anchor / path)
+    identities = [_archived_root_identity(root) for root in roots]
+    source_bindings = [_source_hashes(root) for root in roots]
+    adjacent = []
+    independent, stable, all_passed = True, True, True
+    compared = 0
+    for i in range(len(roots)):
+        for j in range(i + 1, len(roots)):
+            pair = compare_saved_calibrations(roots[i], roots[j])
+            summary = pair["comparison"]
+            compared += 1
+            independent &= summary["independent_evaluations"] is True
+            stable &= summary["score_stable"] is True
+            all_passed &= pair["passed"] is True
+            if j == i + 1:
+                adjacent.append({
+                    "previous_index": i + 1,
+                    "current_index": j + 1,
+                    "passed": pair["passed"],
+                    "independent_evaluations": summary["independent_evaluations"],
+                    "score_stable": summary["score_stable"],
+                })
+    if (identities != [_archived_root_identity(root) for root in roots]
+            or source_bindings != [_source_hashes(root) for root in roots]):
+        raise ValueError("saved history source changed during comparison")
+    for root in roots:
+        if verify_saved_calibration(root)["passed"] is not True:
+            raise ValueError("saved history verification failed")
+    return {
+        "schema": HISTORY_SCHEMA,
+        "passed": bool(all_passed and independent and stable),
+        "archives_checked": len(roots),
+        "pairs_checked": compared,
+        "independent_evaluations": bool(independent),
+        "score_stable": bool(stable),
+        "adjacent": adjacent,
+        "authorization_granted": False,
+        "external_targets_contacted": False,
+        "deployment": False,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="lightup-lab-score-calibrate",
@@ -265,10 +326,14 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--compare-calibrations", nargs=2,
                       metavar=("PREVIOUS", "CURRENT"),
                       help="compare two fully verified private saved calibrations offline")
+    mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
+                      help="compare 2 to 8 private archived calibrations offline")
     parser.add_argument("--format", choices=("json", "text"), default="text")
     args = parser.parse_args(argv)
     try:
-        if args.compare_calibrations is not None:
+        if args.compare_history is not None:
+            result = compare_saved_calibration_history(args.compare_history)
+        elif args.compare_calibrations is not None:
             result = compare_saved_calibrations(*args.compare_calibrations)
         elif args.verify_output_dir is not None:
             result = verify_saved_calibration(args.verify_output_dir)
@@ -281,15 +346,26 @@ def main(argv: list[str] | None = None) -> int:
             print("LightUp synthetic calibration: HOLD; saved evidence not verified.",
                   file=sys.stderr)
         else:
-            print(json.dumps({"schema": SCHEMA, "passed": False}, sort_keys=True),
+            schema = HISTORY_SCHEMA if args.compare_history is not None else SCHEMA
+            print(json.dumps({"schema": schema, "passed": False}, sort_keys=True),
                   file=sys.stderr)
         return 2
     if args.format == "text":
-        labels = ("previous and current"
-                  if args.compare_calibrations is not None
-                  else "baseline and candidate")
-        print(f"LightUp saved synthetic calibrations: {labels}")
-        print(render_score_review(result["comparison"]))
+        if args.compare_history is not None:
+            print("LightUp synthetic calibration history:",
+                  "PASS" if result["passed"] else "HOLD")
+            print(f"Archives: {result['archives_checked']}; pairwise checks: {result['pairs_checked']}")
+            print("Independent:", result["independent_evaluations"])
+            for item in result["adjacent"]:
+                state = "PASS" if item["passed"] else "HOLD"
+                print(f"Archive {item['previous_index']} -> {item['current_index']}: {state}")
+            print("Authority: none; localhost fixtures only; no external assessment.")
+        else:
+            labels = ("previous and current"
+                      if args.compare_calibrations is not None
+                      else "baseline and candidate")
+            print(f"LightUp saved synthetic calibrations: {labels}")
+            print(render_score_review(result["comparison"]))
     else:
         print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result["passed"] else 2

@@ -189,3 +189,17 @@ Missing, corrupted or replaced saved roots are also refused. The archive roots a
 and checked for substitution during the comparison; no scorers, workers,
 model providers, network targets, approvals, or deployments are invoked.
 This only compares first-party fixed 127.0.0.1 lab calibration results.
+
+
+## Multi-session calibration history (offline localhost)
+
+`lightup-lab-score-calibrate --compare-history ARCHIVE1 ARCHIVE2 [ARCHIVE3 ... ARCHIVE8]`
+
+Compares 2–8 private, independently saved calibration roots in order.
+All archive pairs are checked, not only adjacent runs: replaying original
+evidence from session 1 in session 3 returns HOLD even if adjacent
+comparisons pass. Each of the eight original file bindings in each
+archive is independently reverified before and after the history.
+JSON and text output contain only indices, anonymous counts and
+PASS/HOLD statuses; no evidence payload, source path, checksum or run ID.
+This is not real target, scanning, approval or deployment authority.

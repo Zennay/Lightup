@@ -361,6 +361,54 @@ class CalibrationTests(unittest.TestCase):
                     cal.compare_saved_calibrations(previous, current)
             self.assertEqual(len(calls), 3)
 
+    def test_three_original_archives_have_all_pairwise_checks_and_safe_output(self):
+        with tempfile.TemporaryDirectory() as base:
+            archives = [Path(base)/str(i) for i in range(3)]
+            for root in archives:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            out = io.StringIO()
+            with patch.object(cal, "run_lab_score_suite",
+                              side_effect=AssertionError("producer re-executed")):
+                with redirect_stdout(out):
+                    code = cal.main(["--compare-history", *map(str, archives),
+                                     "--format", "json"])
+            self.assertEqual(code, 0)
+            report = json.loads(out.getvalue())
+            self.assertEqual(report["schema"], cal.HISTORY_SCHEMA)
+            self.assertTrue(report["passed"])
+            self.assertTrue(report["independent_evaluations"])
+            self.assertEqual((report["archives_checked"], report["pairs_checked"]),
+                             (3, 3))
+            self.assertEqual(len(report["adjacent"]), 2)
+            self.assertFalse(report["authorization_granted"])
+            self.assertNotIn(base, out.getvalue())
+            self.assertNotIn("sha256", out.getvalue())
+
+    def test_history_rejects_nonadjacent_replayed_archive(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as base:
+            first, second, third = [Path(base)/str(i) for i in range(3)]
+            self.assertTrue(cal.run_lab_score_calibration(first)["passed"])
+            self.assertTrue(cal.run_lab_score_calibration(second)["passed"])
+            shutil.copytree(first, third)
+            self.assertTrue(cal.compare_saved_calibrations(first, second)["passed"])
+            self.assertTrue(cal.compare_saved_calibrations(second, third)["passed"])
+            out = io.StringIO()
+            with redirect_stdout(out):
+                status = cal.main(["--compare-history", str(first), str(second),
+                                   str(third), "--format", "json"])
+            self.assertEqual(status, 2)
+            result = json.loads(out.getvalue())
+            self.assertFalse(result["passed"])
+            self.assertFalse(result["independent_evaluations"])
+            self.assertTrue(all(item["passed"] for item in result["adjacent"]))
+            self.assertEqual(result["pairs_checked"], 3)
+            self.assertNotIn(base, out.getvalue())
+            err = io.StringIO()
+            with redirect_stderr(err), redirect_stdout(io.StringIO()):
+                self.assertEqual(cal.main(["--compare-history", str(first)]), 2)
+            self.assertIn("HOLD", err.getvalue())
+
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:
             with patch.object(cal, "run_lab_score_suite", return_value={"passed": False}) as fn:
