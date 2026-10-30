@@ -31,7 +31,8 @@ from .lab_score_portable_focus import render_portable_focus, render_portable_pai
 from .lab_score_portable_queue import render_portable_queue, render_portable_queue_html
 from .lab_score_queue_csv import render_queue_csv
 from .lab_score_queue_triage import render_human_triage_plan, render_human_triage_html, render_human_triage_csv
-from .lab_score_queue_workroom import publish_queue_workroom, verify_queue_workroom, export_verified_queue_workroom
+from .lab_score_queue_workroom import (publish_queue_workroom, verify_queue_workroom,
+                                       export_verified_queue_workroom, focus_verified_queue_workroom)
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
@@ -515,10 +516,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.publish_queue_workroom is not None or args.verify_queue_workroom is not None:
         if (args.queue_workroom_dir is None
                 or args.format not in (("text",) if args.publish_queue_workroom is not None
-                                       else ("text", "csv", "review-csv", "review-json", "html", "navigator-html", "triage-markdown", "triage-html", "triage-csv"))
+                                       else ("text", "csv", "review-csv", "review-json", "html", "navigator-html", "triage-markdown", "triage-html", "triage-csv", "json"))
                 or (args.include_triage and args.publish_queue_workroom is None)
-                or args.review_queue or args.focus_pair is not None
-                or args.focus_archive_index is not None or args.html_output_dir is not None
+                or args.review_queue
+                or (args.publish_queue_workroom is not None and
+                    (args.focus_pair is not None or args.focus_archive_index is not None))
+                or (args.verify_queue_workroom is not None and
+                    (((args.focus_pair is not None or args.focus_archive_index is not None)
+                      and args.format not in ("text", "json"))
+                     or ((args.focus_pair is None and args.focus_archive_index is None)
+                         and args.format == "json")))
+                or (args.focus_pair is not None and args.focus_archive_index is not None)
+                or args.html_output_dir is not None
                 or args.unpack_output_dir is not None or args.unpacked_review_dir is not None
                 or args.verify_html_output_dir is not None
                 or args.portable_review_output_dir is not None):
@@ -529,6 +538,22 @@ def main(argv: list[str] | None = None) -> int:
                                                 args.queue_workroom_dir,
                                                 include_triage=args.include_triage)
             else:
+                if args.focus_archive_index is not None or args.focus_pair is not None:
+                    focus = focus_verified_queue_workroom(
+                        args.verify_queue_workroom, args.queue_workroom_dir,
+                        archive_index=args.focus_archive_index,
+                        pair=tuple(args.focus_pair) if args.focus_pair is not None else None)
+                    if args.format == "json":
+                        print(json.dumps(focus, sort_keys=True, allow_nan=False))
+                    elif focus["focused_archive"] is not None:
+                        print(render_portable_focus(
+                            focus["focused_archive"],
+                            global_status=focus["global_review_status"], legacy=False))
+                    else:
+                        print(render_portable_pair(
+                            focus["focused_pair"],
+                            global_status=focus["global_review_status"], legacy=False))
+                    return 0 if focus["global_review_status"] == "PASS" else 2
                 if args.format in ("text", "navigator-html"):
                     result = verify_queue_workroom(args.verify_queue_workroom,
                                                    args.queue_workroom_dir)

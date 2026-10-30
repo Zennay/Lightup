@@ -339,3 +339,25 @@ Recipients supply BOTH the original ZIP and the private room to
 A changed ZIP or saved file fails closed with no partial output. All outputs
 are human-only and unauthenticated; no consent, grants, security execution,
 external targets, release or deployment can be inferred.
+
+### Offline source-bound reviewer drilldown of saved private rooms
+
+A HUMAN operator can now inspect one of the **original anonymous archives**
+or one exact original comparison without reopening a new workspace:
+
+`lightup-lab-score-calibrate --verify-queue-workroom PRIVATE.zip --queue-workroom-dir EXISTING_PRIVATE_DIR --focus-archive-index 2 --format json`
+
+or
+
+`lightup-lab-score-calibrate --verify-queue-workroom PRIVATE.zip --queue-workroom-dir EXISTING_PRIVATE_DIR --focus-pair 1 4 --format text`
+
+Available with v1/v2/v3 saved source-free rooms. Both paths fully re-admit
+the original canonical synthetic ZIP, perform descriptor-backed two-pass
+verification of *all* saved room files, then re-admit the ZIP once more and
+match its unsigned local SHA. An out-of-range ordinal, mutated saved member,
+changed original transport, or invalid combination exits with HOLD and **no
+partial focused output**. JSON is a fixed allowlisted source-free projection:
+global HOLD/PASS, selected anonymous original pair/archive, false
+source-authentication/authorization/deployment flags, and unsigned transport
+consistency. Focused local PASS never clears an unrelated global HOLD; even
+global synthetic PASS grants no consent or permission for real-world testing.

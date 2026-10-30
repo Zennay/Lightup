@@ -214,3 +214,34 @@ def publish_queue_workroom(archive: str | Path, destination: str | Path, *,
     finally:
         os.close(fd)
     return result
+
+
+def focus_verified_queue_workroom(archive: str | Path, directory: str | Path, *,
+                                  archive_index: int | None = None,
+                                  pair: tuple[int, int] | None = None) -> dict[str, Any]:
+    """Read-only verified owner-private recipient drilldown, global HOLD intact."""
+    if (archive_index is None) == (pair is None):
+        raise ValueError('choose exactly one anonymous original selection')
+    baseline = verify_queue_workroom(archive, directory)
+    focused = verify_portable_review(
+        archive, focus_archive_index=archive_index, focus_pair=pair)
+    # The original ZIP may change during the independent second admission.
+    if (focused['portable_transport_sha256'] != baseline['portable_transport_sha256']
+            or focused['history_content_validated'] is not True
+            or focused['review_status'] != baseline['review_status']):
+        raise ValueError('original source changed during focused recipient review')
+    if focused.get('selection_valid') is not True:
+        raise ValueError('invalid original anonymous selection')
+    return {
+        'schema': 'lightup.lab-score-private-human-focus.v1',
+        'original_source_authenticated': False,
+        'authorization_granted': False,
+        'external_targets_contacted': False,
+        'deployment': False,
+        'human_review_only': True,
+        'global_review_status': baseline['review_status'],
+        'portable_transport_sha256': baseline['portable_transport_sha256'],
+        'workroom_files_verified': baseline['workroom_files_verified'],
+        'focused_archive': focused.get('focused_archive'),
+        'focused_pair': focused.get('focused_pair'),
+    }

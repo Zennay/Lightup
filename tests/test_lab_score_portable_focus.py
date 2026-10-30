@@ -834,3 +834,89 @@ class FocusedPortableReviewTests(unittest.TestCase):
                                      "--format", "triage-csv")
         self.assertEqual((code, err), (2, ""))
         self.assertIn("RECAPTURE_INDEPENDENT", csv_text)
+
+    def test_saved_v3_human_archive_and_pair_drilldown_preserve_global_hold(self):
+        room = self.root / "saved-v3-focused-operator"
+        self.assertEqual(invoke("--publish-queue-workroom", self.archive,
+                                "--queue-workroom-dir", room,
+                                "--include-triage")[0], 2)
+        before = {p.name: p.read_bytes() for p in room.iterdir()}
+        code, output, err = invoke("--verify-queue-workroom", self.archive,
+                                   "--queue-workroom-dir", room,
+                                   "--focus-archive-index", 2)
+        self.assertEqual((code, err), (2, ""))
+        self.assertIn("Focused anonymous archive 2: 3 original comparisons, 0 focused HOLD", output)
+        self.assertIn("GLOBAL STATUS HOLD", output)
+        self.assertNotIn(str(self.root), output)
+        code, output, err = invoke("--verify-queue-workroom", self.archive,
+                                   "--queue-workroom-dir", room,
+                                   "--focus-archive-index", 2, "--format", "json")
+        self.assertEqual((code, err), (2, ""))
+        focused = json.loads(output)
+        self.assertEqual(focused["schema"], "lightup.lab-score-private-human-focus.v1")
+        self.assertEqual(focused["global_review_status"], "HOLD")
+        self.assertEqual(focused["workroom_files_verified"], 8)
+        self.assertEqual(focused["focused_archive"]["hold_pairs"], 0)
+        self.assertFalse(focused["authorization_granted"])
+        self.assertFalse(focused["original_source_authenticated"])
+        self.assertFalse(focused["deployment"])
+        code, output, err = invoke("--verify-queue-workroom", self.archive,
+                                   "--queue-workroom-dir", room,
+                                   "--focus-pair", 1, 4)
+        self.assertEqual((code, err), (2, ""))
+        self.assertIn("Original anonymous pair 1-4: HOLD; reasons: evidence_reused", output)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in room.iterdir()})
+        for index in (0, 5, -1):
+            code, output, err = invoke("--verify-queue-workroom", self.archive,
+                                       "--queue-workroom-dir", room,
+                                       "--focus-archive-index", index, "--format", "json")
+            self.assertEqual((code, output), (2, ""))
+            self.assertIn("not verified", err)
+        (room / "triage.html").write_text("tampered!")
+        code, output, err = invoke("--verify-queue-workroom", self.archive,
+                                   "--queue-workroom-dir", room,
+                                   "--focus-pair", 2, 3, "--format", "json")
+        self.assertEqual((code, output), (2, ""))
+        self.assertIn("not verified", err)
+
+    def test_legacy_v2_saved_room_focused_original_is_read_only(self):
+        room = self.root / "legacy-v2-focused-operator"
+        self.assertEqual(invoke("--publish-queue-workroom", self.archive,
+                                "--queue-workroom-dir", room)[0], 2)
+        before = {p.name: p.read_bytes() for p in room.iterdir()}
+        code, result, err = invoke("--verify-queue-workroom", self.archive,
+                                   "--queue-workroom-dir", room,
+                                   "--focus-pair", 2, 3, "--format", "json")
+        self.assertEqual((code, err), (2, ""))
+        receipt = json.loads(result)
+        self.assertEqual(receipt["focused_pair"]["review_status"], "PASS")
+        self.assertEqual(receipt["global_review_status"], "HOLD")
+        self.assertEqual(receipt["workroom_files_verified"], 5)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in room.iterdir()})
+
+    def test_saved_workroom_focus_synthetic_pass_still_no_grants(self):
+        a, b = self.root / "focus-pass-first", self.root / "focus-pass-second"
+        self.assertTrue(cli.run_lab_score_calibration(a)["passed"])
+        self.assertTrue(cli.run_lab_score_calibration(b)["passed"])
+        private, outdir, room = (self.root / "focus-pass-review",
+                                 self.root / "focus-pass-portable",
+                                 self.root / "focus-pass-room")
+        self.assertEqual(invoke("--compare-history", a, b, "--format", "html",
+                                "--html-output-dir", private)[0], 0)
+        self.assertEqual(invoke("--compare-history", a, b, "--format", "html",
+                                "--verify-html-output-dir", private,
+                                "--portable-review-output-dir", outdir)[0], 0)
+        source = outdir / "LightUp-SYNTHETIC-OFFLINE-REVIEW.zip"
+        self.assertEqual(invoke("--publish-queue-workroom", source,
+                                "--queue-workroom-dir", room, "--include-triage")[0], 0)
+        code, data, err = invoke("--verify-queue-workroom", source,
+                                 "--queue-workroom-dir", room,
+                                 "--focus-archive-index", 1, "--format", "json")
+        self.assertEqual((code, err), (0, ""))
+        receipt = json.loads(data)
+        self.assertEqual(receipt["global_review_status"], "PASS")
+        self.assertEqual(receipt["focused_archive"]["comparisons"], 1)
+        self.assertFalse(receipt["original_source_authenticated"])
+        self.assertFalse(receipt["authorization_granted"])
+        self.assertFalse(receipt["deployment"])
+        self.assertEqual(receipt["workroom_files_verified"], 8)
