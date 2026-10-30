@@ -11,20 +11,24 @@ from typing import Any
 
 from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_portable_queue import render_portable_queue_html
+from .lab_score_queue_csv import render_queue_csv
 from .lab_score_suite import _private_output_directory
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 
-_NAMES = ('queue.html', 'queue.json', 'manifest.json')
+_NAMES_V1 = ('queue.html', 'queue.json', 'manifest.json')
+_NAMES_V2 = ('queue.html', 'queue.json', 'queue_archives.csv', 'queue_pairs.csv', 'manifest.json')
 _MAX = 65536
 
 
-def _payloads(archive: str | Path) -> tuple[dict[str, Any], dict[str, bytes]]:
+def _payloads(archive: str | Path, *, version: int = 2) -> tuple[dict[str, Any], dict[str, bytes]]:
+    if version not in (1, 2):
+        raise ValueError("unsupported offline workroom version")
     verified = verify_portable_review(archive, review_queue=True)
     if not verified['history_content_validated']:
         raise ValueError('legacy untrusted HTML cannot be published')
     queue = verified['review_queue']
     review = {
-        'schema': 'lightup.lab-score-human-queue-workroom.v1',
+        'schema': f'lightup.lab-score-human-queue-workroom.v{version}',
         'review_status': verified['review_status'],
         'source_zip_sha256': verified['portable_transport_sha256'],
         'original_source_authenticated': False,
@@ -37,8 +41,10 @@ def _payloads(archive: str | Path) -> tuple[dict[str, Any], dict[str, bytes]]:
         'queue.html': render_portable_queue_html(queue, global_status=verified['review_status']).encode('utf-8'),
         'queue.json': (json.dumps(review, sort_keys=True, indent=2, allow_nan=False)+'\n').encode('utf-8'),
     }
+    if version == 2:
+        payloads.update(render_queue_csv(queue, global_status=verified['review_status']))
     manifest = {
-        'schema': 'lightup.lab-score-human-queue-workroom-manifest.v1',
+        'schema': f'lightup.lab-score-human-queue-workroom-manifest.v{version}',
         'source_zip_sha256': verified['portable_transport_sha256'],
         'unsigned_local_consistency_only': True,
         'file_sha256': {name: hashlib.sha256(value).hexdigest() for name, value in payloads.items()},
@@ -68,26 +74,33 @@ def _check_file(fd: int, name: str, expected: bytes) -> tuple[int, int, int, int
 
 
 def verify_queue_workroom(archive: str | Path, directory: str | Path) -> dict[str, Any]:
-    result, expected = _payloads(archive)
     fd = _private_dir_fd(directory)
     try:
+        inventory = set(os.listdir(fd))
+        if inventory == set(_NAMES_V2):
+            version, names = 2, _NAMES_V2
+        elif inventory == set(_NAMES_V1):
+            version, names = 1, _NAMES_V1
+        else:
+            raise ValueError('unexpected offline queue files')
+        result, expected = _payloads(archive, version=version)
         first: dict[str, tuple[int, int, int, int, int]] = {}
         for pass_number in (0, 1):
-            if set(os.listdir(fd)) != set(_NAMES):
+            if set(os.listdir(fd)) != set(names):
                 raise ValueError('unexpected offline queue files')
-            for name in _NAMES:
+            for name in names:
                 identity = _check_file(fd, name, expected[name])
                 if pass_number == 1 and identity != first[name]:
                     raise ValueError('queue file changed between reads')
                 first[name] = identity
-        if set(os.listdir(fd)) != set(_NAMES):
+        if set(os.listdir(fd)) != set(names):
             raise ValueError('offline queue inventory changed')
     finally:
         os.close(fd)
     # The pinned source ZIP was admitted before looking at output files.
     # An owner-local writer could replace the source while that inspection
     # runs. Re-admit it afterwards and refuse any changed source transport.
-    final, final_expected = _payloads(archive)
+    final, final_expected = _payloads(archive, version=version)
     if (final['portable_transport_sha256'] != result['portable_transport_sha256']
             or final_expected != expected):
         raise ValueError('original ZIP changed during recipient inspection')
@@ -107,7 +120,7 @@ def publish_queue_workroom(archive: str | Path, destination: str | Path) -> dict
     created: list[tuple[str, tuple[int, int]]] = []
     try:
         try:
-            for name in _NAMES:
+            for name in _NAMES_V2:
                 temporary = '.' + name + '.tmp'
                 writer = os.open(temporary, os.O_WRONLY | os.O_CREAT |
                                  os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd)

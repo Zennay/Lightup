@@ -184,7 +184,8 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertIn("status HOLD", out)
         self.assertEqual(root.stat().st_mode & 0o777, 0o700)
         self.assertEqual({p.name for p in root.iterdir()},
-                         {"queue.html", "queue.json", "manifest.json"})
+                         {"queue.html", "queue.json", "queue_pairs.csv",
+                          "queue_archives.csv", "manifest.json"})
         self.assertTrue(all(p.stat().st_mode & 0o777 == 0o600 for p in root.iterdir()))
         code, out, err = invoke("--verify-queue-workroom", self.archive,
                                 "--queue-workroom-dir", root)
@@ -206,6 +207,56 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertFalse(out)
         self.assertIn("not verified", err)
+
+    def test_private_queue_spreadsheet_exports_preserve_global_hold(self):
+        import csv
+        from io import StringIO
+        root = self.root / "queue-spreadsheet-workroom"
+        code, out, err = invoke("--publish-queue-workroom", self.archive,
+                                "--queue-workroom-dir", root)
+        self.assertEqual((code, err), (2, ""))
+        self.assertEqual({f.name for f in root.iterdir()},
+                         {"queue.html", "queue.json", "queue_pairs.csv",
+                          "queue_archives.csv", "manifest.json"})
+        pairs = list(csv.DictReader(StringIO((root / "queue_pairs.csv").read_text())))
+        archives = list(csv.DictReader(StringIO((root / "queue_archives.csv").read_text())))
+        self.assertEqual(len(pairs), 6)
+        self.assertEqual(len(archives), 2)
+        self.assertEqual((pairs[0]["previous_archive"], pairs[0]["current_archive"],
+                          pairs[0]["pair_status"]), ("1", "4", "HOLD"))
+        self.assertEqual([row["pair_status"] for row in pairs[1:]], ["PASS"] * 5)
+        self.assertTrue(all(row["global_status"] == "HOLD" for row in pairs + archives))
+        self.assertTrue(all(row["authorization_granted"] == "false" for row in pairs + archives))
+        self.assertFalse(any(value.startswith(("=", "+", "-", "@"))
+                             for row in pairs + archives for value in row.values()))
+        self.assertEqual(invoke("--verify-queue-workroom", self.archive,
+                                "--queue-workroom-dir", root)[0], 2)
+        # A changed local CSV cannot be legitimized by rewriting unsigned hashes.
+        csv_path = root / "queue_pairs.csv"
+        changed = csv_path.read_bytes().replace(b"HOLD", b"PASS")
+        csv_path.write_bytes(changed)
+        manifest = json.loads((root / "manifest.json").read_text())
+        manifest["file_sha256"]["queue_pairs.csv"] = hashlib.sha256(changed).hexdigest()
+        (root / "manifest.json").write_text(json.dumps(manifest, sort_keys=True, indent=2)+"\n")
+        code, text, error = invoke("--verify-queue-workroom", self.archive,
+                                  "--queue-workroom-dir", root)
+        self.assertEqual((code, text), (2, ""))
+        self.assertIn("not verified", error)
+
+    def test_v1_saved_three_file_queue_workroom_still_reopens(self):
+        from lightup import lab_score_queue_workroom as workroom
+        old = self.root / "old-v1-queue-workroom"
+        old.mkdir(mode=0o700)
+        _, original_files = workroom._payloads(self.archive, version=1)
+        self.assertEqual(set(original_files), {"queue.html", "queue.json", "manifest.json"})
+        for name, content in original_files.items():
+            target = old / name
+            target.write_bytes(content)
+            target.chmod(0o600)
+        code, out, err = invoke("--verify-queue-workroom", self.archive,
+                                "--queue-workroom-dir", old)
+        self.assertEqual((code, err), (2, ""))
+        self.assertIn("FILES VERIFIED", out)
 
     def test_queue_workroom_rechecks_original_after_reading_files(self):
         from unittest.mock import patch

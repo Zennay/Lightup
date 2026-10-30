@@ -459,7 +459,8 @@ only in an owner-private 0600 file if a permanent offline copy is needed.
 
 `lightup-lab-score-calibrate --publish-queue-workroom SOURCE.zip --queue-workroom-dir NEW_DIR`
 validates the original canonical v3 source-free synthetic ZIP and publishes
-`queue.html`, `queue.json`, `manifest.json` under a new owner-private 0700
+`queue.html`, `queue.json`, `queue_archives.csv`, `queue_pairs.csv`, `manifest.json`
+under a new owner-private 0700
 directory, with 0600 files, no overwrite and no network access. It rereads
 the original ZIP and all three published files before reporting success.
 `lightup-lab-score-calibrate --verify-queue-workroom SOURCE.zip --queue-workroom-dir EXISTING_DIR`
@@ -468,3 +469,20 @@ An attacker who recalculates an unsigned local digest still cannot pass a
 byte-exact original ZIP comparison. An untrusted v1/v2 ZIP cannot publish
 browser HTML. No source or reviewer identity, consent, authorization, target
 contact, grant or deployment is implied; global HOLD exits with status 2.
+
+### Spreadsheet-ready private reviewer workrooms (v2)
+
+New HUMAN queue workrooms also contain `queue_pairs.csv` (the complete
+HOLD-first original pair queue) and `queue_archives.csv` (ordered archive
+priorities), both fixed-schema UTF-8 with no formulas, original findings,
+source identities, paths or evidence identifiers. Every row explicitly
+retains `global_status`, `original_source_authenticated=false` and
+`authorization_granted=false`, even when a pair is PASS. Both CSV files are
+verified byte-for-byte against the original canonical synthetic ZIP alongside
+the HTML, JSON and unsigned local consistency manifest. No automatic approval
+or external scans follow from these exports.
+
+Previously saved three-file **v1** workrooms remain read-only reopenable: the
+receiver chooses v1 or v2 from the strictly allowed pinned directory inventory,
+then recomputes the matching canonical representation from the same verified
+original ZIP. New publication always uses the five-file v2 representation.
