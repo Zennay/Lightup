@@ -330,6 +330,13 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         ):
             modified = deepcopy(original); modified[source][key] = value
             cases.append(modified)
+        # A forged local PASS must never bury even one original HOLD pair.
+        modified = deepcopy(original)
+        self.assertGreater(modified['baseline']['hold_pairs'], 0)
+        modified['baseline']['global_status'] = 'PASS'
+        modified['baseline_hold_preserved'] = False
+        modified['review_status'] = 'PASS'
+        cases.append(modified)
         modified = deepcopy(original)
         modified['count_change_candidate_minus_baseline']['hold_pairs'] = 0
         cases.append(modified)

@@ -58,6 +58,7 @@ def admit_human_comparison(value: dict) -> dict:
             source["original_pairs"] != pairs
             or not 0 <= source["hold_pairs"] <= pairs
             or source["pass_pairs"] + source["hold_pairs"] != pairs
+            or (source["hold_pairs"] > 0 and source["global_status"] != "HOLD")
             or not 0 <= source["reused_evidence_pairs"] <= source["hold_pairs"]
             or not 0 <= source["score_drift_pairs"] <= source["hold_pairs"]
         ):
