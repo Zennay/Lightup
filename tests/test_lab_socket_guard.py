@@ -646,6 +646,106 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
         self.assertEqual(result["failure_stage"], "setup")
         self.assertIs(result["external_target_authorized"], False)
 
+    def test_parallel_real_service_scorers_keep_original_socket_hooks(self):
+        # Same-process concurrency, unlike the separate-process CLI proof.
+        # Four real owned-loopback scorers must each return valid evidence.
+        from concurrent.futures import ThreadPoolExecutor
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        original_connect = socket.socket.connect
+        original_bind = socket.socket.bind
+        original_getaddrinfo = socket.getaddrinfo
+        with TemporaryDirectory(prefix="lightup-sameprocess-") as root:
+            def score(index):
+                return lab_service_score.run_lab_service_inventory_score(
+                    Path(root) / f"service-{index}.db"
+                )
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                results = list(pool.map(score, range(4)))
+        self.assertEqual(len(results), 4)
+        for receipt in results:
+            self.assertTrue(receipt["passed"])
+            self.assertTrue(receipt["checks"]["closed_control_port_not_detected"])
+            self.assertTrue(receipt["checks"]["persisted_record_readback"])
+        self.assertIs(socket.socket.connect, original_connect)
+        self.assertIs(socket.socket.bind, original_bind)
+        self.assertIs(socket.getaddrinfo, original_getaddrinfo)
+
+    def test_nested_guard_exception_restores_original_hooks(self):
+        original_connect = socket.socket.connect
+        original_spawn = __import__("subprocess").Popen
+        with self.assertRaisesRegex(RuntimeError, "synthetic nested"):
+            with fixed_loopback_socket_boundary():
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        socket.getaddrinfo("example.invalid", 443)
+                    raise RuntimeError("synthetic nested")
+        self.assertIs(socket.socket.connect, original_connect)
+        self.assertIs(__import__("subprocess").Popen, original_spawn)
+
+    def test_concurrent_boundaries_never_restore_unprotected_network_methods(self):
+        # Repro: another canary enters while the first scope is still live.
+        # Even if the first exits, the second must remain protected and
+        # originals restored exactly once after BOTH scopes are done.
+        import threading
+        import time
+        first_entered = threading.Event()
+        second_entered = threading.Event()
+        release_first = threading.Event()
+        first_exited = threading.Event()
+        issues = []
+        outcomes = []
+
+        def first():
+            try:
+                with fixed_loopback_socket_boundary():
+                    first_entered.set()
+                    if not release_first.wait(3):
+                        raise AssertionError("synthetic first guard timed out")
+            except BaseException as error:
+                issues.append(error)
+            finally:
+                first_exited.set()
+
+        def second(sock):
+            try:
+                if not first_entered.wait(3):
+                    raise AssertionError("first guard not installed")
+                with fixed_loopback_socket_boundary():
+                    second_entered.set()
+                    if not first_exited.wait(3):
+                        raise AssertionError("first guard did not finish")
+                    try:
+                        sock.connect(("203.0.113.9", 443))
+                    except LabSocketBoundaryError:
+                        outcomes.append("denied")
+                    else:
+                        outcomes.append("allowed")
+            except BaseException as error:
+                issues.append(error)
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            with patch.object(socket.socket, "connect", return_value=None) as raw:
+                one = threading.Thread(target=first)
+                two = threading.Thread(target=second, args=(sock,))
+                try:
+                    one.start()
+                    self.assertTrue(first_entered.wait(2))
+                    two.start()
+                    # An unprotected implementation permits the second scope
+                    # to overlap; a serialized one waits for the first exit.
+                    second_entered.wait(0.25)
+                finally:
+                    release_first.set()
+                    one.join(4)
+                    two.join(4)
+                self.assertFalse(one.is_alive())
+                self.assertFalse(two.is_alive())
+                self.assertEqual(issues, [])
+                self.assertEqual(outcomes, ["denied"])
+                raw.assert_not_called()
+                self.assertIs(socket.socket.connect, raw)
+
     def test_service_closed_port_control_remains_reserved_during_observations(self):
         # Prevent another local process from claiming the negative-control
         # port between allocation and the two real scored observations.

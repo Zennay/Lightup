@@ -15,6 +15,7 @@ from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
 import socket
 import ssl
+import threading
 from unittest.mock import patch
 
 
@@ -55,14 +56,30 @@ def trusted_local_openssl() -> str:
     return str(binary)
 
 
+# These are process-global monkeypatches. Without a shared lifetime lock,
+# overlapping canaries can uninstall each other's guards mid-assessment.
+# Reentrant locking permits a scorer nested under the combined safety canary;
+# different threads serialize complete guarded scoring invocations.
+_boundary_lock = threading.RLock()
+
+
 @contextmanager
 def fixed_loopback_socket_boundary():
-    """Refuse getaddrinfo lookup, connect, bind and datagram sends outside 127.0.0.1.
+    """Run one entire fixed-loopback lab scope with serialized guard lifetime.
 
-    Preserve original socket operations and restore them even when a scorer
-    raises. This is process-global while active; do not use in a multi-tenant
-    server. Only for the isolated, single-invocation local canary.
+    Nested calls on the same thread are reentrant. Separate threads never
+    overlap process-wide patch install/remove, so no scorer can accidentally
+    restore unprotected socket APIs while another guarded scorer is active.
+    This is still not an OS sandbox or safe for a multi-tenant server.
     """
+    with _boundary_lock:
+        with _scoped_fixed_loopback_socket_boundary():
+            yield
+
+
+@contextmanager
+def _scoped_fixed_loopback_socket_boundary():
+    """Install and restore the existing per-process M1 socket/process hooks."""
     original_connect = socket.socket.connect
     original_connect_ex = socket.socket.connect_ex
     original_bind = socket.socket.bind
