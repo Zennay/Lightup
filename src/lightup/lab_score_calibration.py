@@ -28,6 +28,7 @@ from .lab_score_handoff import save_portable_review
 from .lab_score_portable_unpack import unpack_portable_review, verify_unpacked_portable_review
 from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_portable_focus import render_portable_focus, render_portable_pair
+from .lab_score_portable_queue import render_portable_queue
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
@@ -484,6 +485,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--focus-archive-index", type=int, metavar="N",
                         help="show anonymous original archive N in history or "
                              "portable read-only HUMAN verifier")
+    parser.add_argument("--review-queue", action="store_true",
+                        help="all original anonymous pairs sorted HOLD-first for offline HUMAN triage")
     parser.add_argument("--focus-pair", nargs=2, type=int, metavar=("PREVIOUS", "CURRENT"),
                         help="read-only anonymous original pair drilldown for portable ZIP; preserves global HOLD")
     parser.add_argument("--html-output-dir",
@@ -498,6 +501,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--unpack-output-dir",
                         help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
+    if args.review_queue and (args.verify_portable_review is None
+                              or args.focus_pair is not None
+                              or args.focus_archive_index is not None
+                              or args.unpack_portable_review is not None
+                              or args.verify_unpacked_review is not None
+                              or args.compare_history is not None):
+        parser.error("--review-queue requires standalone --verify-portable-review")
     if args.focus_pair is not None and (args.verify_portable_review is None
                                         or args.focus_archive_index is not None):
         parser.error("--focus-pair is exclusive to --verify-portable-review and cannot combine with archive focus")
@@ -546,7 +556,8 @@ def main(argv: list[str] | None = None) -> int:
             verified = verify_portable_review(
                 args.verify_portable_review,
                 focus_archive_index=args.focus_archive_index,
-                focus_pair=tuple(args.focus_pair) if args.focus_pair is not None else None)
+                focus_pair=tuple(args.focus_pair) if args.focus_pair is not None else None,
+                review_queue=args.review_queue)
         except Exception:
             if args.format == "json":
                 print(json.dumps({
@@ -581,6 +592,10 @@ def main(argv: list[str] | None = None) -> int:
                 receipt["focused_archive"] = verified["focused_archive"]
                 receipt["focused_archive_untrusted_legacy_claim"] = (
                     not verified["history_content_validated"])
+            if "review_queue" in verified:
+                receipt["review_queue"] = verified["review_queue"]
+                receipt["review_queue_untrusted_legacy_claim"] = (
+                    not verified["history_content_validated"])
             if "focused_pair" in verified:
                 receipt["focused_pair"] = verified["focused_pair"]
                 receipt["focused_pair_untrusted_legacy_claim"] = (
@@ -602,6 +617,10 @@ def main(argv: list[str] | None = None) -> int:
         if "focused_archive" in verified:
             print(render_portable_focus(
                 verified["focused_archive"],
+                global_status=verified["review_status"],
+                legacy=not verified["history_content_validated"]))
+        if "review_queue" in verified:
+            print(render_portable_queue(verified["review_queue"],
                 global_status=verified["review_status"],
                 legacy=not verified["history_content_validated"]))
         if "focused_pair" in verified:

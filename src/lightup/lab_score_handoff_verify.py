@@ -19,6 +19,7 @@ from .lab_score_portable_html_safety import admit_inert_html
 from .lab_score_portable_dashboard import render_portable_dashboard
 from .lab_score_portable_history import render_portable_history
 from .lab_score_portable_legacy_triage import legacy_triage
+from .lab_score_portable_queue import build_portable_queue
 from .lab_score_portable_focus import (
     InvalidPortableSelection, build_portable_focus, build_portable_pair,
 )
@@ -275,12 +276,16 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
 
 def verify_portable_review(
     path: str | Path, *, focus_archive_index: int | None = None,
-    focus_pair: tuple[int, int] | None = None
+    focus_pair: tuple[int, int] | None = None,
+    review_queue: bool = False
 ) -> dict[str, Any]:
     """No-network, no-write ZIP integrity and optional original-pair focus."""
     result, files = _validated_portable_review(path)
-    if focus_archive_index is not None and focus_pair is not None:
-        raise ValueError("choose only one portable focus")
+    if sum((focus_archive_index is not None, focus_pair is not None, review_queue)) > 1:
+        raise ValueError("choose only one portable focus/queue")
+    if review_queue:
+        # Full canonical ZIP admission already completed before any projection.
+        result["review_queue"] = build_portable_queue(_decode_json(files["review.json"]))
     if focus_pair is not None or focus_archive_index is not None:
         try:
             if focus_pair is not None:

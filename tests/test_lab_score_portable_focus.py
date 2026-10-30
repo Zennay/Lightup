@@ -137,6 +137,48 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual(json.loads(out)["focused_pair"]["review_status"], "PASS")
         self.assertEqual(json.loads(out)["review_status"], "PASS")
 
+    def test_full_queue_prioritizes_original_replay_hold_and_retains_global_hold(self):
+        code, raw, err = invoke("--verify-portable-review", self.archive,
+                                "--review-queue", "--format", "json")
+        self.assertEqual((code, err), (2, ""))
+        receipt = json.loads(raw)
+        queue = receipt["review_queue"]
+        self.assertEqual((queue["pairs_checked"], queue["hold_pairs"],
+                          queue["pass_pairs"]), (6, 1, 5))
+        self.assertEqual([(a["index"], a["hold_pairs"]) for a in queue["archive_priorities"]],
+                         [(1, 1), (4, 1)])
+        self.assertTrue(queue["human_review_only"])
+        self.assertFalse(queue["source_identity_authenticated"])
+        self.assertFalse(receipt["review_queue_untrusted_legacy_claim"])
+        self.assertEqual(receipt["review_status"], "HOLD")
+        self.assertEqual((queue["pairs"][0]["previous_index"],
+                          queue["pairs"][0]["current_index"]), (1, 4))
+        self.assertEqual(queue["pairs"][0]["hold_reasons"], ["evidence_reused"])
+        self.assertTrue(all(p["review_status"] == "PASS" for p in queue["pairs"][1:]))
+        self.assertNotIn(str(self.root), raw)
+        code, raw, err = invoke("--verify-portable-review", self.archive, "--review-queue")
+        self.assertEqual((code, err), (2, ""))
+        self.assertIn("Original pair HUMAN review queue: 6 pairs; 1 HOLD", raw)
+        self.assertIn("GLOBAL STATUS HOLD", raw)
+        self.assertIn("Synthetic-only: 1. pair 1-4: HOLD", raw)
+        self.assertIn("Review archive 1: 1 HOLD pairs", raw)
+        self.assertNotIn(str(self.root), raw)
+
+    def test_queue_rejects_tampered_transport_before_pair_projection(self):
+        evil = self.root / "queue-tampered"
+        evil.mkdir(mode=0o700)
+        path = evil / self.archive.name
+        path.write_bytes(self.archive.read_bytes() + b"untrusted-extra-trailer")
+        path.chmod(0o600)
+        code, raw, err = invoke("--verify-portable-review", path,
+                                "--review-queue", "--format", "json")
+        self.assertEqual((code, err), (2, ""))
+        data = json.loads(raw)
+        self.assertFalse(data["transport_integrity"])
+        self.assertEqual(data["review_status"], "HOLD")
+        self.assertNotIn("review_queue", data)
+        self.assertFalse(data["original_source_authenticated"])
+
     def test_legacy_focus_is_bounded_untrusted_and_no_html_export(self):
         with ZipFile(self.archive) as source:
             files = {name: source.read(name) for name in source.namelist()}
@@ -171,6 +213,14 @@ class FocusedPortableReviewTests(unittest.TestCase):
                                 "--focus-pair", 1, 4, "--format", "json")
         self.assertEqual((code, err), (2, ""))
         receipt = json.loads(out)
+        status, raw, err = invoke("--verify-portable-review", legacy_zip,
+                                  "--review-queue", "--format", "json")
+        self.assertEqual((status, err), (2, ""))
+        legacy_queue = json.loads(raw)
+        self.assertTrue(legacy_queue["review_queue_untrusted_legacy_claim"])
+        self.assertFalse(legacy_queue["history_content_validated"])
+        self.assertEqual(legacy_queue["review_status"], "HOLD")
+        self.assertEqual(legacy_queue["review_queue"]["hold_pairs"], 1)
         self.assertTrue(receipt["focused_pair_untrusted_legacy_claim"])
         self.assertTrue(receipt["selection_valid"])
         self.assertEqual(receipt["portable_transport_sha256"], hashlib.sha256(legacy_zip.read_bytes()).hexdigest())

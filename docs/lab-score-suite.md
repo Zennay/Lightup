@@ -424,3 +424,26 @@ hotspot links are similarly ordered. The links resolve only to in-document
 source-free findings; all original archives and pairs are still verified,
 the global HOLD remains unchanged, and neither a reviewer identity nor a
 permission/target/release authority is introduced.
+
+
+### Original-pair offline HUMAN review queue (received portable ZIP)
+
+For a previously generated owner-private portable synthetic review ZIP, run:
+
+```sh
+lightup-lab-score-calibrate --verify-portable-review PRIVATE.zip --review-queue --format json
+```
+
+The first-party read-only verifier admits the **entire** bounded ZIP and
+canonical v3 history before constructing this source-free operator queue.
+`review_queue.archive_priorities` ranks anonymous archives by their original
+HOLD pair counts, while `review_queue.pairs` lists **all** original comparisons
+with evidence-reuse HOLDs before score-drift HOLDs and all PASS pairs last.
+The same option without `--format json` prints a human-readable queue.
+No private source paths, target addresses, client records or original evidence
+are printed. A PASS pair never clears an unrelated global HOLD; the command
+returns exit code 2 if the global status is HOLD. Legacy unsigned v1/v2
+queues are labelled untrusted and **always HOLD**, never HTML review authority.
+Malformed/extra-byte ZIPs fail closed before any queue is emitted. The queue
+is only for HUMAN local triage; it cannot authorize scans, consent, grants,
+or deployment.
