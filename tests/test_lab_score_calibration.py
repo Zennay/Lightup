@@ -288,6 +288,29 @@ class CalibrationTests(unittest.TestCase):
             self.assertIn("HOLD",err.getvalue())
             self.assertNotIn(base,err.getvalue())
 
+    def test_archive_comparison_rejects_reused_baseline_from_other_archive(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as base:
+            previous, current = Path(base)/"previous", Path(base)/"current"
+            self.assertTrue(cal.run_lab_score_calibration(previous)["passed"])
+            self.assertTrue(cal.run_lab_score_calibration(current)["passed"])
+            shutil.rmtree(current/"baseline")
+            shutil.copytree(previous/"baseline", current/"baseline")
+            candidate_comparison = cal.compare_score_runs(
+                current/"baseline", current/"candidate")
+            self.assertTrue(candidate_comparison["passed"])
+            (current/"report.json").write_bytes(cal._receipt_bytes(cal._receipt(
+                candidate_comparison,cal._source_hashes(current))))
+            self.assertTrue(cal.verify_saved_calibration(current)["passed"])
+            report=cal.compare_saved_calibrations(previous,current)
+            self.assertFalse(report["passed"])
+            self.assertFalse(report["comparison"]["independent_evaluations"])
+            self.assertTrue(report["comparison"]["reused_archived_source"])
+            self.assertTrue(all(
+                not item["distinct_evaluation"]
+                for item in report["comparison"]["capabilities"].values()))
+            self.assertNotIn(base,str(report))
+
     def test_archive_comparison_rejects_root_replacement_mid_read(self):
         with tempfile.TemporaryDirectory() as base:
             previous, current = Path(base)/"previous", Path(base)/"current"

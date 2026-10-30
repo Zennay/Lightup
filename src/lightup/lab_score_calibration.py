@@ -209,6 +209,28 @@ def compare_saved_calibrations(
     comparison = compare_score_runs(
         previous / "candidate", current / "candidate",
     )
+    # Verifying two root receipts does not guarantee the archives are
+    # independent: one can reuse the other's *baseline* while selecting a
+    # new candidate. Reject repeated original evidence anywhere across all
+    # four runs, without exposing the private source SHA-256 digests.
+    old_hashes = _source_hashes(previous)
+    current_hashes = _source_hashes(current)
+    previous_sources = {
+        digest for run in old_hashes.values() for digest in run.values()
+    }
+    current_sources = {
+        digest for run in current_hashes.values() for digest in run.values()
+    }
+    if previous_sources & current_sources:
+        comparison["passed"] = False
+        comparison["independent_evaluations"] = False
+        comparison["reused_archived_source"] = True
+        for filename in _SOURCE_FILES[1:]:
+            old_digests = {old_hashes[run][filename] for run in old_hashes}
+            new_digests = {current_hashes[run][filename] for run in current_hashes}
+            if old_digests & new_digests:
+                name = filename.removesuffix(".sqlite3")
+                comparison["capabilities"][name]["distinct_evaluation"] = False
     if identities != (_archived_root_identity(previous),
                       _archived_root_identity(current)):
         raise ValueError("saved archive substituted during comparison")

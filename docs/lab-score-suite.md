@@ -176,8 +176,11 @@ SHA-256 receipts, *before* comparing their two candidate observations.
 The output is a bounded text PASS/HOLD summary by default or private-safe
 JSON with `--format json`. No source paths, run IDs, evidence payloads,
 signatures, or private digests are emitted. Reused/copy-pasted evaluations
-are HOLD even with identical score metrics, and missing, corrupted, or
-replaced saved roots are refused. The archive roots are opened read-only
+are HOLD even with identical score metrics, including a copied *baseline*
+hidden inside an otherwise independently valid current archive. All eight
+source-file SHA-256 bindings from the previous archive are checked against
+all eight from the current archive, without returning private hashes.
+Missing, corrupted or replaced saved roots are also refused. The archive roots are opened read-only
 and checked for substitution during the comparison; no scorers, workers,
 model providers, network targets, approvals, or deployments are invoked.
 This only compares first-party fixed 127.0.0.1 lab calibration results.
