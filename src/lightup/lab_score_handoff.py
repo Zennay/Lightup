@@ -119,30 +119,65 @@ def save_portable_review(
         raise ValueError("portable review archive too large")
     directory = _private_output_directory(output_directory)
     dirfd = _private_dir_fd(directory)
-    made: tuple[int, int] | None = None
+    temporary = "." + _FILENAME + ".tmp"
+    published: tuple[int, int] | None = None
     try:
-        fd = os.open(_FILENAME, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+        # Do not make an incomplete ZIP observable under the final name.
+        # The temporary inode is private, exclusive, and fsynced first.
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
                      os.O_NOFOLLOW, 0o600, dir_fd=dirfd)
         try:
             with os.fdopen(fd, "wb") as handle:
                 handle.write(data)
                 handle.flush()
                 os.fsync(handle.fileno())
-            meta = os.stat(_FILENAME, dir_fd=dirfd, follow_symlinks=False)
-            made = (meta.st_dev, meta.st_ino)
+            source = os.stat(temporary, dir_fd=dirfd, follow_symlinks=False)
+            original_inode = source.st_dev, source.st_ino
             reverify_original_private_report()
-            with os.fdopen(os.open(_FILENAME, os.O_RDONLY | os.O_NOFOLLOW,
-                                   dir_fd=dirfd), "rb") as handle:
-                if handle.read(_MAX_ZIP_BYTES + 1) != data:
+            # Atomic, no-overwrite publication. No reader can observe a
+            # truncated or partially compressed archive at the final name.
+            os.link(temporary, _FILENAME, src_dir_fd=dirfd, dst_dir_fd=dirfd,
+                    follow_symlinks=False)
+            published = original_inode
+            os.unlink(temporary, dir_fd=dirfd)
+            temporary = ""
+            reverify_original_private_report()
+            readfd = os.open(_FILENAME, os.O_RDONLY | os.O_NOFOLLOW,
+                             dir_fd=dirfd)
+            try:
+                before = os.fstat(readfd)
+                actual = os.pread(readfd, _MAX_ZIP_BYTES + 1, 0)
+                after = os.fstat(readfd)
+                link = os.stat(_FILENAME, dir_fd=dirfd, follow_symlinks=False)
+                if (actual != data
+                        or (before.st_dev, before.st_ino) != published
+                        or (before.st_dev, before.st_ino, before.st_size,
+                            before.st_mtime_ns, before.st_ctime_ns) !=
+                           (after.st_dev, after.st_ino, after.st_size,
+                            after.st_mtime_ns, after.st_ctime_ns)
+                        or (link.st_dev, link.st_ino) != published):
                     raise ValueError("portable review changed during publication")
-            if os.listdir(dirfd) != [_FILENAME]:
+            finally:
+                os.close(readfd)
+            if set(os.listdir(dirfd)) != {_FILENAME}:
                 raise ValueError("unexpected portable review files")
             os.fsync(dirfd)
         except Exception:
-            meta = os.stat(_FILENAME, dir_fd=dirfd, follow_symlinks=False)
-            if made is not None and (meta.st_dev, meta.st_ino) == made:
-                os.unlink(_FILENAME, dir_fd=dirfd)
+            if published is not None:
+                try:
+                    entry = os.stat(_FILENAME, dir_fd=dirfd,
+                                    follow_symlinks=False)
+                    if (entry.st_dev, entry.st_ino) == published:
+                        os.unlink(_FILENAME, dir_fd=dirfd)
+                except FileNotFoundError:
+                    pass
             raise
+        finally:
+            if temporary:
+                try:
+                    os.unlink(temporary, dir_fd=dirfd)
+                except FileNotFoundError:
+                    pass
     finally:
         os.close(dirfd)
     return directory / _FILENAME
