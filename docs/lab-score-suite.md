@@ -267,14 +267,18 @@ The original archives are fully reverified before a new private destination
 directory is created. The output is `NEW_PRIVATE_REVIEW/history.html`
 inside a new owner-only 0700 directory; the atomically published HTML
 has mode 0600 and will never overwrite an existing report. After publishing,
-LightUp opens the saved file through its pinned private directory and compares
-the actual bytes and inode to the approved report; tampering at publication
-returns HOLD and removes the altered file instead of claiming success. Symlinked
+LightUp reopens both saved files through its pinned private directory and
+compares exact bytes and inodes to the verified source. Tampering at
+publication returns HOLD and removes the changed review. A second 0600
+`source_receipt.json` privately binds the HTML digest to SHA-256 digests of
+the exact original archived receipts. Neither private receipt hashes nor
+original source paths appear in HTML or stdout; this is not a digital
+signature. Symlinked
 ancestors and parent traversal are refused. Corrupted originals produce
 a source-safe HOLD and create no report. Valid but nonindependent original
 archives create a private HOLD review and exit 2; the report remains
 purely offline and contains no original evidence or live authorization.
-``--format html`` without this option continues to print on stdout
+`--format html` without this option continues to print on stdout
 for legacy uses.
 
 
@@ -284,8 +288,10 @@ Use the same original private archived calibration inputs and
 `--compare-history ARCHIVE1 ARCHIVE2 ... --format html
 --verify-html-output-dir PRIVATE_REVIEW_DIRECTORY`. The CLI rebuilds the
 safe HTML from freshly reverified original localhost evidence, opens the
-saved 0600 `history.html` read-only through private pinned directories
-and verifies **exact bytes**, expected mode and unchanged inode. A valid
+saved 0600 `history.html` and `source_receipt.json` read-only through
+private pinned directories, and verifies **exact bytes**, source binding,
+expected modes and unchanged inodes. Two unrelated sets of original archives
+with identical PASS/HOLD scores cannot verify each other's review. A valid
 stored PASS (or genuine stored HOLD) prints a path-free `VERIFIED`
 result, and returns the original comparison status (0 for PASS, 2 for
 HOLD). A modified saved report, symlink, extra private artifact or

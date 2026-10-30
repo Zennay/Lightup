@@ -21,6 +21,7 @@ from .lab_score_compare import (
 )
 from .lab_score_inspect import inspect_score_run
 from .lab_score_history_html import render_history_html
+from .lab_score_review_store import save_private_review, verify_private_review
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
@@ -404,102 +405,31 @@ def compare_saved_calibration_history(
     }
 
 
-def _save_history_html(directory: str | Path, html: str) -> None:
-    """Atomically publish a new standalone review in a new private directory.
+def _private_source_binding(roots: list[Path], html: str) -> dict[str, Any]:
+    """Bind a private review to exact *original* receipt contents.
 
-    Never overwrite an existing report; the caller has already verified the
-    original offline archives before even creating the review directory.
+    Archive source hashes are never emitted to HTML or standard output.
+    This is local evidence consistency, not independent authentication.
     """
-    root = _private_output_directory(directory)
-    root_fd = _private_dir_fd(root)
-    temp = ".history.html.tmp"
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
-    try:
-        fd = os.open(temp, flags, 0o600, dir_fd=root_fd)
+    fingerprints = []
+    for index, root in enumerate(roots, 1):
         try:
-            with os.fdopen(fd, "w", encoding="utf-8") as output:
-                output.write(html)
-                output.flush()
-                os.fsync(output.fileno())
-            # Hard linking a fully written temporary inode refuses to
-            # overwrite another writer's destination.
-            os.link(temp, "history.html", src_dir_fd=root_fd,
-                    dst_dir_fd=root_fd, follow_symlinks=False)
-            # The read-only artifact inspector rejects multiple hardlinks.
-            # Drop the staging name first; keep its inode identity so failed
-            # verification can only remove our own published destination.
-            source = os.stat(temp, dir_fd=root_fd, follow_symlinks=False)
-            os.unlink(temp, dir_fd=root_fd)
-            try:
-                # A successful link is not enough: the target may be
-                # substituted or altered before the tool reports success.
-                published_fd = _artifact_fd(root_fd, "history.html", 1024 * 1024)
-                try:
-                    before = os.fstat(published_fd)
-                    persisted = os.pread(published_fd, 1024 * 1024 + 1, 0)
-                    after = os.fstat(published_fd)
-                    link = os.stat("history.html", dir_fd=root_fd,
-                                   follow_symlinks=False)
-                    if (persisted != html.encode("utf-8")
-                            or (before.st_dev, before.st_ino) !=
-                               (source.st_dev, source.st_ino)
-                            or (before.st_dev, before.st_ino, before.st_size,
-                                before.st_mtime_ns, before.st_ctime_ns) !=
-                               (after.st_dev, after.st_ino, after.st_size,
-                                after.st_mtime_ns, after.st_ctime_ns)
-                            or (link.st_dev, link.st_ino) !=
-                               (after.st_dev, after.st_ino)):
-                        raise ValueError("private report changed at publication")
-                finally:
-                    os.close(published_fd)
-            except Exception:
-                # Remove only our own linked inode. Do not delete a path
-                # substituted by some other writer.
-                try:
-                    link = os.stat("history.html", dir_fd=root_fd,
-                                   follow_symlinks=False)
-                    if (source.st_dev, source.st_ino) == (link.st_dev, link.st_ino):
-                        os.unlink("history.html", dir_fd=root_fd)
-                except FileNotFoundError:
-                    pass
-                raise
-            os.fsync(root_fd)
-        finally:
-            try:
-                os.unlink(temp, dir_fd=root_fd)
-            except FileNotFoundError:
-                pass
-    finally:
-        os.close(root_fd)
-
-
-def _verify_saved_history_html(directory: str | Path, html: str) -> None:
-    """Read-only comparison of a saved private review against original archives."""
-    root_fd = _private_dir_fd(directory)
-    try:
-        if set(os.listdir(root_fd)) != {"history.html"}:
-            raise ValueError("unexpected private review artifact set")
-        fd = _artifact_fd(root_fd, "history.html", 1024 * 1024)
-        try:
-            before = os.fstat(fd)
-            expected = html.encode("utf-8")
-            actual = os.pread(fd, len(expected) + 1, 0)
-            after = os.fstat(fd)
-            name = os.stat("history.html", dir_fd=root_fd,
-                           follow_symlinks=False)
-            if (actual != expected
-                    or (before.st_dev, before.st_ino, before.st_size,
-                        before.st_mtime_ns, before.st_ctime_ns) !=
-                       (after.st_dev, after.st_ino, after.st_size,
-                        after.st_mtime_ns, after.st_ctime_ns)
-                    or (after.st_dev, after.st_ino) !=
-                       (name.st_dev, name.st_ino)
-                    or set(os.listdir(root_fd)) != {"history.html"}):
-                raise ValueError("stored HTML differs from original evidence")
-        finally:
-            os.close(fd)
-    finally:
-        os.close(root_fd)
+            before = _archived_root_identity(root)
+            if verify_saved_calibration(root)["passed"] is not True:
+                raise ValueError("original source verification refused")
+            if before != _archived_root_identity(root):
+                raise ValueError("source changed during private binding")
+            fingerprints.append(before[-1])
+        except Exception:
+            raise _HistoryArchiveError(index) from None
+    return {
+        "schema": "lightup.private-html-source-binding.v1",
+        "original_receipt_sha256": fingerprints,
+        "html_sha256": hashlib.sha256(html.encode("utf-8")).hexdigest(),
+        "authorization_granted": False,
+        "external_targets_contacted": False,
+        "deployment": False,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -533,7 +463,14 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("CSV/HTML export applies only to --compare-history")
     try:
         if args.compare_history is not None:
-            result = compare_saved_calibration_history(args.compare_history)
+            anchor = Path.cwd()
+            roots = []
+            for raw in args.compare_history:
+                path = Path(raw).expanduser()
+                if ".." in path.parts:
+                    raise ValueError("parent traversal rejected")
+                roots.append(path if path.is_absolute() else anchor / path)
+            result = compare_saved_calibration_history(roots)
         elif args.compare_calibrations is not None:
             result = compare_saved_calibrations(*args.compare_calibrations)
         elif args.verify_output_dir is not None:
@@ -562,9 +499,11 @@ def main(argv: list[str] | None = None) -> int:
         try:
             html = render_history_html(result)
             if args.html_output_dir is not None:
-                _save_history_html(args.html_output_dir, html)
+                source_binding = _private_source_binding(roots, html)
+                save_private_review(args.html_output_dir, html, source_binding)
             elif args.verify_html_output_dir is not None:
-                _verify_saved_history_html(args.verify_html_output_dir, html)
+                source_binding = _private_source_binding(roots, html)
+                verify_private_review(args.verify_html_output_dir, html, source_binding)
                 print("LightUp saved synthetic HTML: VERIFIED; original comparison "
                       + ("PASS" if result["passed"] else "HOLD"))
             else:

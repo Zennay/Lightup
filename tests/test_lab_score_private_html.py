@@ -49,6 +49,33 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
                               after.st_ctime_ns))
             self.assertNotIn(base, out)
 
+    def test_different_original_archives_cannot_reverify_same_score_report(self):
+        with tempfile.TemporaryDirectory() as base:
+            originals = [Path(base)/str(i) for i in range(4)]
+            for root in originals:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            dest = Path(base)/"source-bound-review"
+            self.assertEqual(self.invoke(originals[:2], dest)[0], 0)
+            code, out, err = self.verify(originals[2:], dest)
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("HTML review not verified", err)
+            self.assertNotIn(base, err)
+            self.assertEqual(stat.S_IMODE((dest/"source_receipt.json").stat().st_mode), 0o600)
+            self.assertIn("VERIFIED; original comparison PASS",
+                          self.verify(originals[:2], dest)[1])
+
+    def test_modified_private_source_binding_fails_reverification(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            dest = Path(base)/"bound-review"
+            self.assertEqual(self.invoke(roots, dest)[0], 0)
+            (dest/"source_receipt.json").write_bytes(b"invalid private binding")
+            code, out, err = self.verify(roots, dest)
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertNotIn(base, err)
+
     def test_tampered_saved_html_fails_reverification(self):
         with tempfile.TemporaryDirectory() as base:
             roots = self.archives(base)
@@ -90,7 +117,7 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
             self.assertTrue(content.startswith(b"<!doctype html>"))
             self.assertEqual(stat.S_IMODE(dest.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(report.stat().st_mode), 0o600)
-            self.assertEqual(set(os.listdir(dest)), {"history.html"})
+            self.assertEqual(set(os.listdir(dest)), {"history.html", "source_receipt.json"})
             code, out, err = self.invoke(roots, dest)
             self.assertEqual(code, 2)
             self.assertEqual(out, "")
