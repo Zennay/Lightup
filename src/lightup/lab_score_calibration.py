@@ -520,16 +520,21 @@ def main(argv: list[str] | None = None) -> int:
                         help="publish full eight-file HUMAN workroom, including offline triage CSV/HTML/Markdown")
     parser.add_argument("--comparison-output-dir", metavar="NEW_DIR",
                         help="new 0700 owner-private five-file HUMAN two-ZIP comparison package")
+    parser.add_argument("--export-comparison", action="store_true",
+                        help="after fully revalidating both original ZIPs and all saved HUMAN outputs, emit one canonical review view")
     parser.add_argument("--unpacked-review-dir", help="existing private review files")
     parser.add_argument("--unpack-output-dir",
                         help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
     if args.compare_portable_reviews is not None or args.verify_comparison_workroom is not None:
         if (args.format not in (("text",) if (args.comparison_output_dir is not None
-                                         or args.verify_comparison_workroom is not None)
+                                           and not args.export_comparison)
                                 else ("text", "json", "csv", "html"))
                 or (args.verify_comparison_workroom is not None
                     and args.comparison_output_dir is None)
+                or (args.export_comparison and
+                    (args.verify_comparison_workroom is None
+                     or args.comparison_output_dir is None))
                 or args.focus_pair is not None
                 or args.focus_archive_index is not None
                 or args.review_queue or args.include_triage
@@ -544,8 +549,13 @@ def main(argv: list[str] | None = None) -> int:
             if args.verify_comparison_workroom is not None:
                 comparison = verify_private_comparison(
                     *args.verify_comparison_workroom, args.comparison_output_dir)
-                output = ("LightUp HUMAN offline comparison: five saved files "
-                          "reverified; no remediation or authorization.\n")
+                if args.export_comparison:
+                    # Reconstruct canonical original-derived bytes, never reopen
+                    # a mutable saved output pathname after full verification.
+                    output = render_comparison(comparison, args.format)
+                else:
+                    output = ("LightUp HUMAN offline comparison: five saved files "
+                              "reverified; no remediation or authorization.\n")
             elif args.comparison_output_dir is not None:
                 comparison = publish_private_comparison(
                     *args.compare_portable_reviews, args.comparison_output_dir)
@@ -633,6 +643,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result["review_status"] == "PASS" else 2
     if args.comparison_output_dir is not None:
         parser.error("--comparison-output-dir requires a two-ZIP HUMAN compare/verify mode")
+    if args.export_comparison:
+        parser.error("--export-comparison requires saved HUMAN two-ZIP verification")
     if args.queue_workroom_dir is not None:
         parser.error("--queue-workroom-dir requires queue workroom mode")
     if args.include_triage:

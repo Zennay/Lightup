@@ -140,3 +140,45 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         self.assertEqual((code,out),(2,''))
         self.assertIn('not verified',err)
         self.assertFalse(dest.exists())
+
+    def test_verified_five_file_workroom_reexports_all_original_outputs(self):
+        """Source ZIPs -> private room -> four byte-exact recipient views."""
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        room=self.root/'immutable-private-four-views'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',room)
+        self.assertEqual((code,err),(2,''))
+        original={p.name:p.read_bytes() for p in room.iterdir()}
+        for fmt,name in (('text','comparison.txt'),('json','comparison.json'),
+                         ('csv','comparison.csv'),('html','comparison.html')):
+            with self.subTest(fmt=fmt):
+                code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                                 '--comparison-output-dir',room,
+                                 '--export-comparison','--format',fmt)
+                self.assertEqual((code,err),(2,''))
+                self.assertEqual(out.encode('utf-8'),original[name])
+                self.assertNotIn(str(self.root),out)
+                if fmt=='html':
+                    admit_inert_html(out.encode('utf-8'))
+                    self.assertIn('GLOBAL STATUS HOLD',out)
+                if fmt=='json':
+                    receipt=json.loads(out)
+                    self.assertEqual(receipt['review_status'],'HOLD')
+                    self.assertFalse(receipt['authorization_granted'])
+        self.assertEqual(original,{p.name:p.read_bytes() for p in room.iterdir()})
+        (room/'comparison.txt').write_text('changed non-requested saved member')
+        for fmt in ('text','json','csv','html'):
+            with self.subTest(tamper=fmt):
+                code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                                 '--comparison-output-dir',room,
+                                 '--export-comparison','--format',fmt)
+                self.assertEqual((code,out),(2,''))
+                self.assertIn('not verified',err)
+
+    def test_export_requires_original_source_and_saved_private_room(self):
+        with self.assertRaises(SystemExit):
+            run('--compare-portable-reviews',self.hold,self.passing,
+                '--export-comparison','--format','html')
+        with self.assertRaises(SystemExit):
+            run('--verify-comparison-workroom',self.hold,self.passing,
+                '--comparison-output-dir',self.root/'missing','--format','html')

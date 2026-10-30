@@ -415,3 +415,22 @@ original ZIPs are rechecked. Missing or modified originals/outputs result
 in HOLD with no success output. Both commands remain HUMAN-only, with global
 original HOLD immutable and no source identity, consent, authorization,
 external target or deployment authority.
+
+### Byte-identical read-only recipient exports from a saved two-ZIP room
+
+After the five-file `--compare-portable-reviews ... --comparison-output-dir`
+publication above, a HUMAN recipient can request exactly one original-derived
+output after fully verifying **all five** saved files and both canonical
+source-free synthetic ZIPs:
+
+`lightup-lab-score-calibrate --verify-comparison-workroom BASELINE_PRIVATE.zip
+CANDIDATE_PRIVATE.zip --comparison-output-dir EXISTING_PRIVATE_DIR
+--export-comparison --format json`
+
+`text`, `csv` and inert `html` are also supported. A recipient export
+recomputes canonical bytes only after all saved members pass twice; the CLI
+never follows a mutable saved output path when printing. A changed ZIP,
+unrequested saved artifact, added file or missing private room fails closed
+with **zero output**. The original 28-pair baseline HOLD is never cleared
+by the candidate's local PASS, and no original identities, consent, research
+authority, target grants or deployment are inferred.
