@@ -30,6 +30,23 @@ from lightup.lab_score_contract import (
 )
 
 
+class _LabComponentFailure(RuntimeError):
+    """Fixed, privacy-safe failure stage for operator triage."""
+
+    def __init__(self, component: str):
+        self.component = component
+        super().__init__("Fixed M1 scorer contract failed")
+
+
+def _score_component(component, runner, path, label, valid, calls, checks):
+    try:
+        result = runner(path)
+        metrics = _require_first_party_score(result, label, valid, calls, checks)
+        return result, metrics
+    except Exception:
+        raise _LabComponentFailure(component) from None
+
+
 def _run_canary() -> int:
     denied = subprocess.run(
         [sys.executable, "-m", "lightup.cli", "scope-check", "8.8.8.8"],
@@ -150,18 +167,18 @@ def _run_canary() -> int:
             raise RuntimeError("Offline safety gate denied: non-loopback shell bind")
 
         with fixed_loopback_socket_boundary():
-            service_score = run_lab_service_inventory_score(
-                Path(directory) / "service-labeval.db"
+            service_score, service_metrics = _score_component(
+                "service", run_lab_service_inventory_score,
+                Path(directory) / "service-labeval.db", "service", 1, 2, SERVICE_CHECKS
             )
-            service_metrics = _require_first_party_score(service_score, "service", 1, 2, SERVICE_CHECKS)
-
-            tls_score = run_lab_tls_baseline_score(
-                Path(directory) / "tls-labeval.db"
+            tls_score, tls_metrics = _score_component(
+                "tls", run_lab_tls_baseline_score,
+                Path(directory) / "tls-labeval.db", "TLS", 1, 2, TLS_CHECKS
             )
-            tls_metrics = _require_first_party_score(tls_score, "TLS", 1, 2, TLS_CHECKS)
-
-            score = run_lab_web_baseline_score(Path(directory) / "web-labeval.db")
-            score_metrics = _require_first_party_score(score, "HTTP", 5, 4, HTTP_CHECKS)
+            score, score_metrics = _score_component(
+                "http", run_lab_web_baseline_score,
+                Path(directory) / "web-labeval.db", "HTTP", 5, 4, HTTP_CHECKS
+            )
 
     if not (not Path(directory).exists()):
         raise RuntimeError("Offline safety gate denied: temporary-state cleanup")
@@ -206,7 +223,9 @@ def _run_canary() -> int:
 def _render_text(result: dict) -> str:
     """Operator-facing output with no private artifacts or authority claims."""
     if result["status"] != "PASS":
-        return "LightUp offline lab safety gate: HOLD\nNo external target or deployment authorized"
+        return (f"LightUp offline lab safety gate: HOLD\n"
+                f"Failure stage: {result['failure_stage']}\n"
+                "No external target or deployment authorized")
     return "\n".join((
         "LightUp offline lab safety gate: PASS",
         "Mode: FIXED LOOPBACK LAB; external execution: DISABLED",
@@ -233,11 +252,14 @@ def main(argv: list[str] | None = None) -> int:
     exit_code = 0
     try:
         result = _run_canary()
-    except Exception:
+    except Exception as error:
         exit_code = 2
         result = {
             "status": "HOLD", "passed": False, "lab_only": True,
             "external_target_authorized": False, "deployment_authorized": False,
+            "failure_stage": (
+                error.component if isinstance(error, _LabComponentFailure) else "setup"
+            ),
         }
     print(_render_text(result) if args.format == "text" else json.dumps(result, sort_keys=True))
     return exit_code

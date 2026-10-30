@@ -176,3 +176,13 @@ with zero evidence, duplicate evidence and unknown engine names now fail
 closed. These checks validate the source-reported evidence envelope; they do
 not establish independent cryptographic provenance of persisted evidence or
 grant permission to run outside fixed loopback.
+
+### Privacy-safe HOLD diagnostics
+
+A failed combined canary now includes a fixed `failure_stage` of `setup`,
+`service`, `tls`, or `http` in its machine-readable HOLD receipt.
+The optional human-readable report likewise displays only the stage name.
+A failed scorer never exposes an exception message, private evidence path,
+tenant identifier, target, or run ID. PASS output remains backward
+compatible. The stage is for offline operator troubleshooting only and
+never authorizes a skipped check or a retry against an external target.

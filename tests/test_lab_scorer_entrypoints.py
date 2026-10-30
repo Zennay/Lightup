@@ -66,7 +66,8 @@ class LabScorerEntrypointTests(unittest.TestCase):
         self.assertEqual(process.returncode, 2)
         self.assertEqual(json.loads(process.stdout), {
             "status": "HOLD", "passed": False, "lab_only": True,
-            "external_target_authorized": False, "deployment_authorized": False,
+             "external_target_authorized": False, "deployment_authorized": False,
+            "failure_stage": "service",
         })
         self.assertEqual(process.stderr, "")
 
@@ -76,6 +77,7 @@ class LabScorerEntrypointTests(unittest.TestCase):
                 result = lab_canary.main([])
         self.assertEqual(result, 2)
         self.assertEqual(json.loads(output.getvalue())["status"], "HOLD")
+        self.assertEqual(json.loads(output.getvalue())["failure_stage"], "setup")
         self.assertNotIn("secret", output.getvalue())
 
     def test_failure_receipt_never_echoes_private_exception_content(self) -> None:
@@ -86,9 +88,28 @@ class LabScorerEntrypointTests(unittest.TestCase):
         self.assertEqual(result, 2)
         self.assertEqual(json.loads(out.getvalue()), {
             "status": "HOLD", "passed": False, "lab_only": True,
-            "external_target_authorized": False, "deployment_authorized": False,
+             "external_target_authorized": False, "deployment_authorized": False,
+            "failure_stage": "service",
         })
         self.assertNotIn("sensitive", out.getvalue())
+
+    def test_failure_stage_is_fixed_and_privacy_safe_for_each_scorer(self) -> None:
+        for path, stage in (
+            ("lightup.lab_canary.run_lab_service_inventory_score", "service"),
+            ("lightup.lab_canary.run_lab_tls_baseline_score", "tls"),
+            ("lightup.lab_canary.run_lab_web_baseline_score", "http"),
+        ):
+            with self.subTest(stage=stage):
+                with patch(path, side_effect=RuntimeError("PRIVATE /tmp/sensitive-token")):
+                    with redirect_stdout(io.StringIO()) as out:
+                        code = lab_canary.main(["--format", "json"])
+                self.assertEqual(code, 2)
+                receipt = json.loads(out.getvalue())
+                self.assertEqual(receipt["failure_stage"], stage)
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertFalse(receipt["external_target_authorized"])
+                self.assertFalse(receipt["deployment_authorized"])
+                self.assertNotIn("PRIVATE", out.getvalue())
 
     def test_local_operator_session_lifecycle_is_checked_end_to_end(self) -> None:
         with redirect_stdout(io.StringIO()) as receipt:
@@ -154,6 +175,7 @@ class LabScorerEntrypointTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(output.getvalue().strip(), (
             "LightUp offline lab safety gate: HOLD\n"
+            "Failure stage: service\n"
             "No external target or deployment authorized"
         ))
 
