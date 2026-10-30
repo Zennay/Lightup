@@ -14,6 +14,8 @@ def render_action_brief(data: dict, fmt: str) -> str:
     if fmt not in ("actions-brief-markdown", "actions-brief-html"):
         raise ValueError("invalid HUMAN brief format")
     rows = data["actions"]
+    if not isinstance(rows, list):
+        raise ValueError("untrusted source-bound action inventory")
     if (data["schema"] != "lightup.lab-score-human-two-transport-actions.v1"
             or data["review_status"] not in ("PASS", "HOLD")
             or data["human_review_only"] is not True
@@ -23,7 +25,21 @@ def render_action_brief(data: dict, fmt: str) -> str:
                 "original_source_authenticated", "same_originals_proven",
                 "authorization_granted", "remediation_verified", "deployment"))):
         raise ValueError("untrusted original HUMAN actions")
+    # Do not project unchecked identifiers or untrusted duplicate pair actions
+    # into a reviewer-facing briefing. An unsigned digest is a local consistency
+    # receipt, never original-source authentication or an authorization.
+    receipts = data.get("unsigned_transport_sha256")
+    if (not isinstance(rows, list)
+            or type(data["hold_action_rows"]) is not int
+            or not isinstance(receipts, dict)
+            or set(receipts) != {"baseline", "candidate"}
+            or any(type(value) is not str or len(value) != 64
+                   or any(ch not in "0123456789abcdef" for ch in value)
+                   for value in receipts.values())):
+        raise ValueError("untrusted anonymous original-source receipts")
     per_source = {"baseline": [], "candidate": []}
+    seen = set()
+    prior_transport = "baseline"
     for item in rows[:-1]:
         origin, reason = item["transport"], item["reason"]
         p, c = item["anonymous_previous"], item["anonymous_current"]
@@ -37,7 +53,14 @@ def render_action_brief(data: dict, fmt: str) -> str:
                 or item["authorization_granted"] is not False
                 or item["remediation_verified"] is not False):
             raise ValueError("untrusted source-bound HOLD row")
+        key = (origin, p, c, reason)
+        if (key in seen or (prior_transport == "candidate" and origin == "baseline")):
+            raise ValueError("duplicated or interleaved original HOLD action")
+        seen.add(key)
+        prior_transport = origin
         per_source[origin].append((f"{p}-{c}", _EXPLAIN[reason]))
+    if data["review_status"] == "PASS" and rows[:-1]:
+        raise ValueError("local PASS cannot hide original HOLD pair actions")
     gate = rows[-1]
     if (gate["transport"] != "both_independent_origins"
             or gate["reason"] != "original_source_and_identity_unverified"

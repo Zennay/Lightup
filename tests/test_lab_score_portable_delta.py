@@ -268,6 +268,43 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     render_action_brief(changed,fmt)
 
+    def test_original_human_brief_refuses_forged_reordered_or_duplicate_reviewer_actions(self):
+        from copy import deepcopy
+        from lightup.lab_score_action_brief import render_action_brief
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_review_actions import build_review_actions
+        canonical=build_review_actions(
+            compare_portable_review_transports(str(self.hold),str(self.passing)),
+            str(self.hold),str(self.passing))
+        forged=[]
+        changed=deepcopy(canonical)
+        changed['actions'].insert(1,deepcopy(changed['actions'][0]))
+        changed['hold_action_rows']+=1
+        forged.append(('duplicate HOLD',changed))
+        changed=deepcopy(canonical)
+        changed['review_status']='PASS'
+        forged.append(('false local PASS with original HOLD',changed))
+        changed=deepcopy(canonical)
+        changed['unsigned_transport_sha256']['candidate']='not-an-original-receipt'
+        forged.append(('forged source fingerprint',changed))
+        changed=deepcopy(canonical)
+        changed['unsigned_transport_sha256']['baseline']=True
+        forged.append(('type-confused fingerprint',changed))
+        changed=deepcopy(canonical)
+        changed['hold_action_rows']=True
+        forged.append(('type-confused HOLD count',changed))
+        changed=deepcopy(canonical)
+        changed['actions'].insert(0,dict(changed['actions'][0],
+                                        transport='candidate'))
+        changed['hold_action_rows']+=1
+        forged.append(('interleaved baseline/candidate ordinal',changed))
+        for name,data in forged:
+            for fmt in ('actions-brief-markdown','actions-brief-html'):
+                with self.subTest(name=name,fmt=fmt),self.assertRaises(ValueError):
+                    render_action_brief(data,fmt)
+        for fmt in ('actions-brief-markdown','actions-brief-html'):
+            self.assertIn('NOT_VERIFIED',render_action_brief(canonical,fmt))
+
     def test_atomic_ten_file_original_bound_human_brief_room(self):
         from hashlib import sha256
         room=self.root/'full-private-ten-view-room'
