@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from io import StringIO
 import hashlib
 import json
 import os
@@ -468,13 +469,13 @@ def main(argv: list[str] | None = None) -> int:
                       help="compare two fully verified private saved calibrations offline")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
-    parser.add_argument("--format", choices=("json", "text", "csv", "html", "review-json", "review-markdown"),
+    parser.add_argument("--format", choices=("json", "text", "csv", "html", "review-json", "review-markdown", "review-csv"),
                         default="text")
     parser.add_argument("--html-output-dir",
                         help="new exclusive 0700 directory for private 0600 history.html")
     parser.add_argument("--verify-html-output-dir",
                         help="reverify existing private HTML, receipt and JSON against originals; "
-                             "allows source-free review-json and review-markdown output")
+                             "allows source-free review-json, review-markdown and review-csv output")
     args = parser.parse_args(argv)
     if args.html_output_dir is not None and args.verify_html_output_dir is not None:
         parser.error("create and verify must be separate operations")
@@ -482,11 +483,11 @@ def main(argv: list[str] | None = None) -> int:
             args.format != "html" or args.compare_history is None):
         parser.error("saving a private review requires --compare-history and --format html")
     if args.verify_html_output_dir is not None and (
-            args.format not in ("html", "review-json", "review-markdown")
+            args.format not in ("html", "review-json", "review-markdown", "review-csv")
             or args.compare_history is None):
         parser.error("verifying a private review requires --compare-history and "
-                     "--format html, review-json or review-markdown")
-    if args.format in ("csv", "html", "review-json", "review-markdown") and args.compare_history is None:
+                     "--format html, review-json, review-markdown or review-csv")
+    if args.format in ("csv", "html", "review-json", "review-markdown", "review-csv") and args.compare_history is None:
         parser.error("CSV/HTML/review export applies only to --compare-history")
     try:
         if args.compare_history is not None:
@@ -509,7 +510,7 @@ def main(argv: list[str] | None = None) -> int:
         # may be disclosed. Never echo filesystem paths or raw exceptions.
         index = (exc.archive_index if args.compare_history is not None
                  and isinstance(exc, _HistoryArchiveError) else None)
-        if args.format in ("text", "csv", "html", "review-markdown"):
+        if args.format in ("text", "csv", "html", "review-markdown", "review-csv"):
             if index is None:
                 message = "LightUp synthetic calibration: HOLD; saved evidence not verified."
             else:
@@ -527,7 +528,7 @@ def main(argv: list[str] | None = None) -> int:
     # re-running a score comparison must never certify a tampered old bundle.
     # Do not emit even an opening line on stdout until all checks succeed.
     if args.verify_html_output_dir is not None and args.format in (
-            "review-json", "review-markdown"):
+            "review-json", "review-markdown", "review-csv"):
         try:
             html = render_history_html(result)
             summary = build_history_review_summary(result)
@@ -548,7 +549,25 @@ def main(argv: list[str] | None = None) -> int:
                 print("LightUp synthetic calibration: HOLD; saved review not verified.",
                       file=sys.stderr)
             return 2
-    if args.format == "review-markdown":
+    if args.format == "review-csv":
+        try:
+            summary = build_history_review_summary(result)
+            output = StringIO()
+            writer = csv.writer(output, lineterminator="\n")
+            writer.writerow(("previous_index", "current_index", "status",
+                             "independent_evaluations", "score_stable"))
+            for pair in summary["pairs"]:
+                writer.writerow((
+                    pair["previous_index"], pair["current_index"],
+                    "PASS" if pair["passed"] else "HOLD",
+                    pair["independent_evaluations"], pair["score_stable"],
+                ))
+            print(output.getvalue(), end="")
+        except Exception:
+            print("LightUp synthetic calibration: HOLD; review CSV not verified.",
+                  file=sys.stderr)
+            return 2
+    elif args.format == "review-markdown":
         try:
             brief = render_history_markdown(result)
             print(brief, end="")

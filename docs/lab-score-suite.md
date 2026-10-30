@@ -312,7 +312,7 @@ fixed scorer hotspots and every pairwise status. Genuine HOLD is reviewable
 with exit 2; corrupt originals yield no partial output, just a source-free
 refusal on stderr. To export only after independently re-verifying the original private
 three-file review bundle, add `--verify-html-output-dir PRIVATE_REVIEW_DIR`
-to either `--format review-markdown` or `--format review-json`.
+to `--format review-markdown`, `--format review-json` or `--format review-csv`.
 This verifies the stored HTML, JSON summary, source-bound receipt and every
 original private archive before emitting any stdout. A tampered report or
 altered archive yields a source-free HOLD/exit 2 and no partial export.
@@ -361,3 +361,7 @@ path-free HOLD. This prevents a falsely verified PASS caused by changing
 source evidence between the initial comparison and final report write.
 The same no-overwrite, exact-byte and original-source revalidation applies
 to the machine-readable summary: deleting or modifying it causes generic HOLD.
+
+### Source-free CSV for lab handoff
+
+`--compare-history ARCHIVE1 ARCHIVE2 [ARCHIVE3 ...] --format review-csv` prints only anonymous archive ordinals, PASS/HOLD, original-evidence-independence and score-stability booleans. It deliberately omits original metric scores, hashes, source identities and paths. Add `--verify-html-output-dir PRIVATE_REVIEW_DIR` to require a valid source-bound HTML/JSON/receipt package before any CSV output. Tamper yields HOLD with no partial output; no external access or authorization.

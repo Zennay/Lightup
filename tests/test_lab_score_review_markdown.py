@@ -101,3 +101,43 @@ class PersistedReviewExportTests(unittest.TestCase):
                 self.assertEqual((code, out), (2, ""))
                 self.assertTrue(err)
                 self.assertNotIn(base, err)
+
+    def test_saved_source_free_csv_handoff_and_tamper_hold(self):
+        import csv
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(2)]
+            for root in roots:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            dest = Path(base)/"saved-private"
+            self.assertEqual(self.call(roots, "html", dest, False), (0, "", ""))
+            original = {p.name:p.read_bytes() for p in dest.iterdir()}
+            status, output, err = self.call(roots, "review-csv", dest)
+            self.assertEqual((status, err), (0, ""))
+            records = list(csv.DictReader(io.StringIO(output)))
+            self.assertEqual(records, [{
+                "previous_index": "1", "current_index": "2", "status": "PASS",
+                "independent_evaluations": "True", "score_stable": "True"
+            }])
+            self.assertEqual(original, {p.name:p.read_bytes() for p in dest.iterdir()})
+            for forbidden in (base, "sha256", "receipt", "candidate_value", "http://"):
+                self.assertNotIn(forbidden, output)
+            (dest/"source_receipt.json").write_bytes(b"altered source binding")
+            status, output, err = self.call(roots, "review-csv", dest)
+            self.assertEqual((status, output), (2, ""))
+            self.assertIn("HOLD", err)
+            self.assertNotIn(base, err)
+
+    def test_csv_nonadjacent_replay_returns_useful_hold_without_source(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(3)]
+            for root in roots[:2]:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            shutil.copytree(roots[0], roots[2])
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                status = cal.main(["--compare-history", *map(str, roots),
+                                   "--format", "review-csv"])
+            self.assertEqual((status, err.getvalue()), (2, ""))
+            self.assertIn("1,3,HOLD,False,True", out.getvalue())
+            self.assertNotIn(base, out.getvalue())
