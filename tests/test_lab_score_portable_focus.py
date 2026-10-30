@@ -207,8 +207,37 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertFalse(out)
         self.assertIn("not verified", err)
 
+    def test_queue_workroom_rechecks_original_after_reading_files(self):
+        from unittest.mock import patch
+        from lightup import lab_score_queue_workroom as workroom
+        source_dir = self.root / "queue-race-source"
+        source_dir.mkdir(mode=0o700)
+        original = source_dir / self.archive.name
+        original.write_bytes(self.archive.read_bytes())
+        original.chmod(0o600)
+        room = self.root / "queue-race-output"
+        status, output, error = invoke("--publish-queue-workroom", original,
+                                       "--queue-workroom-dir", room)
+        self.assertEqual((status, error), (2, ""))
+        self.assertIn("FILES VERIFIED", output)
+        inspect_file = workroom._check_file
+        changed = False
+        def source_change(fd, name, expected):
+            nonlocal changed
+            if not changed:
+                changed = True
+                with original.open("ab") as writer:
+                    writer.write(b"appended-private-data")
+            return inspect_file(fd, name, expected)
+        with patch.object(workroom, "_check_file", side_effect=source_change):
+            with self.assertRaises(ValueError):
+                workroom.verify_queue_workroom(original, room)
+        self.assertTrue(changed)
+
     def test_queue_workroom_corrupt_zip_creates_no_private_output(self):
-        evil = self.root / "private-queue-bad.zip"
+        evil_dir = self.root / "private-queue-corrupt-source"
+        evil_dir.mkdir(mode=0o700)
+        evil = evil_dir / self.archive.name
         evil.write_bytes(self.archive.read_bytes()+b"extra-false-source")
         evil.chmod(0o600)
         output = self.root / "private-queue-bad-output"
@@ -287,6 +316,11 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertFalse(receipt["history_content_validated"])
         self.assertEqual(receipt["review_status"], "HOLD")
         self.assertNotIn(str(self.root), out)
+        legacy_queue_dir = self.root / "legacy-queue-workroom"
+        code, out, err = invoke("--publish-queue-workroom", legacy_zip,
+                                "--queue-workroom-dir", legacy_queue_dir)
+        self.assertEqual((code, out), (2, ""))
+        self.assertFalse(legacy_queue_dir.exists())
         browse = self.root / "legacy-browser"
         code, out, err = invoke("--unpack-portable-review", legacy_zip,
                                 "--unpack-output-dir", browse)

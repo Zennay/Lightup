@@ -84,6 +84,13 @@ def verify_queue_workroom(archive: str | Path, directory: str | Path) -> dict[st
             raise ValueError('offline queue inventory changed')
     finally:
         os.close(fd)
+    # The pinned source ZIP was admitted before looking at output files.
+    # An owner-local writer could replace the source while that inspection
+    # runs. Re-admit it afterwards and refuse any changed source transport.
+    final, final_expected = _payloads(archive)
+    if (final['portable_transport_sha256'] != result['portable_transport_sha256']
+            or final_expected != expected):
+        raise ValueError('original ZIP changed during recipient inspection')
     return result
 
 
