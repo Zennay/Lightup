@@ -92,11 +92,13 @@ def _run_canary() -> int:
     denied = subprocess.run(
         [sys.executable, "-m", "lightup.cli", "scope-check", "8.8.8.8"],
         capture_output=True, text=True, check=False,
+        stdin=subprocess.DEVNULL, timeout=10,
     )
     _require_public_target_refusal(denied)
     plan = subprocess.run(
         [sys.executable, "-m", "lightup.cli", "plan", "127.0.0.1"],
         capture_output=True, text=True, check=True,
+        stdin=subprocess.DEVNULL, timeout=10,
     )
     _require_loopback_plan_disabled(plan)
 
@@ -222,6 +224,9 @@ def _run_canary() -> int:
     return {
         "status": "PASS", "passed": True,
         "public_target_denied": True, "execution_enabled": False,
+        "scope_refusal_contract_verified": True,
+        "plan_registry_contract_verified": True,
+        "scorer_evidence_contract_verified": True,
         "authentication_required": True, "activation_locked": True,
         "forged_session_denied": True, "csrf_guard_enforced": True,
         "session_revocation_verified": True,
@@ -268,6 +273,8 @@ def _render_text(result: dict) -> str:
         "Mode: FIXED LOOPBACK LAB; external execution: DISABLED",
         "Scorer sockets: fixed IPv4 loopback only (in-process guard)",
         "Authentication, CSRF and session revocation: PASS",
+        "Scope refusal and source-defined non-executing plan: PASS",
+        "First-party scorer evidence and engine contracts: PASS",
         "Client isolation, operator roles and origin boundaries: PASS",
         f"Service scorer: PASS (synthetic valid findings: {result['service_inventory_valid_findings']})",
         f"TLS scorer: PASS (synthetic valid findings: {result['tls_baseline_valid_findings']})",

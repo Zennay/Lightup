@@ -205,3 +205,14 @@ registration order. A synthetic injected capability, a missing registered
 capability, or reordered list was previously incorrectly accepted by the
 offline canary; all now produce HOLD. The plan remains non-executing even
 when its complete registry list is valid.
+
+### Bounded local policy subprocesses and visible source contracts
+
+The fixed `scope-check` and `plan` child CLI calls now use closed stdin and
+a 10-second upper time bound. A stuck child returns a generic setup HOLD
+without exposing the underlying process path or exception. On PASS the JSON
+receipt explicitly reports `scope_refusal_contract_verified`,
+`plan_registry_contract_verified` and
+`scorer_evidence_contract_verified`, with the same checks in the operator
+text summary. These are offline source-integrity observations only; the
+receipt still says no external-target or deployment authorization.

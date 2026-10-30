@@ -188,6 +188,32 @@ class LabScorerEntrypointTests(unittest.TestCase):
         self.assertNotIn("PRIVATE-target", error.getvalue())
         scorer.assert_not_called()
 
+    def test_scope_child_timeout_is_a_private_safe_setup_hold(self):
+        expired = subprocess.TimeoutExpired("private-child-command", 10)
+        with patch("lightup.lab_canary.subprocess.run", side_effect=expired) as run:
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main(["--format", "json"])
+        self.assertEqual(code, 2)
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["failure_stage"], "setup")
+        self.assertFalse(receipt["external_target_authorized"])
+        self.assertNotIn("private-child-command", output.getvalue())
+        self.assertEqual(run.call_args.kwargs["timeout"], 10)
+        self.assertEqual(run.call_args.kwargs["stdin"], subprocess.DEVNULL)
+
+    def test_source_verified_flags_in_real_local_calibration(self):
+        with redirect_stdout(io.StringIO()) as output:
+            result = lab_canary.main(["--format", "json"])
+        self.assertEqual(result, 0)
+        receipt = json.loads(output.getvalue())
+        for key in ("scope_refusal_contract_verified",
+                    "plan_registry_contract_verified",
+                    "scorer_evidence_contract_verified"):
+            self.assertIs(receipt[key], True)
+        self.assertIs(receipt["external_target_authorized"], False)
+        self.assertIs(receipt["deployment_authorized"], False)
+
     def test_public_denial_requires_exact_target_reason_and_typed_refusal(self):
         from copy import deepcopy
         good = {"allowed": False, "host": "8.8.8.8", "reason": "out_of_scope"}
