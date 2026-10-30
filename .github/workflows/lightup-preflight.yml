@@ -112,12 +112,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: Combined unit suite and real producer integration
+      # Required exact-head preflight has already compiled and run the
+      # complete unit suite for *both* Python matrix versions. Do not repeat
+      # that expensive suite in downstream producer jobs on the same VPS.
+      # The independent real-producer integration suite is still mandatory.
+      - name: Real producer integration after complete unit preflight
         env:
           PYTHONPATH: src:tests
         run: |
           python -m compileall -q src tests
-          python -m unittest discover -s tests -v
           python -m unittest discover -s tests/integration -v
       - name: State verification boundary
         run: echo "Permanent VPS offline diagnostics only. Exact-head canonical CI and independent review remain mandatory."
