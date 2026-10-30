@@ -6,6 +6,7 @@ import json
 from math import isqrt
 from typing import Any
 from .lab_score_handoff_verify import verify_portable_review
+from .lab_score_comparison_admission import admit_human_comparison
 from .lab_score_portable_html_safety import admit_inert_html
 
 _SCHEMA = 'lightup.lab-score-human-two-transport-comparison.v1'
@@ -64,8 +65,7 @@ def compare_portable_review_transports(first: str, second: str) -> dict[str, Any
 
 def render_comparison(result: dict[str, Any], fmt: str) -> str:
     """Project a canonical two-transport comparison for an offline HUMAN."""
-    if result.get('schema') != _SCHEMA:
-        raise ValueError('untrusted HUMAN comparison')
+    admit_human_comparison(result)
     a, b = result['baseline'], result['candidate']
     delta = result['count_change_candidate_minus_baseline']
     if fmt == 'json':

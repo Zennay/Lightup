@@ -305,6 +305,44 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         for fmt in ('actions-brief-markdown','actions-brief-html'):
             self.assertIn('NOT_VERIFIED',render_action_brief(canonical,fmt))
 
+    def test_comparison_exports_reject_forged_counts_and_html(self):
+        from copy import deepcopy
+        from lightup.lab_score_review_delta import (
+            compare_portable_review_transports, render_comparison)
+        from lightup.lab_score_review_actions import build_review_actions
+        original = compare_portable_review_transports(
+            str(self.hold), str(self.passing))
+        for fmt in ('json', 'text', 'csv', 'html'):
+            self.assertIn('HOLD', render_comparison(original, fmt))
+        cases = []
+        for key, value in (
+            ('review_status', 'PASS'), ('baseline_hold_preserved', False),
+            ('authorization_granted', True), ('hidden_original_path', '/secret'),
+        ):
+            modified = deepcopy(original); modified[key] = value; cases.append(modified)
+        for source, key, value in (
+            ('baseline', 'unsigned_transport_sha256', 'not-a-digest'),
+            ('baseline', 'global_status', '<svg onload=alert(1)>'),
+            ('baseline', 'original_archives', 8),
+            ('baseline', 'hold_pairs', True),
+            ('candidate', 'pass_pairs', 100),
+            ('candidate', 'injected_field', 'private provenance'),
+        ):
+            modified = deepcopy(original); modified[source][key] = value
+            cases.append(modified)
+        modified = deepcopy(original)
+        modified['count_change_candidate_minus_baseline']['hold_pairs'] = 0
+        cases.append(modified)
+        modified = deepcopy(original)
+        modified['count_change_candidate_minus_baseline']['new_private_key'] = 'secret'
+        cases.append(modified)
+        for idx, item in enumerate(cases):
+            for fmt in ('json', 'text', 'csv', 'html'):
+                with self.subTest(idx=idx, fmt=fmt), self.assertRaises(ValueError):
+                    render_comparison(item, fmt)
+            with self.subTest(idx=idx, fmt='actions'), self.assertRaises(ValueError):
+                build_review_actions(item, str(self.hold), str(self.passing))
+
     def test_action_exports_admit_only_ordered_closed_synthetic_inventory(self):
         from copy import deepcopy
         from lightup.lab_score_review_delta import compare_portable_review_transports

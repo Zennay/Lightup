@@ -10,14 +10,14 @@ import json
 from typing import Any
 
 from .lab_score_action_admission import admit_human_actions
+from .lab_score_comparison_admission import admit_human_comparison
 from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_portable_html_safety import admit_inert_html
 
 
 def build_review_actions(comparison: dict[str, Any], baseline: str,
                          candidate: str) -> dict[str, Any]:
-    if comparison.get('schema') != 'lightup.lab-score-human-two-transport-comparison.v1':
-        raise ValueError('not a verified HUMAN two-ZIP comparison')
+    admit_human_comparison(comparison)
     items = []
     for label, path in (('baseline', baseline), ('candidate', candidate)):
         checked = verify_portable_review(path, review_queue=True)
