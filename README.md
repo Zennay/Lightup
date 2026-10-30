@@ -88,13 +88,23 @@ python lab/vuln_fixture.py --profile exposed --port 18081 &
 PYTHONPATH=src python -m lightup.cli lab-assess http://127.0.0.1:18081/ \
   --profile exposed
 PYTHONPATH=src python -m lightup.cli lab-evaluations --db lightup-lab.db --limit 20
+PYTHONPATH=src python -m lightup.lab_service_score --db /tmp/lightup-service-score.db
 PYTHONPATH=src python -m lightup.lab_tls_score --db /tmp/lightup-tls-score.db
 PYTHONPATH=src python -m lightup.lab_web_score --db /tmp/lightup-web-score.db
 ```
 
 The TLS scorer evaluates the real worker against an ephemeral self-signed loopback fixture. See docs/lab-tls-scoring.md for the ground-truth contract and safety limits.
 
-The HTTP baseline scorer compares an intentionally weak response with a hardened loopback control and persists a ground-truth-bound labeval record. See docs/lab-web-baseline-scoring.md for its scoring and safety contract.
+The service-inventory scorer checks a known loopback listener against a closed-port control; see docs/lab-service-scoring.md. The TLS scorer checks an ephemeral self-signed loopback HTTPS fixture; see docs/lab-tls-scoring.md. The HTTP baseline scorer compares an intentionally weak response with a hardened loopback control and persists a ground-truth-bound labeval record; see docs/lab-web-baseline-scoring.md.
+
+After installation, the three scoring commands are available as `lightup-lab-service-score`, `lightup-lab-tls-score`, and `lightup-lab-web-score`. Their fixture targets are fixed to loopback and cannot be overridden.
+
+The installed `lightup-lab-safety-canary` command runs local authentication,
+scope-denial and all three loopback scorers in isolated temporary SQLite state.
+It emits source-free JSON with lab-only/non-authority flags, rejects target
+overrides, and preserves the existing CI wrapper at
+`scripts/check_safety_canaries.py`. This is not a grant or deploy check.
+
 
 The `plan` command is intentionally non-invasive: it only emits a structured plan.
 
@@ -112,3 +122,15 @@ CSRF protection.
 - **Security Twin (planned)** — durable current-state model, attack graph and future-state change simulation.
 
 See `docs/ai-orchestration.md` for the AI-layer contracts.
+
+
+For operator-readable local verification, run
+`lightup-lab-safety-canary --format text`. The default `--format json`
+remains compatible with CI; either output reports PASS/HOLD and never grants
+permission to scan real targets or deploy. Text receipts contain no private
+paths, request data or user identities.
+
+The combined offline scorer also applies a temporary, in-process
+`127.0.0.1`-only Python socket boundary while its three known fixtures
+run. It is defense in depth and **not** a kernel network sandbox, a grant
+or permission to run real-target activity.

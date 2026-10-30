@@ -14,6 +14,8 @@ import time
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from .lab_socket_guard import PrivateLabArgumentParser, fixed_loopback_socket_boundary
+from .lab_score_contract import HTTP_CHECKS, require_first_party_score
 from typing import Iterator
 
 from .ai.orchestration import ToolCall, ToolExecutor, ToolRegistry
@@ -134,7 +136,7 @@ def _issue_ids(result) -> tuple[str, ...]:
     return tuple(item for item in metadata.get("issues", "").split(",") if item)
 
 
-def run_lab_web_baseline_score(state_path: str | Path = "lightup-lab.db") -> dict:
+def _unprotected_run_lab_web_baseline_score(state_path: str | Path = "lightup-lab.db") -> dict:
     """Score the HTTP baseline against weak ground truth and a hardened control."""
     expected = tuple(
         ExpectedFinding(
@@ -263,8 +265,15 @@ def run_lab_web_baseline_score(state_path: str | Path = "lightup-lab.db") -> dic
     }
 
 
+
+def run_lab_web_baseline_score(state_path: str | Path = "lightup-lab.db") -> dict:
+    """Score one owned fixture with a strict in-process IPv4 loopback socket gate."""
+    with fixed_loopback_socket_boundary():
+        return _unprotected_run_lab_web_baseline_score(state_path)
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
+    parser = PrivateLabArgumentParser(
         prog="lightup-lab-web-score",
         description="Score the HTTP security-header worker against owned loopback fixtures.",
     )
@@ -276,8 +285,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         result = run_lab_web_baseline_score(args.db)
-    except (OSError, PermissionError, RuntimeError, ValueError) as exc:
-        print(json.dumps({"passed": False, "error": str(exc)}, indent=2))
+        require_first_party_score(result, "HTTP", 5, 4, HTTP_CHECKS)
+    except Exception:
+        print(json.dumps({"passed": False, "error": "offline fixture denied or unavailable"}, indent=2))
         return 2
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result["passed"] else 2

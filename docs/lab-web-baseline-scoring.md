@@ -8,6 +8,10 @@ weak response and one hardened negative control.
 
     PYTHONPATH=src python -m lightup.lab_web_score --db /tmp/lightup-web-score.db
 
+After installing the package, the same fixed-loopback scorer is available as:
+
+    lightup-lab-web-score --db /tmp/lightup-web-score.db
+
 ## What is scored
 
 - Valid findings: all five hand-maintained missing-header/server-banner findings

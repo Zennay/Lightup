@@ -1,0 +1,910 @@
+"""The M1 scorer sandbox refuses non-fixed socket operations before OS I/O."""
+from __future__ import annotations
+
+import io
+import json
+import socket
+import unittest
+from contextlib import redirect_stdout
+from unittest.mock import patch
+
+from lightup import lab_canary, lab_service_score, lab_tls_score, lab_web_score
+from lightup.lab_socket_guard import (
+    LabSocketBoundaryError, fixed_loopback_socket_boundary,
+)
+
+
+class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
+    def test_non_loopback_connect_bind_send_and_name_resolution_denied(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            with patch.object(socket.socket, "connect") as underlying_connect, patch.object(
+                socket.socket, "connect_ex"
+            ) as underlying_connect_ex, patch.object(
+                socket.socket, "bind"
+            ) as underlying_bind, patch.object(
+                socket.socket, "sendto"
+            ) as underlying_send:
+                with fixed_loopback_socket_boundary():
+                    for action in (
+                        lambda: sock.connect(("203.0.113.1", 443)),
+                        lambda: sock.connect_ex(("203.0.113.1", 443)),
+                        lambda: sock.bind(("0.0.0.0", 0)),
+                        lambda: sock.sendto(b"sample", ("203.0.113.1", 53)),
+                        lambda: socket.getaddrinfo("example.invalid", 443),
+                        lambda: sock.connect(("localhost", 443)),
+                        lambda: sock.bind(("127.0.0.2", 0)),
+                    ):
+                        with self.subTest(action=repr(action)), self.assertRaises(
+                            LabSocketBoundaryError
+                        ):
+                            action()
+                underlying_connect.assert_not_called()
+                underlying_connect_ex.assert_not_called()
+                underlying_bind.assert_not_called()
+                underlying_send.assert_not_called()
+
+    def test_listener_apis_deny_prebound_public_interfaces_before_io(self):
+        # A pre-bound listener can exist before the scoped scorer boundary.
+        # Mock address metadata and underlying methods: no public bind.
+        from types import SimpleNamespace
+        sock = SimpleNamespace(family=socket.AF_INET,
+                               getsockname=lambda: ("0.0.0.0", 45678))
+        with patch.object(socket.socket, "listen", return_value=None) as underlying_listen, \
+             patch.object(socket.socket, "accept", return_value=(None, ("127.0.0.1", 3456))) as underlying_accept:
+            with fixed_loopback_socket_boundary():
+                with self.assertRaises(LabSocketBoundaryError):
+                    socket.socket.listen(sock, 1)
+                with self.assertRaises(LabSocketBoundaryError):
+                    socket.socket.accept(sock)
+            underlying_listen.assert_not_called()
+            underlying_accept.assert_not_called()
+
+    def test_listener_accept_only_fixed_loopback_peer(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        listener = SimpleNamespace(family=socket.AF_INET,
+                                   getsockname=lambda: ("127.0.0.1", 45678))
+        bad_client = Mock()
+        bad_client.family = socket.AF_INET
+        with patch.object(socket.socket, "accept", return_value=(
+            bad_client, ("203.0.113.5", 40001)
+        )) as underlying:
+            with fixed_loopback_socket_boundary():
+                with self.assertRaises(LabSocketBoundaryError):
+                    socket.socket.accept(listener)
+            underlying.assert_called_once()
+            bad_client.close.assert_called_once()
+        good_client = Mock()
+        good_client.family = socket.AF_INET
+        with patch.object(socket.socket, "accept", return_value=(
+            good_client, ("127.0.0.1", 40001)
+        )), patch.object(socket.socket, "listen", return_value=None):
+            with fixed_loopback_socket_boundary():
+                self.assertIsNone(socket.socket.listen(listener, 2))
+                accepted, address = socket.socket.accept(listener)
+                self.assertIs(accepted, good_client)
+                self.assertEqual(address, ("127.0.0.1", 40001))
+            good_client.close.assert_not_called()
+
+    def test_low_level_accept_refuses_prebound_public_listener_before_os_io(self):
+        from types import SimpleNamespace
+        if not hasattr(socket.socket, "_accept"):
+            self.skipTest("No Python raw _accept primitive available")
+        listener = SimpleNamespace(
+            family=socket.AF_INET,
+            getsockname=lambda: ("0.0.0.0", 47111),
+        )
+        with patch.object(socket.socket, "_accept",
+                          return_value=(7777, ("127.0.0.1", 55555))) as raw:
+            with fixed_loopback_socket_boundary():
+                with self.assertRaises(LabSocketBoundaryError):
+                    socket.socket._accept(listener)
+            raw.assert_not_called()
+
+    def test_low_level_accept_closes_rejected_public_peer_fd(self):
+        import os
+        from types import SimpleNamespace
+        if not hasattr(socket.socket, "_accept"):
+            self.skipTest("No Python raw _accept primitive available")
+        listener = SimpleNamespace(
+            family=socket.AF_INET,
+            getsockname=lambda: ("127.0.0.1", 47111),
+        )
+        with patch.object(socket.socket, "_accept",
+                          return_value=(7777, ("203.0.113.5", 55555))) as raw, patch.object(
+            os, "close", return_value=None
+        ) as close:
+            with fixed_loopback_socket_boundary():
+                with self.assertRaises(LabSocketBoundaryError):
+                    socket.socket._accept(listener)
+            raw.assert_called_once()
+            close.assert_called_once_with(7777)
+
+    def test_preconnected_socket_send_paths_refuse_non_loopback_peer(self):
+        # Synthetic peer only: never open a real external connection.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            with patch.object(socket.socket, "getpeername", return_value=("203.0.113.5", 443)):
+                with patch.object(socket.socket, "send", return_value=1) as raw_send, patch.object(
+                    socket.socket, "sendall", return_value=None
+                ) as raw_sendall, patch.object(
+                    socket.socket, "sendfile", return_value=1
+                ) as raw_sendfile:
+                    with fixed_loopback_socket_boundary():
+                        for action in (
+                            lambda: sock.send(b"x"),
+                            lambda: sock.sendall(b"x"),
+                            lambda: sock.sendfile(io.BytesIO(b"x")),
+                        ):
+                            with self.subTest(action=repr(action)), self.assertRaises(
+                                LabSocketBoundaryError
+                            ):
+                                action()
+                    raw_send.assert_not_called()
+                    raw_sendall.assert_not_called()
+                    raw_sendfile.assert_not_called()
+
+    def test_preconnected_loopback_peer_send_paths_remain_usable(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            with patch.object(socket.socket, "getpeername", return_value=("127.0.0.1", 53111)):
+                with patch.object(socket.socket, "send", return_value=1) as raw_send, patch.object(
+                    socket.socket, "sendall", return_value=None
+                ) as raw_sendall, patch.object(
+                    socket.socket, "sendfile", return_value=1
+                ) as raw_sendfile:
+                    with fixed_loopback_socket_boundary():
+                        self.assertEqual(sock.send(b"x"), 1)
+                        self.assertIsNone(sock.sendall(b"x"))
+                        self.assertEqual(sock.sendfile(io.BytesIO(b"x")), 1)
+                    raw_send.assert_called_once()
+                    raw_sendall.assert_called_once()
+                    raw_sendfile.assert_called_once()
+
+    def test_preconnected_tls_socket_overrides_refuse_external_peer(self):
+        # SSL overrides socket.send/sendall/sendfile and can write directly.
+        # Use only a synthetic peer; never dial an external endpoint.
+        import ssl
+        from types import SimpleNamespace
+        fake = SimpleNamespace(family=socket.AF_INET,
+                               getpeername=lambda: ("203.0.113.5", 443))
+        names = ("send", "sendall", "sendfile", "write")
+        for name in names:
+            with self.subTest(api=name), patch.object(
+                ssl.SSLSocket, name, return_value=1
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(ssl.SSLSocket, name)(fake, b"fixture")
+                underlying.assert_not_called()
+
+    def test_preconnected_tls_loopback_socket_writes_still_allowed(self):
+        import ssl
+        from types import SimpleNamespace
+        fake = SimpleNamespace(family=socket.AF_INET,
+                               getpeername=lambda: ("127.0.0.1", 53111))
+        for name in ("send", "sendall", "sendfile", "write"):
+            with self.subTest(api=name), patch.object(
+                ssl.SSLSocket, name, return_value=1
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    self.assertEqual(getattr(ssl.SSLSocket, name)(fake, b"x"), 1)
+                underlying.assert_called_once()
+
+    def test_tls_connect_override_rejects_external_address(self):
+        import ssl
+        from types import SimpleNamespace
+        fake = SimpleNamespace(family=socket.AF_INET)
+        for name in ("connect", "connect_ex"):
+            with self.subTest(api=name), patch.object(
+                ssl.SSLSocket, name, return_value=0
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(ssl.SSLSocket, name)(fake, ("203.0.113.5", 443))
+                    self.assertEqual(
+                        getattr(ssl.SSLSocket, name)(fake, ("127.0.0.1", 443)), 0
+                    )
+                underlying.assert_called_once()
+
+    def test_tls_wrap_and_handshake_cannot_use_preconnected_external_peer(self):
+        import ssl
+        from types import SimpleNamespace
+        external = SimpleNamespace(family=socket.AF_INET,
+                                   getpeername=lambda: ("203.0.113.5", 443))
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        with patch.object(ssl.SSLContext, "wrap_socket", return_value="wrapped") as underlying:
+            with fixed_loopback_socket_boundary():
+                with self.assertRaises(LabSocketBoundaryError):
+                    ssl.SSLContext.wrap_socket(context, external, server_hostname="example.invalid")
+            underlying.assert_not_called()
+        for method in ("do_handshake", "unwrap"):
+            with self.subTest(method=method), patch.object(
+                ssl.SSLSocket, method, return_value=None
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(ssl.SSLSocket, method)(external)
+                underlying.assert_not_called()
+
+    def test_tls_wrap_and_handshake_allow_preconnected_loopback_peer(self):
+        import ssl
+        from types import SimpleNamespace
+        loopback = SimpleNamespace(family=socket.AF_INET,
+                                   getpeername=lambda: ("127.0.0.1", 53111))
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        with patch.object(ssl.SSLContext, "wrap_socket", return_value="wrapped"):
+            with fixed_loopback_socket_boundary():
+                self.assertEqual(ssl.SSLContext.wrap_socket(context, loopback), "wrapped")
+        for method in ("do_handshake", "unwrap"):
+            with self.subTest(method=method), patch.object(
+                ssl.SSLSocket, method, return_value="ok"
+            ):
+                with fixed_loopback_socket_boundary():
+                    self.assertEqual(getattr(ssl.SSLSocket, method)(loopback), "ok")
+
+    def test_unapproved_child_process_paths_are_blocked(self):
+        import os
+        import subprocess
+        # All launch primitives are mocked: never run a real external command.
+        with patch.object(subprocess, "Popen", return_value="launched") as popen, patch.object(
+            os, "system", return_value=0
+        ) as system, patch.object(os, "popen", return_value="shell") as ospopen, patch.object(
+            os, "posix_spawn", return_value=42
+        ) as spawn, patch.object(os, "posix_spawnp", return_value=42) as spawnp:
+            with fixed_loopback_socket_boundary():
+                attempts = (
+                    lambda: subprocess.Popen(["curl", "https://example.invalid"]),
+                    lambda: subprocess.Popen("openssl req -x509", shell=True),
+                    lambda: os.system("echo TEST-SYNTHETIC"),
+                    lambda: os.popen("echo TEST-SYNTHETIC"),
+                    lambda: os.posix_spawn("/bin/echo", ["echo", "TEST-SYNTHETIC"], {}),
+                    lambda: os.posix_spawnp("echo", ["echo", "TEST-SYNTHETIC"], {}),
+                )
+                for action in attempts:
+                    with self.subTest(action=repr(action)), self.assertRaises(
+                        LabSocketBoundaryError
+                    ):
+                        action()
+            for original in (popen, system, ospopen, spawn, spawnp):
+                original.assert_not_called()
+
+    def test_direct_exec_spawn_and_forkpty_paths_are_blocked(self):
+        import os
+        with patch.object(os, "execve", return_value=None) as execve, patch.object(
+            os, "spawnv", return_value=0
+        ) as spawnv, patch.object(os, "forkpty", return_value=(42, 1)) as forkpty:
+            with fixed_loopback_socket_boundary():
+                for launch in (
+                    lambda: os.execve("/bin/echo", ["echo", "synthetic"], {}),
+                    lambda: os.spawnv(os.P_WAIT, "/bin/echo", ["echo", "synthetic"]),
+                    lambda: os.forkpty(),
+                ):
+                    with self.subTest(launch=repr(launch)), self.assertRaises(
+                        LabSocketBoundaryError
+                    ):
+                        launch()
+            execve.assert_not_called()
+            spawnv.assert_not_called()
+            forkpty.assert_not_called()
+
+    def test_only_pinned_local_certificate_subprocess_is_admitted(self):
+        import shutil
+        import subprocess
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        openssl = shutil.which("openssl")
+        if openssl is None:
+            self.skipTest("TLS fixture requires installed openssl")
+        with TemporaryDirectory(prefix="lightup-tls-lab-") as folder:
+            valid = [
+                openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                "-keyout", str(Path(folder) / "fixture-key.pem"),
+                "-out", str(Path(folder) / "fixture-cert.pem"), "-days", "1",
+                "-subj", "/CN=127.0.0.1", "-addext",
+                "subjectAltName=IP:127.0.0.1", "-addext",
+                "basicConstraints=critical,CA:FALSE",
+            ]
+            child_kwargs = {
+                "stdin": subprocess.DEVNULL,
+                "stdout": subprocess.DEVNULL,
+                "stderr": subprocess.DEVNULL,
+                "env": {},
+            }
+            with patch.object(subprocess, "Popen", return_value="allowed") as original:
+                with fixed_loopback_socket_boundary():
+                    self.assertEqual(subprocess.Popen(valid, **child_kwargs), "allowed")
+                    for index, value in ((1, "s_client"), (7, "/tmp/PRIVATE-key.pem"),
+                                         (15, "subjectAltName=DNS:public.example"),
+                                         (17, "basicConstraints=CA:TRUE")):
+                        attempt = list(valid)
+                        attempt[index] = value
+                        with self.subTest(index=index), self.assertRaises(LabSocketBoundaryError):
+                            subprocess.Popen(attempt, **child_kwargs)
+                    for bad in (
+                        {**child_kwargs, "env": {"OPENSSL_CONF": "/tmp/unsafe.conf"}},
+                        {**child_kwargs, "stderr": subprocess.PIPE},
+                        {**child_kwargs, "shell": True},
+                        {**child_kwargs, "start_new_session": True},
+                    ):
+                        with self.subTest(keys=tuple(bad)), self.assertRaises(LabSocketBoundaryError):
+                            subprocess.Popen(valid, **bad)
+                original.assert_called_once_with(valid, **child_kwargs)
+
+    def test_tls_cert_generation_refuses_path_shadowed_openssl(self):
+        import os
+        import stat
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory(prefix="lightup-untrusted-binary-") as root:
+            fake = Path(root) / "openssl"
+            fake.write_text("#!/bin/sh\nexit 0\n")
+            fake.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+            with patch.dict(os.environ, {"PATH": root}), patch.object(
+                lab_tls_score.subprocess, "run"
+            ) as run:
+                with self.assertRaises(RuntimeError):
+                    lab_tls_score._create_self_signed_certificate(Path(root))
+                run.assert_not_called()
+
+    def test_cert_generator_uses_only_empty_child_environment(self):
+        import os
+        import subprocess
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        with TemporaryDirectory(prefix="lightup-tls-lab-") as d:
+            with patch.dict(os.environ, {
+                "OPENSSL_CONF": "/tmp/private-injected.conf",
+                "OPENSSL_MODULES": "/tmp/private-module-dir",
+                "LD_PRELOAD": "/tmp/private-hook.so",
+            }), patch.object(lab_tls_score.subprocess, "run") as run:
+                def synthetic_child(command, **kwargs):
+                    Path(command[7]).write_bytes(b"synthetic-key")
+                    Path(command[9]).write_bytes(b"synthetic-cert")
+                    return subprocess.CompletedProcess(command, 0)
+                run.side_effect = synthetic_child
+                lab_tls_score._create_self_signed_certificate(Path(d))
+                self.assertEqual(run.call_args.kwargs["env"], {})
+                self.assertEqual(run.call_args.kwargs["stdin"], subprocess.DEVNULL)
+                self.assertEqual(run.call_args.kwargs["stdout"], subprocess.DEVNULL)
+                self.assertEqual(run.call_args.kwargs["stderr"], subprocess.DEVNULL)
+
+    def test_preconnected_socket_receive_paths_check_peer_before_io(self):
+        # Synthetic peer identities; no public socket ever opened.
+        from types import SimpleNamespace
+        fake = SimpleNamespace(family=socket.AF_INET,
+                               getpeername=lambda: ("203.0.113.5", 443))
+        for method, args in (
+            ("recv", (1,)), ("recv_into", (bytearray(2),)),
+            ("recvfrom", (1,)), ("recvfrom_into", (bytearray(2),)),
+            ("recvmsg", (1,)), ("recvmsg_into", ([bytearray(2)],)),
+        ):
+            if not hasattr(socket.socket, method):
+                continue
+            with self.subTest(method=method), patch.object(
+                socket.socket, method, return_value=b"x"
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(socket.socket, method)(fake, *args)
+                underlying.assert_not_called()
+
+    def test_preconnected_tls_read_paths_check_peer_before_io(self):
+        import ssl
+        from types import SimpleNamespace
+        fake = SimpleNamespace(family=socket.AF_INET,
+                               getpeername=lambda: ("203.0.113.5", 443))
+        for method, args in (("recv", (1,)), ("recv_into", (bytearray(2),)),
+                             ("read", (1,))):
+            with self.subTest(method=method), patch.object(
+                ssl.SSLSocket, method, return_value=b"x"
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(ssl.SSLSocket, method)(fake, *args)
+                underlying.assert_not_called()
+
+    def test_exact_openssl_cannot_be_spawned_directly_outside_validated_popen(self):
+        # A forged environment and direct spawn must not inherit the Popen grant.
+        import os
+        import shutil
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        openssl = shutil.which("openssl")
+        if openssl is None:
+            self.skipTest("openssl not installed")
+        with TemporaryDirectory(prefix="lightup-tls-lab-") as d:
+            cmd = [openssl, "req", "-x509", "-newkey", "rsa:2048",
+                   "-nodes", "-keyout", str(Path(d) / "fixture-key.pem"),
+                   "-out", str(Path(d) / "fixture-cert.pem"), "-days", "1",
+                   "-subj", "/CN=127.0.0.1", "-addext",
+                   "subjectAltName=IP:127.0.0.1", "-addext",
+                   "basicConstraints=critical,CA:FALSE"]
+            with patch.object(os, "posix_spawn", return_value=100) as raw, patch.object(
+                os, "posix_spawnp", return_value=100
+            ) as rawp:
+                with fixed_loopback_socket_boundary():
+                    for name in ("posix_spawn", "posix_spawnp"):
+                        with self.subTest(name=name), self.assertRaises(
+                            LabSocketBoundaryError
+                        ):
+                            getattr(os, name)(openssl, cmd,
+                                              {"OPENSSL_CONF": "/tmp/untrusted.conf"})
+                raw.assert_not_called()
+                rawp.assert_not_called()
+
+    def test_non_getaddrinfo_dns_and_reverse_dns_are_blocked(self):
+        resolver_names = (
+            "gethostbyname", "gethostbyname_ex", "gethostbyaddr",
+            "getnameinfo", "getfqdn",
+        )
+        calls = (
+            lambda: socket.gethostbyname("external.invalid"),
+            lambda: socket.gethostbyname_ex("external.invalid"),
+            lambda: socket.gethostbyaddr("203.0.113.9"),
+            lambda: socket.getnameinfo(("203.0.113.9", 443), 0),
+            lambda: socket.getfqdn("external.invalid"),
+        )
+        originals = {name: getattr(socket, name) for name in resolver_names}
+        with fixed_loopback_socket_boundary():
+            self.assertEqual(socket.getfqdn("127.0.0.1"), "127.0.0.1")
+            for name, action in zip(resolver_names, calls):
+                with self.subTest(api=name), self.assertRaises(LabSocketBoundaryError):
+                    action()
+        for name, original in originals.items():
+            self.assertIs(getattr(socket, name), original)
+
+    def test_each_installed_scorer_api_enforces_socket_gate_on_its_own(self):
+        cases = (
+            (lab_service_score, "run_lab_service_inventory_score"),
+            (lab_tls_score, "run_lab_tls_baseline_score"),
+            (lab_web_score, "run_lab_web_baseline_score"),
+        )
+        def forbidden_work(_db):
+            # DNS must fail before any external connection can be attempted.
+            return socket.create_connection(("example.invalid", 443))
+        for mod, api in cases:
+            with self.subTest(api=api):
+                with patch.object(mod, "_unprotected_" + api,
+                                  side_effect=forbidden_work):
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(mod, api)("synthetic.db")
+
+    def test_each_installed_scorer_api_runs_valid_fixed_fixture(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        with TemporaryDirectory() as d:
+            for mod, api, count in (
+                (lab_service_score, "run_lab_service_inventory_score", 1),
+                (lab_tls_score, "run_lab_tls_baseline_score", 1),
+                (lab_web_score, "run_lab_web_baseline_score", 5),
+            ):
+                with self.subTest(api=api):
+                    result = getattr(mod, api)(Path(d) / (api + ".db"))
+                    self.assertIs(result["passed"], True)
+                    self.assertEqual(result["evaluation"]["metrics"]["valid_findings"], count)
+
+    def test_all_three_direct_clis_reject_forged_success_evaluations(self):
+        from copy import deepcopy
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        with TemporaryDirectory() as directory:
+            for mod, api in (
+                (lab_service_score, "run_lab_service_inventory_score"),
+                (lab_tls_score, "run_lab_tls_baseline_score"),
+                (lab_web_score, "run_lab_web_baseline_score"),
+            ):
+                with self.subTest(api=api):
+                    valid = getattr(mod, api)(Path(directory) / (api + ".db"))
+                    self.assertIs(valid["passed"], True)
+                    forged = deepcopy(valid)
+                    forged["evaluation"]["metrics"]["false_positive_rate"] = 0.75
+                    forged["evaluation"]["run_id"] = "forged-canonical-run"
+                    for attack in (
+                        "fpr_and_run", "scenario_swap", "missing_evidence",
+                        "duplicated_evidence", "untrusted_engine", "model_binding",
+                    ):
+                        bad = deepcopy(valid if attack not in ("fpr_and_run",) else forged)
+                        if attack == "scenario_swap":
+                            bad["scenario_id"] = "forged-lab-scenario"
+                            bad["evaluation"]["scenario_id"] = "forged-lab-scenario"
+                        elif attack == "missing_evidence":
+                            bad["evaluation"]["evidence_ids"] = []
+                        elif attack == "duplicated_evidence":
+                            ids = bad["evaluation"]["evidence_ids"]
+                            bad["evaluation"]["evidence_ids"] = [ids[0]] * len(ids)
+                        elif attack == "untrusted_engine":
+                            bad["evaluation"]["engine_version"] = "untrusted-lab-producer"
+                        elif attack == "model_binding":
+                            bad["evaluation"]["model_bindings"] = ["unknown-model"]
+                        with self.subTest(attack=attack), patch.object(
+                            mod, api, return_value=bad
+                        ):
+                            with redirect_stdout(io.StringIO()) as receipt:
+                                exit_code = mod.main(["--db", "fictional.db"])
+                            self.assertEqual(exit_code, 2)
+                            self.assertEqual(json.loads(receipt.getvalue()), {
+                                "passed": False, "error": "offline fixture denied or unavailable"
+                            })
+
+    def test_all_three_installed_clis_hide_failure_paths(self):
+        for mod, api in (
+            (lab_service_score, "run_lab_service_inventory_score"),
+            (lab_tls_score, "run_lab_tls_baseline_score"),
+            (lab_web_score, "run_lab_web_baseline_score"),
+        ):
+            with self.subTest(api=api):
+                with patch.object(mod, api,
+                                  side_effect=PermissionError("/tmp/PRIVATE-credential.db")):
+                    with redirect_stdout(io.StringIO()) as out:
+                        code = mod.main(["--db", "/tmp/PRIVATE-credential.db"])
+                self.assertEqual(code, 2)
+                self.assertEqual(json.loads(out.getvalue()), {
+                    "passed": False, "error": "offline fixture denied or unavailable"
+                })
+                self.assertNotIn("PRIVATE", out.getvalue())
+
+    def test_direct_clis_do_not_echo_rejected_argument_values(self):
+        from contextlib import redirect_stderr
+        for mod, api in (
+            (lab_service_score, "run_lab_service_inventory_score"),
+            (lab_tls_score, "run_lab_tls_baseline_score"),
+            (lab_web_score, "run_lab_web_baseline_score"),
+        ):
+            with self.subTest(api=api):
+                with patch.object(mod, api) as scorer:
+                    with redirect_stderr(io.StringIO()) as err:
+                        with self.assertRaises(SystemExit) as raised:
+                            mod.main(["--target", "https://PRIVATE.example/secret"])
+                self.assertEqual(raised.exception.code, 2)
+                self.assertNotIn("PRIVATE", err.getvalue())
+                scorer.assert_not_called()
+
+    def test_canary_rejects_silent_raw_accept_guard_failure(self):
+        from contextlib import contextmanager
+        if not hasattr(socket.socket, "_accept"):
+            self.skipTest("No raw accept method on this runtime")
+        real = lab_canary.fixed_loopback_socket_boundary
+
+        @contextmanager
+        def missing_raw_accept_interceptor():
+            with real():
+                with patch.object(socket.socket, "_accept",
+                                  side_effect=TypeError("synthetic raw-accept call")):
+                    yield
+
+        with patch.object(lab_canary, "fixed_loopback_socket_boundary",
+                          side_effect=missing_raw_accept_interceptor):
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main([])
+        self.assertEqual(code, 2)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["failure_stage"], "setup")
+
+    def test_canary_rejects_silent_listener_guard_failure(self):
+        from contextlib import contextmanager
+        real = lab_canary.fixed_loopback_socket_boundary
+
+        @contextmanager
+        def missing_listener_interceptor():
+            with real():
+                # Synthetic listener: underlying C method would only raise
+                # TypeError on this non-socket, never bind a public interface.
+                with patch.object(socket.socket, "listen",
+                                  side_effect=TypeError("synthetic-not-a-socket")):
+                    yield
+
+        with patch.object(lab_canary, "fixed_loopback_socket_boundary",
+                          side_effect=missing_listener_interceptor):
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main([])
+        self.assertEqual(code, 2, "missing listener guard must never PASS")
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["failure_stage"], "setup")
+
+    def test_canary_rejects_silent_accept_guard_failure(self):
+        from contextlib import contextmanager
+        real = lab_canary.fixed_loopback_socket_boundary
+
+        @contextmanager
+        def missing_accept_interceptor():
+            with real():
+                with patch.object(socket.socket, "accept",
+                                  side_effect=TypeError("synthetic-not-a-socket")):
+                    yield
+
+        with patch.object(lab_canary, "fixed_loopback_socket_boundary",
+                          side_effect=missing_accept_interceptor):
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main([])
+        self.assertEqual(code, 2)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["failure_stage"], "setup")
+
+    def test_canary_rejects_silent_process_guard_failure(self):
+        # Preserve the real socket/TLS boundary but simulate accidentally
+        # missing child-process interception. The synthetic path cannot launch.
+        import subprocess
+        from contextlib import contextmanager
+        real = lab_canary.fixed_loopback_socket_boundary
+
+        @contextmanager
+        def broken_process_boundary():
+            with real():
+                with patch.object(subprocess, "Popen",
+                                  side_effect=FileNotFoundError("synthetic-not-executable")):
+                    yield
+
+        with patch.object(lab_canary, "fixed_loopback_socket_boundary",
+                          side_effect=broken_process_boundary):
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main([])
+        self.assertEqual(code, 2, "disabled process interception must never PASS")
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["failure_stage"], "setup")
+        self.assertIs(result["external_target_authorized"], False)
+
+    def test_parallel_combined_canaries_do_not_block_each_others_setup(self):
+        # Another invocation's preflight uses a local Python child. It must
+        # not run while the first scorer temporarily denies all unapproved
+        # process launches in this same process.
+        import threading
+        import time
+        from unittest.mock import patch
+        first_entered = threading.Event()
+        release_first = threading.Event()
+        results = []
+        failures = []
+        original_score = lab_canary._score_component
+
+        def hold_first_score(*args, **kwargs):
+            if threading.current_thread().name == "first-canary":
+                if not first_entered.is_set():
+                    first_entered.set()
+                    if not release_first.wait(5):
+                        raise AssertionError("synthetic scorer wait timeout")
+            return original_score(*args, **kwargs)
+
+        def run_canary():
+            try:
+                results.append(lab_canary._run_canary())
+            except BaseException as error:
+                failures.append(error)
+
+        with patch.object(lab_canary, "_score_component",
+                          side_effect=hold_first_score):
+            first = threading.Thread(target=run_canary, name="first-canary")
+            second = threading.Thread(target=run_canary, name="second-canary")
+            first.start()
+            try:
+                self.assertTrue(first_entered.wait(4))
+                second.start()
+                time.sleep(0.15)
+            finally:
+                release_first.set()
+                first.join(12)
+                if second.ident is not None:
+                    second.join(12)
+        self.assertFalse(first.is_alive())
+        self.assertFalse(second.is_alive())
+        self.assertEqual(failures, [])
+        self.assertEqual(len(results), 2)
+        self.assertTrue(all(item["status"] == "PASS" for item in results))
+        self.assertTrue(all(item["temporary_state_removed"] for item in results))
+
+    def test_parallel_real_service_scorers_keep_original_socket_hooks(self):
+        # Same-process concurrency, unlike the separate-process CLI proof.
+        # Four real owned-loopback scorers must each return valid evidence.
+        from concurrent.futures import ThreadPoolExecutor
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        original_connect = socket.socket.connect
+        original_bind = socket.socket.bind
+        original_getaddrinfo = socket.getaddrinfo
+        with TemporaryDirectory(prefix="lightup-sameprocess-") as root:
+            def score(index):
+                return lab_service_score.run_lab_service_inventory_score(
+                    Path(root) / f"service-{index}.db"
+                )
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                results = list(pool.map(score, range(4)))
+        self.assertEqual(len(results), 4)
+        for receipt in results:
+            self.assertTrue(receipt["passed"])
+            self.assertTrue(receipt["checks"]["closed_control_port_not_detected"])
+            self.assertTrue(receipt["checks"]["persisted_record_readback"])
+        self.assertIs(socket.socket.connect, original_connect)
+        self.assertIs(socket.socket.bind, original_bind)
+        self.assertIs(socket.getaddrinfo, original_getaddrinfo)
+
+    def test_nested_guard_exception_restores_original_hooks(self):
+        original_connect = socket.socket.connect
+        original_spawn = __import__("subprocess").Popen
+        with self.assertRaisesRegex(RuntimeError, "synthetic nested"):
+            with fixed_loopback_socket_boundary():
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        socket.getaddrinfo("example.invalid", 443)
+                    raise RuntimeError("synthetic nested")
+        self.assertIs(socket.socket.connect, original_connect)
+        self.assertIs(__import__("subprocess").Popen, original_spawn)
+
+    def test_concurrent_boundaries_never_restore_unprotected_network_methods(self):
+        # Repro: another canary enters while the first scope is still live.
+        # Even if the first exits, the second must remain protected and
+        # originals restored exactly once after BOTH scopes are done.
+        import threading
+        import time
+        first_entered = threading.Event()
+        second_entered = threading.Event()
+        release_first = threading.Event()
+        first_exited = threading.Event()
+        issues = []
+        outcomes = []
+
+        def first():
+            try:
+                with fixed_loopback_socket_boundary():
+                    first_entered.set()
+                    if not release_first.wait(3):
+                        raise AssertionError("synthetic first guard timed out")
+            except BaseException as error:
+                issues.append(error)
+            finally:
+                first_exited.set()
+
+        def second(sock):
+            try:
+                if not first_entered.wait(3):
+                    raise AssertionError("first guard not installed")
+                with fixed_loopback_socket_boundary():
+                    second_entered.set()
+                    if not first_exited.wait(3):
+                        raise AssertionError("first guard did not finish")
+                    try:
+                        sock.connect(("203.0.113.9", 443))
+                    except LabSocketBoundaryError:
+                        outcomes.append("denied")
+                    else:
+                        outcomes.append("allowed")
+            except BaseException as error:
+                issues.append(error)
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            with patch.object(socket.socket, "connect", return_value=None) as raw:
+                one = threading.Thread(target=first)
+                two = threading.Thread(target=second, args=(sock,))
+                try:
+                    one.start()
+                    self.assertTrue(first_entered.wait(2))
+                    two.start()
+                    # An unprotected implementation permits the second scope
+                    # to overlap; a serialized one waits for the first exit.
+                    second_entered.wait(0.25)
+                finally:
+                    release_first.set()
+                    one.join(4)
+                    two.join(4)
+                self.assertFalse(one.is_alive())
+                self.assertFalse(two.is_alive())
+                self.assertEqual(issues, [])
+                self.assertEqual(outcomes, ["denied"])
+                raw.assert_not_called()
+                self.assertIs(socket.socket.connect, raw)
+
+    def test_service_closed_port_control_remains_reserved_during_observations(self):
+        # Prevent another local process from claiming the negative-control
+        # port between allocation and the two real scored observations.
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from lightup.ai.orchestration import ToolExecutor
+        original_execute = ToolExecutor.execute
+        seen = []
+
+        def verify_control(executor, run_context, call):
+            ports = dict(call.arguments)["ports"].split(",")
+            control_port = int(ports[1])
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as claimant:
+                with self.assertRaises(OSError):
+                    claimant.bind(("127.0.0.1", control_port))
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+                probe.settimeout(1)
+                self.assertNotEqual(
+                    probe.connect_ex(("127.0.0.1", control_port)), 0
+                )
+            seen.append(control_port)
+            return original_execute(executor, run_context, call)
+
+        with TemporaryDirectory(prefix="lightup-service-control-") as folder:
+            with patch.object(ToolExecutor, "execute", verify_control):
+                result = lab_service_score.run_lab_service_inventory_score(
+                    Path(folder) / "state.db"
+                )
+        self.assertTrue(result["passed"])
+        self.assertEqual(seen, [result["closed_control_port"]] * 2)
+
+    def test_service_control_port_released_on_producer_error(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from lightup.ai.orchestration import ToolExecutor
+        control = []
+
+        def fail_observation(executor, run_context, call):
+            control.append(int(dict(call.arguments)["ports"].split(",")[1]))
+            raise RuntimeError("synthetic service producer failure")
+
+        with TemporaryDirectory(prefix="lightup-service-error-") as folder:
+            with patch.object(ToolExecutor, "execute", fail_observation):
+                with self.assertRaises(RuntimeError):
+                    lab_service_score.run_lab_service_inventory_score(
+                        Path(folder) / "state.db"
+                    )
+        self.assertEqual(len(control), 1)
+        # The reserved negative-control socket must be cleaned up on every
+        # exceptional exit; no fixture should retain an OS port.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reclaimed:
+            reclaimed.bind(("127.0.0.1", control[0]))
+
+    def test_tls_fixture_worker_cleanup_when_observation_fails(self):
+        # The owned TLS server thread must stop while the in-process loopback
+        # boundary remains active, including an early producer exception.
+        import threading
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from lightup.ai.orchestration import ToolExecutor
+        existing = {id(t) for t in threading.enumerate()}
+        with TemporaryDirectory(prefix="lightup-tls-failure-cleanup-") as folder:
+            with patch.object(
+                ToolExecutor, "execute",
+                side_effect=RuntimeError("synthetic producer error"),
+            ):
+                with self.assertRaises(RuntimeError):
+                    lab_tls_score.run_lab_tls_baseline_score(
+                        Path(folder) / "state.db"
+                    )
+        live = [
+            t for t in threading.enumerate()
+            if id(t) not in existing and t.is_alive()
+            and "_serve_fixture" in t.name
+        ]
+        self.assertEqual(live, [], "TLS fixture thread escaped scorer failure")
+
+    def test_canary_rejects_silent_socket_guard_failure(self):
+        # All fixtures are fixed 127.0.0.1; no external socket is used.
+        from contextlib import nullcontext
+        with patch.object(lab_canary, "fixed_loopback_socket_boundary",
+                          return_value=nullcontext()):
+            with redirect_stdout(io.StringIO()) as output:
+                code = lab_canary.main([])
+        self.assertEqual(code, 2, "unchecked boundary must not report PASS")
+        self.assertEqual(json.loads(output.getvalue()), {
+            "status": "HOLD", "passed": False, "lab_only": True,
+            "external_target_authorized": False, "deployment_authorized": False,
+            "failure_stage": "setup",
+        })
+
+    def test_valid_fixed_loopback_scorer_run_works_and_restores_socket(self):
+        original = socket.socket.connect
+        with redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(lab_canary.main([]), 0)
+        result = json.loads(out.getvalue())
+        self.assertTrue(result["fixed_loopback_socket_boundary_enforced"])
+        self.assertIs(result["fixed_lab_child_process_policy_enforced"], True)
+        self.assertTrue(result["temporary_state_removed"])
+        self.assertIs(socket.socket.connect, original)
+
+    def test_scoring_failure_restores_socket_and_emits_private_hold(self):
+        original = socket.socket.connect
+        with patch("lightup.lab_canary.run_lab_service_inventory_score",
+                   side_effect=RuntimeError("PRIVATE error text")):
+            with redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(lab_canary.main([]), 2)
+        self.assertEqual(json.loads(out.getvalue())["status"], "HOLD")
+        self.assertNotIn("PRIVATE", out.getvalue())
+        self.assertIs(socket.socket.connect, original)
+
+
+if __name__ == "__main__":
+    unittest.main()
