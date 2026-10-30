@@ -37,6 +37,7 @@ def build_portable_queue(summary: dict[str, Any]) -> dict[str, Any]:
 
 def render_portable_queue(queue: dict[str, Any], *,
                           global_status: str, legacy: bool) -> str:
+    validate_portable_queue(queue, "HOLD" if legacy else global_status)
     prefix = "UNTRUSTED CLAIM: " if legacy else "Synthetic-only: "
     state = "HOLD" if legacy else global_status
     lines = [
@@ -62,8 +63,7 @@ def render_portable_queue(queue: dict[str, Any], *,
 
 def render_portable_queue_html(queue: dict[str, Any], *, global_status: str) -> str:
     """Offline inert HTML from an already admitted canonical v3 ZIP only."""
-    if global_status not in ("PASS", "HOLD"):
-        raise ValueError("invalid global status")
+    validate_portable_queue(queue, global_status)
     from .lab_score_portable_html_safety import admit_inert_html
     archives = "".join(
         f"<tr><th scope='row'>Archive {a['index']}</th>"
@@ -100,3 +100,69 @@ def render_portable_queue_html(queue: dict[str, Any], *, global_status: str) -> 
             "</table></section></main></body></html>")
     admit_inert_html(html.encode("utf-8"))
     return html
+
+
+def validate_portable_queue(queue: dict[str, Any], global_status: str) -> None:
+    """Fail closed on contradictory source-free display claims.
+
+    Not an origin/consent verifier. Original ZIP admission remains mandatory.
+    """
+    if global_status not in ('PASS', 'HOLD'):
+        raise ValueError('invalid global review claim')
+    pairs = queue['pairs']
+    priorities = queue['archive_priorities']
+    if (type(queue['pairs_checked']) is not int or not 1 <= len(pairs) <= 28
+            or len(pairs) != queue['pairs_checked']
+            or type(queue['hold_pairs']) is not int
+            or type(queue['pass_pairs']) is not int
+            or queue['human_review_only'] is not True
+            or queue['source_identity_authenticated'] is not False
+            or not isinstance(priorities, list) or len(priorities) > 8):
+        raise ValueError('invalid HUMAN queue identity or bounds')
+    seen: set[tuple[int, int]] = set()
+    holds = 0
+    for pair in pairs:
+        a, b = pair['previous_index'], pair['current_index']
+        if (type(a) is not int or type(b) is not int
+                or not 1 <= a < b <= 8 or (a, b) in seen
+                or type(pair['independent_evaluations']) is not bool
+                or type(pair['score_stable']) is not bool):
+            raise ValueError('invalid anonymous pair identity')
+        seen.add((a, b))
+        reasons = (['evidence_reused'] if not pair['independent_evaluations'] else [])
+        if not pair['score_stable']:
+            reasons.append('score_drift')
+        expected = 'HOLD' if reasons else 'PASS'
+        if pair['review_status'] != expected or pair['hold_reasons'] != reasons:
+            raise ValueError('contradictory pair outcome')
+        holds += expected == 'HOLD'
+    if (holds != queue['hold_pairs'] or len(pairs)-holds != queue['pass_pairs']
+            or (global_status == 'PASS' and holds)):
+        raise ValueError('local HOLD cannot be promoted to global PASS')
+    for entry in priorities:
+        if (any(type(entry[key]) is not int for key in
+                ('index', 'hold_pairs', 'reused_evidence_pairs', 'score_drift_pairs'))
+                or not 1 <= entry['index'] <= 8
+                or not 1 <= entry['hold_pairs'] <= 7
+                or not 0 <= entry['reused_evidence_pairs'] <= entry['hold_pairs']
+                or not 0 <= entry['score_drift_pairs'] <= entry['hold_pairs']):
+            raise ValueError('invalid anonymous archive priority')
+    # Recompute priorities from the same checked original pair outcomes.
+    # An altered unsigned count must not become trusted operator guidance.
+    by_archive = {i: {'index': i, 'hold_pairs': 0,
+                      'reused_evidence_pairs': 0, 'score_drift_pairs': 0}
+                  for i in range(1, 9)}
+    for pair in pairs:
+        if pair['review_status'] != 'HOLD':
+            continue
+        for index in (pair['previous_index'], pair['current_index']):
+            counts = by_archive[index]
+            counts['hold_pairs'] += 1
+            counts['reused_evidence_pairs'] += not pair['independent_evaluations']
+            counts['score_drift_pairs'] += not pair['score_stable']
+    expected_priorities = sorted(
+        (row for row in by_archive.values() if row['hold_pairs']),
+        key=lambda row: (-row['hold_pairs'], row['index']),
+    )
+    if priorities != expected_priorities:
+        raise ValueError('archive priorities contradict original HOLD pairs')

@@ -7,6 +7,7 @@ from __future__ import annotations
 import csv
 from io import StringIO
 from typing import Any
+from .lab_score_portable_queue import validate_portable_queue
 
 
 def _csv(columns: tuple[str, ...], records: list[dict[str, object]]) -> bytes:
@@ -24,8 +25,7 @@ def _csv(columns: tuple[str, ...], records: list[dict[str, object]]) -> bytes:
 
 
 def render_queue_csv(queue: dict[str, Any], *, global_status: str) -> dict[str, bytes]:
-    if global_status not in ('PASS', 'HOLD'):
-        raise ValueError('invalid queue status')
+    validate_portable_queue(queue, global_status)
     if queue['pairs_checked'] != len(queue['pairs']) or len(queue['pairs']) > 28:
         raise ValueError('queue pair count is not bounded')
     if len(queue['archive_priorities']) > 8:

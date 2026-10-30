@@ -500,3 +500,9 @@ prints the same bounded, formula-free HOLD-first `queue_pairs.csv` directly to
 stdout. It still admits the **whole** canonical ZIP before rendering a byte,
 returns exit 2 for global HOLD, and refuses unsigned legacy v1/v2 or corrupted
 transport with **no CSV output**. No authorization is ever inferred from CSV.
+
+Both original queue HTML and CSV renderers fail closed on contradictory input:
+a caller cannot label the overall result PASS while any original comparison
+is HOLD, forge one pair's PASS against its actual replay/drift flags, or mark
+a source-free human queue as identity authenticated. The bound is enforced
+again at presentation time, in addition to required canonical ZIP admission.

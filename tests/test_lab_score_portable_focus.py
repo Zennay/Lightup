@@ -288,6 +288,36 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual({file.name for file in directory.iterdir()}, {"human-note.txt"})
         self.assertEqual((directory / "human-note.txt").read_text(), "human-local-note")
 
+    def test_renderers_refuse_contradictory_global_pass_and_pair_claims(self):
+        from copy import deepcopy
+        from lightup.lab_score_handoff_verify import verify_portable_review
+        from lightup.lab_score_portable_queue import render_portable_queue_html
+        from lightup.lab_score_queue_csv import render_queue_csv
+        original = verify_portable_review(self.archive, review_queue=True)["review_queue"]
+        self.assertEqual(original["hold_pairs"], 1)
+        from lightup.lab_score_portable_queue import render_portable_queue
+        with self.assertRaises(ValueError):
+            render_portable_queue(original, global_status="PASS", legacy=False)
+        for renderer in (render_portable_queue_html, render_queue_csv):
+            with self.subTest(renderer=renderer.__name__, error="false global pass"):
+                with self.assertRaises(ValueError):
+                    renderer(original, global_status="PASS")
+            with self.subTest(renderer=renderer.__name__, error="forged pair pass"):
+                forgery = deepcopy(original)
+                forgery["pairs"][0]["review_status"] = "PASS"
+                with self.assertRaises(ValueError):
+                    renderer(forgery, global_status="HOLD")
+            with self.subTest(renderer=renderer.__name__, error="altered priority"):
+                forgery = deepcopy(original)
+                forgery["archive_priorities"][0]["hold_pairs"] += 1
+                with self.assertRaises(ValueError):
+                    renderer(forgery, global_status="HOLD")
+            with self.subTest(renderer=renderer.__name__, error="false authority"):
+                forgery = deepcopy(original)
+                forgery["source_identity_authenticated"] = True
+                with self.assertRaises(ValueError):
+                    renderer(forgery, global_status="HOLD")
+
     def test_direct_csv_queue_verifies_zip_and_remains_globally_hold(self):
         import csv
         from io import StringIO
