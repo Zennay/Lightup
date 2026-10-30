@@ -248,6 +248,9 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
         "dashboard_content_validated": has_dashboard_binding,
         "history_content_validated": is_v3,
         "transport_integrity": True,
+        # Digest exact descriptor-pinned immutable source-free ZIP snapshot,
+        # never private original evidence IDs, paths or evidence SHA.
+        "portable_transport_sha256": hashlib.sha256(blob).hexdigest(),
         "original_source_authenticated": False,
         "authorization_granted": False,
         "external_targets_contacted": False,

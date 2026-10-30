@@ -574,6 +574,7 @@ def main(argv: list[str] | None = None) -> int:
             receipt = {key: verified[key] for key in keys}
             receipt["schema"] = "lightup.lab-score-portable-verification-receipt.v1"
             receipt["portable_schema"] = verified["schema"]
+            receipt["portable_transport_sha256"] = verified["portable_transport_sha256"]
             if "focused_archive" in verified:
                 receipt["focused_archive"] = verified["focused_archive"]
                 receipt["focused_archive_untrusted_legacy_claim"] = (
@@ -589,6 +590,8 @@ def main(argv: list[str] | None = None) -> int:
                  else "LEGACY review HTML contents NOT fully independently validated; ")
               + "original source NOT authenticated; status "
               + verified["review_status"] + ".")
+        print("Verified source-free ZIP SHA-256: " + verified["portable_transport_sha256"]
+              + "; this is NOT original evidence or source authentication.")
         if verified["legacy_read_only_triage"]:
             print(verified["legacy_read_only_triage"])
         if "focused_archive" in verified:

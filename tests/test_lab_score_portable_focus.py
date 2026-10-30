@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import json
 import shutil
 import tempfile
@@ -91,12 +92,14 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual((status, err), (2, ""))
         self.assertIn("Original anonymous pair 2-3: PASS; reasons: none", text)
         self.assertIn("GLOBAL STATUS HOLD", text)
+        self.assertIn("Verified source-free ZIP SHA-256: " + hashlib.sha256(self.archive.read_bytes()).hexdigest(), text)
         self.assertNotIn(str(self.root), text)
         status, text, err = invoke("--verify-portable-review", self.archive,
                                    "--focus-pair", 1, 4, "--format", "json")
         self.assertEqual((status, err), (2, ""))
         doc = json.loads(text)
         self.assertTrue(doc["history_content_validated"])
+        self.assertEqual(doc["portable_transport_sha256"], hashlib.sha256(self.archive.read_bytes()).hexdigest())
         self.assertFalse(doc["original_source_authenticated"])
         self.assertFalse(doc["authorization_granted"])
         self.assertEqual(doc["review_status"], "HOLD")
@@ -164,6 +167,7 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual((code, err), (2, ""))
         receipt = json.loads(out)
         self.assertTrue(receipt["focused_pair_untrusted_legacy_claim"])
+        self.assertEqual(receipt["portable_transport_sha256"], hashlib.sha256(legacy_zip.read_bytes()).hexdigest())
         self.assertFalse(receipt["history_content_validated"])
         self.assertEqual(receipt["review_status"], "HOLD")
         self.assertNotIn(str(self.root), out)
