@@ -505,3 +505,28 @@ original ZIPs must be read-only reverified first. The new brief is an
 unchanged. No action is marked complete; both synthetic transports retain
 independent anonymous ordinals; any original HOLD remains HOLD; the output
 does not authenticate sources, consent, reviewer qualifications or grants.
+
+### Source-bound offline ten-file HUMAN handoff (M1)
+
+For an *opt-in* single private handoff, save both comparison views, original
+HOLD action rows and a ready-to-read human briefing in **one exclusive room**:
+
+```sh
+lightup-lab-score-calibrate --compare-portable-reviews BASELINE.zip CANDIDATE.zip \
+  --comparison-output-dir NEW_PRIVATE_ROOM --include-actions --include-briefs
+lightup-lab-score-calibrate --verify-comparison-workroom BASELINE.zip CANDIDATE.zip \
+  --comparison-output-dir NEW_PRIVATE_ROOM --export-comparison --format actions-brief-html
+```
+
+The v3 ten-file workroom adds `human-brief.md` and `human-brief.html` to the
+v2 eight files; both are derived from original admitted first-party synthetic
+ZIPs, not typed source identity, reviewer approval or a false remediation
+claim. The v3 manifest hashes all nine payloads; all ten private files must
+remain 0600 in a 0700 owner-only directory. Neither this tool nor a recipient
+may overwrite an existing room. Verification reopens and compares *every*
+member to canonical content derived from *both* original ZIPs, including
+unrequested members. Any change fails closed before emitting a requested
+brief. v1 five-file and v2 eight-file rooms retain their exact old schemas
+and bytes. An original HOLD survives a later local PASS and all HUMAN follow-ups
+remain `NOT_VERIFIED`: no independent original-source verification, approval,
+target scan, security grant, research or live deployment is implied.

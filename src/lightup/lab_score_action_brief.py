@@ -62,7 +62,10 @@ def render_action_brief(data: dict, fmt: str) -> str:
         lines += ["## Mandatory independent HUMAN gate", "- [ ] "+_GATE,
                   "", "Previous HOLD is not cleared by a later local PASS.",
                   "No external targets, scans, security grants, research or release.", ""]
-        return "\n".join(lines)
+        output = "\n".join(lines)
+        if not 0 < len(output.encode("utf-8")) <= 65536:
+            raise ValueError("oversize HUMAN Markdown brief")
+        return output
     blocks = []
     for source, tasks in per_source.items():
         items = "".join(f"<li>Anonymous pair {pair}: {reason} — "

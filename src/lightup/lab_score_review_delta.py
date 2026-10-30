@@ -126,7 +126,8 @@ def render_comparison(result: dict[str, Any], fmt: str) -> str:
 
 
 def publish_private_comparison(first: str, second: str, destination: str, *,
-                               include_actions: bool = False) -> dict[str, Any]:
+                               include_actions: bool = False,
+                               include_briefs: bool = False) -> dict[str, Any]:
     """Atomically publish complete HUMAN views from two admitted ZIPs."""
     import os
     import hashlib
@@ -135,6 +136,8 @@ def publish_private_comparison(first: str, second: str, destination: str, *,
     from .lab_score_inspect import _private_dir_fd
     from .lab_score_queue_workroom import _check_file
 
+    if include_briefs and not include_actions:
+        raise ValueError("persistent HUMAN briefs require action workroom")
     sources = [Path(p).expanduser().absolute() for p in (first, second)]
     target = Path(destination).expanduser().absolute()
     if ('..' in Path(destination).parts or any(
@@ -153,8 +156,15 @@ def publish_private_comparison(first: str, second: str, destination: str, *,
                           ('actions-csv', 'actions.csv'),
                           ('actions-html', 'actions.html')):
             payloads[name] = render_review_actions(actions, fmt).encode('utf-8')
+        if include_briefs:
+            from .lab_score_action_brief import render_action_brief
+            for fmt, name in (('actions-brief-markdown', 'human-brief.md'),
+                              ('actions-brief-html', 'human-brief.html')):
+                payloads[name] = render_action_brief(actions, fmt).encode('utf-8')
     receipt = {
-        'schema': ('lightup.lab-score-human-two-transport-workroom.v2'
+        'schema': ('lightup.lab-score-human-two-transport-workroom.v3'
+                   if include_briefs else
+                   'lightup.lab-score-human-two-transport-workroom.v2'
                    if include_actions else 'lightup.lab-score-human-two-transport-workroom.v1'),
         'unsigned_local_consistency_only': True,
         'source_zip_sha256': [result['baseline']['unsigned_transport_sha256'],
@@ -234,9 +244,11 @@ def verify_private_comparison(first: str, second: str, directory: str, *,
         base = {'comparison.json', 'comparison.txt', 'comparison.csv',
                 'comparison.html', 'manifest.json'}
         with_actions = base | {'actions.json', 'actions.csv', 'actions.html'}
-        if inventory not in (base, with_actions):
+        with_briefs = with_actions | {'human-brief.md', 'human-brief.html'}
+        if inventory not in (base, with_actions, with_briefs):
             raise ValueError('invalid saved HUMAN comparison inventory')
-        include_actions = inventory == with_actions
+        include_briefs = inventory == with_briefs
+        include_actions = inventory in (with_actions, with_briefs)
     finally:
         os.close(fd)
     if include_actions:
@@ -246,8 +258,15 @@ def verify_private_comparison(first: str, second: str, directory: str, *,
                           ('actions-csv', 'actions.csv'),
                           ('actions-html', 'actions.html')):
             views[name] = render_review_actions(actions, fmt).encode('utf-8')
+        if include_briefs:
+            from .lab_score_action_brief import render_action_brief
+            for fmt, name in (('actions-brief-markdown', 'human-brief.md'),
+                              ('actions-brief-html', 'human-brief.html')):
+                views[name] = render_action_brief(actions, fmt).encode('utf-8')
     manifest={
-        'schema':('lightup.lab-score-human-two-transport-workroom.v2'
+        'schema':('lightup.lab-score-human-two-transport-workroom.v3'
+                  if include_briefs else
+                  'lightup.lab-score-human-two-transport-workroom.v2'
                   if include_actions else 'lightup.lab-score-human-two-transport-workroom.v1'),
         'unsigned_local_consistency_only':True,
         'source_zip_sha256':[result['baseline']['unsigned_transport_sha256'],

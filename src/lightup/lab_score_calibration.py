@@ -524,12 +524,16 @@ def main(argv: list[str] | None = None) -> int:
                         help="new 0700 owner-private five-file HUMAN two-ZIP comparison package")
     parser.add_argument("--include-actions", action="store_true",
                         help="publish private eight-file HUMAN two-ZIP comparison with action views")
+    parser.add_argument("--include-briefs", action="store_true",
+                        help="save source-bound HUMAN Markdown/HTML briefs in an exclusive ten-file room")
     parser.add_argument("--export-comparison", action="store_true",
                         help="after fully revalidating both original ZIPs and all saved HUMAN outputs, emit one canonical review view")
     parser.add_argument("--unpacked-review-dir", help="existing private review files")
     parser.add_argument("--unpack-output-dir",
                         help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
+    if args.include_briefs and not args.include_actions:
+        parser.error("--include-briefs requires --include-actions and a new comparison room")
     if args.include_actions and args.compare_portable_reviews is None:
         parser.error("--include-actions requires --compare-portable-reviews and --comparison-output-dir")
     if args.compare_portable_reviews is not None or args.verify_comparison_workroom is not None:
@@ -547,6 +551,8 @@ def main(argv: list[str] | None = None) -> int:
                 or args.review_queue or args.include_triage
                 or (args.include_actions and (args.verify_comparison_workroom is not None
                                              or args.comparison_output_dir is None))
+                or (args.include_briefs and (args.verify_comparison_workroom is not None
+                                            or args.comparison_output_dir is None))
                 or args.queue_workroom_dir is not None
                 or args.html_output_dir is not None
                 or args.verify_html_output_dir is not None
@@ -570,14 +576,15 @@ def main(argv: list[str] | None = None) -> int:
                     else:
                         output = render_comparison(comparison, args.format)
                 else:
-                    count_label = "five" if file_count == 5 else "eight"
+                    count_label = {5: "five", 8: "eight", 10: "ten"}[file_count]
                     output = (f"LightUp HUMAN offline comparison: {count_label} saved files "
                               "reverified; no remediation or authorization.\n")
             elif args.comparison_output_dir is not None:
                 comparison = publish_private_comparison(
                     *args.compare_portable_reviews, args.comparison_output_dir,
-                    include_actions=args.include_actions)
-                count = "eight" if args.include_actions else "five"
+                    include_actions=args.include_actions,
+                    include_briefs=args.include_briefs)
+                count = "ten" if args.include_briefs else "eight" if args.include_actions else "five"
                 output = (f"LightUp HUMAN offline comparison: {count} private files "
                           "saved; unsigned transport only; no remediation or authorization.\n")
             else:

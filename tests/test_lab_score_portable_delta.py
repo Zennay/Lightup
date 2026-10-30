@@ -268,6 +268,63 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     render_action_brief(changed,fmt)
 
+    def test_atomic_ten_file_original_bound_human_brief_room(self):
+        from hashlib import sha256
+        room=self.root/'full-private-ten-view-room'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',room,'--include-actions',
+                         '--include-briefs')
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('ten private files',out)
+        snapshot={p.name:p.read_bytes() for p in room.iterdir()}
+        self.assertEqual(len(snapshot),10)
+        self.assertEqual(set(snapshot),{'comparison.json','comparison.txt',
+            'comparison.csv','comparison.html','actions.json','actions.csv',
+            'actions.html','human-brief.md','human-brief.html','manifest.json'})
+        self.assertEqual(room.stat().st_mode&0o777,0o700)
+        self.assertTrue(all(p.stat().st_mode&0o777==0o600 for p in room.iterdir()))
+        manifest=json.loads(snapshot['manifest.json'])
+        self.assertEqual(manifest['schema'],
+            'lightup.lab-score-human-two-transport-workroom.v3')
+        self.assertEqual(set(manifest['file_sha256']),
+                         set(snapshot)-{'manifest.json'})
+        self.assertTrue(all(sha256(snapshot[name]).hexdigest()==digest
+                            for name,digest in manifest['file_sha256'].items()))
+        admit_inert_html(snapshot['human-brief.html'])
+        self.assertIn(b'GLOBAL STATUS HOLD',snapshot['human-brief.html'])
+        for fmt,name in (('actions-brief-markdown','human-brief.md'),
+                         ('actions-brief-html','human-brief.html'),
+                         ('actions-json','actions.json'),('json','comparison.json')):
+            code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                             '--comparison-output-dir',room,'--export-comparison',
+                             '--format',fmt)
+            self.assertEqual((code,err),(2,''))
+            self.assertEqual(out.encode(),snapshot[name])
+        self.assertEqual(snapshot,{p.name:p.read_bytes() for p in room.iterdir()})
+        code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                         '--comparison-output-dir',room)
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('ten saved files reverified',out)
+        (room/'human-brief.md').write_text('forged independent review')
+        for fmt in ('json','actions-brief-html','actions-csv'):
+            code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                             '--comparison-output-dir',room,
+                             '--export-comparison','--format',fmt)
+            self.assertEqual((code,out),(2,''))
+            self.assertIn('not verified',err)
+
+    def test_ten_file_private_briefs_require_explicit_actions_and_new_room(self):
+        with self.assertRaises(SystemExit):
+            run('--compare-portable-reviews',self.hold,self.passing,
+                '--include-briefs','--comparison-output-dir',self.root/'missing')
+        with self.assertRaises(SystemExit):
+            run('--verify-comparison-workroom',self.hold,self.passing,
+                '--include-actions','--include-briefs',
+                '--comparison-output-dir',self.root/'missing')
+        with self.assertRaises(SystemExit):
+            run('--compare-portable-reviews',self.hold,self.passing,
+                '--include-actions','--include-briefs')
+
     def test_export_requires_original_source_and_saved_private_room(self):
         with self.assertRaises(SystemExit):
             run('--compare-portable-reviews',self.hold,self.passing,
