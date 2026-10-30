@@ -34,6 +34,7 @@ from .lab_score_review_delta import (compare_portable_review_transports, render_
                                      publish_private_comparison, verify_private_comparison)
 from .lab_score_review_actions import build_review_actions, render_review_actions
 from .lab_score_action_focus import render_action_focus
+from .lab_score_focus_workroom import publish_private_focus, verify_private_focus
 from .lab_score_queue_csv import render_queue_csv
 from .lab_score_queue_triage import (render_human_triage_plan, render_human_triage_html,
                                      render_human_triage_csv, render_human_focus_html)
@@ -498,10 +499,18 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--verify-comparison-workroom", nargs=2,
                       metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
                       help="read-only reinspection of existing owner-private five-file HUMAN two-ZIP room")
+    mode.add_argument("--publish-action-focus", nargs=2,
+                      metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
+                      help="publish one source-local HUMAN HOLD pair to a private four-file room")
+    mode.add_argument("--verify-action-focus", nargs=2,
+                      metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
+                      help="reverify private HUMAN HOLD pair room against both originals")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
     parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "triage-csv", "review-csv", "actions-json", "actions-csv", "actions-html", "actions-brief-markdown", "actions-brief-html", "actions-focus-json", "actions-focus-text", "actions-focus-html"),
                         default="text")
+    parser.add_argument("--focus-room-dir", metavar="DIR",
+                        help="new/existing private source-local HOLD review room")
     parser.add_argument("--focus-action", nargs=3, metavar=("TRANSPORT", "PREVIOUS", "CURRENT"),
                         help="read-only single original source-local HOLD pair")
     parser.add_argument("--focus-archive-index", type=int, metavar="N",
@@ -535,6 +544,44 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--unpack-output-dir",
                         help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
+    if args.publish_action_focus is not None or args.verify_action_focus is not None:
+        creating = args.publish_action_focus is not None
+        if (args.focus_action is None or args.focus_room_dir is None
+                or args.format not in (("text",) if creating else
+                                       ("text", "actions-focus-json", "actions-focus-text", "actions-focus-html"))
+                or any((args.include_actions, args.include_briefs, args.export_comparison,
+                        args.focus_archive_index is not None, args.focus_pair is not None,
+                        args.review_queue, args.include_triage,
+                        args.comparison_output_dir is not None,
+                        args.queue_workroom_dir is not None,
+                        args.html_output_dir is not None,
+                        args.verify_html_output_dir is not None,
+                        args.portable_review_output_dir is not None,
+                        args.unpacked_review_dir is not None,
+                        args.unpack_output_dir is not None))):
+            parser.error("source-local focus requires only --focus-action and --focus-room-dir")
+        original = args.publish_action_focus if creating else args.verify_action_focus
+        try:
+            if creating:
+                comparison = publish_private_focus(*original, args.focus_room_dir,
+                                                   tuple(args.focus_action))
+                output = "LightUp source-local HUMAN HOLD: four private files verified; no approval.\n"
+            else:
+                comparison, expected = verify_private_focus(*original, args.focus_room_dir,
+                                                            tuple(args.focus_action))
+                names = {"actions-focus-json": "focus.json",
+                         "actions-focus-text": "focus.txt",
+                         "actions-focus-html": "focus.html"}
+                output = (expected[names[args.format]].decode("utf-8") if args.format in names
+                          else "LightUp source-local HUMAN HOLD: four saved files reverified; no approval.\n")
+        except Exception:
+            print("LightUp HUMAN source-local HOLD; original ZIPs or saved room not verified.",
+                  file=sys.stderr)
+            return 2
+        sys.stdout.write(output)
+        return 0 if comparison["review_status"] == "PASS" else 2
+    if args.focus_room_dir is not None:
+        parser.error("--focus-room-dir requires --publish-action-focus or --verify-action-focus")
     if args.include_briefs and not args.include_actions:
         parser.error("--include-briefs requires --include-actions and a new comparison room")
     if args.include_actions and args.compare_portable_reviews is None:

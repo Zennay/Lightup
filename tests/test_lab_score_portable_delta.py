@@ -101,6 +101,56 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         self.assertEqual((status, out), (2, ""))
         self.assertIn("not verified", err)
 
+    def test_private_source_local_focus_room_publish_verify_and_tamper(self):
+        import stat
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_review_actions import build_review_actions
+        room = self.root / "four-file-focus"
+        actions = build_review_actions(
+            compare_portable_review_transports(str(self.hold), str(self.passing)),
+            str(self.hold), str(self.passing))
+        row = next(x for x in actions["actions"][:-1] if x["transport"] == "baseline")
+        pair = ("baseline", str(row["anonymous_previous"]), str(row["anonymous_current"]))
+        opts = ["--focus-room-dir", room, "--focus-action", *pair]
+        status, out, err = run("--publish-action-focus", self.hold, self.passing, *opts)
+        self.assertEqual((status, err), (2, ""))
+        self.assertIn("four private files verified", out)
+        self.assertEqual(stat.S_IMODE(room.stat().st_mode), 0o700)
+        originals = {p.name: p.read_bytes() for p in room.iterdir()}
+        self.assertEqual(set(originals), {"focus.json", "focus.txt", "focus.html", "manifest.json"})
+        for p in room.iterdir():
+            self.assertEqual(stat.S_IMODE(p.stat().st_mode), 0o600)
+        for fmt, filename in (("actions-focus-json", "focus.json"),
+                              ("actions-focus-text", "focus.txt"),
+                              ("actions-focus-html", "focus.html")):
+            saved = run("--verify-action-focus", self.hold, self.passing,
+                        *opts, "--format", fmt)
+            direct = run("--compare-portable-reviews", self.hold, self.passing,
+                         "--focus-action", *pair, "--format", fmt)
+            self.assertEqual(saved, direct)
+            self.assertEqual((saved[0], saved[2]), (2, ""))
+            self.assertEqual(saved[1].encode(), originals[filename])
+        self.assertEqual(originals, {p.name: p.read_bytes() for p in room.iterdir()})
+        status, out, err = run("--publish-action-focus", self.hold, self.passing, *opts)
+        self.assertEqual((status, out), (2, ""))
+        (room / "focus.txt").write_text("forged APPROVED")
+        for fmt in ("actions-focus-json", "actions-focus-html"):
+            status, out, err = run("--verify-action-focus", self.hold, self.passing,
+                                   *opts, "--format", fmt)
+            self.assertEqual((status, out), (2, ""))
+            self.assertIn("not verified", err)
+            self.assertNotIn("APPROVED", err)
+
+    def test_private_source_local_focus_rejects_invalid_pair_without_writes(self):
+        room = self.root / "invalid-focus"
+        for pair in (("candidate", "1", "4"), ("baseline", "01", "4"),
+                     ("baseline", "1", "1"), ("baseline", "1", "9")):
+            status, out, err = run("--publish-action-focus", self.hold, self.passing,
+                                   "--focus-room-dir", room, "--focus-action", *pair)
+            self.assertEqual((status, out), (2, ""))
+            self.assertFalse(room.exists())
+            self.assertIn("not verified", err)
+
     def test_count_delta_never_closes_old_hold(self):
         status,out,err=run('--compare-portable-reviews',
                            self.hold,self.passing,'--format','json')
