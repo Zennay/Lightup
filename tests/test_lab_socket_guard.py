@@ -164,6 +164,63 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                 with fixed_loopback_socket_boundary():
                     self.assertEqual(getattr(ssl.SSLSocket, method)(loopback), "ok")
 
+    def test_unapproved_child_process_paths_are_blocked(self):
+        import os
+        import subprocess
+        # All launch primitives are mocked: never run a real external command.
+        with patch.object(subprocess, "Popen", return_value="launched") as popen, patch.object(
+            os, "system", return_value=0
+        ) as system, patch.object(os, "popen", return_value="shell") as ospopen, patch.object(
+            os, "posix_spawn", return_value=42
+        ) as spawn, patch.object(os, "posix_spawnp", return_value=42) as spawnp:
+            with fixed_loopback_socket_boundary():
+                attempts = (
+                    lambda: subprocess.Popen(["curl", "https://example.invalid"]),
+                    lambda: subprocess.Popen("openssl req -x509", shell=True),
+                    lambda: os.system("echo TEST-SYNTHETIC"),
+                    lambda: os.popen("echo TEST-SYNTHETIC"),
+                    lambda: os.posix_spawn("/bin/echo", ["echo", "TEST-SYNTHETIC"], {}),
+                    lambda: os.posix_spawnp("echo", ["echo", "TEST-SYNTHETIC"], {}),
+                )
+                for action in attempts:
+                    with self.subTest(action=repr(action)), self.assertRaises(
+                        LabSocketBoundaryError
+                    ):
+                        action()
+            for original in (popen, system, ospopen, spawn, spawnp):
+                original.assert_not_called()
+
+    def test_only_pinned_local_certificate_subprocess_is_admitted(self):
+        import shutil
+        import subprocess
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        openssl = shutil.which("openssl")
+        if openssl is None:
+            self.skipTest("TLS fixture requires installed openssl")
+        with TemporaryDirectory(prefix="lightup-tls-lab-") as folder:
+            valid = [
+                openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                "-keyout", str(Path(folder) / "fixture-key.pem"),
+                "-out", str(Path(folder) / "fixture-cert.pem"), "-days", "1",
+                "-subj", "/CN=127.0.0.1", "-addext",
+                "subjectAltName=IP:127.0.0.1", "-addext",
+                "basicConstraints=critical,CA:FALSE",
+            ]
+            with patch.object(subprocess, "Popen", return_value="allowed") as original:
+                with fixed_loopback_socket_boundary():
+                    self.assertEqual(subprocess.Popen(valid), "allowed")
+                    for index, value in ((1, "s_client"), (7, "/tmp/PRIVATE-key.pem"),
+                                         (15, "subjectAltName=DNS:public.example"),
+                                         (17, "basicConstraints=CA:TRUE")):
+                        attempt = list(valid)
+                        attempt[index] = value
+                        with self.subTest(index=index), self.assertRaises(LabSocketBoundaryError):
+                            subprocess.Popen(attempt)
+                    with self.assertRaises(LabSocketBoundaryError):
+                        subprocess.Popen(valid, shell=True)
+                original.assert_called_once_with(valid)
+
     def test_non_getaddrinfo_dns_and_reverse_dns_are_blocked(self):
         resolver_names = (
             "gethostbyname", "gethostbyname_ex", "gethostbyaddr",

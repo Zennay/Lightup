@@ -6,7 +6,11 @@ first-party scorer functions execute; it is never an execution authorization.
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
+import os
+from pathlib import Path
+import shutil
+import subprocess
+from contextlib import ExitStack, contextmanager
 import socket
 import ssl
 from unittest.mock import patch
@@ -104,6 +108,66 @@ def fixed_loopback_socket_boundary():
             return "127.0.0.1"
         raise LabSocketBoundaryError("Offline lab forbids hostname resolution")
 
+    # Guard direct child launches as well as socket calls. The only first-
+    # party child needed by the three fixed scorers is the local certificate
+    # generator. This is still process-local defense in depth, not OS sandboxing.
+    original_popen = subprocess.Popen
+
+    def approved_local_certificate_command(argv):
+        if type(argv) is not list or len(argv) != 18 or not all(
+            type(token) is str for token in argv
+        ):
+            return False
+        openssl = shutil.which("openssl")
+        if openssl is None or argv[0] != openssl:
+            return False
+        key, cert = Path(argv[7]), Path(argv[9])
+        root = key.parent
+        if (not root.is_absolute() or not root.name.startswith("lightup-tls-lab-")
+                or root.is_symlink() or not root.is_dir()
+                or cert.parent != root
+                or key.name != "fixture-key.pem"
+                or cert.name != "fixture-cert.pem"):
+            return False
+        return argv == [
+            openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+            "-keyout", str(key), "-out", str(cert), "-days", "1",
+            "-subj", "/CN=127.0.0.1", "-addext",
+            "subjectAltName=IP:127.0.0.1", "-addext",
+            "basicConstraints=critical,CA:FALSE",
+        ]
+
+    def guarded_popen(*args, **kwargs):
+        if (len(args) != 1 or not approved_local_certificate_command(args[0])
+                or kwargs.get("shell") not in (None, False)
+                or kwargs.get("executable") is not None
+                or kwargs.get("cwd") is not None
+                or kwargs.get("env") is not None
+                or kwargs.get("preexec_fn") is not None
+                or kwargs.get("pass_fds", ()) != ()):
+            raise LabSocketBoundaryError("Offline lab refuses unapproved child process")
+        return original_popen(*args, **kwargs)
+
+    original_spawn = os.posix_spawn
+    original_spawnp = os.posix_spawnp
+
+    def guarded_spawn(path, argv, env, **kwargs):
+        # CPython subprocess.Popen can use posix_spawn beneath the validated
+        # Popen call. Independently validate that low-level command as well.
+        if (type(path) is not str or type(argv) is not list or path != argv[0]
+                or not approved_local_certificate_command(argv)):
+            raise LabSocketBoundaryError("Offline lab refuses unapproved child process")
+        return original_spawn(path, argv, env, **kwargs)
+
+    def guarded_spawnp(path, argv, env, **kwargs):
+        if (type(path) is not str or type(argv) is not list or path != argv[0]
+                or not approved_local_certificate_command(argv)):
+            raise LabSocketBoundaryError("Offline lab refuses unapproved child process")
+        return original_spawnp(path, argv, env, **kwargs)
+
+    def refuse_process(*args, **kwargs):
+        raise LabSocketBoundaryError("Offline lab forbids process launch API")
+
     # SSLSocket overrides the raw socket methods and its write() reaches
     # the TLS engine directly. Cover those methods and its connect overrides,
     # including sockets established before entering this scoped canary.
@@ -142,26 +206,36 @@ def fixed_loopback_socket_boundary():
         name: guarded_tls_connector(name) for name in ("connect", "connect_ex")
     })
 
-    with patch.multiple(ssl.SSLSocket, **tls_overrides), patch.object(
-        ssl.SSLContext, "wrap_socket", guarded_tls_wrap
-    ), patch.object(
-        socket.socket, "connect", connect
-    ), patch.object(
-        socket.socket, "connect_ex", connect_ex
-    ), patch.object(socket.socket, "bind", bind), patch.object(
-        socket.socket, "sendto", sendto
-    ), patch.object(socket.socket, "send", send), patch.object(
-        socket.socket, "sendall", sendall
-    ), patch.object(socket.socket, "sendfile", sendfile), patch.object(
-        socket, "getaddrinfo", getaddrinfo
-    ), patch.object(
-        socket, "gethostbyname", refuse_name_resolution
-    ), patch.object(socket, "gethostbyname_ex", refuse_name_resolution), patch.object(
-        socket, "gethostbyaddr", refuse_name_resolution
-    ), patch.object(socket, "getnameinfo", refuse_name_resolution), patch.object(
-        socket, "getfqdn", fixed_loopback_fqdn
-    ), patch.object(
-        socket.socket, "sendmsg",
-        side_effect=LabSocketBoundaryError("Offline lab refuses sendmsg")
-    ):
+    # ExitStack also avoids the compiler's static nesting limit while
+    # restoring every process-global patch even on a scorer exception.
+    with ExitStack() as stack:
+        for module, replacements in (
+            (subprocess, {"Popen": guarded_popen}),
+            (os, {
+                "system": refuse_process, "popen": refuse_process,
+                "posix_spawn": guarded_spawn, "posix_spawnp": guarded_spawnp,
+                "fork": refuse_process,
+            }),
+            (ssl.SSLContext, {"wrap_socket": guarded_tls_wrap}),
+            (socket.socket, {
+                "connect": connect, "connect_ex": connect_ex,
+                "bind": bind, "sendto": sendto, "send": send,
+                "sendall": sendall, "sendfile": sendfile,
+            }),
+            (socket, {
+                "getaddrinfo": getaddrinfo,
+                "gethostbyname": refuse_name_resolution,
+                "gethostbyname_ex": refuse_name_resolution,
+                "gethostbyaddr": refuse_name_resolution,
+                "getnameinfo": refuse_name_resolution,
+                "getfqdn": fixed_loopback_fqdn,
+            }),
+        ):
+            for method, replacement in replacements.items():
+                stack.enter_context(patch.object(module, method, replacement))
+        stack.enter_context(patch.multiple(ssl.SSLSocket, **tls_overrides))
+        stack.enter_context(patch.object(
+            socket.socket, "sendmsg",
+            side_effect=LabSocketBoundaryError("Offline lab refuses sendmsg"),
+        ))
         yield
