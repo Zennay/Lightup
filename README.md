@@ -361,3 +361,19 @@ global HOLD/PASS, selected anonymous original pair/archive, false
 source-authentication/authorization/deployment flags, and unsigned transport
 consistency. Focused local PASS never clears an unrelated global HOLD; even
 global synthetic PASS grants no consent or permission for real-world testing.
+
+### Inert, printable focused HUMAN review (synthetic only)
+
+Use `--verify-queue-workroom PRIVATE.zip --queue-workroom-dir EXISTING_PRIVATE_DIR
+--focus-archive-index 2 --format html` to print an offline HTML follow-up
+worksheet for the original selected anonymous archive, or replace with
+`--focus-pair 1 4 --format html` for a single original comparison. A focused
+archive contains ALL its original comparison pairs, including PASS rows.
+The HTML retains GLOBAL HOLD even for a selected archive whose local pairs
+all PASS, local-only keyboard jump anchors, individual synthetic evidence
+replay/scorer drift actions, and explicit HUMAN review boundaries. A v1/v2/v3
+saved room must still verify in full against the re-admitted canonical source
+ZIP. Unknown originals, altered saved files, contradictory status claims,
+remote HTML navigation and active scripts are refused; zero partial output.
+The CLI only prints to stdout; human-directed saved copies should use
+owner-private storage and `umask 077`. No security authority is created.

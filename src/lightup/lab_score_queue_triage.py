@@ -198,3 +198,105 @@ def render_human_triage_csv(queue: dict[str, Any], *, global_status: str,
     if len(result.encode('utf-8')) > 65536:
         raise ValueError('triage CSV too large')
     return result
+
+
+def render_human_focus_html(focus: dict[str, Any]) -> str:
+    """Bounded inert HUMAN drilldown; never converts local PASS to authority."""
+    from .lab_score_portable_html_safety import admit_inert_html
+    required = {'schema', 'original_source_authenticated', 'authorization_granted',
+                'external_targets_contacted', 'deployment', 'human_review_only',
+                'global_review_status', 'portable_transport_sha256',
+                'workroom_files_verified', 'focused_archive', 'focused_pair'}
+    if (set(focus) != required
+            or focus['schema'] != 'lightup.lab-score-private-human-focus.v1'
+            or any(focus[k] is not False for k in (
+                'original_source_authenticated', 'authorization_granted',
+                'external_targets_contacted', 'deployment'))
+            or focus['human_review_only'] is not True
+            or focus['global_review_status'] not in ('PASS', 'HOLD')
+            or type(focus['workroom_files_verified']) is not int
+            or focus['workroom_files_verified'] not in (3, 5, 8)
+            or not isinstance(focus['portable_transport_sha256'], str)
+            or not _SHA256.fullmatch(focus['portable_transport_sha256'])
+            or (focus['focused_archive'] is None) == (focus['focused_pair'] is None)):
+        raise ValueError('untrusted HUMAN focus claim')
+    archive = focus['focused_archive']
+    if archive is not None:
+        if (set(archive) != {'archive_index', 'comparisons', 'hold_pairs', 'pairs'}
+                or type(archive['archive_index']) is not int
+                or not 1 <= archive['archive_index'] <= 8
+                or type(archive['comparisons']) is not int
+                or not 1 <= archive['comparisons'] <= 7
+                or type(archive['hold_pairs']) is not int
+                or not isinstance(archive['pairs'], list)
+                or len(archive['pairs']) != archive['comparisons']):
+            raise ValueError('invalid focused archive')
+        pairs = archive['pairs']
+        label = f"Anonymous archive {archive['archive_index']}"
+    else:
+        pairs = [focus['focused_pair']]
+        label = 'Anonymous original pair'
+    seen, sections, links, holds = set(), [], [], 0
+    for p in pairs:
+        required_pair = {'previous_index', 'current_index', 'review_status',
+                         'independent_evaluations', 'score_stable', 'hold_reasons'}
+        if not isinstance(p, dict) or set(p) != required_pair:
+            raise ValueError('invalid focused pair')
+        a, b = p['previous_index'], p['current_index']
+        if (type(a) is not int or type(b) is not int or not 1 <= a < b <= 8
+                or (a, b) in seen
+                or type(p['independent_evaluations']) is not bool
+                or type(p['score_stable']) is not bool
+                or archive is not None and archive['archive_index'] not in (a, b)):
+            raise ValueError('invalid focused original ordinals')
+        seen.add((a, b))
+        reasons = (['evidence_reused'] if not p['independent_evaluations'] else [])
+        if not p['score_stable']:
+            reasons.append('score_drift')
+        state = 'HOLD' if reasons else 'PASS'
+        if p['hold_reasons'] != reasons or p['review_status'] != state:
+            raise ValueError('contradictory focused review outcome')
+        holds += state == 'HOLD'
+        actions = []
+        if 'evidence_reused' in reasons:
+            actions.append('Capture new independent synthetic localhost originals; retain HOLD')
+        if 'score_drift' in reasons:
+            actions.append('Review isolated synthetic scorer calibration; retain HOLD')
+        actions.append('HUMAN: privately inspect original evidence; no approval issued')
+        checklist = ''.join(f'<li>☐ {action}</li>' for action in actions)
+        links.append(f"<a href='#pair-{a}-{b}'>{a}-{b}</a>")
+        sections.append(f"<section id='pair-{a}-{b}'><h2>Pair {a}-{b}: {state}</h2>"
+                        f"<ul>{checklist}</ul></section>")
+    if ((archive is not None and holds != archive['hold_pairs'])
+            or (focus['global_review_status'] == 'PASS' and holds)):
+        raise ValueError('focused HOLD cannot be promoted to global PASS')
+    html = (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+        "<meta http-equiv='Content-Security-Policy' "
+        "content=\"default-src 'none'; style-src 'unsafe-inline'\">"
+        "<title>LightUp offline focused HUMAN reviewer</title>"
+        "<style>body{font:1rem/1.5 system-ui;max-width:58rem;margin:2rem auto;"
+        "padding:0 1rem}section{margin:1.5rem 0;border-top:1px solid;"
+        "padding-top:.7rem}a{margin-right:1rem}"
+        "a:focus-visible{outline:3px solid currentColor}"
+        "@media print{section{break-inside:avoid}body{margin:0}}"
+        "</style></head><body><main id='content'>"
+        f"<h1>{label} — HUMAN offline focus</h1>"
+        f"<p><strong>GLOBAL STATUS {focus['global_review_status']}</strong>; "
+        f"{holds} local HOLD of {len(pairs)} original comparisons. "
+        "A local PASS never clears a global HOLD.</p>"
+        "<p><strong>NOT AUTHORIZATION</strong>: source not authenticated, no "
+        "consent, targets, grants, scans, approval or deployment. Human-only.</p>"
+        f"<p>Unsigned local source-free ZIP SHA-256: {focus['portable_transport_sha256']}."
+        " This is NOT identity or provenance proof.</p>"
+        f"<nav aria-label='Original focused pair navigation'>{' '.join(links)}</nav>"
+        f"{''.join(sections)}"
+        "<p>Independent source/security/privacy review and separate scope "
+        "approval remain required. No automatic state transition.</p>"
+        "</main></body></html>"
+    )
+    if len(html.encode('utf-8')) > 32768:
+        raise ValueError('focused HUMAN HTML too large')
+    admit_inert_html(html.encode('utf-8'))
+    return html

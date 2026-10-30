@@ -920,3 +920,49 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertFalse(receipt["authorization_granted"])
         self.assertFalse(receipt["deployment"])
         self.assertEqual(receipt["workroom_files_verified"], 8)
+
+    def test_saved_human_archive_focus_inert_printable_checklist(self):
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        from lightup.lab_score_queue_workroom import focus_verified_queue_workroom
+        from lightup.lab_score_queue_triage import render_human_focus_html
+        room = self.root / "focus-print-v3"
+        self.assertEqual(invoke("--publish-queue-workroom", self.archive,
+                                "--queue-workroom-dir", room, "--include-triage")[0], 2)
+        original = {p.name: p.read_bytes() for p in room.iterdir()}
+        code, page, err = invoke("--verify-queue-workroom", self.archive,
+                                 "--queue-workroom-dir", room,
+                                 "--focus-archive-index", 2, "--format", "html")
+        self.assertEqual((code, err), (2, ""))
+        admit_inert_html(page.encode())
+        self.assertIn("GLOBAL STATUS HOLD", page)
+        self.assertIn("0 local HOLD of 3 original comparisons", page)
+        self.assertIn("href='#pair-1-2'", page)
+        self.assertIn("href='#pair-2-3'", page)
+        self.assertIn("href='#pair-2-4'", page)
+        self.assertNotIn("http://", page)
+        self.assertNotIn("<script", page)
+        self.assertNotIn(str(self.root), page)
+        self.assertEqual(original, {p.name: p.read_bytes() for p in room.iterdir()})
+        code, pair_html, err = invoke("--verify-queue-workroom", self.archive,
+                                      "--queue-workroom-dir", room,
+                                      "--focus-pair", 1, 4, "--format", "html")
+        self.assertEqual((code, err), (2, ""))
+        admit_inert_html(pair_html.encode())
+        self.assertIn("Pair 1-4: HOLD", pair_html)
+        self.assertIn("Capture new independent synthetic localhost originals; retain HOLD", pair_html)
+        focus = focus_verified_queue_workroom(self.archive, room, pair=(1, 4))
+        from copy import deepcopy
+        forged = deepcopy(focus)
+        forged["global_review_status"] = "PASS"
+        with self.assertRaises(ValueError):
+            render_human_focus_html(forged)
+        forged = deepcopy(focus)
+        forged["authorization_granted"] = True
+        with self.assertRaises(ValueError):
+            render_human_focus_html(forged)
+        (room / "triage.html").write_text("tampered")
+        code, output, err = invoke("--verify-queue-workroom", self.archive,
+                                   "--queue-workroom-dir", room,
+                                   "--focus-pair", 1, 4, "--format", "html")
+        self.assertEqual((code, output), (2, ""))
+        self.assertIn("not verified", err)

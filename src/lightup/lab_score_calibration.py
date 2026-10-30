@@ -30,7 +30,8 @@ from .lab_score_handoff_verify import verify_portable_review
 from .lab_score_portable_focus import render_portable_focus, render_portable_pair
 from .lab_score_portable_queue import render_portable_queue, render_portable_queue_html
 from .lab_score_queue_csv import render_queue_csv
-from .lab_score_queue_triage import render_human_triage_plan, render_human_triage_html, render_human_triage_csv
+from .lab_score_queue_triage import (render_human_triage_plan, render_human_triage_html,
+                                     render_human_triage_csv, render_human_focus_html)
 from .lab_score_queue_workroom import (publish_queue_workroom, verify_queue_workroom,
                                        export_verified_queue_workroom, focus_verified_queue_workroom)
 from .lab_score_suite import _EXPECTED_FINDINGS
@@ -523,7 +524,7 @@ def main(argv: list[str] | None = None) -> int:
                     (args.focus_pair is not None or args.focus_archive_index is not None))
                 or (args.verify_queue_workroom is not None and
                     (((args.focus_pair is not None or args.focus_archive_index is not None)
-                      and args.format not in ("text", "json"))
+                      and args.format not in ("text", "json", "html"))
                      or ((args.focus_pair is None and args.focus_archive_index is None)
                          and args.format == "json")))
                 or (args.focus_pair is not None and args.focus_archive_index is not None)
@@ -545,6 +546,8 @@ def main(argv: list[str] | None = None) -> int:
                         pair=tuple(args.focus_pair) if args.focus_pair is not None else None)
                     if args.format == "json":
                         print(json.dumps(focus, sort_keys=True, allow_nan=False))
+                    elif args.format == "html":
+                        sys.stdout.write(render_human_focus_html(focus))
                     elif focus["focused_archive"] is not None:
                         print(render_portable_focus(
                             focus["focused_archive"],
