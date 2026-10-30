@@ -186,3 +186,15 @@ A failed scorer never exposes an exception message, private evidence path,
 tenant identifier, target, or run ID. PASS output remains backward
 compatible. The stage is for offline operator troubleshooting only and
 never authorizes a skipped check or a retry against an external target.
+
+### Fixed scope and plan provenance for the operator canary
+
+The combined canary now verifies the full source-defined CLI scope refusal:
+`scope-check 8.8.8.8` must exit 2 with exactly the expected target,
+`allowed=false` boolean and `out_of_scope` reason. For the local
+`plan 127.0.0.1`, the response must include the exact loopback target,
+typed loopback scope and `execution_enabled=false`, with distinct
+canonical capability IDs including both local service and HTTP baselines.
+Mismatched targets, duplicate identifiers or integer/boolean substitution
+no longer qualify as an offline calibration PASS. This does not authorize
+any action against 8.8.8.8 or another external target.

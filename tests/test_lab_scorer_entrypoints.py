@@ -188,6 +188,65 @@ class LabScorerEntrypointTests(unittest.TestCase):
         self.assertNotIn("PRIVATE-target", error.getvalue())
         scorer.assert_not_called()
 
+    def test_public_denial_requires_exact_target_reason_and_typed_refusal(self):
+        from copy import deepcopy
+        good = {"allowed": False, "host": "8.8.8.8", "reason": "out_of_scope"}
+        lab_canary._require_public_target_refusal(
+            subprocess.CompletedProcess([], 2, json.dumps(good))
+        )
+        for attack in ("host", "reason", "allowed_type", "extra", "exit"):
+            bad = deepcopy(good)
+            if attack == "host":
+                bad["host"] = "127.0.0.1"
+            elif attack == "reason":
+                bad["reason"] = "loopback"
+            elif attack == "allowed_type":
+                bad["allowed"] = 0
+            elif attack == "extra":
+                bad["authority"] = "forged"
+            code = 0 if attack == "exit" else 2
+            with self.subTest(attack=attack), self.assertRaises(RuntimeError):
+                lab_canary._require_public_target_refusal(
+                    subprocess.CompletedProcess([], code, json.dumps(bad))
+                )
+
+    def test_plan_requires_exact_loopback_nonexecuting_scope_contract(self):
+        from copy import deepcopy
+        good = {
+            "target": "127.0.0.1",
+            "scope": {
+                "allowed": True, "normalized_host": "127.0.0.1",
+                "reason": "loopback",
+            },
+            "capability_ids": ["web-baseline", "network-services"],
+            "execution_enabled": False,
+        }
+        lab_canary._require_loopback_plan_disabled(
+            subprocess.CompletedProcess([], 0, json.dumps(good))
+        )
+        for attack in ("wrong_target", "wrong_scope", "scope_bool",
+                       "execution_bool", "missing_capability", "duplicates",
+                       "unknown_schema"):
+            bad = deepcopy(good)
+            if attack == "wrong_target":
+                bad["target"] = "8.8.8.8"
+            elif attack == "wrong_scope":
+                bad["scope"]["normalized_host"] = "8.8.8.8"
+            elif attack == "scope_bool":
+                bad["scope"]["allowed"] = 1
+            elif attack == "execution_bool":
+                bad["execution_enabled"] = 0
+            elif attack == "missing_capability":
+                bad["capability_ids"] = ["web-baseline"]
+            elif attack == "duplicates":
+                bad["capability_ids"].append("web-baseline")
+            else:
+                bad["external_authorization"] = True
+            with self.subTest(attack=attack), self.assertRaises(RuntimeError):
+                lab_canary._require_loopback_plan_disabled(
+                    subprocess.CompletedProcess([], 0, json.dumps(bad))
+                )
+
     def test_safety_gate_rejects_missing_checks_and_noncanonical_metrics(self) -> None:
         from copy import deepcopy
         metrics = {

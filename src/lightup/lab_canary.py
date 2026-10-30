@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -47,21 +48,51 @@ def _score_component(component, runner, path, label, valid, calls, checks):
         raise _LabComponentFailure(component) from None
 
 
+def _require_public_target_refusal(response: subprocess.CompletedProcess) -> None:
+    if response.returncode != 2:
+        raise RuntimeError("Offline safety gate denied: public-target refusal exit")
+    payload = json.loads(response.stdout)
+    expected = {"allowed": False, "host": "8.8.8.8", "reason": "out_of_scope"}
+    if (type(payload) is not dict or payload != expected
+            or payload.get("allowed") is not False):
+        raise RuntimeError("Offline safety gate denied: public-target refusal contract")
+
+
+def _require_loopback_plan_disabled(response: subprocess.CompletedProcess) -> None:
+    if response.returncode != 0:
+        raise RuntimeError("Offline safety gate denied: plan exit")
+    payload = json.loads(response.stdout)
+    if type(payload) is not dict or set(payload) != {
+        "target", "scope", "capability_ids", "execution_enabled"
+    }:
+        raise RuntimeError("Offline safety gate denied: plan schema")
+    scope = {"allowed": True, "normalized_host": "127.0.0.1", "reason": "loopback"}
+    capabilities = payload["capability_ids"]
+    if (payload["target"] != "127.0.0.1"
+            or type(payload["execution_enabled"]) is not bool
+            or payload["execution_enabled"] is not False
+            or type(payload["scope"]) is not dict
+            or payload["scope"] != scope
+            or payload["scope"].get("allowed") is not True
+            or type(capabilities) is not list
+            or not all(type(x) is str and re.fullmatch(r"[a-z][a-z0-9-]*", x)
+                       for x in capabilities)
+            or not {"web-baseline", "network-services"}.issubset(set(capabilities))
+            or len(capabilities) != len(set(capabilities))):
+        raise RuntimeError("Offline safety gate denied: non-executing loopback plan")
+
+
 def _run_canary() -> int:
     denied = subprocess.run(
         [sys.executable, "-m", "lightup.cli", "scope-check", "8.8.8.8"],
         capture_output=True, text=True, check=False,
     )
-    if not (denied.returncode == 2):
-        raise RuntimeError("Offline safety gate denied: public-target refusal exit")
-    if not (json.loads(denied.stdout)["allowed"] is False):
-        raise RuntimeError("Offline safety gate denied: public-target refusal result")
+    _require_public_target_refusal(denied)
     plan = subprocess.run(
         [sys.executable, "-m", "lightup.cli", "plan", "127.0.0.1"],
         capture_output=True, text=True, check=True,
     )
-    if not (json.loads(plan.stdout)["execution_enabled"] is False):
-        raise RuntimeError("Offline safety gate denied: non-executing plan")
+    _require_loopback_plan_disabled(plan)
 
     with tempfile.TemporaryDirectory(prefix="lightup-ci-") as directory:
         store = DomainStore(Path(directory) / "web.db")
