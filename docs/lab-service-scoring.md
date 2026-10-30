@@ -98,3 +98,14 @@ machine-readable JSON receipt remains the default, including for CI.
 Failures return code 2 in both modes, without private exception content.
 The `--format` option cannot select a network target or source dataset.
 Neither receipt grants any external-target, deployment or release authority.
+
+## Exact first-party scorer contracts
+
+The offline gate now rejects a scorer even if it claims `passed=true`
+when any of its 16 canonical metrics are missing or inconsistent. The
+false-positive rate must be exactly zero; assessed coverage must be one;
+remediation/retest quality must be zero for fixed non-remediation fixtures;
+runtime must be finite and non-negative. The top-level and persisted
+evaluation run/scenario/record IDs must match. This closes a reproduced
+false-PASS for a 75% false-positive rate with forged evaluation lineage.
+All checks remain synthetic lab-only and confer no production authority.

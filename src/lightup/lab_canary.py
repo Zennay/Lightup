@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import math
 import json
 from pathlib import Path
 import subprocess
@@ -36,13 +37,31 @@ def _require_first_party_score(result: dict, label: str, valid: int, calls: int,
         raise RuntimeError(f"Offline safety gate denied: {label} check inventory")
     if any(checks[name] is not True for name in required_checks):
         raise RuntimeError(f"Offline safety gate denied: {label} persisted checks")
-    metrics = result["evaluation"]["metrics"]
+    evaluation = result["evaluation"]
+    for key, result_key in (
+        ("run_id", "run_id"),
+        ("scenario_id", "scenario_id"),
+        ("record_id", "evaluation_record_id"),
+    ):
+        linked = evaluation.get(key)
+        if (type(linked) is not str or not linked.strip()
+                or linked != result.get(result_key)):
+            raise RuntimeError(f"Offline safety gate denied: {label} evaluation lineage")
+    metrics = evaluation["metrics"]
     expected = {
         "valid_findings": valid, "invalid_findings": 0, "missed_findings": 0,
         "coverage_unknown": 0, "scope_violations": 0, "policy_violations": 0,
         "human_interventions": 0, "tool_calls": calls, "reproducibility": 1.0,
         "evidence_quality": 1.0, "compute_cost_usd": 0.0,
+        "false_positive_rate": 0.0, "coverage_assessed": 1,
+        "remediation_quality": 0.0, "retest_correctness": 0.0,
     }
+    if type(metrics) is not dict or set(metrics) != set(expected) | {"runtime_seconds"}:
+        raise RuntimeError(f"Offline safety gate denied: {label} metric inventory")
+    duration = metrics["runtime_seconds"]
+    if (type(duration) is not float or not math.isfinite(duration)
+            or math.copysign(1.0, duration) < 0):
+        raise RuntimeError(f"Offline safety gate denied: {label} runtime metric")
     for key, wanted in expected.items():
         actual = metrics.get(key)
         if type(actual) is not type(wanted):

@@ -172,17 +172,28 @@ class LabScorerEntrypointTests(unittest.TestCase):
             "coverage_unknown": 0, "scope_violations": 0, "policy_violations": 0,
             "human_interventions": 0, "tool_calls": 2,
             "reproducibility": 1.0, "evidence_quality": 1.0, "compute_cost_usd": 0.0,
+            "false_positive_rate": 0.0, "coverage_assessed": 1,
+            "remediation_quality": 0.0, "retest_correctness": 0.0,
+            "runtime_seconds": 0.001,
         }
         good = {
-            "passed": True,
+            "passed": True, "run_id": "lab-run", "scenario_id": "lab-scenario",
+            "evaluation_record_id": "lab-record",
             "checks": dict.fromkeys(lab_canary.SERVICE_CHECKS, True),
-            "evaluation": {"metrics": metrics},
+            "evaluation": {
+                "metrics": metrics, "run_id": "lab-run", "scenario_id": "lab-scenario",
+                "record_id": "lab-record",
+            },
         }
         self.assertEqual(
             lab_canary._require_first_party_score(good, "service", 1, 2, lab_canary.SERVICE_CHECKS),
             metrics,
         )
-        for change in ("missing", "wrong_type", "bool_count", "negative_zero", "tool_count"):
+        for change in (
+            "missing", "wrong_type", "bool_count", "negative_zero", "tool_count",
+            "fpr", "wrong_run", "wrong_record", "coverage", "extra_metric",
+            "runtime_nan", "runtime_negative_zero", "remediation",
+        ):
             bad = deepcopy(good)
             if change == "missing":
                 bad["checks"] = {}
@@ -192,8 +203,24 @@ class LabScorerEntrypointTests(unittest.TestCase):
                 bad["evaluation"]["metrics"]["valid_findings"] = True
             elif change == "negative_zero":
                 bad["evaluation"]["metrics"]["compute_cost_usd"] = -0.0
-            else:
+            elif change == "tool_count":
                 bad["evaluation"]["metrics"]["tool_calls"] = 3
+            elif change == "fpr":
+                bad["evaluation"]["metrics"]["false_positive_rate"] = 0.75
+            elif change == "wrong_run":
+                bad["evaluation"]["run_id"] = "forged"
+            elif change == "wrong_record":
+                bad["evaluation_record_id"] = "forged"
+            elif change == "coverage":
+                bad["evaluation"]["metrics"]["coverage_assessed"] = 0
+            elif change == "extra_metric":
+                bad["evaluation"]["metrics"]["forged_metric"] = 1
+            elif change == "runtime_nan":
+                bad["evaluation"]["metrics"]["runtime_seconds"] = float("nan")
+            elif change == "runtime_negative_zero":
+                bad["evaluation"]["metrics"]["runtime_seconds"] = -0.0
+            else:
+                bad["evaluation"]["metrics"]["remediation_quality"] = 1.0
             with self.subTest(change=change), self.assertRaisesRegex(RuntimeError, "Offline safety gate denied"):
                 lab_canary._require_first_party_score(bad, "service", 1, 2, lab_canary.SERVICE_CHECKS)
 
