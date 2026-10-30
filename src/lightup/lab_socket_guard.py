@@ -233,6 +233,17 @@ def fixed_loopback_socket_boundary():
         ):
             for method, replacement in replacements.items():
                 stack.enter_context(patch.object(module, method, replacement))
+        # Older or direct Python process APIs must not bypass Popen. This is
+        # explicit defense against accidental scorer subprocess expansion,
+        # not a security boundary against arbitrary native extension code.
+        for name in (
+            "execl", "execle", "execlp", "execlpe",
+            "execv", "execve", "execvp", "execvpe",
+            "spawnl", "spawnle", "spawnlp", "spawnlpe",
+            "spawnv", "spawnve", "spawnvp", "spawnvpe", "forkpty",
+        ):
+            if hasattr(os, name):
+                stack.enter_context(patch.object(os, name, refuse_process))
         stack.enter_context(patch.multiple(ssl.SSLSocket, **tls_overrides))
         stack.enter_context(patch.object(
             socket.socket, "sendmsg",

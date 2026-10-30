@@ -190,6 +190,25 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
             for original in (popen, system, ospopen, spawn, spawnp):
                 original.assert_not_called()
 
+    def test_direct_exec_spawn_and_forkpty_paths_are_blocked(self):
+        import os
+        with patch.object(os, "execve", return_value=None) as execve, patch.object(
+            os, "spawnv", return_value=0
+        ) as spawnv, patch.object(os, "forkpty", return_value=(42, 1)) as forkpty:
+            with fixed_loopback_socket_boundary():
+                for launch in (
+                    lambda: os.execve("/bin/echo", ["echo", "synthetic"], {}),
+                    lambda: os.spawnv(os.P_WAIT, "/bin/echo", ["echo", "synthetic"]),
+                    lambda: os.forkpty(),
+                ):
+                    with self.subTest(launch=repr(launch)), self.assertRaises(
+                        LabSocketBoundaryError
+                    ):
+                        launch()
+            execve.assert_not_called()
+            spawnv.assert_not_called()
+            forkpty.assert_not_called()
+
     def test_only_pinned_local_certificate_subprocess_is_admitted(self):
         import shutil
         import subprocess
