@@ -276,3 +276,19 @@ archives create a private HOLD review and exit 2; the report remains
 purely offline and contains no original evidence or live authorization.
 ``--format html`` without this option continues to print on stdout
 for legacy uses.
+
+
+### Read-only verification of a previously saved review
+
+Use the same original private archived calibration inputs and
+`--compare-history ARCHIVE1 ARCHIVE2 ... --format html
+--verify-html-output-dir PRIVATE_REVIEW_DIRECTORY`. The CLI rebuilds the
+safe HTML from freshly reverified original localhost evidence, opens the
+saved 0600 `history.html` read-only through private pinned directories
+and verifies **exact bytes**, expected mode and unchanged inode. A valid
+stored PASS (or genuine stored HOLD) prints a path-free `VERIFIED`
+result, and returns the original comparison status (0 for PASS, 2 for
+HOLD). A modified saved report, symlink, extra private artifact or
+changed original archive emits generic HOLD without output and without
+rewriting the original inputs or review. This is reproduction of local
+synthetic evidence, not a public signature or real assessment authority.

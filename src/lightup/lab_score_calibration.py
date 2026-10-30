@@ -473,6 +473,35 @@ def _save_history_html(directory: str | Path, html: str) -> None:
         os.close(root_fd)
 
 
+def _verify_saved_history_html(directory: str | Path, html: str) -> None:
+    """Read-only comparison of a saved private review against original archives."""
+    root_fd = _private_dir_fd(directory)
+    try:
+        if set(os.listdir(root_fd)) != {"history.html"}:
+            raise ValueError("unexpected private review artifact set")
+        fd = _artifact_fd(root_fd, "history.html", 1024 * 1024)
+        try:
+            before = os.fstat(fd)
+            expected = html.encode("utf-8")
+            actual = os.pread(fd, len(expected) + 1, 0)
+            after = os.fstat(fd)
+            name = os.stat("history.html", dir_fd=root_fd,
+                           follow_symlinks=False)
+            if (actual != expected
+                    or (before.st_dev, before.st_ino, before.st_size,
+                        before.st_mtime_ns, before.st_ctime_ns) !=
+                       (after.st_dev, after.st_ino, after.st_size,
+                        after.st_mtime_ns, after.st_ctime_ns)
+                    or (after.st_dev, after.st_ino) !=
+                       (name.st_dev, name.st_ino)
+                    or set(os.listdir(root_fd)) != {"history.html"}):
+                raise ValueError("stored HTML differs from original evidence")
+        finally:
+            os.close(fd)
+    finally:
+        os.close(root_fd)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="lightup-lab-score-calibrate",
@@ -492,10 +521,14 @@ def main(argv: list[str] | None = None) -> int:
                         default="text")
     parser.add_argument("--html-output-dir",
                         help="new exclusive 0700 directory for private 0600 history.html")
+    parser.add_argument("--verify-html-output-dir",
+                        help="read-only comparison of a private review to original archives")
     args = parser.parse_args(argv)
-    if args.html_output_dir is not None and (
+    if args.html_output_dir is not None and args.verify_html_output_dir is not None:
+        parser.error("create and verify must be separate operations")
+    if (args.html_output_dir is not None or args.verify_html_output_dir is not None) and (
             args.format != "html" or args.compare_history is None):
-        parser.error("--html-output-dir requires --compare-history and --format html")
+        parser.error("saved HTML options require --compare-history and --format html")
     if args.format in ("csv", "html") and args.compare_history is None:
         parser.error("CSV/HTML export applies only to --compare-history")
     try:
@@ -530,10 +563,16 @@ def main(argv: list[str] | None = None) -> int:
             html = render_history_html(result)
             if args.html_output_dir is not None:
                 _save_history_html(args.html_output_dir, html)
+            elif args.verify_html_output_dir is not None:
+                _verify_saved_history_html(args.verify_html_output_dir, html)
+                print("LightUp saved synthetic HTML: VERIFIED; original comparison "
+                      + ("PASS" if result["passed"] else "HOLD"))
             else:
                 print(html, end="")
         except Exception:
-            print("LightUp synthetic calibration: HOLD; HTML review not saved.",
+            reason = ("HTML review not verified." if args.verify_html_output_dir
+                      is not None else "HTML review not saved.")
+            print(f"LightUp synthetic calibration: HOLD; {reason}",
                   file=sys.stderr)
             return 2
     elif args.format == "csv":

@@ -25,6 +25,60 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
                                "--html-output-dir", str(destination)])
         return status, out.getvalue(), err.getvalue()
 
+    def verify(self, roots, destination):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            status = cal.main(["--compare-history", *map(str, roots),
+                               "--format", "html",
+                               "--verify-html-output-dir", str(destination)])
+        return status, out.getvalue(), err.getvalue()
+
+    def test_saved_html_is_reproducibly_verified_without_writes(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            dest = Path(base)/"saved-review"
+            self.assertEqual(self.invoke(roots, dest)[0], 0)
+            before = (dest/"history.html").stat()
+            code, out, err = self.verify(roots, dest)
+            after = (dest/"history.html").stat()
+            self.assertEqual((code, err), (0, ""))
+            self.assertIn("VERIFIED; original comparison PASS", out)
+            self.assertEqual((before.st_ino, before.st_size, before.st_mtime_ns,
+                              before.st_ctime_ns),
+                             (after.st_ino, after.st_size, after.st_mtime_ns,
+                              after.st_ctime_ns))
+            self.assertNotIn(base, out)
+
+    def test_tampered_saved_html_fails_reverification(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            dest = Path(base)/"saved-review"
+            self.assertEqual(self.invoke(roots, dest)[0], 0)
+            (dest/"history.html").write_bytes(b"ALTERED")
+            code, out, err = self.verify(roots, dest)
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("HTML review not verified", err)
+            self.assertNotIn(base, err)
+
+    def test_reused_evidence_hold_is_verifiable_offline(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            shutil.rmtree(roots[1])
+            shutil.copytree(roots[0], roots[1])
+            dest = Path(base)/"hold-review"
+            self.assertEqual(self.invoke(roots, dest)[0], 2)
+            code, out, err = self.verify(roots, dest)
+            self.assertEqual(code, 2)
+            self.assertEqual(err, "")
+            self.assertIn("VERIFIED; original comparison HOLD", out)
+            (roots[0]/"report.json").write_bytes(b"corrupted original")
+            code, out, err = self.verify(roots, dest)
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertNotIn(base, err)
+
     def test_0600_atomic_new_report_and_no_overwrite(self):
         with tempfile.TemporaryDirectory() as base:
             roots = self.archives(base)
