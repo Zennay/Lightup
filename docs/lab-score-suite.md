@@ -381,3 +381,21 @@ as approval. Index N is one-based and bounded by the original archive count.
 `--verify-html-output-dir` still verifies the entire saved 0700/0600 private
 HTML/JSON/receipt bundle before any focused stdout. This is review-only;
 neither a source identity nor authenticated chronology nor external consent.
+
+
+### Accessible offline focused HTML inspection
+
+`--compare-history ARCHIVE1 ARCHIVE2 ... --format html --focus-archive-index N`
+renders a static, keyboard-accessible focused original-pair table without
+removing the full verified matrix. The global PASS/HOLD and HOLD count stay
+visible even when every pair involving archive N passes while an unrelated
+pair reuses evidence. Original HOLD details remain linkable. No scripts,
+network assets, private source paths or authenticated chronology are included.
+
+To inspect an already saved private report, combine the focus with
+`--verify-html-output-dir EXISTING_PRIVATE_REVIEW_DIR`: the canonical
+original HTML/summary/receipt bundle is checked first; only then is focused
+HTML printed. Tampered sources/receipts return HOLD with empty stdout. Focus
+is not allowed with `--html-output-dir` because saved original private
+reports are intentionally canonical and unfocused. The existing nonfocused
+saved HTML verification still prints its original VERIFIED status.

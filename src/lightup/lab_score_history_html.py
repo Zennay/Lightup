@@ -19,7 +19,7 @@ def _number(value: Any) -> str:
     return escape(str(value))
 
 
-def render_history_html(report: dict[str, Any]) -> str:
+def render_history_html(report: dict[str, Any], focus_index: int | None = None) -> str:
     """Render a static 2–8 archive PASS/HOLD matrix, without original evidence."""
     n = report.get("archives_checked")
     if (report.get("schema") != "lightup.lab-score-calibration-history.v1"
@@ -174,6 +174,45 @@ def render_history_html(report: dict[str, Any]) -> str:
            "</tr></thead><tbody>" + "".join(hotspot_rows) + "</tbody></table>"
            if hotspot_rows else "<p>No first-party score-drift hotspots.</p>")
     )
+    focus_panel = ""
+    if focus_index is not None:
+        if type(focus_index) is not int or not 1 <= focus_index <= n:
+            raise ValueError("invalid original archive focus")
+        selected = sorted(
+            ((i, j, ok) for (i, j), ok in lookup.items()
+             if focus_index in (i, j)),
+            key=lambda item: (item[2], item[0], item[1]),
+        )
+        selected_holds = sum(not ok for _, _, ok in selected)
+        focus_rows = []
+        for i, j, ok in selected:
+            independence, stability = flags[i, j]
+            link = (f"<a href='#pair-{i}-{j}'>Review HOLD</a>"
+                    if not ok else "—")
+            focus_rows.append(
+                f"<tr><th scope='row'>{i} versus {j}</th>"
+                f"<td>{'PASS' if ok else 'HOLD'}</td>"
+                f"<td>{'yes' if independence else 'no'}</td>"
+                f"<td>{'yes' if stability else 'no'}</td>"
+                f"<td>{link}</td></tr>"
+            )
+        focus_panel = (
+            f"<section class='focus-review' aria-labelledby='focused-title'>"
+            f"<h2 id='focused-title'>Focused archive {focus_index}</h2>"
+            f"<p>{len(selected)} original pairs; {selected_holds} focused HOLD; "
+            f"{len(seen_holds)} global HOLD. The global result remains "
+            f"{'PASS' if report['passed'] else 'HOLD'}.</p>"
+            "<p>This is a display-only focus. All original pairs remain verified "
+            "and the complete matrix remains below.</p>"
+            "<div class='table-scroll' role='region' tabindex='0' "
+            "aria-label='Focused original archive pairs'><table>"
+            f"<caption>Anonymous comparisons involving archive {focus_index}</caption>"
+            "<thead><tr><th scope='col'>Original pair</th>"
+            "<th scope='col'>Result</th><th scope='col'>Independent evidence</th>"
+            "<th scope='col'>Stable scores</th><th scope='col'>Action</th>"
+            "</tr></thead><tbody>" + "".join(focus_rows) +
+            "</tbody></table></div></section>"
+        )
     status = "PASS" if report.get("passed") is True else "HOLD"
     css = """body{font:16px/1.55 system-ui,sans-serif;max-width:880px;margin:2rem auto;padding:0 1rem;color:#152332;background:#fff}
 h1,h2,h3{line-height:1.25}table{width:100%;border-collapse:collapse;margin:1.5rem 0}
@@ -199,7 +238,7 @@ a{color:#a3d0ff}.pass{color:#8ee9aa;border-color:#8ee9aa}.hold{color:#ffb7a7;bor
             + f"{len(pairs)} original archive pairs.</p>"
             + "<p>All sources are private fixed-loopback lab fixtures. "
             + "PASS does not authorize external assessment or deployment.</p>"
-            + attention
+            + attention + focus_panel
             + "<h2>All-pairs review</h2><div class='table-scroll' role='region' tabindex='0' aria-label='Original archive comparison matrix'><table><caption>Original synthetic "
             + "calibration comparisons</caption><thead>" + rows[0] + "</thead>"
             + "<tbody>" + "".join(rows[1:]) + "</tbody></table></div>"

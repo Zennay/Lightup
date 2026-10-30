@@ -481,10 +481,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.focus_archive_index is not None and (
             args.compare_history is None or args.format not in
-            ("review-json", "review-markdown", "review-csv")):
-        parser.error("focus requires --compare-history and a source-free review format")
+            ("review-json", "review-markdown", "review-csv", "html")):
+        parser.error("focus requires --compare-history and review-json, "
+                     "review-markdown, review-csv or html")
     if args.html_output_dir is not None and args.verify_html_output_dir is not None:
         parser.error("create and verify must be separate operations")
+    if args.html_output_dir is not None and args.focus_archive_index is not None:
+        parser.error("focused HTML cannot replace the canonical saved original report")
     if args.html_output_dir is not None and (
             args.format != "html" or args.compare_history is None):
         parser.error("saving a private review requires --compare-history and --format html")
@@ -611,6 +614,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             html = render_history_html(result)
             summary = build_history_review_summary(result)
+            focused_html = (render_history_html(result, args.focus_archive_index)
+                            if args.focus_archive_index is not None else html)
             # Anchor private review paths to the same cwd as source archives.
             raw_review = args.html_output_dir or args.verify_html_output_dir
             review_dir = Path(raw_review).expanduser() if raw_review else None
@@ -630,10 +635,13 @@ def main(argv: list[str] | None = None) -> int:
                     review_dir, html, source_binding, summary,
                     lambda: _private_source_binding(roots, html, summary),
                 )
-                print("LightUp saved synthetic HTML: VERIFIED; original comparison "
-                      + ("PASS" if result["passed"] else "HOLD"))
+                if args.focus_archive_index is None:
+                    print("LightUp saved synthetic HTML: VERIFIED; original comparison "
+                          + ("PASS" if result["passed"] else "HOLD"))
+                else:
+                    print(focused_html, end="")
             else:
-                print(html, end="")
+                print(focused_html, end="")
         except Exception:
             reason = ("HTML review not verified." if args.verify_html_output_dir
                       is not None else "HTML review not saved.")

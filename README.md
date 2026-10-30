@@ -144,3 +144,12 @@ For many archives, add `--focus-archive-index N` to the source-free
 handoff. This prioritizes comparisons involving the selected 1-based archive
 but never narrows original source verification or the global HOLD status.
 Focused CSV rows explicitly retain the full-history status and HOLD count.
+
+
+Offline browser reviewers can also run
+`--compare-history ARCHIVE1 ARCHIVE2 --format html --focus-archive-index 1`
+for a static, keyboard-accessible per-archive comparison table plus the full
+global matrix and unchanged overall HOLD status. Add
+`--verify-html-output-dir EXISTING_PRIVATE_REVIEW_DIR` to verify the saved
+canonical private review before emitting focused HTML; focused HTML cannot
+replace the saved canonical report.
