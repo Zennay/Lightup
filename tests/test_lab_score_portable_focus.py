@@ -394,6 +394,33 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual((code, raw), (2, ""))
         self.assertIn("not verified", error)
 
+    def test_inert_navigator_links_archive_priorities_to_original_holds(self):
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        code, page, err = invoke("--verify-portable-review", self.archive,
+                                 "--review-queue", "--format", "navigator-html")
+        self.assertEqual((code, err), (2, ""))
+        admit_inert_html(page.encode())
+        self.assertIn("GLOBAL STATUS HOLD", page)
+        self.assertIn("href='#pair-1-4'", page)
+        self.assertIn("id='pair-1-4'", page)
+        self.assertIn("id='archive-1'", page)
+        self.assertIn("id='archive-4'", page)
+        self.assertIn("Jump to highest-priority HOLD pair", page)
+        self.assertNotIn("<script", page)
+        self.assertNotIn("http://", page)
+        self.assertNotIn(str(self.root), page)
+        room = self.root / "recipient-navigator"
+        self.assertEqual(invoke("--publish-queue-workroom", self.archive,
+                                "--queue-workroom-dir", room)[0], 2)
+        old_saved = (room / "queue.html").read_bytes()
+        code, reopened, err = invoke("--verify-queue-workroom", self.archive,
+                                     "--queue-workroom-dir", room,
+                                     "--format", "navigator-html")
+        self.assertEqual((code, err), (2, ""))
+        self.assertEqual(reopened, page)
+        self.assertEqual((room / "queue.html").read_bytes(), old_saved)
+        self.assertNotIn(b"id='pair-1-4'", old_saved)
+
     def test_saved_workroom_html_json_csv_exports_bound_to_original_zip(self):
         from lightup.lab_score_portable_html_safety import admit_inert_html
         room = self.root / "saved-full-recipient"
@@ -539,6 +566,10 @@ class FocusedPortableReviewTests(unittest.TestCase):
                                      "--review-queue", "--format", "review-csv")
         self.assertEqual((status, csvout), (2, ""))
         self.assertIn("CSV NOT admitted", err)
+        status, nav, err = invoke("--verify-portable-review", legacy_zip,
+                                  "--review-queue", "--format", "navigator-html")
+        self.assertEqual((status, nav), (2, ""))
+        self.assertIn("HTML NOT admitted", err)
         self.assertTrue(legacy_queue["review_queue_untrusted_legacy_claim"])
         self.assertFalse(legacy_queue["history_content_validated"])
         self.assertEqual(legacy_queue["review_status"], "HOLD")

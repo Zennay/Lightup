@@ -527,3 +527,20 @@ are rederived from the original, newly re-admitted v3 ZIP after the complete
 saved workspace was rechecked; no mutable saved file is reread for export.
 Any saved-file tamper results in HOLD and **zero exported bytes**. No external
 targets, assessment grants, source identity or deployment authorization.
+
+### Optional scriptless triage navigator (no change to saved v1/v2 bytes)
+
+The first-party recipient can render a separate printable, keyboard-friendly
+HUMAN page: `--verify-portable-review SOURCE.zip --review-queue --format navigator-html`.
+Unlike the canonical plain HTML, the enhanced standalone page includes
+HOLD-first skip navigation and strictly local links from the original archive
+priorities to their actual original HOLD pairs (`#archive-N` / `#pair-N-M`),
+with keyboard focus and print rules. The same ephemeral view can be rederived
+from a completely reverified saved v1/v2 room using
+`--verify-queue-workroom SOURCE.zip --queue-workroom-dir EXISTING_DIR --format navigator-html`.
+The local anchors are admitted by the existing first-party inert HTML gate;
+there is no script, remote address, network fetch or external target contact.
+Crucially, the byte-exact canonical `queue.html` stored in earlier workrooms
+remains **unchanged**. Navigational HTML is a deliberately separate read-only
+representation, not an unauthorized modification of any signed/unsigned file.
+Global HOLD and all false-authority assertions remain visible.

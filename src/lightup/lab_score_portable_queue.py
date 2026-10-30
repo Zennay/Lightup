@@ -61,19 +61,49 @@ def render_portable_queue(queue: dict[str, Any], *,
     return "\n".join(lines)
 
 
-def render_portable_queue_html(queue: dict[str, Any], *, global_status: str) -> str:
+def render_portable_queue_html(queue: dict[str, Any], *, global_status: str,
+                               navigation: bool = False) -> str:
     """Offline inert HTML from an already admitted canonical v3 ZIP only."""
     validate_portable_queue(queue, global_status)
     from .lab_score_portable_html_safety import admit_inert_html
-    archives = "".join(
-        f"<tr><th scope='row'>Archive {a['index']}</th>"
-        f"<td>{a['hold_pairs']}</td><td>{a['reused_evidence_pairs']}</td>"
-        f"<td>{a['score_drift_pairs']}</td></tr>"
-        for a in queue["archive_priorities"])
-    pairs = "".join(
-        f"<tr><th scope='row'>Pair {p['previous_index']}-{p['current_index']}</th>"
-        f"<td>{p['review_status']}</td><td>{', '.join(p['hold_reasons']) or 'none'}</td></tr>"
-        for p in queue["pairs"])
+    if navigation:
+        archive_rows = []
+        for a in queue["archive_priorities"]:
+            related = [p for p in queue["pairs"]
+                       if (p["review_status"] == "HOLD" and
+                           a["index"] in (p["previous_index"], p["current_index"]))]
+            links = ", ".join(
+                f"<a href='#pair-{p['previous_index']}-{p['current_index']}'>"
+                f"{p['previous_index']}-{p['current_index']}</a>" for p in related)
+            archive_rows.append(
+                f"<tr><th scope='row' id='archive-{a['index']}'>Archive {a['index']}</th>"
+                f"<td>{a['hold_pairs']}</td><td>{a['reused_evidence_pairs']}</td>"
+                f"<td>{a['score_drift_pairs']}</td><td>{links}</td></tr>")
+        archives = "".join(archive_rows)
+        pairs = "".join(
+            f"<tr><th scope='row' id='pair-{p['previous_index']}-{p['current_index']}'>"
+            f"Pair {p['previous_index']}-{p['current_index']}</th>"
+            f"<td>{p['review_status']}</td><td>{', '.join(p['hold_reasons']) or 'none'}</td></tr>"
+            for p in queue["pairs"])
+    else:
+        archives = "".join(
+            f"<tr><th scope='row'>Archive {a['index']}</th>"
+            f"<td>{a['hold_pairs']}</td><td>{a['reused_evidence_pairs']}</td>"
+            f"<td>{a['score_drift_pairs']}</td></tr>"
+            for a in queue["archive_priorities"])
+        pairs = "".join(
+            f"<tr><th scope='row'>Pair {p['previous_index']}-{p['current_index']}</th>"
+            f"<td>{p['review_status']}</td><td>{', '.join(p['hold_reasons']) or 'none'}</td></tr>"
+            for p in queue["pairs"])
+    archive_link_header = "<th scope='col'>Jump to HOLD comparisons</th>" if navigation else ""
+    quick_link = ""
+    if navigation and queue["hold_pairs"]:
+        first = queue["pairs"][0]
+        quick_link = (f"<nav aria-label='HOLD-first review navigation'>"
+                      f"<a href='#pair-{first['previous_index']}-{first['current_index']}'>"
+                      "Jump to highest-priority HOLD pair</a></nav>")
+    elif navigation:
+        quick_link = "<nav aria-label='Review navigation'><a href='#content'>All comparisons PASS; review the global summary</a></nav>"
     html = ("<!doctype html><html lang='en'><head><meta charset='utf-8'>"
             "<meta name='viewport' content='width=device-width, initial-scale=1'>"
             "<meta http-equiv='Content-Security-Policy' "
@@ -81,10 +111,14 @@ def render_portable_queue_html(queue: dict[str, Any], *, global_status: str) -> 
             "<title>LightUp offline review queue</title>"
             "<style>body{font:1rem/1.5 system-ui;max-width:60rem;margin:2rem auto;"
             "padding:0 1rem}table{width:100%;border-collapse:collapse;margin:1rem 0}"
-            "td,th{border:1px solid;padding:.6rem;text-align:left}</style>"
+            "td,th{border:1px solid;padding:.6rem;text-align:left}"
+            "a:focus-visible{outline:3px solid currentColor;outline-offset:2px}"
+            "@media print{body{margin:0}a{color:inherit;text-decoration:underline}}"
+            "</style>"
             "</head><body><main id='content'><h1>Synthetic HUMAN review queue</h1>"
             f"<p><strong>GLOBAL STATUS {global_status}</strong>. "
             "One local PASS never clears a global HOLD.</p>"
+            f"{quick_link}"
             f"<p>{queue['pairs_checked']} original pairs, {queue['hold_pairs']} HOLD. "
             "Original source is NOT authenticated. HUMAN review only; "
             "no consent, target contact, grants, scans or deployment.</p>"
@@ -92,7 +126,7 @@ def render_portable_queue_html(queue: dict[str, Any], *, global_status: str) -> 
             "<caption>Original archive priorities</caption><thead><tr>"
             "<th scope='col'>Archive</th><th scope='col'>HOLD pairs</th>"
             "<th scope='col'>Replay</th><th scope='col'>Drift</th>"
-            f"</tr></thead><tbody>{archives}</tbody></table></section>"
+            f"{archive_link_header}</tr></thead><tbody>{archives}</tbody></table></section>"
             "<section><h2>Every original pair</h2><table>"
             "<caption>HOLD-first comparison queue</caption><thead><tr>"
             "<th scope='col'>Pair</th><th scope='col'>Status</th>"

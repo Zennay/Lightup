@@ -486,7 +486,7 @@ def main(argv: list[str] | None = None) -> int:
                       help="read-only reread saved HUMAN review room vs original ZIP")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
-    parser.add_argument("--format", choices=("json", "text", "csv", "html", "review-json", "review-markdown", "review-csv"),
+    parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "review-csv"),
                         default="text")
     parser.add_argument("--focus-archive-index", type=int, metavar="N",
                         help="show anonymous original archive N in history or "
@@ -512,7 +512,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.publish_queue_workroom is not None or args.verify_queue_workroom is not None:
         if (args.queue_workroom_dir is None
                 or args.format not in (("text",) if args.publish_queue_workroom is not None
-                                       else ("text", "csv", "review-csv", "review-json", "html"))
+                                       else ("text", "csv", "review-csv", "review-json", "html", "navigator-html"))
                 or args.review_queue or args.focus_pair is not None
                 or args.focus_archive_index is not None or args.html_output_dir is not None
                 or args.unpack_output_dir is not None or args.unpacked_review_dir is not None
@@ -524,9 +524,13 @@ def main(argv: list[str] | None = None) -> int:
                 result = publish_queue_workroom(args.publish_queue_workroom,
                                                 args.queue_workroom_dir)
             else:
-                if args.format == "text":
+                if args.format in ("text", "navigator-html"):
                     result = verify_queue_workroom(args.verify_queue_workroom,
                                                    args.queue_workroom_dir)
+                    if args.format == "navigator-html":
+                        export = render_portable_queue_html(
+                            result["review_queue"], global_status=result["review_status"],
+                            navigation=True).encode("utf-8")
                 else:
                     filename = {"csv": "queue_archives.csv",
                                 "review-csv": "queue_pairs.csv",
@@ -591,7 +595,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.unpack_output_dir is not None:
         parser.error("--unpack-output-dir requires --unpack-portable-review")
     if args.verify_portable_review is not None:
-        if (args.format not in (("text", "json", "html", "review-csv") if args.review_queue else ("text", "json"))
+        if (args.format not in (("text", "json", "html", "navigator-html", "review-csv") if args.review_queue else ("text", "json"))
                 or args.html_output_dir is not None
                 or args.verify_html_output_dir is not None
                 or args.portable_review_output_dir is not None):
@@ -626,12 +630,17 @@ def main(argv: list[str] | None = None) -> int:
                 verified["review_queue"], global_status=verified["review_status"]
             )["queue_pairs.csv"].decode("utf-8"))
             return 0 if verified["review_status"] == "PASS" else 2
-        if args.format == "html":
+        if args.format in ("html", "navigator-html"):
             if not verified["history_content_validated"]:
                 print("Legacy review queue: HOLD; HTML NOT admitted.", file=sys.stderr)
                 return 2
-            print(render_portable_queue_html(verified["review_queue"],
-                                             global_status=verified["review_status"]))
+            page = render_portable_queue_html(
+                verified["review_queue"], global_status=verified["review_status"],
+                navigation=args.format == "navigator-html")
+            if args.format == "navigator-html":
+                sys.stdout.write(page)
+            else:
+                print(page)
             return 0 if verified["review_status"] == "PASS" else 2
         if args.format == "json":
             # Whitelist stable, bounded values; never serialize arbitrary
