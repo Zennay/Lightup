@@ -65,3 +65,39 @@ def render_portable_focus(focus: dict[str, Any], *,
         lines.append(f"{prefix}pair {label}: {pair['review_status']}; "
                      f"reasons: {reasons}.")
     return "\n".join(lines)
+
+
+def build_portable_pair(summary: dict[str, Any], previous: int, current: int) -> dict[str, Any]:
+    """Drill into one original anonymous pair; never alter global review status."""
+    n = summary["archives_checked"]
+    if (type(previous) is not int or type(current) is not int
+            or not 1 <= previous < current <= n):
+        raise ValueError("pair ordinals require 1 <= previous < current <= archives")
+    matches = [p for p in summary["pairs"] if (p["previous_index"], p["current_index"]) == (previous, current)]
+    if len(matches) != 1:
+        raise ValueError("original pair not found exactly once")
+    pair = matches[0]
+    reasons = []
+    if not pair["independent_evaluations"]:
+        reasons.append("evidence_reused")
+    if not pair["score_stable"]:
+        reasons.append("score_drift")
+    return {
+        "previous_index": previous, "current_index": current,
+        "review_status": "PASS" if pair["passed"] else "HOLD",
+        "independent_evaluations": pair["independent_evaluations"],
+        "score_stable": pair["score_stable"], "hold_reasons": reasons,
+    }
+
+
+def render_portable_pair(pair: dict[str, Any], *, global_status: str, legacy: bool) -> str:
+    prefix = "UNTRUSTED CLAIM: " if legacy else "Synthetic-only: "
+    status = "HOLD" if legacy else global_status
+    reasons = ", ".join(pair["hold_reasons"]) or "none"
+    return (
+        f"{prefix}Original anonymous pair {pair['previous_index']}-{pair['current_index']}: "
+        f"{pair['review_status']}; reasons: {reasons}.\n"
+        f"GLOBAL STATUS {status}; one pair PASS never clears a global HOLD.\n"
+        "Original source NOT authenticated; no external targets, scans, consent, grants or deployment."
+        + (" Legacy claims unsigned and not independently validated; HTML NOT admitted." if legacy else "")
+    )

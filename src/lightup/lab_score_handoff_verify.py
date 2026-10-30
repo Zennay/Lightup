@@ -19,7 +19,7 @@ from .lab_score_portable_html_safety import admit_inert_html
 from .lab_score_portable_dashboard import render_portable_dashboard
 from .lab_score_portable_history import render_portable_history
 from .lab_score_portable_legacy_triage import legacy_triage
-from .lab_score_portable_focus import build_portable_focus
+from .lab_score_portable_focus import build_portable_focus, build_portable_pair
 from .lab_score_portable_text_safety import admit_text_exports
 from .lab_score_compare import _SCORE_FIELDS
 from .lab_score_suite import _EXPECTED_FINDINGS
@@ -269,10 +269,16 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
 
 
 def verify_portable_review(
-    path: str | Path, *, focus_archive_index: int | None = None
+    path: str | Path, *, focus_archive_index: int | None = None,
+    focus_pair: tuple[int, int] | None = None
 ) -> dict[str, Any]:
     """No-network, no-write ZIP integrity and optional original-pair focus."""
     result, files = _validated_portable_review(path)
+    if focus_archive_index is not None and focus_pair is not None:
+        raise ValueError("choose only one portable focus")
+    if focus_pair is not None:
+        result["focused_pair"] = build_portable_pair(
+            _decode_json(files["review.json"]), *focus_pair)
     if focus_archive_index is not None:
         # The complete source-free summary has already been admitted and
         # checked against the ZIP's first-party HTML/CSV/Markdown in v3.

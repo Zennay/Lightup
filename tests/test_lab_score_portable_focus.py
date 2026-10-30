@@ -26,6 +26,7 @@ class FocusedPortableReviewTests(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory()
         cls.root = Path(cls.temp.name)
         originals = [cls.root / f"original-{i}" for i in range(1, 5)]
+        cls.originals = originals
         for folder in originals[:3]:
             if not cli.run_lab_score_calibration(folder)["passed"]:
                 raise AssertionError("invalid first-party synthetic calibration")
@@ -85,6 +86,49 @@ class FocusedPortableReviewTests(unittest.TestCase):
                 self.assertFalse(receipt["authorization_granted"])
                 self.assertNotIn(str(self.root), out)
 
+    def test_pair_drilldown_keeps_global_hold_and_private_paths_hidden(self):
+        status, text, err = invoke("--verify-portable-review", self.archive, "--focus-pair", 2, 3)
+        self.assertEqual((status, err), (2, ""))
+        self.assertIn("Original anonymous pair 2-3: PASS; reasons: none", text)
+        self.assertIn("GLOBAL STATUS HOLD", text)
+        self.assertNotIn(str(self.root), text)
+        status, text, err = invoke("--verify-portable-review", self.archive,
+                                   "--focus-pair", 1, 4, "--format", "json")
+        self.assertEqual((status, err), (2, ""))
+        doc = json.loads(text)
+        self.assertTrue(doc["history_content_validated"])
+        self.assertFalse(doc["original_source_authenticated"])
+        self.assertFalse(doc["authorization_granted"])
+        self.assertEqual(doc["review_status"], "HOLD")
+        self.assertFalse(doc["focused_pair_untrusted_legacy_claim"])
+        self.assertEqual(doc["focused_pair"]["hold_reasons"], ["evidence_reused"])
+        self.assertEqual(doc["focused_pair"]["review_status"], "HOLD")
+        self.assertNotIn(str(self.root), text)
+
+    def test_pair_invalid_indices_fail_closed(self):
+        for left, right in ((0, 2), (2, 2), (4, 1), (1, 5), (-1, 2)):
+            with self.subTest(pair=(left, right)):
+                code, out, err = invoke("--verify-portable-review", self.archive,
+                                        "--focus-pair", left, right, "--format", "json")
+                self.assertEqual((code, err), (2, ""))
+                receipt = json.loads(out)
+                self.assertFalse(receipt["transport_integrity"])
+                self.assertEqual(receipt["review_status"], "HOLD")
+                self.assertNotIn("focused_pair", receipt)
+
+    def test_pair_pass_original_producer(self):
+        saved, target = self.root / "pair-pass-saved", self.root / "pair-pass-zip"
+        self.assertEqual(invoke("--compare-history", *self.originals[:3],
+                                "--format", "html", "--html-output-dir", saved)[0], 0)
+        self.assertEqual(invoke("--compare-history", *self.originals[:3],
+                                "--format", "html", "--verify-html-output-dir", saved,
+                                "--portable-review-output-dir", target)[0], 0)
+        code, out, err = invoke("--verify-portable-review", target / self.archive.name,
+                                "--focus-pair", 1, 3, "--format", "json")
+        self.assertEqual((code, err), (0, ""))
+        self.assertEqual(json.loads(out)["focused_pair"]["review_status"], "PASS")
+        self.assertEqual(json.loads(out)["review_status"], "PASS")
+
     def test_legacy_focus_is_bounded_untrusted_and_no_html_export(self):
         with ZipFile(self.archive) as source:
             files = {name: source.read(name) for name in source.namelist()}
@@ -115,6 +159,14 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertTrue(receipt["focused_archive_untrusted_legacy_claim"])
         self.assertFalse(receipt["history_content_validated"])
         self.assertEqual(receipt["focused_archive"]["hold_pairs"], 1)
+        code, out, err = invoke("--verify-portable-review", legacy_zip,
+                                "--focus-pair", 1, 4, "--format", "json")
+        self.assertEqual((code, err), (2, ""))
+        receipt = json.loads(out)
+        self.assertTrue(receipt["focused_pair_untrusted_legacy_claim"])
+        self.assertFalse(receipt["history_content_validated"])
+        self.assertEqual(receipt["review_status"], "HOLD")
+        self.assertNotIn(str(self.root), out)
         browse = self.root / "legacy-browser"
         code, out, err = invoke("--unpack-portable-review", legacy_zip,
                                 "--unpack-output-dir", browse)

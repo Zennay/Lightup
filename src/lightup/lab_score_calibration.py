@@ -27,7 +27,7 @@ from .lab_score_review_store import (save_private_review, verify_private_review,
 from .lab_score_handoff import save_portable_review
 from .lab_score_portable_unpack import unpack_portable_review, verify_unpacked_portable_review
 from .lab_score_handoff_verify import verify_portable_review
-from .lab_score_portable_focus import render_portable_focus
+from .lab_score_portable_focus import render_portable_focus, render_portable_pair
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
@@ -484,6 +484,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--focus-archive-index", type=int, metavar="N",
                         help="show anonymous original archive N in history or "
                              "portable read-only HUMAN verifier")
+    parser.add_argument("--focus-pair", nargs=2, type=int, metavar=("PREVIOUS", "CURRENT"),
+                        help="read-only anonymous original pair drilldown for portable ZIP; preserves global HOLD")
     parser.add_argument("--html-output-dir",
                         help="new exclusive 0700 directory for private 0600 history.html")
     parser.add_argument("--verify-html-output-dir",
@@ -496,6 +498,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--unpack-output-dir",
                         help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
+    if args.focus_pair is not None and (args.verify_portable_review is None
+                                        or args.focus_archive_index is not None):
+        parser.error("--focus-pair is exclusive to --verify-portable-review and cannot combine with archive focus")
     if args.verify_unpacked_review is not None:
         if (args.unpacked_review_dir is None or args.unpack_output_dir is not None
                 or args.format != "text" or args.focus_archive_index is not None
@@ -540,7 +545,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             verified = verify_portable_review(
                 args.verify_portable_review,
-                focus_archive_index=args.focus_archive_index)
+                focus_archive_index=args.focus_archive_index,
+                focus_pair=tuple(args.focus_pair) if args.focus_pair is not None else None)
         except Exception:
             if args.format == "json":
                 print(json.dumps({
@@ -572,6 +578,10 @@ def main(argv: list[str] | None = None) -> int:
                 receipt["focused_archive"] = verified["focused_archive"]
                 receipt["focused_archive_untrusted_legacy_claim"] = (
                     not verified["history_content_validated"])
+            if "focused_pair" in verified:
+                receipt["focused_pair"] = verified["focused_pair"]
+                receipt["focused_pair_untrusted_legacy_claim"] = (
+                    not verified["history_content_validated"])
             print(json.dumps(receipt, sort_keys=True, allow_nan=False))
             return 0 if verified["review_status"] == "PASS" else 2
         print("LightUp portable HUMAN review: TRANSPORT VERIFIED; "
@@ -584,6 +594,10 @@ def main(argv: list[str] | None = None) -> int:
         if "focused_archive" in verified:
             print(render_portable_focus(
                 verified["focused_archive"],
+                global_status=verified["review_status"],
+                legacy=not verified["history_content_validated"]))
+        if "focused_pair" in verified:
+            print(render_portable_pair(verified["focused_pair"],
                 global_status=verified["review_status"],
                 legacy=not verified["history_content_validated"]))
         return 0 if verified["review_status"] == "PASS" else 2
