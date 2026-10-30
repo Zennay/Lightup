@@ -229,10 +229,12 @@ def verify_private_canary_handoff(directory: str) -> dict:
         if receipt != result:
             raise ValueError("unsafe handoff receipt")
         summary = files["operator.txt"].decode("utf-8")
-        if (not summary.endswith("\n") or len(summary) > 3001
-                or not summary.startswith("LightUp offline lab safety gate: ")
-                or result["canary"]["status"] not in summary.splitlines()[0]):
-            raise ValueError("unsafe handoff text")
+        # A rehashed but unsigned manifest cannot admit misleading passive
+        # operator instructions. Reconstruct the complete first-party summary
+        # byte-for-byte from the strict admitted synthetic canary receipt.
+        from lightup.lab_canary import _render_text
+        if summary != _render_text(result["canary"]) + "\n":
+            raise ValueError("noncanonical private handoff text")
         return {
             "schema": "lightup.m1.synthetic-canary-handoff-verification.v1",
             "transport_integrity": True,

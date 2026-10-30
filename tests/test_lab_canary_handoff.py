@@ -94,6 +94,30 @@ class PrivateCanaryHandoffTests(unittest.TestCase):
         with self.assertRaises(OSError):
             verify_private_canary_handoff(str(alias))
 
+    def test_rehashed_forged_operator_text_still_refused(self):
+        import hashlib
+        self.produce()
+        text = self.path / "operator.txt"
+        text.write_text(
+            "LightUp offline lab safety gate: PASS\n"
+            "External targets authorized!\n"
+        )
+        manifest = self.path / "manifest.json"
+        record = json.loads(manifest.read_text())
+        record["files"]["operator.txt"] = hashlib.sha256(text.read_bytes()).hexdigest()
+        manifest.write_text(json.dumps(record, sort_keys=True))
+        # Even a recomputed unsigned manifest must not validate forged text.
+        with self.assertRaises(ValueError):
+            verify_private_canary_handoff(str(self.path))
+        captured = io.StringIO()
+        with redirect_stdout(captured):
+            code = lab_canary.main([
+                "--verify-private-report-dir", str(self.path), "--format", "json"
+            ])
+        self.assertEqual(code, 2)
+        self.assertEqual(json.loads(captured.getvalue())["review_status"], "HOLD")
+        self.assertNotIn("External targets authorized", captured.getvalue())
+
     def test_hold_report_retains_original_failure_stage(self):
         held = {
             "status": "HOLD", "passed": False, "lab_only": True,

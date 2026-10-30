@@ -115,7 +115,10 @@ is written last, so a missing manifest means an incomplete handoff. The
 second command does **not** rerun any scorer: it performs descriptor-pinned,
 no-follow, strict-schema and local byte-integrity checks, returning PASS or
 HOLD. Extra files, altered bytes, unsafe authority flags, unexpected keys,
-symlinks, and non-private file permissions are refused. No external target
+symlinks, and non-private file permissions are refused. Even with an
+attacker-recomputed unsigned manifest, the full operator text must exactly
+match the first-party summary reconstructed from the admitted JSON; forged
+passive approval/clearance instructions are rejected. No external target
 is contacted by the reader.
 
 The manifest is **not signed**. A matching digest establishes only local
