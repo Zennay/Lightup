@@ -705,3 +705,70 @@ class FocusedPortableReviewTests(unittest.TestCase):
                                 "--unpack-output-dir", browse)
         self.assertEqual((code, out), (2, ""))
         self.assertFalse(browse.exists())
+
+    def test_triage_csv_native_original_and_saved_recipient(self):
+        import csv
+        from io import StringIO
+        code, direct, err = invoke("--verify-portable-review", self.archive,
+                                   "--review-queue", "--format", "triage-csv")
+        self.assertEqual((code, err), (2, ""))
+        rows = list(csv.DictReader(StringIO(direct)))
+        self.assertEqual(len(rows), 8)  # 6 originals, 1 replay task, 1 review gate.
+        self.assertEqual(rows[0]["anonymous_pair"], "1-4")
+        self.assertEqual(rows[0]["action_code"], "RECAPTURE_INDEPENDENT")
+        self.assertEqual(rows[-1]["action_code"], "INDEPENDENT_SOURCE_SECURITY_PRIVACY")
+        self.assertTrue(all(r["global_status"] == "HOLD" and
+                            r["completion"] == "NOT_VERIFIED" and
+                            r["source_authenticated"] == "false" and
+                            r["authorization_granted"] == "false" and
+                            r["deployment_approved"] == "false" for r in rows))
+        self.assertTrue(all(not any(v.startswith(("=", "+", "-", "@"))
+                                for v in r.values()) for r in rows))
+        self.assertNotIn(str(self.root), direct)
+        room = self.root / "triage-csv-room"
+        self.assertEqual(invoke("--publish-queue-workroom", self.archive,
+                                "--queue-workroom-dir", room)[0], 2)
+        prior = {f.name: f.read_bytes() for f in room.iterdir()}
+        code, reopened, err = invoke("--verify-queue-workroom", self.archive,
+                                     "--queue-workroom-dir", room,
+                                     "--format", "triage-csv")
+        self.assertEqual((code, err), (2, ""))
+        self.assertEqual(reopened, direct)
+        self.assertEqual(prior, {f.name: f.read_bytes() for f in room.iterdir()})
+        (room / "queue.json").write_text("tampered")
+        code, no_output, err = invoke("--verify-queue-workroom", self.archive,
+                                      "--queue-workroom-dir", room,
+                                      "--format", "triage-csv")
+        self.assertEqual((code, no_output), (2, ""))
+        self.assertIn("not verified", err)
+        from lightup.lab_score_handoff_verify import verify_portable_review
+        from lightup.lab_score_queue_triage import render_human_triage_csv
+        queue = verify_portable_review(self.archive, review_queue=True)["review_queue"]
+        with self.assertRaises(ValueError):
+            render_human_triage_csv(queue, global_status="PASS",
+                                    source_zip_sha256=hashlib.sha256(self.archive.read_bytes()).hexdigest())
+
+    def test_triage_html_anchors_all_hold_followups_inert(self):
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        from html.parser import HTMLParser
+        class Anchors(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.ids, self.links = set(), []
+            def handle_starttag(self, tag, attrs):
+                data = dict(attrs)
+                if "id" in data: self.ids.add(data["id"])
+                if "href" in data: self.links.append(data["href"])
+        code, page, err = invoke("--verify-portable-review", self.archive,
+                                 "--review-queue", "--format", "triage-html")
+        self.assertEqual((code, err), (2, ""))
+        admit_inert_html(page.encode())
+        parser = Anchors()
+        parser.feed(page)
+        self.assertTrue(parser.links)
+        self.assertTrue(all(link.startswith("#") and link[1:] in parser.ids
+                            for link in parser.links))
+        self.assertIn("#pair-1-4", parser.links)
+        self.assertIn("archive-1", parser.ids)
+        self.assertIn("GLOBAL STATUS HOLD", page)
+        self.assertNotIn(str(self.root), page)

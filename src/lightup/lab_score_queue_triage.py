@@ -79,11 +79,23 @@ def render_human_triage_html(queue: dict[str, Any], *, global_status: str,
     # and global HOLD/PASS as the private Markdown worksheet.
     render_human_triage_plan(queue, global_status=global_status,
                              source_zip_sha256=source_zip_sha256)
-    archive_rows = ''.join(
-        f"<li>☐ Archive {a['index']}: {a['hold_pairs']} HOLD pairs; "
-        f"{a['reused_evidence_pairs']} replay; {a['score_drift_pairs']} drift. "
-        "Privately inspect original records; never embed private evidence here.</li>"
-        for a in queue['archive_priorities'])
+    archive_rows = ""
+    for archive in queue['archive_priorities']:
+        index = archive['index']
+        related = [pair for pair in queue['pairs']
+                   if pair['review_status'] == 'HOLD'
+                   and index in (pair['previous_index'], pair['current_index'])]
+        links = ", ".join(
+            f"<a href='#pair-{p['previous_index']}-{p['current_index']}'>"
+            f"{p['previous_index']}-{p['current_index']}</a>"
+            for p in related)
+        archive_rows += (
+            f"<li id='archive-{index}'>Archive {index}: "
+            f"{archive['hold_pairs']} HOLD pairs; "
+            f"{archive['reused_evidence_pairs']} replay; "
+            f"{archive['score_drift_pairs']} drift. "
+            f"Follow-ups: {links}. Privately inspect originals; "
+            "never embed private evidence here.</li>")
     if not archive_rows:
         archive_rows = '<li>No local HOLD pairs. Human review still required.</li>'
     pairs = []
@@ -106,6 +118,14 @@ def render_human_triage_html(queue: dict[str, Any], *, global_status: str,
         checklist = ''.join(f'<li>{item}</li>' for item in actions)
         pairs.append(f"<section id='pair-{a}-{b}'><h3>Pair {a}-{b}: "
                      f"{p['review_status']}</h3><ul>{checklist}</ul></section>")
+    if queue['hold_pairs']:
+        first = queue['pairs'][0]
+        nav = ("<nav aria-label='HOLD-first checklist navigation'>"
+               f"<a href='#pair-{first['previous_index']}-{first['current_index']}'>"
+               "Jump to highest-priority original HOLD checklist</a></nav>")
+    else:
+        nav = ("<nav aria-label='Review navigation'><a href='#content'>"
+               "All local pairs PASS; HUMAN review still required</a></nav>")
     html = (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width, initial-scale=1'>"
@@ -119,6 +139,7 @@ def render_human_triage_html(queue: dict[str, Any], *, global_status: str,
         "@media print{body{margin:0}section{break-inside:avoid}}"
         "</style></head><body><main id='content'>"
         "<h1>LightUp synthetic offline HUMAN triage worksheet</h1>"
+        f"{nav}"
         f"<p><strong>GLOBAL STATUS {global_status}</strong>; "
         f"{queue['pairs_checked']} original pairs; "
         f"{queue['hold_pairs']} HOLD; {queue['pass_pairs']} PASS.</p>"
@@ -140,3 +161,40 @@ def render_human_triage_html(queue: dict[str, Any], *, global_status: str,
     )
     admit_inert_html(html.encode('utf-8'))
     return html
+
+
+def render_human_triage_csv(queue: dict[str, Any], *, global_status: str,
+                            source_zip_sha256: str) -> str:
+    """Bounded formula-safe HUMAN action rows, never a machine clearance."""
+    import csv
+    from io import StringIO
+    # This performs complete canonical pair/priority/authority validation as
+    # well as binding the unsigned ZIP transport digest to this projection.
+    render_human_triage_plan(queue, global_status=global_status,
+                             source_zip_sha256=source_zip_sha256)
+    output = StringIO(newline='')
+    writer = csv.writer(output, lineterminator='\n')
+    writer.writerow(('global_status', 'anonymous_pair', 'pair_status',
+                     'action_code', 'human_action', 'completion',
+                     'unsigned_zip_sha256', 'source_authenticated',
+                     'authorization_granted', 'deployment_approved'))
+    def row(pair: str, status: str, code: str, action: str) -> None:
+        writer.writerow((global_status, pair, status, code, action,
+                         'NOT_VERIFIED', source_zip_sha256, 'false',
+                         'false', 'false'))
+    for p in queue['pairs']:
+        pair = f"{p['previous_index']}-{p['current_index']}"
+        if 'evidence_reused' in p['hold_reasons']:
+            row(pair, 'HOLD', 'RECAPTURE_INDEPENDENT',
+                'New independent synthetic localhost captures; preserve original HOLD')
+        if 'score_drift' in p['hold_reasons']:
+            row(pair, 'HOLD', 'REVIEW_SCORER_DRIFT',
+                'Review isolated synthetic scorer; preserve original HOLD')
+        row(pair, p['review_status'], 'HUMAN_COMPARE_ORIGINALS',
+            'Review original owner-private evidence offline; do not export it')
+    row('GLOBAL', global_status, 'INDEPENDENT_SOURCE_SECURITY_PRIVACY',
+        'Qualified independent review and separate authorization required')
+    result = output.getvalue()
+    if len(result.encode('utf-8')) > 65536:
+        raise ValueError('triage CSV too large')
+    return result

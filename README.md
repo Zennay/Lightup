@@ -296,3 +296,27 @@ are still available separately and the global review verdict is unchanged.
 The offline review priorities and first-party scorer hotspots link to *all*
 affected original HOLD comparisons in the same private static HTML page, so
 multi-archive regressions can be triaged without rerunning CLI exports.
+
+### Source-free HUMAN triage action CSV (synthetic only)
+
+After generating and admitting a **canonical v3** offline original-history
+review ZIP, use `lightup-lab-score-calibrate --verify-portable-review PRIVATE.zip
+--review-queue --format triage-csv` to print a fixed-column HUMAN follow-up
+table. Each original anonymous pair has an offline private evidence review;
+evidence reuse and score drift add distinct synthetic-only follow-up rows.
+The export includes a separate independent source/security/privacy review
+gate, immutable unsigned ZIP transport SHA, global HOLD/PASS, and explicit
+`NOT_VERIFIED`/false authorization, source-authentication and deployment fields.
+A local PASS never approves real targets or clears a different global HOLD.
+Only fixed labels, ordinals, booleans and SHA appear (no original source paths,
+raw evidence or Excel-formula cells). The CLI does not write output files.
+
+For an owner-private previously published v1/v2 queue room, use
+`lightup-lab-score-calibrate --verify-queue-workroom PRIVATE.zip
+--queue-workroom-dir EXISTING_PRIVATE_DIR --format triage-csv`. This performs
+full original ZIP and room reinspection **before** emitting any CSV and does
+not modify the room. Legacy unsigned transport schemas are never accepted
+for this export. If manually redirecting stdout into a local file, set
+`umask 077` first and retain the output only within owner-private storage.
+The inert `triage-html` worksheet now links each priority archive to its
+corresponding original HOLD follow-up checklist for keyboard/print review.
