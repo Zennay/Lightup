@@ -13,6 +13,7 @@ import socket
 import time
 from pathlib import Path
 from .lab_socket_guard import PrivateLabArgumentParser, fixed_loopback_socket_boundary
+from .lab_score_contract import SERVICE_CHECKS, require_first_party_score
 
 from .ai.orchestration import ToolCall, ToolExecutor, ToolRegistry
 from .labeval import (
@@ -189,7 +190,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         result = run_lab_service_inventory_score(args.db)
-    except (OSError, PermissionError, RuntimeError, ValueError):
+        require_first_party_score(result, "service", 1, 2, SERVICE_CHECKS)
+    except Exception:
         print(json.dumps({"passed": False, "error": "offline fixture denied or unavailable"}, indent=2))
         return 2
     print(json.dumps(result, indent=2, sort_keys=True))

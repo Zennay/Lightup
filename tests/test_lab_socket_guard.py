@@ -94,6 +94,30 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                     self.assertIs(result["passed"], True)
                     self.assertEqual(result["evaluation"]["metrics"]["valid_findings"], count)
 
+    def test_all_three_direct_clis_reject_forged_success_evaluations(self):
+        from copy import deepcopy
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        with TemporaryDirectory() as directory:
+            for mod, api in (
+                (lab_service_score, "run_lab_service_inventory_score"),
+                (lab_tls_score, "run_lab_tls_baseline_score"),
+                (lab_web_score, "run_lab_web_baseline_score"),
+            ):
+                with self.subTest(api=api):
+                    valid = getattr(mod, api)(Path(directory) / (api + ".db"))
+                    self.assertIs(valid["passed"], True)
+                    forged = deepcopy(valid)
+                    forged["evaluation"]["metrics"]["false_positive_rate"] = 0.75
+                    forged["evaluation"]["run_id"] = "forged-canonical-run"
+                    with patch.object(mod, api, return_value=forged):
+                        with redirect_stdout(io.StringIO()) as receipt:
+                            exit_code = mod.main(["--db", "fictional.db"])
+                    self.assertEqual(exit_code, 2)
+                    self.assertEqual(json.loads(receipt.getvalue()), {
+                        "passed": False, "error": "offline fixture denied or unavailable"
+                    })
+
     def test_all_three_installed_clis_hide_failure_paths(self):
         for mod, api in (
             (lab_service_score, "run_lab_service_inventory_score"),

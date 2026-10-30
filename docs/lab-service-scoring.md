@@ -147,3 +147,15 @@ so standalone scorers do not initiate hostname or reverse-DNS lookups.
 The standard HTTP fixture's numeric `getfqdn("127.0.0.1")` returns the
 same literal without reverse resolution. This remains a Python in-process
 restriction, not OS-level egress isolation.
+
+
+### Exact scorer PASS validation on every public command
+
+All three standalone `lightup-lab-*-score` CLIs now reuse the same canonical
+`lightup.lab_score_contract.require_first_party_score` as the combined
+safety gate. A source reporter cannot return exit code 0 merely by setting
+`passed=true`: its full first-party check inventory, all canonical metrics
+and run/scenario/record lineage must also pass. A forged 75% false-positive
+rate with inconsistent run ID previously returned success from a standalone
+CLI; it now returns exit 2 with the private-safe error receipt. No external
+target capability or grant is introduced.
