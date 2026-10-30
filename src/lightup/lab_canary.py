@@ -31,7 +31,8 @@ from lightup.lab_web_score import run_lab_web_baseline_score
 from lightup.lab_canary_handoff import (save_private_canary_handoff,
                                         verify_private_canary_handoff)
 from lightup.lab_canary_history import (compare_private_canary_handoffs,
-                                        render_private_canary_comparison)
+                                        render_private_canary_comparison,
+                                        render_private_canary_history_html)
 from lightup.webapp import create_app
 from lightup.webapp.__main__ import _loopback
 
@@ -376,7 +377,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="lightup-lab-safety-canary",
         description="Offline fixed-loopback safety gate.",
     )
-    parser.add_argument("--format", choices=("json", "text"), default="json",
+    parser.add_argument("--format", choices=("json", "text", "html"), default="json",
                         help="Output one machine-readable JSON receipt or a private-safe summary")
     parser.add_argument("--private-report-dir", metavar="NEW_DIR",
                         help="new owner-private offline synthetic receipt directory; never overwrites")
@@ -408,11 +409,21 @@ def main(argv: list[str] | None = None) -> int:
             code = 0 if compared["review_status"] == "PASS" else 2
         if args.format == "json":
             print(json.dumps(compared, sort_keys=True, allow_nan=False))
+        elif args.format == "html":
+            if not compared.get("input_integrity", True):
+                print("<!doctype html><html lang='en'><meta charset='utf-8'>"
+                      "<title>LightUp synthetic review HOLD</title>"
+                      "<p>HOLD: original private reports could not be verified."
+                      " No approval, source authentication or deployment.</p></html>")
+            else:
+                print(render_private_canary_history_html(compared), end="")
         elif not compared.get("input_integrity", True):
             print("LightUp synthetic canary history: HOLD; source-free local receipts not verified.")
         else:
             print(render_private_canary_comparison(compared))
         return code
+    if args.format == "html":
+        parser.error("HTML is supported only for read-only private report comparison")
     if args.private_report_dir is not None and args.verify_private_report_dir is not None:
         parser.error("choose create OR verify for private handoff")
     if args.verify_private_report_dir is not None:

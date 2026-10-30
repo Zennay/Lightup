@@ -141,6 +141,9 @@ lightup-lab-safety-canary --compare-private-report-dirs /private/BEFORE /private
 
 Both complete original folders are independently reopened via the existing
 descriptor-pinned manifest/schema/byte verifier before any result is computed.
+Selecting the same physical original directory twice (including an alternate
+local name) is explicitly HOLD with `selection_valid=false`; a single
+report cannot be re-labelled as two independent original observations.
 A corrupted/invalid report fails closed with bounded anonymous `HOLD`, no
 source path, and no partial comparison. The comparison writes nothing and
 does not invoke a scorer, run a process, or contact any target. At most 15

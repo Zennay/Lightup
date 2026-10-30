@@ -247,6 +247,7 @@ def _read_private_canary_handoff(directory: str) -> dict:
             "deployment": False,
             "review_status": result["canary"]["status"],
             "_admitted_canary": result["canary"],
+            "_directory_identity": (metadata.st_dev, metadata.st_ino),
         }
     finally:
         os.close(descriptor)
@@ -256,4 +257,5 @@ def verify_private_canary_handoff(directory: str) -> dict:
     """Read-only local receipt, without even synthetic metric internals."""
     verified = _read_private_canary_handoff(directory)
     verified.pop("_admitted_canary")
+    verified.pop("_directory_identity")
     return verified

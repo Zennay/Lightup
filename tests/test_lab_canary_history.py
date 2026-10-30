@@ -112,6 +112,16 @@ class PrivateCanaryHistoryTests(unittest.TestCase):
         self.assertIs(receipt["source_authenticated"], False)
         self.assertNotIn(str(self.root), output)
 
+    def test_same_report_twice_is_not_an_independent_comparison(self):
+        self.save(self.before, self.synthetic)
+        candidate = compare_private_canary_handoffs(str(self.before), str(self.before))
+        self.assertEqual(candidate["review_status"], "HOLD")
+        self.assertFalse(candidate["selection_valid"])
+        self.assertTrue(candidate["input_integrity"])
+        self.assertEqual(candidate["metric_changes"], [])
+        self.assertEqual(candidate["regressions"][0]["change"], "SAME_PRIVATE_REPORT")
+        self.assertFalse(candidate["authorization_granted"])
+
     def test_human_text_handoff_contains_only_allowlisted_observations(self):
         self.save(self.before, self.synthetic)
         self.save(self.after, self.hold)
@@ -138,6 +148,56 @@ class PrivateCanaryHistoryTests(unittest.TestCase):
         self.assertEqual(receipt["metric_changes"], [])
         self.assertFalse(receipt["authorization_granted"])
         self.assertNotIn(str(self.root), raw)
+
+    def test_static_human_html_from_original_pair_has_no_network_or_script(self):
+        from html.parser import HTMLParser
+        self.save(self.before, self.synthetic)
+        self.save(self.after, self.synthetic)
+        output = io.StringIO()
+        with patch.object(lab_canary, "_run_canary",
+                          side_effect=AssertionError("HTML reran scorer")):
+            with redirect_stdout(output):
+                code = lab_canary.main([
+                    "--compare-private-report-dirs", str(self.before),
+                    str(self.after), "--format", "html"
+                ])
+        self.assertEqual(code, 0)
+        markup = output.getvalue()
+        class Tags(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.tags = []
+            def handle_starttag(self, tag, attrs):
+                self.tags.append(tag)
+        inspector = Tags()
+        inspector.feed(markup)
+        self.assertEqual(inspector.tags.count("table"), 1)
+        self.assertEqual(inspector.tags.count("thead"), 1)
+        self.assertEqual(inspector.tags.count("caption"), 1)
+        self.assertFalse({"script", "iframe", "form"} & set(inspector.tags))
+        self.assertIn("NOT AUTHORIZATION", markup)
+        self.assertIn("default-src 'none'", markup)
+        self.assertNotIn(str(self.root), markup)
+
+    def test_corrupt_source_renders_only_fixed_safe_html_hold(self):
+        self.save(self.before, self.synthetic)
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = lab_canary.main([
+                "--compare-private-report-dirs", str(self.before),
+                str(self.after), "--format", "html"
+            ])
+        self.assertEqual(code, 2)
+        self.assertIn("HOLD: original private reports", output.getvalue())
+        self.assertNotIn(str(self.root), output.getvalue())
+
+    def test_normal_canary_refuses_html_before_running_any_scoring(self):
+        output = io.StringIO()
+        with patch.object(lab_canary, "_run_canary",
+                          side_effect=AssertionError("should never score")):
+            with redirect_stdout(output), self.assertRaises(SystemExit) as err:
+                lab_canary.main(["--format", "html"])
+        self.assertEqual(err.exception.code, 2)
 
     def test_original_documents_untouched_by_read_only_comparison(self):
         self.save(self.before, self.synthetic)
