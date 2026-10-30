@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Callable
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
+from .lab_score_portable_dashboard import render_portable_dashboard
 from .lab_score_history_html import (
     build_history_review_summary, render_history_html, render_history_markdown,
 )
@@ -43,21 +44,7 @@ def _files(report: dict[str, Any]) -> dict[str, bytes]:
     summary = build_history_review_summary(report)
     html = render_history_html(report).encode("utf-8")
     files = {
-        "index.html": (
-            "<!doctype html><html lang='en'><meta charset='utf-8'>"
-            "<meta http-equiv='Content-Security-Policy' "
-            "content=\"default-src 'none'; style-src 'unsafe-inline'\">"
-            "<title>LightUp — synthetic offline HUMAN review</title>"
-            "<h1>LightUp — synthetic offline HUMAN review</h1>"
-            "<p>No assessment authorization, external target, source identity, "
-            "consent, grant or deployment. Evidence is synthetic localhost only.</p>"
-            "<p>All results require independent qualified source/privacy review.</p>"
-            "<ul><li><a href='history.html'>Full offline review matrix</a></li>"
-            "<li><a href='review.md'>Human review brief</a></li>"
-            "<li><a href='review.csv'>Source-free pair table</a></li>"
-            "<li><a href='review.json'>Source-free machine summary</a></li></ul>"
-            "</html>\n"
-        ).encode("utf-8"),
+        "index.html": render_portable_dashboard(summary).encode("utf-8"),
         "history.html": html,
         "review.json": (
             json.dumps(summary, sort_keys=True, indent=2, allow_nan=False) + "\n"
@@ -66,7 +53,8 @@ def _files(report: dict[str, Any]) -> dict[str, bytes]:
         "review.md": render_history_markdown(report).encode("utf-8"),
         "README.txt": (
             "LightUp synthetic fixed-loopback offline review, HUMAN only.\n"
-            "Open index.html locally. No network/scripts/original evidence.\n"
+            "Open index.html for global PASS/HOLD, priorities and pair navigation.\n"
+            "Scriptless, offline, source-free display; no network/authorization.\n"
             "A PASS means only local consistency, NEVER external authority.\n"
             "HTML may show first-party allowlisted numeric scorer changes.\n"
             "CSV/JSON/Markdown omit raw numeric metric values.\n"

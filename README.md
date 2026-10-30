@@ -136,6 +136,16 @@ verify the original source bindings, saved HTML, JSON and receipt; tampered
 reports produce no substitute output. This never grants test or release
 authorization. For stdout-only automation without creating a review directory, use `--compare-history ARCHIVE1 ARCHIVE2 ... --format review-json`; it prints the exact same anonymous, validated `review_summary.json` schema and emits a safe HOLD on invalid original evidence. Verify the private report read-only with the *same original archives* using `--verify-html-output-dir EXISTING_PRIVATE_REVIEW_DIR` instead of `--html-output-dir`; this is synthetic localhost evidence review, not target or release authorization.
 
+The source-free portable ZIP now opens with an **accessible, scriptless offline
+operator dashboard** (`index.html`). It shows anonymous original archive and
+pair totals, global PASS/HOLD, prioritized evidence-reuse/score-drift cases,
+all original pair flags with deep links into the verified local `history.html`
+review, first-party scorer hotspots, and the Markdown/CSV/JSON handoffs.
+There are no remote assets, JavaScript, original source paths, receipt hashes,
+target identities or implied authorization. The dashboard is a display of
+already-verified *synthetic* localhost comparison flags; neither a green
+status nor a human clicking a link grants assessment or release rights.
+
 For a deterministic one-command **portable offline HUMAN review ZIP** of the already
 saved three-file private review, run:
 
