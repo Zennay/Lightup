@@ -267,11 +267,14 @@ The original archives are fully reverified before a new private destination
 directory is created. The output is `NEW_PRIVATE_REVIEW/history.html`
 inside a new owner-only 0700 directory; the atomically published HTML
 has mode 0600 and will never overwrite an existing report. After publishing,
-LightUp reopens both saved files through its pinned private directory and
+LightUp reopens all three saved files through its pinned private directory and
 compares exact bytes and inodes to the verified source. Tampering at
-publication returns HOLD and removes the changed review. A second 0600
-`source_receipt.json` privately binds the HTML digest to SHA-256 digests of
-the exact original archived receipts. Neither private receipt hashes nor
+publication returns HOLD and removes the changed review. A 0600 `review_summary.json` provides a machine-readable, index-only
+triage summary: pair PASS/HOLD flags, anonymous archive-review queue and
+first-party capability hotspot counts. It never contains original receipt
+hashes, source paths or untrusted metric values. A third 0600
+`source_receipt.json` privately binds both the HTML and JSON digests to
+SHA-256 digests of the exact original archived receipts. Neither private receipt hashes nor
 original source paths appear in HTML or stdout; this is not a digital
 signature. Symlinked
 ancestors and parent traversal are refused. Corrupted originals produce
@@ -288,7 +291,7 @@ Use the same original private archived calibration inputs and
 `--compare-history ARCHIVE1 ARCHIVE2 ... --format html
 --verify-html-output-dir PRIVATE_REVIEW_DIRECTORY`. The CLI rebuilds the
 safe HTML from freshly reverified original localhost evidence, opens the
-saved 0600 `history.html` and `source_receipt.json` read-only through
+saved 0600 `history.html`, `review_summary.json` and `source_receipt.json` read-only through
 private pinned directories, and verifies **exact bytes**, source binding,
 expected modes and unchanged inodes. Two unrelated sets of original archives
 with identical PASS/HOLD scores cannot verify each other's review. A valid
@@ -313,10 +316,12 @@ report directory alongside, not underneath, the archived originals.
 
 ### Final original-evidence check during publication
 
-Before declaring a saved two-file private review successful, LightUp reopens
+Before declaring a saved three-file private review successful, LightUp reopens
 and revalidates the *same original* archived calibration receipts after both
-private HTML and source-binding artifacts have been saved. If an original
+private HTML, source-free summary and source-binding artifacts have been saved. If an original
 source changes or is replaced while the review is being published, both
 newly linked report files are cleaned up and the command returns a
 path-free HOLD. This prevents a falsely verified PASS caused by changing
 source evidence between the initial comparison and final report write.
+The same no-overwrite, exact-byte and original-source revalidation applies
+to the machine-readable summary: deleting or modifying it causes generic HOLD.

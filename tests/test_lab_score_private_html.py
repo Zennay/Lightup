@@ -1,5 +1,7 @@
 """Private, no-overwrite HTML report delivery in synthetic assessment mode."""
 import io
+import json
+import hashlib
 import os
 import stat
 import tempfile
@@ -132,6 +134,7 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
             self.assertNotIn(base, err)
             self.assertFalse((saved/"history.html").exists())
             self.assertFalse((saved/"source_receipt.json").exists())
+            self.assertFalse((saved/"review_summary.json").exists())
 
     def test_relative_private_review_paths_are_pinned_against_cwd_change(self):
         with tempfile.TemporaryDirectory() as base:
@@ -234,6 +237,22 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
             self.assertEqual(out, "")
             self.assertNotIn(base, err)
 
+    def test_missing_or_tampered_private_summary_fails_reverification(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            for change in ("modified", "removed"):
+                dest = Path(base)/("summary-" + change)
+                self.assertEqual(self.invoke(roots, dest)[0], 0)
+                summary = dest/"review_summary.json"
+                if change == "modified":
+                    summary.write_text('{"passed": true}')
+                else:
+                    summary.unlink()
+                code, out, err = self.verify(roots, dest)
+                self.assertEqual((code, out), (2, ""))
+                self.assertIn("HOLD", err)
+                self.assertNotIn(base, err)
+
     def test_tampered_saved_html_fails_reverification(self):
         with tempfile.TemporaryDirectory() as base:
             roots = self.archives(base)
@@ -275,7 +294,21 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
             self.assertTrue(content.startswith(b"<!doctype html>"))
             self.assertEqual(stat.S_IMODE(dest.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(report.stat().st_mode), 0o600)
-            self.assertEqual(set(os.listdir(dest)), {"history.html", "source_receipt.json"})
+            self.assertEqual(set(os.listdir(dest)), {
+                "history.html", "review_summary.json", "source_receipt.json"})
+            summary_file = dest/"review_summary.json"
+            self.assertEqual(stat.S_IMODE(summary_file.stat().st_mode), 0o600)
+            raw_summary = summary_file.read_bytes()
+            summary = json.loads(raw_summary)
+            self.assertEqual(summary["schema"], "lightup.lab-score-private-review-summary.v1")
+            self.assertTrue(summary["passed"])
+            self.assertEqual(summary["pairs_checked"], 1)
+            self.assertEqual(summary["archive_review_queue"], [])
+            self.assertNotIn(base, raw_summary.decode())
+            self.assertNotIn("sha256", raw_summary.decode())
+            receipt = json.loads((dest/"source_receipt.json").read_text())
+            self.assertEqual(receipt["summary_sha256"],
+                             hashlib.sha256(raw_summary).hexdigest())
             code, out, err = self.invoke(roots, dest)
             self.assertEqual(code, 2)
             self.assertEqual(out, "")

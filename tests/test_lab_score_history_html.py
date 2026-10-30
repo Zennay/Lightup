@@ -8,7 +8,8 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 from lightup import lab_score_calibration as cal
-from lightup.lab_score_history_html import render_history_html
+from lightup.lab_score_history_html import (render_history_html,
+                                            build_history_review_summary)
 
 
 class HistoryHtmlTests(unittest.TestCase):
@@ -102,6 +103,24 @@ class HistoryHtmlTests(unittest.TestCase):
         self.assertNotIn("PRIVATE", html)
         self.assertNotIn("SECRET", html)
         self.assertNotIn("<script", html)
+        summary = build_history_review_summary(report)
+        self.assertEqual((summary["archives_checked"], summary["pairs_checked"]), (3, 3))
+        self.assertFalse(summary["passed"])
+        self.assertEqual(summary["archive_review_queue"][0], {
+            "index": 3, "hold_pairs": 2,
+            "reused_evidence_pairs": 1, "score_drift_pairs": 2,
+        })
+        self.assertEqual(summary["capability_hotspots"][0], {
+            "capability": "http_baseline", "affected_pairs": 2,
+            "metrics": ["coverage_assessed", "scope_violations"],
+        })
+        data = json.dumps(summary, sort_keys=True)
+        for forbidden in ("PRIVATE", "SECRET", "source_sha256",
+                          "original_receipt", "onerror", "record_sha256"):
+            self.assertNotIn(forbidden, data)
+        self.assertFalse(summary["authorization_granted"])
+        self.assertFalse(summary["external_targets_contacted"])
+        self.assertFalse(summary["deployment"])
 
     def test_incomplete_or_duplicate_hold_details_refuse_report(self):
         report = {"schema": cal.HISTORY_SCHEMA, "archives_checked": 2,

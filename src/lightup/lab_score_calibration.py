@@ -20,8 +20,9 @@ from .lab_score_compare import (
     render_score_review,
 )
 from .lab_score_inspect import inspect_score_run
-from .lab_score_history_html import render_history_html
-from .lab_score_review_store import save_private_review, verify_private_review
+from .lab_score_history_html import render_history_html, build_history_review_summary
+from .lab_score_review_store import (save_private_review, verify_private_review,
+                                     summary_bytes)
 from .lab_score_suite import _EXPECTED_FINDINGS
 from .lab_score_inspect import _private_dir_fd, _artifact_fd
 from .lab_score_suite import _private_output_directory, _write_report, run_lab_score_suite
@@ -405,7 +406,8 @@ def compare_saved_calibration_history(
     }
 
 
-def _private_source_binding(roots: list[Path], html: str) -> dict[str, Any]:
+def _private_source_binding(roots: list[Path], html: str,
+                            summary: dict[str, Any]) -> dict[str, Any]:
     """Bind a private review to exact *original* receipt contents.
 
     Archive source hashes are never emitted to HTML or standard output.
@@ -426,6 +428,7 @@ def _private_source_binding(roots: list[Path], html: str) -> dict[str, Any]:
         "schema": "lightup.private-html-source-binding.v1",
         "original_receipt_sha256": fingerprints,
         "html_sha256": hashlib.sha256(html.encode("utf-8")).hexdigest(),
+        "summary_sha256": hashlib.sha256(summary_bytes(summary)).hexdigest(),
         "authorization_granted": False,
         "external_targets_contacted": False,
         "deployment": False,
@@ -516,6 +519,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.format == "html":
         try:
             html = render_history_html(result)
+            summary = build_history_review_summary(result)
             # Anchor private review paths to the same cwd as source archives.
             raw_review = args.html_output_dir or args.verify_html_output_dir
             review_dir = Path(raw_review).expanduser() if raw_review else None
@@ -523,17 +527,17 @@ def main(argv: list[str] | None = None) -> int:
                 review_dir = anchor / review_dir
             if args.html_output_dir is not None:
                 _refuse_review_source_overlap(roots, review_dir)
-                source_binding = _private_source_binding(roots, html)
+                source_binding = _private_source_binding(roots, html, summary)
                 save_private_review(
-                    review_dir, html, source_binding,
-                    lambda: _private_source_binding(roots, html),
+                    review_dir, html, source_binding, summary,
+                    lambda: _private_source_binding(roots, html, summary),
                 )
             elif args.verify_html_output_dir is not None:
                 _refuse_review_source_overlap(roots, review_dir)
-                source_binding = _private_source_binding(roots, html)
+                source_binding = _private_source_binding(roots, html, summary)
                 verify_private_review(
-                    review_dir, html, source_binding,
-                    lambda: _private_source_binding(roots, html),
+                    review_dir, html, source_binding, summary,
+                    lambda: _private_source_binding(roots, html, summary),
                 )
                 print("LightUp saved synthetic HTML: VERIFIED; original comparison "
                       + ("PASS" if result["passed"] else "HOLD"))

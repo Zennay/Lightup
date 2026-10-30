@@ -208,3 +208,58 @@ a{color:#a3d0ff}.pass{color:#8ee9aa;border-color:#8ee9aa}.hold{color:#ffb7a7;bor
             + "</main><footer>Authority: none; fixed localhost fixtures only. "
             + "No external targets, grants, dispatch, scans or releases.</footer>"
             + "</body></html>\n")
+
+
+def build_history_review_summary(report: dict[str, Any]) -> dict[str, Any]:
+    """Source-free JSON companion to the fully verified offline HTML review.
+
+    Reuse the renderer's strict consistency checks before exporting. Only
+    bounded integer indices, trusted capability/metric labels and booleans
+    survive; never include receipt hashes, source paths or original values.
+    """
+    render_history_html(report)
+    n = report["archives_checked"]
+    affected = {i: {"pairs": 0, "reused": 0, "drift": 0}
+                for i in range(1, n + 1)}
+    metrics: dict[str, dict[str, Any]] = {}
+    for item in report["pairwise_holds"]:
+        i, j = item["previous_index"], item["current_index"]
+        for index in (i, j):
+            affected[index]["pairs"] += 1
+            affected[index]["reused"] += item["independent_evaluations"] is False
+            affected[index]["drift"] += item["score_stable"] is False
+        for delta in item.get("metric_deltas", []):
+            if not isinstance(delta, dict):
+                continue
+            capability, metric = delta.get("capability"), delta.get("metric")
+            if capability not in _EXPECTED_FINDINGS or metric not in _SCORE_FIELDS:
+                continue
+            entry = metrics.setdefault(capability, {"pairs": set(), "metrics": set()})
+            entry["pairs"].add((i, j))
+            entry["metrics"].add(metric)
+    return {
+        "schema": "lightup.lab-score-private-review-summary.v1",
+        "passed": report["passed"],
+        "archives_checked": n,
+        "pairs_checked": report["pairs_checked"],
+        "pairs": [{k: pair[k] for k in ("previous_index", "current_index", "passed",
+                                     "independent_evaluations", "score_stable")}
+                  for pair in report["pairs"]],
+        "archive_review_queue": [
+            {"index": i, "hold_pairs": values["pairs"],
+             "reused_evidence_pairs": values["reused"],
+             "score_drift_pairs": values["drift"]}
+            for i, values in sorted(affected.items(),
+                                    key=lambda item: (-item[1]["pairs"], item[0]))
+            if values["pairs"]
+        ],
+        "capability_hotspots": [
+            {"capability": capability, "affected_pairs": len(values["pairs"]),
+             "metrics": sorted(values["metrics"])}
+            for capability, values in sorted(metrics.items(),
+                key=lambda item: (-len(item[1]["pairs"]), item[0]))
+        ],
+        "authorization_granted": False,
+        "external_targets_contacted": False,
+        "deployment": False,
+    }

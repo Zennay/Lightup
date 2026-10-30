@@ -16,12 +16,21 @@ from .lab_score_suite import _private_output_directory
 
 _MAX_HTML = 1024 * 1024
 _MAX_BINDING = 16384
-_FILES = ("history.html", "source_receipt.json")
+_MAX_SUMMARY = 32768
+_FILES = ("history.html", "review_summary.json", "source_receipt.json")
 
 
-def _payloads(html: str, source_receipt: dict[str, Any]) -> dict[str, bytes]:
+def summary_bytes(summary: dict[str, Any]) -> bytes:
+    """Canonical source-free review data, independent of private receipts."""
+    return (json.dumps(summary, sort_keys=True, indent=2, allow_nan=False)
+            + "\n").encode("utf-8")
+
+
+def _payloads(html: str, source_receipt: dict[str, Any],
+              summary: dict[str, Any]) -> dict[str, bytes]:
     return {
         "history.html": html.encode("utf-8"),
+        "review_summary.json": summary_bytes(summary),
         "source_receipt.json": (
             json.dumps(source_receipt, sort_keys=True, indent=2,
                        allow_nan=False) + "\n").encode("utf-8"),
@@ -29,7 +38,9 @@ def _payloads(html: str, source_receipt: dict[str, Any]) -> dict[str, bytes]:
 
 
 def _check_saved(fd: int, name: str, expected: bytes, original: tuple[int, int] | None = None) -> None:
-    file_fd = _artifact_fd(fd, name, _MAX_HTML if name == "history.html" else _MAX_BINDING)
+    file_fd = _artifact_fd(fd, name, {"history.html": _MAX_HTML,
+                                 "review_summary.json": _MAX_SUMMARY,
+                                 "source_receipt.json": _MAX_BINDING}[name])
     try:
         before = os.fstat(file_fd)
         data = os.pread(file_fd, len(expected) + 1, 0)
@@ -49,15 +60,18 @@ def _check_saved(fd: int, name: str, expected: bytes, original: tuple[int, int] 
 
 def save_private_review(
     directory: str | Path, html: str, source_receipt: dict[str, Any],
+    summary: dict[str, Any],
     verify_original_source: Callable[[], dict[str, Any]],
 ) -> None:
-    """Publish a complete two-file private review in a new directory.
+    """Publish a complete three-file private review in a new directory.
 
-    A review is considered complete only with both source-bound artifacts.
+    A review is complete only with the HTML, private summary and receipt.
     Every file is individually published without overwrite, then read back.
     """
-    payloads = _payloads(html, source_receipt)
-    if len(payloads["history.html"]) > _MAX_HTML or len(payloads["source_receipt.json"]) > _MAX_BINDING:
+    payloads = _payloads(html, source_receipt, summary)
+    if (len(payloads["history.html"]) > _MAX_HTML
+            or len(payloads["review_summary.json"]) > _MAX_SUMMARY
+            or len(payloads["source_receipt.json"]) > _MAX_BINDING):
         raise ValueError("private report exceeds size limit")
     root = _private_output_directory(directory)
     fd = _private_dir_fd(root)
@@ -110,10 +124,11 @@ def save_private_review(
 
 def verify_private_review(
     directory: str | Path, html: str, source_receipt: dict[str, Any],
+    summary: dict[str, Any],
     verify_original_source: Callable[[], dict[str, Any]],
 ) -> None:
     """Recompare both private files with fresh original-source verification."""
-    expected = _payloads(html, source_receipt)
+    expected = _payloads(html, source_receipt, summary)
     fd = _private_dir_fd(directory)
     try:
         if set(os.listdir(fd)) != set(_FILES):
