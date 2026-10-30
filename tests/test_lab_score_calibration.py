@@ -532,6 +532,7 @@ class CalibrationTests(unittest.TestCase):
             self.assertEqual(status, 2)
             self.assertEqual(out.getvalue(), "")
             self.assertIn("HOLD", err.getvalue())
+            self.assertIn("archive 2 not verified", err.getvalue())
             self.assertNotIn(base, err.getvalue())
 
     def test_history_refuses_replaced_root_after_pair_compare(self):
@@ -551,6 +552,30 @@ class CalibrationTests(unittest.TestCase):
                               side_effect=replace_after_pair):
                 with self.assertRaises(ValueError):
                     cal.compare_saved_calibration_history([previous, current])
+
+    def test_history_invalid_archive_reports_position_not_private_path(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(3)]
+            for root in roots:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            (roots[1]/"report.json").write_bytes(b"invalid private report")
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                code = cal.main(["--compare-history", *map(str, roots),
+                                 "--format", "json"])
+            self.assertEqual(code, 2)
+            self.assertEqual(out.getvalue(), "")
+            self.assertEqual(json.loads(err.getvalue()), {
+                "schema": cal.HISTORY_SCHEMA, "passed": False, "archive_index": 2,
+            })
+            out, err = io.StringIO(), io.StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                code = cal.main(["--compare-history", *map(str, roots),
+                                 "--format", "csv"])
+            self.assertEqual(code, 2)
+            self.assertEqual(out.getvalue(), "")
+            self.assertIn("archive 2 not verified", err.getvalue())
+            self.assertNotIn(base, err.getvalue())
 
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:

@@ -25,6 +25,14 @@ from .lab_score_suite import _private_output_directory, _write_report, run_lab_s
 SCHEMA = "lightup.lab-score-calibration.v1"
 HISTORY_SCHEMA = "lightup.lab-score-calibration-history.v1"
 
+class _HistoryArchiveError(ValueError):
+    """Index-only failure for a locally archived original source."""
+
+    def __init__(self, archive_index: int):
+        self.archive_index = archive_index
+        super().__init__("original saved archive not verified")
+
+
 
 def _receipt(comparison: dict[str, Any],
              source_sha256: dict[str, dict[str, str]] | None = None) -> dict[str, Any]:
@@ -292,13 +300,16 @@ def compare_saved_calibration_history(
         if ".." in path.parts:
             raise ValueError("parent traversal rejected")
         roots.append(path if path.is_absolute() else anchor / path)
-    identities = [_archived_root_identity(root) for root in roots]
-    # Verify each original private root exactly once before comparisons.
-    # Pairwise full reinspection is quadratic and re-hashes the same source
-    # artifacts up to 28 times at the eight-archive limit.
-    if any(verify_saved_calibration(root)["passed"] is not True for root in roots):
-        raise ValueError("saved history verification failed")
-    source_bindings = [_source_hashes(root) for root in roots]
+    identities, source_bindings = [], []
+    # Admit each original root once, without exposing input paths or artifacts.
+    for index, root in enumerate(roots, 1):
+        try:
+            identities.append(_archived_root_identity(root))
+            if verify_saved_calibration(root)["passed"] is not True:
+                raise ValueError("archived source refused")
+            source_bindings.append(_source_hashes(root))
+        except Exception:
+            raise _HistoryArchiveError(index) from None
     adjacent = []
     pairs = []
     pairwise_holds = []
@@ -351,12 +362,16 @@ def compare_saved_calibration_history(
                     "independent_evaluations": summary["independent_evaluations"],
                     "score_stable": summary["score_stable"],
                 })
-    if (identities != [_archived_root_identity(root) for root in roots]
-            or source_bindings != [_source_hashes(root) for root in roots]):
-        raise ValueError("saved history source changed during comparison")
-    for root in roots:
-        if verify_saved_calibration(root)["passed"] is not True:
-            raise ValueError("saved history verification failed")
+    # Every admitted root is independently reverified at completion;
+    # a known 1-based index makes HOLD actionable without revealing a path.
+    for index, root in enumerate(roots, 1):
+        try:
+            if (identities[index - 1] != _archived_root_identity(root)
+                    or source_bindings[index - 1] != _source_hashes(root)
+                    or verify_saved_calibration(root)["passed"] is not True):
+                raise ValueError("archived source changed")
+        except Exception:
+            raise _HistoryArchiveError(index) from None
     return {
         "schema": HISTORY_SCHEMA,
         "passed": bool(all_passed and independent and stable),
@@ -401,16 +416,23 @@ def main(argv: list[str] | None = None) -> int:
             result = verify_saved_calibration(args.verify_output_dir)
         else:
             result = run_lab_score_calibration(args.output_dir)
-    except Exception:
-        # Do not reveal the user's original private output path, raw errors,
-        # local lab identifiers or potentially confidential evidence payloads.
+    except Exception as exc:
+        # Only the 1-based CLI argument position of a refused private archive
+        # may be disclosed. Never echo filesystem paths or raw exceptions.
+        index = (exc.archive_index if args.compare_history is not None
+                 and isinstance(exc, _HistoryArchiveError) else None)
         if args.format in ("text", "csv"):
-            print("LightUp synthetic calibration: HOLD; saved evidence not verified.",
-                  file=sys.stderr)
+            if index is None:
+                message = "LightUp synthetic calibration: HOLD; saved evidence not verified."
+            else:
+                message = f"LightUp synthetic calibration: HOLD; archive {index} not verified."
+            print(message, file=sys.stderr)
         else:
             schema = HISTORY_SCHEMA if args.compare_history is not None else SCHEMA
-            print(json.dumps({"schema": schema, "passed": False}, sort_keys=True),
-                  file=sys.stderr)
+            rejected = {"schema": schema, "passed": False}
+            if index is not None:
+                rejected["archive_index"] = index
+            print(json.dumps(rejected, sort_keys=True), file=sys.stderr)
         return 2
     if args.format == "csv":
         writer = csv.writer(sys.stdout, lineterminator="\n")

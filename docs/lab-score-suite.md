@@ -214,6 +214,10 @@ comparison reuses the admitted private snapshots rather than repeatedly
 rehashing them. Validation cost for original sources now scales linearly
 with archived sessions, not 28 repeated original verifications; changed
 source bytes or swapped roots still yield HOLD with no partial CSV.
+When an original archive fails admission or final read-only verification,
+text/CSV stderr identifies its 1-based argument position only; JSON
+returns the same `archive_index` and a false `passed` value. No user path,
+source digest, exception text, raw evidence or partial CSV is exposed.
 This is not real target, scanning, approval or deployment authority.
 
 
