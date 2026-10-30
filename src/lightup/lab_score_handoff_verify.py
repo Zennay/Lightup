@@ -12,7 +12,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any
-from zipfile import ZIP_DEFLATED, ZipFile, BadZipFile
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo, BadZipFile
 
 from .lab_score_inspect import _artifact_fd, _private_dir_fd
 
@@ -120,6 +120,21 @@ def verify_portable_review(path: str | Path) -> dict[str, Any]:
                 if len(data) != entry.file_size or stream.read(1):
                     raise ValueError("changed portable member size")
                 payloads[entry.filename] = data
+    # Python's ZIP reader tolerates arbitrary bytes before or after the
+    # central directory. Such bytes are NOT listed in manifest.json and may
+    # carry unreviewed material while the old checker said TRANSPORT VERIFIED.
+    # Require the exact bounded, deterministic first-party ZIP encoding,
+    # including header, timestamps, file order, metadata and trailer.
+    canonical = io.BytesIO()
+    with ZipFile(canonical, mode="w", compression=ZIP_DEFLATED) as writer:
+        for name in sorted(payloads):
+            member = ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
+            member.compress_type = ZIP_DEFLATED
+            member.external_attr = 0o600 << 16
+            writer.writestr(member, payloads[name])
+    if canonical.getvalue() != blob:
+        raise ValueError("non-canonical portable ZIP bytes")
+
     manifest = _decode_json(payloads["manifest.json"])
     summary = _decode_json(payloads["review.json"])
     _validate_summary(summary)

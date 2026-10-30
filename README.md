@@ -168,8 +168,9 @@ lightup-lab-score-calibrate --verify-portable-review \
 
 This read-only checker rejects duplicate/unexpected ZIP entries, unsafe
 permissions and symlinks, oversized members, malformed/contradictory anonymous
-pair or manifest metadata, and changed export digests. It returns TRANSPORT
-VERIFIED plus the original review PASS/HOLD state, never private source paths.
+pair or manifest metadata, changed export digests, and *non-canonical ZIP
+bytes* (including otherwise ignored prepended/appended material). It returns
+TRANSPORT VERIFIED plus the original review PASS/HOLD state, never private source paths.
 It cannot authenticate the original source or its signer: a forged ZIP with
 recomputed unsigned hashes is not trusted original evidence or an approval.
 Keep the ZIP in a 0700 directory as a 0600 file for this local checker.
