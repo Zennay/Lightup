@@ -516,18 +516,23 @@ def main(argv: list[str] | None = None) -> int:
     if args.format == "html":
         try:
             html = render_history_html(result)
+            # Anchor private review paths to the same cwd as source archives.
+            raw_review = args.html_output_dir or args.verify_html_output_dir
+            review_dir = Path(raw_review).expanduser() if raw_review else None
+            if review_dir is not None and not review_dir.is_absolute():
+                review_dir = anchor / review_dir
             if args.html_output_dir is not None:
-                _refuse_review_source_overlap(roots, args.html_output_dir)
+                _refuse_review_source_overlap(roots, review_dir)
                 source_binding = _private_source_binding(roots, html)
                 save_private_review(
-                    args.html_output_dir, html, source_binding,
+                    review_dir, html, source_binding,
                     lambda: _private_source_binding(roots, html),
                 )
             elif args.verify_html_output_dir is not None:
-                _refuse_review_source_overlap(roots, args.verify_html_output_dir)
+                _refuse_review_source_overlap(roots, review_dir)
                 source_binding = _private_source_binding(roots, html)
                 verify_private_review(
-                    args.verify_html_output_dir, html, source_binding,
+                    review_dir, html, source_binding,
                     lambda: _private_source_binding(roots, html),
                 )
                 print("LightUp saved synthetic HTML: VERIFIED; original comparison "

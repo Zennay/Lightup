@@ -133,6 +133,37 @@ class PrivateHtmlDeliveryTests(unittest.TestCase):
             self.assertFalse((saved/"history.html").exists())
             self.assertFalse((saved/"source_receipt.json").exists())
 
+    def test_relative_private_review_paths_are_pinned_against_cwd_change(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = self.archives(base)
+            expected = Path(base)/"source-cwd"
+            other = Path(base)/"shifted-cwd"
+            expected.mkdir()
+            other.mkdir()
+            old_cwd = Path.cwd()
+            original_overlap = cal._refuse_review_source_overlap
+
+            def shift_after_overlap(*args):
+                original_overlap(*args)
+                os.chdir(other)
+
+            try:
+                os.chdir(expected)
+                with patch.object(cal, "_refuse_review_source_overlap",
+                                  side_effect=shift_after_overlap):
+                    save_code, _, save_err = self.invoke(roots, "review")
+                os.chdir(expected)
+                with patch.object(cal, "_refuse_review_source_overlap",
+                                  side_effect=shift_after_overlap):
+                    verify_code, verified, verify_err = self.verify(roots, "review")
+            finally:
+                os.chdir(old_cwd)
+            self.assertEqual((save_code, save_err), (0, ""))
+            self.assertEqual((verify_code, verify_err), (0, ""))
+            self.assertIn("VERIFIED", verified)
+            self.assertTrue((expected/"review"/"history.html").is_file())
+            self.assertFalse((other/"review").exists())
+
     def test_source_mutated_during_saved_review_readback_is_hold(self):
         from lightup import lab_score_review_store as storage
         with tempfile.TemporaryDirectory() as base:
