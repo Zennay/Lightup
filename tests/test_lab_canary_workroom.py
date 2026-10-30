@@ -18,6 +18,7 @@ from lightup.lab_canary_history import compare_private_canary_handoffs
 from lightup.lab_canary_history_store import save_private_history_snapshot
 from lightup.lab_canary_workroom import (
     export_private_history_workroom, verify_private_history_workroom,
+    unpack_private_history_workroom,
 )
 
 
@@ -208,6 +209,58 @@ class SourceFreePrivateHistoryWorkroomTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.export(*original)
         self.assertFalse(self.zipfile.exists())
+
+    def test_real_verified_source_free_zip_unpack_and_private_browser_entry(self):
+        self.export()
+        target = self.root / "recipient-new-private-directory"
+        output = unpack_private_history_workroom(str(self.zipfile), str(target))
+        self.assertEqual(output["review_status"], "PASS")
+        self.assertEqual(target.stat().st_mode & 0o777, 0o700)
+        self.assertNotIn(".INCOMPLETE", [p.name for p in target.iterdir()])
+        self.assertTrue((target / "reports" / "01" / "history.html").is_file())
+        self.assertTrue((target / "reports" / "02" / "history.json").is_file())
+        self.assertEqual((target / "reports").stat().st_mode & 0o777, 0o700)
+        self.assertTrue(all(p.stat().st_mode & 0o777 == 0o600
+                            for p in target.rglob("*") if p.is_file()))
+        self.assertIn("reports/01/history.html", (target / "index.html").read_text())
+        with self.assertRaises(FileExistsError):
+            unpack_private_history_workroom(str(self.zipfile), str(target))
+
+    def test_cli_extract_with_opted_synthetic_hold_keeps_global_hold(self):
+        from shutil import rmtree
+        rmtree(self.second)
+        held = {"status": "HOLD", "passed": False, "lab_only": True,
+                "external_target_authorized": False,
+                "deployment_authorized": False, "failure_stage": "service"}
+        save_private_canary_handoff(str(self.second), held,
+                                    lab_canary._render_text(held))
+        held_snapshot = self.root / "original-held-review"
+        save_private_history_snapshot(str(held_snapshot),
+            compare_private_canary_handoffs(str(self.first), str(self.second)))
+        self.export(str(self.snap1), str(held_snapshot))
+        target = self.root / "opened-human-workroom"
+        code, receipt, raw = self.invoke(
+            "--unpack-private-history-workroom", self.zipfile,
+            "--private-workroom-output-dir", target, "--format", "json")
+        self.assertEqual(code, 2)
+        self.assertTrue(receipt["transport_integrity"])
+        self.assertEqual(receipt["review_status"], "HOLD")
+        self.assertTrue((target / "index.html").exists())
+        self.assertIn("HOLD", (target / "index.html").read_text())
+        self.assertNotIn(str(self.root), raw)
+
+    def test_invalid_portable_blob_never_creates_recipient_directory(self):
+        self.export()
+        with ZipFile(self.zipfile, "a") as z:
+            z.writestr("unauthorized-config.json", "{}")
+        target = self.root / "absent-on-refusal"
+        code, receipt, raw = self.invoke(
+            "--unpack-private-history-workroom", self.zipfile,
+            "--private-workroom-output-dir", target, "--format", "json")
+        self.assertEqual(code, 2)
+        self.assertFalse(receipt["transport_integrity"])
+        self.assertFalse(target.exists())
+        self.assertNotIn(str(self.root), raw)
 
     def test_two_exports_deterministic_and_not_bound_to_original_paths(self):
         first = self.export()

@@ -196,6 +196,7 @@ The installed M1 safety canary also creates one bounded, self-contained,
 ```sh
 lightup-lab-safety-canary --export-private-history-workroom /private/NEW-M1.zip --private-history-snapshots /private/HISTORY-01 /private/HISTORY-02 --format json
 lightup-lab-safety-canary --verify-private-history-workroom /private/NEW-M1.zip --format json
+lightup-lab-safety-canary --unpack-private-history-workroom /private/NEW-M1.zip --private-workroom-output-dir /private/NEW-HUMAN-WORKROOM --format json
 ```
 
 The producer performs full first-party descriptor-pinned source verification,
@@ -216,6 +217,16 @@ machine-readable PASS/HOLD transport receipt with all source/authorization/
 consent/deployment flags false. A semantic HOLD returns exit 2 even when
 bytes are verified, while a truly unverified ZIP returns
 `transport_integrity=false`. No external targets or scripts run.
+
+The third command verifies the entire original private ZIP **before**
+creating a new owner-private `0700` browser directory; writes only the
+allowlisted files with `0600` permissions and exact original 01..08 folders,
+never overwrites an existing destination, and leaves no openable partial
+workroom on a failed source check. It operates from pinned verified ZIP
+bytes, not an untrusted second source read. The scriptless `index.html`
+lists all original anonymous ordinals with **HOLD first**, preserves the
+global HOLD, and works offline. An original synthetic HOLD produces
+exit 2 even when the private workroom was correctly admitted and opened.
 
 This ZIP and its manifests are deliberately **unsigned**. Their integrity
 cannot authenticate the original source, operator, client consent, independent

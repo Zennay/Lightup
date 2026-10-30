@@ -12,7 +12,7 @@ from pathlib import Path
 import stat
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
-from .lab_canary_handoff import _strict_json
+from .lab_canary_handoff import _strict_json, _private_write
 from .lab_canary_history import render_private_canary_history_html
 from .lab_canary_history_store import (
     _read_private_history_snapshot, _validate_history, MANIFEST,
@@ -156,8 +156,8 @@ def export_private_history_workroom(source_dirs: list[str], output: str) -> dict
         raise
 
 
-def verify_private_history_workroom(path: str) -> dict:
-    """Read-only bounded strict ZIP admission, without extraction or execution."""
+def _read_private_history_workroom(path: str) -> tuple[dict, dict[str, bytes]]:
+    """Pinned and validated bounded ZIP bytes; never re-read source after check."""
     original = Path(path).expanduser()
     if ".." in original.parts:
         raise ValueError("workroom traversal")
@@ -228,4 +228,73 @@ def verify_private_history_workroom(path: str) -> dict:
             raise ValueError("forged workroom labels or index")
         if b"<script" in files["README.txt"] or b"/home/" in files["README.txt"]:
             raise ValueError("unsafe workroom instructions")
-        return _receipt(tuple(actual), hashlib.sha256(raw).hexdigest())
+        return _receipt(tuple(actual), hashlib.sha256(raw).hexdigest()), files
+
+
+def verify_private_history_workroom(path: str) -> dict:
+    """Read-only bounded strict ZIP admission, without extraction or execution."""
+    return _read_private_history_workroom(path)[0]
+
+
+def unpack_private_history_workroom(source: str, new_directory: str) -> dict:
+    """Verify first, then publish only exact source-free files in a NEW 0700 folder.
+
+    No extraction of arbitrary ZIP paths; use already verified descriptor-pinned
+    bytes instead of re-reading the ZIP. A private incomplete marker is removed
+    only after every original is written and all output directories fsynced.
+    """
+    receipt, members = _read_private_history_workroom(source)
+    raw = Path(new_directory).expanduser()
+    if ".." in raw.parts or raw.name in ("", ".", ".."):
+        raise ValueError("unsafe private workroom destination")
+    parent = raw.parent.resolve(strict=True)
+    if not parent.is_dir():
+        raise ValueError("workroom destination parent does not exist")
+    target = parent / raw.name
+    count = receipt["reports_checked"]
+    os.mkdir(target, 0o700)
+    created = []
+    report_dirs = []
+    try:
+        _private_write(target, ".INCOMPLETE", b"Synthetic workroom not ready\n")
+        created.append(target / ".INCOMPLETE")
+        for n in range(1, count + 1):
+            directory = target / "reports" / f"{n:02d}"
+            if n == 1:
+                (target / "reports").mkdir(mode=0o700)
+            directory.mkdir(mode=0o700)
+            report_dirs.append(directory)
+        for name, data in sorted(members.items()):
+            destination = target.joinpath(*name.split("/"))
+            _private_write(destination.parent, destination.name, data)
+            created.append(destination)
+        for directory in [*report_dirs, target / "reports", target]:
+            fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+        created[0].unlink()
+        target_fd = os.open(target, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.fsync(target_fd)
+        finally:
+            os.close(target_fd)
+        return receipt
+    except BaseException:
+        for file in reversed(created):
+            try:
+                file.unlink()
+            except FileNotFoundError:
+                pass
+        for directory in reversed(report_dirs):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+        for directory in (target / "reports", target):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+        raise
