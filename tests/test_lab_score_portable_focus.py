@@ -421,6 +421,76 @@ class FocusedPortableReviewTests(unittest.TestCase):
         self.assertEqual((room / "queue.html").read_bytes(), old_saved)
         self.assertNotIn(b"id='pair-1-4'", old_saved)
 
+    def test_worksheet_handles_drift_and_rejects_unsafe_source_claim(self):
+        from copy import deepcopy
+        from lightup.lab_score_handoff_verify import verify_portable_review
+        from lightup.lab_score_queue_triage import render_human_triage_plan
+        queue = deepcopy(verify_portable_review(self.archive, review_queue=True)["review_queue"])
+        first = queue["pairs"][0]
+        first["independent_evaluations"] = True
+        first["score_stable"] = False
+        first["hold_reasons"] = ["score_drift"]
+        for archive in queue["archive_priorities"]:
+            archive["reused_evidence_pairs"] = 0
+            archive["score_drift_pairs"] = 1
+        original_sha = hashlib.sha256(self.archive.read_bytes()).hexdigest()
+        text = render_human_triage_plan(queue, global_status="HOLD",
+                                        source_zip_sha256=original_sha)
+        self.assertIn("**Score drift:**", text)
+        self.assertNotIn("**Evidence reuse:**", text)
+        self.assertIn("GLOBAL STATUS: HOLD", text)
+        with self.assertRaises(ValueError):
+            render_human_triage_plan(queue, global_status="PASS",
+                                     source_zip_sha256=original_sha)
+        with self.assertRaises(ValueError):
+            render_human_triage_plan(queue, global_status="HOLD",
+                                     source_zip_sha256="=HYPERLINK(external)")
+
+    def test_source_free_human_triage_worksheet_is_hold_bound_and_read_only(self):
+        source = self.archive
+        code, direct, err = invoke("--verify-portable-review", source,
+                                   "--review-queue", "--format", "triage-markdown")
+        self.assertEqual((code, err), (2, ""))
+        self.assertIn("**GLOBAL STATUS: HOLD**", direct)
+        self.assertIn(hashlib.sha256(source.read_bytes()).hexdigest(), direct)
+        self.assertIn("### Anonymous pair 1-4: HOLD", direct)
+        self.assertIn("**Evidence reuse:**", direct)
+        self.assertIn("new private storage", direct)
+        self.assertIn("independent source/security/privacy reviewer", direct)
+        self.assertLess(direct.index("### Anonymous pair 1-4: HOLD"),
+                        direct.index("### Anonymous pair 1-2: PASS"))
+        self.assertNotIn(str(self.root), direct)
+        self.assertNotIn("http://", direct)
+        room = self.root / "triage-worksheet-receiver"
+        self.assertEqual(invoke("--publish-queue-workroom", source,
+                                "--queue-workroom-dir", room)[0], 2)
+        original_files = {f.name: f.read_bytes() for f in room.iterdir()}
+        code, from_saved, err = invoke("--verify-queue-workroom", source,
+                                       "--queue-workroom-dir", room,
+                                       "--format", "triage-markdown")
+        self.assertEqual((code, err), (2, ""))
+        self.assertEqual(direct, from_saved)
+        self.assertEqual(original_files,
+                         {f.name: f.read_bytes() for f in room.iterdir()})
+        old = self.root / "triage-legacy-v1-room"
+        old.mkdir(mode=0o700)
+        from lightup.lab_score_queue_workroom import _payloads
+        for name, data in _payloads(source, version=1)[1].items():
+            target = old / name
+            target.write_bytes(data)
+            target.chmod(0o600)
+        code, previous, err = invoke("--verify-queue-workroom", source,
+                                     "--queue-workroom-dir", old,
+                                     "--format", "triage-markdown")
+        self.assertEqual((code, err), (2, ""))
+        self.assertEqual(previous, direct)
+        (room / "queue.json").write_text("tampered!")
+        code, content, err = invoke("--verify-queue-workroom", source,
+                                    "--queue-workroom-dir", room,
+                                    "--format", "triage-markdown")
+        self.assertEqual((code, content), (2, ""))
+        self.assertIn("not verified", err)
+
     def test_saved_workroom_html_json_csv_exports_bound_to_original_zip(self):
         from lightup.lab_score_portable_html_safety import admit_inert_html
         room = self.root / "saved-full-recipient"
@@ -570,6 +640,10 @@ class FocusedPortableReviewTests(unittest.TestCase):
                                   "--review-queue", "--format", "navigator-html")
         self.assertEqual((status, nav), (2, ""))
         self.assertIn("HTML NOT admitted", err)
+        status, worksheet, err = invoke("--verify-portable-review", legacy_zip,
+                                        "--review-queue", "--format", "triage-markdown")
+        self.assertEqual((status, worksheet), (2, ""))
+        self.assertIn("worksheet NOT admitted", err)
         self.assertTrue(legacy_queue["review_queue_untrusted_legacy_claim"])
         self.assertFalse(legacy_queue["history_content_validated"])
         self.assertEqual(legacy_queue["review_status"], "HOLD")

@@ -544,3 +544,23 @@ Crucially, the byte-exact canonical `queue.html` stored in earlier workrooms
 remains **unchanged**. Navigational HTML is a deliberately separate read-only
 representation, not an unauthorized modification of any signed/unsigned file.
 Global HOLD and all false-authority assertions remain visible.
+
+### Offline HUMAN-only triage worksheet (no approvals)
+
+`lightup-lab-score-calibrate --verify-portable-review SOURCE.zip --review-queue --format triage-markdown`
+produces a source-free, bounded Markdown checklist **only after complete
+canonical synthetic v3 ZIP admission**. It preserves every original pair
+in HOLD-first order; each original replay or score-drift HOLD gets specific
+*offline synthetic localhost* follow-up steps, while local PASS pairs explicitly
+do not clear global HOLD. The worksheet also shows affected anonymous archive
+priorities, the source-free ZIP digest (unsigned, not identity proof), and the
+separate real qualified-human source/security/privacy review gate. No notes,
+real target names, source files, secrets, approvals or external connections.
+
+The same worksheet is regenerated read-only from a fully verified owner-private
+v1 or v2 HUMAN workroom using `--verify-queue-workroom SOURCE.zip
+--queue-workroom-dir EXISTING_DIR --format triage-markdown`. Nothing is written
+to the saved workroom, and its existing canonical files remain byte-identical.
+Legacy unsigned or corrupted ZIPs and modified saved workrooms refuse the
+worksheet, return HOLD/exit 2 and emit **no Markdown**. The checklist is
+never an approval or grant, even if human boxes are ticked later.
