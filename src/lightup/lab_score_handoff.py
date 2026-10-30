@@ -24,7 +24,7 @@ from .lab_score_portable_text_safety import (
 )
 from .lab_score_suite import _private_output_directory
 
-_SCHEMA = "lightup.lab-score-portable-human-review.v1"
+_SCHEMA = "lightup.lab-score-portable-human-review.v2"
 _FILENAME = "LightUp-SYNTHETIC-OFFLINE-REVIEW.zip"
 _MAX_ZIP_BYTES = 2 * 1024 * 1024
 

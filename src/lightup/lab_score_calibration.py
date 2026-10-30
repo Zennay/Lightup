@@ -542,7 +542,9 @@ def main(argv: list[str] | None = None) -> int:
                   file=sys.stderr)
             return 2
         print("LightUp portable HUMAN review: TRANSPORT VERIFIED; "
-              "original source NOT authenticated; status "
+              + ("dashboard matched anonymous review; " if verified["dashboard_content_validated"]
+                 else "LEGACY dashboard contents NOT independently validated; ")
+              + "original source NOT authenticated; status "
               + verified["review_status"] + ".")
         return 0 if verified["review_status"] == "PASS" else 2
     if args.focus_archive_index is not None and (

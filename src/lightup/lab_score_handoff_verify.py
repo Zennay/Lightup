@@ -16,11 +16,13 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo, BadZipFile
 
 from .lab_score_inspect import _artifact_fd, _private_dir_fd
 from .lab_score_portable_html_safety import admit_inert_html
+from .lab_score_portable_dashboard import render_portable_dashboard
 from .lab_score_portable_text_safety import admit_text_exports
 from .lab_score_compare import _SCORE_FIELDS
 from .lab_score_suite import _EXPECTED_FINDINGS
 
-_SCHEMA = "lightup.lab-score-portable-human-review.v1"
+_SCHEMA = "lightup.lab-score-portable-human-review.v2"
+_LEGACY_SCHEMA = "lightup.lab-score-portable-human-review.v1"
 _SUMMARY_SCHEMA = "lightup.lab-score-private-review-summary.v1"
 _FILES = frozenset(("index.html", "history.html", "review.json",
                     "review.csv", "review.md", "README.txt", "manifest.json"))
@@ -207,7 +209,7 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
         "archives_checked", "pairs_checked", "files",
     }:
         raise ValueError("unexpected portable manifest metadata")
-    if (manifest.get("schema") != _SCHEMA
+    if (manifest.get("schema") not in (_SCHEMA, _LEGACY_SCHEMA)
             or type(manifest.get("passed")) is not bool
             or manifest["passed"] is not summary["passed"]
             or type(manifest.get("archives_checked")) is not int
@@ -227,15 +229,27 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
         if (type(recorded) is not str or len(recorded) != 64
                 or not hmac.compare_digest(actual, recorded)):
             raise ValueError("modified portable export")
+    # A recomputed unsigned hash is not proof that the visually prominent
+    # dashboard truthfully reflects the anonymous comparison flags. v2 binds
+    # that human-facing landing page byte-for-byte to the admitted summary.
+    # v1 remains readable for earlier private handoffs but explicitly lacks
+    # this semantic content validation; legacy source cannot be authenticated.
+    is_v2 = manifest["schema"] == _SCHEMA
+    if is_v2 and payloads["index.html"] != render_portable_dashboard(summary).encode("utf-8"):
+        raise ValueError("offline HUMAN dashboard does not match verified summary")
     result = {
-        "schema": _SCHEMA,
+        "schema": manifest["schema"],
+        "dashboard_content_validated": is_v2,
         "transport_integrity": True,
         "original_source_authenticated": False,
         "authorization_granted": False,
         "external_targets_contacted": False,
         "deployment": False,
         "synthetic_localhost_only": True,
-        "review_status": "PASS" if summary["passed"] else "HOLD",
+        # Older v1 transports can be opened for HUMAN inspection but cannot
+        # certify the displayed dashboard semantics. Fail closed to HOLD so a
+        # schema downgrade cannot promote a forged headline into PASS.
+        "review_status": "PASS" if (summary["passed"] and is_v2) else "HOLD",
         "archives_checked": summary["archives_checked"],
         "pairs_checked": summary["pairs_checked"],
     }

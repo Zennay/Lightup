@@ -194,8 +194,17 @@ rejected even if unsigned SHA-256 manifests are recomputed), inconsistent
 archive priorities or unapproved scorer labels, and *non-canonical ZIP
 bytes* (including otherwise ignored prepended/appended material). It returns
 TRANSPORT VERIFIED plus the original review PASS/HOLD state, never private source paths.
-It cannot authenticate the original source or its signer: a forged ZIP with
-recomputed unsigned hashes is not trusted original evidence or an approval.
+The new v2 ZIP manifest binds the visible dashboard *byte-for-byte* to
+the first-party renderer and the canonical anonymous review flags. A
+rehashed ZIP with a passive, misleading PASS/HOLD headline is refused even
+when its HTML is scriptless and its manifest digests are consistent. Earlier
+v1 handoffs remain readable for manual inspection but deliberately report
+**HOLD** and `LEGACY dashboard contents NOT independently validated`; a
+schema downgrade cannot silently promote unverified content to PASS.
+Regenerate the private v2 ZIP from original synthetic archives and a verified
+saved report to get the stronger content check. Neither version authenticates
+the original source or its signer: recomputed unsigned hashes are never
+trusted original evidence or approval.
 Keep the ZIP in a 0700 directory as a 0600 file for this local checker.
 
 To open a verified portable HUMAN ZIP as scriptless files without manual ZIP
