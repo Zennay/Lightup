@@ -208,6 +208,12 @@ the operator also gets before/after values for only the fixed allowlisted
 first-party capability and score metric fields: no arbitrary source keys are
 copied into JSON or text. No evidence payload, source path, checksum or run ID
 leaves the private directory.
+Each of the 2–8 original archives and its eight private SHA-256 source
+bindings is verified once at admission and once again at completion; pairwise
+comparison reuses the admitted private snapshots rather than repeatedly
+rehashing them. Validation cost for original sources now scales linearly
+with archived sessions, not 28 repeated original verifications; changed
+source bytes or swapped roots still yield HOLD with no partial CSV.
 This is not real target, scanning, approval or deployment authority.
 
 

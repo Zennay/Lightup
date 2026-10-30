@@ -190,6 +190,43 @@ def _archived_root_identity(root: Path) -> tuple[int | str, ...]:
         os.close(root_fd)
 
 
+def _compare_verified_archive_pair(
+    previous: Path, current: Path,
+    old_hashes: dict[str, dict[str, str]],
+    current_hashes: dict[str, dict[str, str]],
+) -> dict[str, Any]:
+    """Compare candidates using already checked original source snapshots.
+
+    The caller MUST reverify original private sources and receipts after the
+    full comparison. This function grants neither provenance nor authority.
+    """
+    comparison = compare_score_runs(
+        previous / "candidate", current / "candidate",
+    )
+    # Verifying two root receipts does not guarantee the archives are
+    # independent: one can reuse the other's *baseline* while selecting a
+    # new candidate. Reject repeated original evidence anywhere across all
+    # four runs, without exposing the private source SHA-256 digests.
+    previous_sources = {
+        digest for run in old_hashes.values() for digest in run.values()
+    }
+    current_sources = {
+        digest for run in current_hashes.values() for digest in run.values()
+    }
+    if previous_sources & current_sources:
+        comparison["passed"] = False
+        comparison["independent_evaluations"] = False
+        comparison["reused_archived_source"] = True
+        for filename in _SOURCE_FILES[1:]:
+            old_digests = {old_hashes[run][filename] for run in old_hashes}
+            new_digests = {current_hashes[run][filename] for run in current_hashes}
+            if old_digests & new_digests:
+                name = filename.removesuffix(".sqlite3")
+                comparison["capabilities"][name]["distinct_evaluation"] = False
+    return _receipt(comparison)
+
+
+
 def compare_saved_calibrations(
     previous_dir: str | Path, current_dir: str | Path,
 ) -> dict[str, Any]:
@@ -216,29 +253,9 @@ def compare_saved_calibrations(
     # modified artifact within an unchanged child directory.
     old_hashes = _source_hashes(previous)
     current_hashes = _source_hashes(current)
-    comparison = compare_score_runs(
-        previous / "candidate", current / "candidate",
+    result = _compare_verified_archive_pair(
+        previous, current, old_hashes, current_hashes
     )
-    # Verifying two root receipts does not guarantee the archives are
-    # independent: one can reuse the other's *baseline* while selecting a
-    # new candidate. Reject repeated original evidence anywhere across all
-    # four runs, without exposing the private source SHA-256 digests.
-    previous_sources = {
-        digest for run in old_hashes.values() for digest in run.values()
-    }
-    current_sources = {
-        digest for run in current_hashes.values() for digest in run.values()
-    }
-    if previous_sources & current_sources:
-        comparison["passed"] = False
-        comparison["independent_evaluations"] = False
-        comparison["reused_archived_source"] = True
-        for filename in _SOURCE_FILES[1:]:
-            old_digests = {old_hashes[run][filename] for run in old_hashes}
-            new_digests = {current_hashes[run][filename] for run in current_hashes}
-            if old_digests & new_digests:
-                name = filename.removesuffix(".sqlite3")
-                comparison["capabilities"][name]["distinct_evaluation"] = False
     if identities != (_archived_root_identity(previous),
                       _archived_root_identity(current)):
         raise ValueError("saved archive substituted during comparison")
@@ -251,7 +268,6 @@ def compare_saved_calibrations(
     if (verify_saved_calibration(previous)["passed"] is not True
             or verify_saved_calibration(current)["passed"] is not True):
         raise ValueError("saved archive failed post-comparison verification")
-    result = _receipt(comparison)
     result["saved_runs"] = ["previous", "current"]
     result["comparison_mode"] = "archived_calibrations"
     return result
@@ -277,6 +293,11 @@ def compare_saved_calibration_history(
             raise ValueError("parent traversal rejected")
         roots.append(path if path.is_absolute() else anchor / path)
     identities = [_archived_root_identity(root) for root in roots]
+    # Verify each original private root exactly once before comparisons.
+    # Pairwise full reinspection is quadratic and re-hashes the same source
+    # artifacts up to 28 times at the eight-archive limit.
+    if any(verify_saved_calibration(root)["passed"] is not True for root in roots):
+        raise ValueError("saved history verification failed")
     source_bindings = [_source_hashes(root) for root in roots]
     adjacent = []
     pairs = []
@@ -285,7 +306,12 @@ def compare_saved_calibration_history(
     compared = 0
     for i in range(len(roots)):
         for j in range(i + 1, len(roots)):
-            pair = compare_saved_calibrations(roots[i], roots[j])
+            # Only compare verified candidate records and the cached
+            # original digests. The final whole-history recheck below
+            # invalidates every result if any source changed mid-comparison.
+            pair = _compare_verified_archive_pair(
+                roots[i], roots[j], source_bindings[i], source_bindings[j]
+            )
             summary = pair["comparison"]
             compared += 1
             independent &= summary["independent_evaluations"] is True

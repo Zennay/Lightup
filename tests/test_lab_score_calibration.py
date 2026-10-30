@@ -429,7 +429,7 @@ class CalibrationTests(unittest.TestCase):
             first, second = Path(base)/"first", Path(base)/"second"
             self.assertTrue(cal.run_lab_score_calibration(first)["passed"])
             self.assertTrue(cal.run_lab_score_calibration(second)["passed"])
-            actual = cal.compare_saved_calibrations
+            actual = cal._compare_verified_archive_pair
             def synthetic_drift(*args):
                 pair = copy.deepcopy(actual(*args))
                 pair["passed"] = False
@@ -440,7 +440,7 @@ class CalibrationTests(unittest.TestCase):
                     "PRIVATE_SOURCE_KEY": {"baseline": base, "candidate": base},
                 }
                 return pair
-            with patch.object(cal, "compare_saved_calibrations",
+            with patch.object(cal, "_compare_verified_archive_pair",
                               side_effect=synthetic_drift):
                 result = cal.compare_saved_calibration_history([first, second])
             self.assertFalse(result["passed"])
@@ -454,7 +454,7 @@ class CalibrationTests(unittest.TestCase):
             self.assertNotIn(base, str(result))
             self.assertNotIn("PRIVATE_SOURCE_KEY", str(result))
             out = io.StringIO()
-            with patch.object(cal, "compare_saved_calibrations",
+            with patch.object(cal, "_compare_verified_archive_pair",
                               side_effect=synthetic_drift):
                 with redirect_stdout(out):
                     code = cal.main(["--compare-history", str(first),
@@ -498,6 +498,59 @@ class CalibrationTests(unittest.TestCase):
                              ["True", "False", "True"])
             self.assertNotIn(base, out.getvalue())
             self.assertNotIn("sha256", out.getvalue())
+
+    def test_history_source_validation_scales_with_archive_count(self):
+        with tempfile.TemporaryDirectory() as base:
+            roots = [Path(base)/str(i) for i in range(4)]
+            for root in roots:
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            with patch.object(cal, "_source_hashes", wraps=cal._source_hashes) as hashes, patch.object(
+                cal, "verify_saved_calibration", wraps=cal.verify_saved_calibration
+            ) as verify:
+                result = cal.compare_saved_calibration_history(roots)
+            self.assertTrue(result["passed"])
+            self.assertEqual(result["pairs_checked"], 6)
+            self.assertEqual(hashes.call_count, 16)
+            self.assertEqual(verify.call_count, 8)
+
+    def test_history_rejects_mutation_after_pair_compare(self):
+        with tempfile.TemporaryDirectory() as base:
+            previous, current = Path(base)/"previous", Path(base)/"current"
+            for root in (previous, current):
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            original = cal._compare_verified_archive_pair
+            def change_after_pair(*args):
+                result = original(*args)
+                (current/"candidate"/"http_baseline.sqlite3").write_bytes(b"mutated")
+                return result
+            out, err = io.StringIO(), io.StringIO()
+            with patch.object(cal, "_compare_verified_archive_pair",
+                              side_effect=change_after_pair):
+                with redirect_stdout(out), redirect_stderr(err):
+                    status = cal.main(["--compare-history", str(previous),
+                                       str(current), "--format", "csv"])
+            self.assertEqual(status, 2)
+            self.assertEqual(out.getvalue(), "")
+            self.assertIn("HOLD", err.getvalue())
+            self.assertNotIn(base, err.getvalue())
+
+    def test_history_refuses_replaced_root_after_pair_compare(self):
+        with tempfile.TemporaryDirectory() as base:
+            previous, current, alternate = (
+                Path(base)/n for n in ("previous", "current", "alternate")
+            )
+            for root in (previous, current, alternate):
+                self.assertTrue(cal.run_lab_score_calibration(root)["passed"])
+            original = cal._compare_verified_archive_pair
+            def replace_after_pair(*args):
+                result = original(*args)
+                current.rename(Path(base)/"moved")
+                alternate.rename(current)
+                return result
+            with patch.object(cal, "_compare_verified_archive_pair",
+                              side_effect=replace_after_pair):
+                with self.assertRaises(ValueError):
+                    cal.compare_saved_calibration_history([previous, current])
 
     def test_failed_producer_and_readback_never_publish_pass(self):
         with tempfile.TemporaryDirectory() as base:
