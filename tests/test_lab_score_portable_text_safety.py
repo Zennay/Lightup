@@ -94,6 +94,22 @@ class CanonicalTextExportTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     verify_portable_review(candidate)
 
+    def test_unsigned_json_cannot_smuggle_private_metadata(self):
+        for case in ("top", "pair", "noncanonical"):
+            with self.subTest(case=case):
+                summary = json.loads(self.members["review.json"])
+                if case == "top":
+                    summary["original_private_path"] = "/synthetic/private/source"
+                elif case == "pair":
+                    summary["pairs"][0]["private_client"] = "synthetic-client"
+                if case == "noncanonical":
+                    raw = json.dumps(summary, sort_keys=True).encode()
+                else:
+                    raw = (json.dumps(summary, sort_keys=True, indent=2) + "\n").encode()
+                candidate = self.forge("unknown-" + case, {"review.json": raw})
+                with self.assertRaises(ValueError):
+                    verify_portable_review(candidate)
+
     def test_replayed_synthetic_original_still_holds(self):
         duplicate = self.root / "replayed"
         import shutil

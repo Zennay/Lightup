@@ -50,6 +50,14 @@ def _decode_json(content: bytes) -> dict[str, Any]:
 
 
 def _validate_summary(summary: dict[str, Any]) -> None:
+    # Admission is a source-free schema, not just a handful of flags. Refuse
+    # hidden original source paths, keys, identities or misleading sidecars.
+    if set(summary) != {
+        "schema", "passed", "archives_checked", "pairs_checked", "pairs",
+        "archive_review_queue", "capability_hotspots",
+        "authorization_granted", "external_targets_contacted", "deployment",
+    }:
+        raise ValueError("unexpected private review summary metadata")
     n, count = summary.get("archives_checked"), summary.get("pairs_checked")
     if (summary.get("schema") != _SUMMARY_SCHEMA
             or type(n) is not int or not 2 <= n <= 8
@@ -61,6 +69,9 @@ def _validate_summary(summary: dict[str, Any]) -> None:
     for item in summary["pairs"]:
         if not isinstance(item, dict):
             raise ValueError("invalid anonymous pair")
+        if set(item) != {"previous_index", "current_index", "passed",
+                            "independent_evaluations", "score_stable"}:
+            raise ValueError("unexpected anonymous pair metadata")
         i, j = item.get("previous_index"), item.get("current_index")
         independence, stable, passed = (
             item.get("independent_evaluations"), item.get("score_stable"),
@@ -104,6 +115,8 @@ def _validate_summary(summary: dict[str, Any]) -> None:
     for item in hotspots:
         if not isinstance(item, dict):
             raise ValueError("invalid scorer hotspot")
+        if set(item) != {"capability", "affected_pairs", "metrics"}:
+            raise ValueError("unexpected scorer hotspot metadata")
         capability = item.get("capability")
         metrics = item.get("metrics")
         affected = item.get("affected_pairs")
@@ -184,6 +197,16 @@ def _validated_portable_review(path: str | Path) -> tuple[dict[str, Any], dict[s
     manifest = _decode_json(payloads["manifest.json"])
     summary = _decode_json(payloads["review.json"])
     _validate_summary(summary)
+    if payloads["review.json"] != (
+        json.dumps(summary, sort_keys=True, indent=2, allow_nan=False) + "\n"
+    ).encode("utf-8"):
+        raise ValueError("non-canonical anonymous JSON review")
+    if set(manifest) != {
+        "schema", "synthetic_localhost_only", "authorization_granted",
+        "external_targets_contacted", "deployment", "passed",
+        "archives_checked", "pairs_checked", "files",
+    }:
+        raise ValueError("unexpected portable manifest metadata")
     if (manifest.get("schema") != _SCHEMA
             or type(manifest.get("passed")) is not bool
             or manifest["passed"] is not summary["passed"]
