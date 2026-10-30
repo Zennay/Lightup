@@ -646,6 +646,59 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
         self.assertEqual(result["failure_stage"], "setup")
         self.assertIs(result["external_target_authorized"], False)
 
+    def test_service_closed_port_control_remains_reserved_during_observations(self):
+        # Prevent another local process from claiming the negative-control
+        # port between allocation and the two real scored observations.
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from lightup.ai.orchestration import ToolExecutor
+        original_execute = ToolExecutor.execute
+        seen = []
+
+        def verify_control(executor, run_context, call):
+            ports = dict(call.arguments)["ports"].split(",")
+            control_port = int(ports[1])
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as claimant:
+                with self.assertRaises(OSError):
+                    claimant.bind(("127.0.0.1", control_port))
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+                probe.settimeout(1)
+                self.assertNotEqual(
+                    probe.connect_ex(("127.0.0.1", control_port)), 0
+                )
+            seen.append(control_port)
+            return original_execute(executor, run_context, call)
+
+        with TemporaryDirectory(prefix="lightup-service-control-") as folder:
+            with patch.object(ToolExecutor, "execute", verify_control):
+                result = lab_service_score.run_lab_service_inventory_score(
+                    Path(folder) / "state.db"
+                )
+        self.assertTrue(result["passed"])
+        self.assertEqual(seen, [result["closed_control_port"]] * 2)
+
+    def test_service_control_port_released_on_producer_error(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from lightup.ai.orchestration import ToolExecutor
+        control = []
+
+        def fail_observation(executor, run_context, call):
+            control.append(int(dict(call.arguments)["ports"].split(",")[1]))
+            raise RuntimeError("synthetic service producer failure")
+
+        with TemporaryDirectory(prefix="lightup-service-error-") as folder:
+            with patch.object(ToolExecutor, "execute", fail_observation):
+                with self.assertRaises(RuntimeError):
+                    lab_service_score.run_lab_service_inventory_score(
+                        Path(folder) / "state.db"
+                    )
+        self.assertEqual(len(control), 1)
+        # The reserved negative-control socket must be cleaned up on every
+        # exceptional exit; no fixture should retain an OS port.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reclaimed:
+            reclaimed.bind(("127.0.0.1", control[0]))
+
     def test_tls_fixture_worker_cleanup_when_observation_fails(self):
         # The owned TLS server thread must stop while the in-process loopback
         # boundary remains active, including an early producer exception.
