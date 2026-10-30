@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 
 from .lab_score_action_focus import render_action_focus
+from .lab_score_action_batch import render_human_batch
 from .lab_score_review_actions import build_review_actions
 from .lab_score_review_delta import compare_portable_review_transports
 from .lab_score_queue_workroom import _check_file
@@ -27,11 +28,22 @@ _FORMATS = (
 def _canonical(first: str, second: str, selector: tuple[str, str, str]) -> tuple[dict, dict[str, bytes]]:
     comparison = compare_portable_review_transports(first, second)
     actions = build_review_actions(comparison, first, second)
-    payloads = {name: render_action_focus(actions, *selector, fmt).encode("utf-8")
-                for fmt, name in _FORMATS}
+    is_batch = type(selector) is str
+    if is_batch:
+        formats = (("actions-batch-json", "batch.json"),
+                   ("actions-batch-markdown", "batch.md"),
+                   ("actions-batch-html", "batch.html"))
+        payloads = {name: render_human_batch(actions, selector, fmt).encode("utf-8")
+                    for fmt, name in formats}
+    else:
+        if type(selector) is not tuple or len(selector) != 3:
+            raise ValueError("invalid original HUMAN focus selection")
+        payloads = {name: render_action_focus(actions, *selector, fmt).encode("utf-8")
+                    for fmt, name in _FORMATS}
     receipt = {
-        "schema": "lightup.lab-score-original-human-focus-room.v1",
-        "selector": list(selector),
+        "schema": ("lightup.lab-score-original-human-batch-room.v1" if is_batch
+                   else "lightup.lab-score-original-human-focus-room.v1"),
+        "selector": selector if is_batch else list(selector),
         "global_review_status": "HOLD",
         "original_unsigned_transport_sha256": {
             source: comparison[source]["unsigned_transport_sha256"]

@@ -224,6 +224,55 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             render_human_batch(combined,select+','+select,'actions-batch-json')
 
+    def test_private_selected_batch_atomic_source_reopen_and_tamper(self):
+        import stat
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions=build_review_actions(compare_portable_review_transports(
+            str(self.hold),str(self.passing)),str(self.hold),str(self.passing))
+        row=actions['actions'][0]
+        selector=f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        room=self.root/'atomic-batch-selection-room'
+        args=['--focus-room-dir',room,'--focus-batch',selector]
+        code,out,err=run('--publish-batch-focus',self.hold,self.passing,*args)
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('four private files',out)
+        saved={p.name:p.read_bytes() for p in room.iterdir()}
+        self.assertEqual(set(saved),{'batch.json','batch.md','batch.html','manifest.json'})
+        self.assertEqual(stat.S_IMODE(room.stat().st_mode),0o700)
+        self.assertTrue(all(stat.S_IMODE(p.stat().st_mode)==0o600 for p in room.iterdir()))
+        for fmt,name in (('actions-batch-json','batch.json'),
+                         ('actions-batch-markdown','batch.md'),
+                         ('actions-batch-html','batch.html')):
+            verified=run('--verify-batch-focus',self.hold,self.passing,
+                         *args,'--format',fmt)
+            direct=run('--compare-portable-reviews',self.hold,self.passing,
+                       '--focus-batch',selector,'--format',fmt)
+            self.assertEqual(verified,direct)
+            self.assertEqual((verified[0],verified[2]),(2,''))
+            self.assertEqual(verified[1].encode(),saved[name])
+            if fmt.endswith('html'):
+                admit_inert_html(verified[1].encode())
+        self.assertEqual(saved,{p.name:p.read_bytes() for p in room.iterdir()})
+        code,out,err=run('--publish-batch-focus',self.hold,self.passing,*args)
+        self.assertEqual((code,out),(2,''))
+        (room/'batch.md').write_text('forged PASS')
+        code,out,err=run('--verify-batch-focus',self.hold,self.passing,
+                         *args,'--format','actions-batch-json')
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)
+        self.assertNotIn('forged',err)
+
+    def test_private_batch_bad_selection_leaves_no_room(self):
+        root=self.root/'batch-invalid-dir'
+        for bad in ('candidate:1-2','baseline:1-1','baseline:1-9',
+                    'baseline:01-2','baseline:1-2;<script>'):
+            status,out,err=run('--publish-batch-focus',self.hold,self.passing,
+                               '--focus-room-dir',root,'--focus-batch',bad)
+            self.assertEqual((status,out),(2,''))
+            self.assertFalse(root.exists())
+            self.assertIn('not verified',err)
+
     def test_count_delta_never_closes_old_hold(self):
         status,out,err=run('--compare-portable-reviews',
                            self.hold,self.passing,'--format','json')

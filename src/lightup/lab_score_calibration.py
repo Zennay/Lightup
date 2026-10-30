@@ -506,6 +506,12 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--verify-action-focus", nargs=2,
                       metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
                       help="reverify private HUMAN HOLD pair room against both originals")
+    mode.add_argument("--publish-batch-focus", nargs=2,
+                      metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
+                      help="publish selected original HOLD pairs to a private four-file room")
+    mode.add_argument("--verify-batch-focus", nargs=2,
+                      metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
+                      help="reverify source-bound private selected HOLD batch room")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
     parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "triage-csv", "review-csv", "actions-json", "actions-csv", "actions-html", "actions-brief-markdown", "actions-brief-html", "actions-focus-json", "actions-focus-text", "actions-focus-html", "actions-batch-json", "actions-batch-markdown", "actions-batch-html"),
@@ -547,6 +553,44 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--unpack-output-dir",
                         help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
+    if args.publish_batch_focus is not None or args.verify_batch_focus is not None:
+        creating = args.publish_batch_focus is not None
+        if (args.focus_batch is None or args.focus_action is not None
+                or args.focus_room_dir is None
+                or args.format not in (("text",) if creating else
+                                       ("text", "actions-batch-json",
+                                        "actions-batch-markdown", "actions-batch-html"))
+                or any((args.include_actions, args.include_briefs, args.export_comparison,
+                        args.focus_archive_index is not None, args.focus_pair is not None,
+                        args.review_queue, args.include_triage,
+                        args.comparison_output_dir is not None,
+                        args.queue_workroom_dir is not None,
+                        args.html_output_dir is not None,
+                        args.verify_html_output_dir is not None,
+                        args.portable_review_output_dir is not None,
+                        args.unpacked_review_dir is not None,
+                        args.unpack_output_dir is not None))):
+            parser.error("batch review requires only --focus-batch and --focus-room-dir")
+        originals = args.publish_batch_focus if creating else args.verify_batch_focus
+        try:
+            if creating:
+                comparison = publish_private_focus(*originals, args.focus_room_dir,
+                                                   args.focus_batch)
+                output = "LightUp original HUMAN HOLD batch: four private files verified; no approval.\n"
+            else:
+                comparison, saved = verify_private_focus(*originals, args.focus_room_dir,
+                                                         args.focus_batch)
+                names = {"actions-batch-json": "batch.json",
+                         "actions-batch-markdown": "batch.md",
+                         "actions-batch-html": "batch.html"}
+                output = (saved[names[args.format]].decode("utf-8") if args.format in names
+                          else "LightUp original HUMAN HOLD batch: four files reverified; no approval.\n")
+        except Exception:
+            print("LightUp original HUMAN batch: HOLD; source or saved room not verified.",
+                  file=sys.stderr)
+            return 2
+        sys.stdout.write(output)
+        return 0 if comparison["review_status"] == "PASS" else 2
     if args.publish_action_focus is not None or args.verify_action_focus is not None:
         creating = args.publish_action_focus is not None
         if (args.focus_action is None or args.focus_room_dir is None
@@ -584,7 +628,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(output)
         return 0 if comparison["review_status"] == "PASS" else 2
     if args.focus_room_dir is not None:
-        parser.error("--focus-room-dir requires --publish-action-focus or --verify-action-focus")
+        parser.error("--focus-room-dir requires a HUMAN focus publish/verify mode")
     if args.include_briefs and not args.include_actions:
         parser.error("--include-briefs requires --include-actions and a new comparison room")
     if args.include_actions and args.compare_portable_reviews is None:
