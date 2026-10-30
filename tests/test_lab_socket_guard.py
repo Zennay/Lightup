@@ -82,6 +82,52 @@ class FixedLoopbackSocketBoundaryTests(unittest.TestCase):
                     raw_sendall.assert_called_once()
                     raw_sendfile.assert_called_once()
 
+    def test_preconnected_tls_socket_overrides_refuse_external_peer(self):
+        # SSL overrides socket.send/sendall/sendfile and can write directly.
+        # Use only a synthetic peer; never dial an external endpoint.
+        import ssl
+        from types import SimpleNamespace
+        fake = SimpleNamespace(family=socket.AF_INET,
+                               getpeername=lambda: ("203.0.113.5", 443))
+        names = ("send", "sendall", "sendfile", "write")
+        for name in names:
+            with self.subTest(api=name), patch.object(
+                ssl.SSLSocket, name, return_value=1
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(ssl.SSLSocket, name)(fake, b"fixture")
+                underlying.assert_not_called()
+
+    def test_preconnected_tls_loopback_socket_writes_still_allowed(self):
+        import ssl
+        from types import SimpleNamespace
+        fake = SimpleNamespace(family=socket.AF_INET,
+                               getpeername=lambda: ("127.0.0.1", 53111))
+        for name in ("send", "sendall", "sendfile", "write"):
+            with self.subTest(api=name), patch.object(
+                ssl.SSLSocket, name, return_value=1
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    self.assertEqual(getattr(ssl.SSLSocket, name)(fake, b"x"), 1)
+                underlying.assert_called_once()
+
+    def test_tls_connect_override_rejects_external_address(self):
+        import ssl
+        from types import SimpleNamespace
+        fake = SimpleNamespace(family=socket.AF_INET)
+        for name in ("connect", "connect_ex"):
+            with self.subTest(api=name), patch.object(
+                ssl.SSLSocket, name, return_value=0
+            ) as underlying:
+                with fixed_loopback_socket_boundary():
+                    with self.assertRaises(LabSocketBoundaryError):
+                        getattr(ssl.SSLSocket, name)(fake, ("203.0.113.5", 443))
+                    self.assertEqual(
+                        getattr(ssl.SSLSocket, name)(fake, ("127.0.0.1", 443)), 0
+                    )
+                underlying.assert_called_once()
+
     def test_non_getaddrinfo_dns_and_reverse_dns_are_blocked(self):
         resolver_names = (
             "gethostbyname", "gethostbyname_ex", "gethostbyaddr",

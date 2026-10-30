@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 from contextlib import contextmanager
 import socket
+import ssl
 from unittest.mock import patch
 
 
@@ -103,7 +104,38 @@ def fixed_loopback_socket_boundary():
             return "127.0.0.1"
         raise LabSocketBoundaryError("Offline lab forbids hostname resolution")
 
-    with patch.object(socket.socket, "connect", connect), patch.object(
+    # SSLSocket overrides the raw socket methods and its write() reaches
+    # the TLS engine directly. Cover those methods and its connect overrides,
+    # including sockets established before entering this scoped canary.
+    def guarded_tls_writer(method):
+        original = getattr(ssl.SSLSocket, method)
+
+        def guarded(sock, *args, **kwargs):
+            require_connected_loopback(sock)
+            return original(sock, *args, **kwargs)
+
+        return guarded
+
+    def guarded_tls_connector(method):
+        original = getattr(ssl.SSLSocket, method)
+
+        def guarded(sock, address):
+            _require_fixed_loopback_address(sock, address)
+            return original(sock, address)
+
+        return guarded
+
+    tls_overrides = {
+        name: guarded_tls_writer(name)
+        for name in ("send", "sendall", "sendfile", "write")
+    }
+    tls_overrides.update({
+        name: guarded_tls_connector(name) for name in ("connect", "connect_ex")
+    })
+
+    with patch.multiple(ssl.SSLSocket, **tls_overrides), patch.object(
+        socket.socket, "connect", connect
+    ), patch.object(
         socket.socket, "connect_ex", connect_ex
     ), patch.object(socket.socket, "bind", bind), patch.object(
         socket.socket, "sendto", sendto
