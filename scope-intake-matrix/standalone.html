@@ -1,0 +1,2271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-XgcVz+V8OO2oM5ePnU++ELCbCYVkfNbpjF+ndwsSUVw=' 'sha256-Pfh0Htik7qrtIEv7YfLaNLDHx7tdBw9+RCkwlf1JbWU='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp — Scope Intake Matrix (draft only)</title>
+<style>
+:root{color-scheme:dark;--bg:#0c1322;--panel:#151f32;--panel2:#1b2940;--line:#35455d;--ink:#eef4ff;--dim:#aebed0;--accent:#75e0c2;--warning:#ffcd7c;--danger:#ff8e99}*{box-sizing:border-box}body{margin:0;background:radial-gradient(1000px 460px at 65% -20%,#214b5a,transparent),var(--bg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink)}header{padding:24px clamp(18px,5vw,72px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.brand{font-size:13px;letter-spacing:.15em;color:var(--accent);font-weight:800}.brand strong{display:block;font-size:29px;letter-spacing:-.035em;color:var(--ink)}.fence{border:1px solid #936d38;background:#392c1c;color:#ffe1ad;border-radius:40px;padding:8px 15px;font-weight:750;font-size:12px}main{max-width:1460px;margin:auto;padding:28px clamp(18px,5vw,72px) 80px}.intro{max-width:900px;color:var(--dim);margin:0 0 24px}h2{font-size:18px;margin:0 0 17px}h3{font-size:15px;margin:0 0 12px}.section{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:22px;margin-bottom:21px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.wide{grid-column:span 2}label{display:block;font-weight:650;font-size:13px;color:#dce6f1}input,select,textarea{background:var(--panel2);border:1px solid #4b5c74;border-radius:8px;color:var(--ink);font:inherit;padding:9px 10px;min-width:0;width:100%;margin-top:6px}textarea{min-height:73px;resize:vertical}input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}button{font:inherit;cursor:pointer;border-radius:9px;padding:10px 14px;border:1px solid #647792;background:#25364e;color:var(--ink);font-weight:700}button.primary{background:var(--accent);border-color:var(--accent);color:#091e24}button.danger{color:#ffc5cd;border-color:#9b5363}button:hover{filter:brightness(1.16)}button:focus-visible{outline:3px solid var(--warning)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{padding:12px;border-radius:10px;background:#22314a;border:1px solid var(--line)}.stat strong{display:block;font-size:25px}.stat span{font-size:12px;color:var(--dim)}.muted{color:var(--dim)}.warning{color:var(--warning)}.danger-text{color:var(--danger)}.table-wrap{overflow-x:auto}table{border-collapse:separate;border-spacing:0;width:100%;min-width:960px}th{text-align:left;font-size:12px;color:var(--dim);border-bottom:1px solid var(--line);padding:10px 7px}td{vertical-align:top;border-bottom:1px solid #2c3e56;padding:7px}td input,td select{font-size:13px;margin:0;padding:8px}th:nth-child(1){width:25%}th:nth-child(2){width:12%}th:nth-child(3){width:19%}th:nth-child(4){width:11%}th:nth-child(5){width:14%}th:nth-child(6){width:13%}.row-tools{display:flex;gap:4px}.row-tools button{font-size:12px;padding:7px}.privacy{padding:13px;border-left:3px solid var(--warning);background:#3c3025;margin-top:16px}.notice{padding:12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);margin:12px 0;white-space:pre-wrap}.notice[hidden],section[hidden],div[hidden]{display:none!important}.compare-items{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.compare-items pre{overflow-wrap:anywhere;white-space:pre-wrap;background:#0e192a;border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,monospace;max-height:220px;overflow:auto}.small{font-size:12px}.right{margin-left:auto}.filter{max-width:290px}.footer{margin-top:20px;font-size:12px;color:var(--dim)}@media(max-width:800px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.stats{grid-template-columns:repeat(2,1fr)}.compare-items{grid-template-columns:1fr}.section{padding:16px}}@media print{body{background:white;color:black}header,.actions,.privacy,.footer,#compare-section,#file-import,#file-compare,.row-tools,.filter{display:none!important}main{padding:0}.section{break-inside:avoid;border:1px solid #ccc;background:white}input,select,textarea{border:0;background:white;color:black;padding:3px}th,td,.muted,.stat span{color:black}.stat{background:white;color:black}.table-wrap{overflow:visible}table{min-width:unset}}
+</style>
+<script>"use strict";
+/* Independent LightUp human PREPARATION ONLY. No calls, storage, scans or authorizations. */
+(function () {
+  const SCHEMA = "lightup.scope_intake.preparation.v1";
+  const FENCE = Object.freeze({
+    consent_validated: false,
+    grant_issued: false,
+    target_authorized: false,
+    scanning_enabled: false,
+    release_approved: false
+  });
+  const CAPABILITIES = Object.freeze({
+    none: "None — excluded",
+    inventory: "Passive inventory proposal",
+    http_baseline: "Passive HTTP baseline proposal",
+    tls_baseline: "Passive TLS baseline proposal",
+    lab_review: "Isolated LAB review proposal",
+    "inventory+http_baseline": "Passive inventory + HTTP baseline proposal",
+    "inventory+tls_baseline": "Passive inventory + TLS baseline proposal",
+    "http_baseline+tls_baseline": "Passive HTTP + TLS baseline proposal",
+    "inventory+http_baseline+tls_baseline": "Passive inventory + HTTP + TLS baseline proposal"
+  });
+  const OWNERSHIP = Object.freeze({
+    unverified: "Unverified",
+    claimed: "Human claims ownership (unverified)",
+    docs_requested: "Ownership documents requested"
+  });
+  const STATUS = Object.freeze({
+    draft: "Draft",
+    "needs-client-review": "Needs client review",
+    blocked: "Blocked"
+  });
+  const RISK = Object.freeze(["informational", "low", "medium", "high"]);
+  const FORM_FIELDS = ["project", "client", "contact", "start", "end", "risk", "purpose", "evidence"];
+  const DOC_KEYS = ["schema", "posture", "authority", ...FORM_FIELDS, "rows"];
+  const ROW_KEYS = ["id", "asset", "excluded", "capability", "ownership", "status", "question"];
+  const MAX_BYTES = 65536;
+  const textBytes = value => new TextEncoder().encode(value).length;
+  const $ = id => document.getElementById(id);
+  let state = blankDocument();
+  let pendingTriage = null;
+  let humanUndo = [];
+  let lastComparison = null;
+  let membershipPreview = null;
+  let draftRevision = 0, draftImportTicket = 0, draftCompareTicket = 0;
+
+  function blankDocument() {
+    return {
+      project: "", client: "", contact: "", start: "", end: "",
+      risk: "informational", purpose: "", evidence: "", rows: []
+    };
+  }
+
+  function exactKeys(value, keys) {
+    return value && typeof value === "object" && !Array.isArray(value) &&
+      Object.keys(value).length === keys.length &&
+      Object.keys(value).every((key, i) => key === keys[i]);
+  }
+
+  function safeString(value, limit, required) {
+    return typeof value === "string" && value.length <= limit &&
+      textBytes(value) <= limit * 4 && value === value.trim() &&
+      (!required || value.length > 0) &&
+      !/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/u.test(value) &&
+      !/\p{Cf}|\p{Cs}|\p{Co}|\p{Cn}/u.test(value);
+  }
+
+  function validAsset(value) {
+    if (!safeString(value, 253, true)) return false;
+    if (value !== value.toLowerCase()) return false;
+    if (value === "localhost") return true;
+    const match = /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?:\/(\d{1,2}))?$/.exec(value);
+    if (match) {
+      const parts = match[1].split(".").map(Number);
+      if (parts.some((part, i) => part > 255 || String(part) !== match[1].split(".")[i])) return false;
+      if (match[2] !== undefined && (+match[2] < 24 || +match[2] > 32 || String(+match[2]) !== match[2])) return false;
+      if (match[2] !== undefined) {
+        const mask = +match[2];
+        const num = parts.reduce((acc, x) => ((acc << 8) | x) >>> 0, 0);
+        const hostMask = (2 ** (32 - mask)) - 1;
+        if ((num & hostMask) !== 0) return false;
+      }
+      return true;
+    }
+    if (value.includes("/") || value.length > 253 || !value.includes(".")) return false;
+    // A dotted numeric address that failed canonical IPv4 admission cannot be
+    // reclassified as a hostname and silently remain in the proposed scope.
+    if (/^[0-9.]+$/.test(value)) return false;
+    if (!/^[a-z0-9.-]+$/.test(value) || value.endsWith(".") || value.startsWith(".")) return false;
+    return value.split(".").every(part => part.length > 0 && part.length <= 63 &&
+      /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(part));
+  }
+
+  function timeValid(value) {
+    if (typeof value !== "string" || !/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(value)) return false;
+    const [day, time] = value.split("T");
+    const [year, month, date] = day.split("-").map(Number);
+    const [hour, minute] = time.split(":").map(Number);
+    const d = new Date(Date.UTC(year, month - 1, date, hour, minute));
+    return year >= 2000 && year <= 2100 &&
+      d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 &&
+      d.getUTCDate() === date && d.getUTCHours() === hour && d.getUTCMinutes() === minute;
+  }
+
+  function validate(doc) {
+    const problems = [];
+    if (!safeString(doc.project, 80, true)) problems.push("Name the draft (1–80 safe characters).");
+    if (!safeString(doc.client, 100, true)) problems.push("Enter a declared client label (unverified).");
+    if (!safeString(doc.contact, 80, false)) problems.push("Review contact must be a short safe alias.");
+    if (!safeString(doc.purpose, 1800, true)) problems.push("Describe the purpose and human review questions.");
+    if (!safeString(doc.evidence, 120, false)) problems.push("Evidence label contains unsupported characters.");
+    if (!RISK.includes(doc.risk)) problems.push("Choose a supported descriptive risk ceiling.");
+    if (!timeValid(doc.start) || !timeValid(doc.end) || doc.start >= doc.end) {
+      problems.push("Provide a real local requested start and later end time (2000–2100).");
+    }
+    if (!Array.isArray(doc.rows) || doc.rows.length < 1 || doc.rows.length > 32) {
+      problems.push("Add 1–32 proposed boundaries.");
+      return problems;
+    }
+    const seenIds = new Set(), seenAssets = new Set();
+    doc.rows.forEach((row, i) => {
+      const n = i + 1;
+      if (!exactKeys(row, ROW_KEYS)) { problems.push("Row " + n + ": unsupported row shape."); return; }
+      if (!/^r[1-9]\d{0,5}$/.test(row.id) || seenIds.has(row.id)) problems.push("Row " + n + ": ambiguous row identity.");
+      seenIds.add(row.id);
+      if (!validAsset(row.asset)) problems.push("Row " + n + ": use an exact lowercase DNS hostname, canonical IPv4, or /24–/32 network.");
+      else if (seenAssets.has(row.asset)) problems.push("Row " + n + ": duplicate literal asset.");
+      seenAssets.add(row.asset);
+      if (typeof row.excluded !== "boolean") problems.push("Row " + n + ": boundary flag must be exact boolean.");
+      if (!Object.hasOwn(CAPABILITIES, row.capability) ||
+          (row.excluded && row.capability !== "none") ||
+          (!row.excluded && row.capability === "none")) {
+        problems.push("Row " + n + ": capability conflicts with exclusion.");
+      }
+      if (!Object.hasOwn(OWNERSHIP, row.ownership)) problems.push("Row " + n + ": unsupported ownership label.");
+      if (!Object.hasOwn(STATUS, row.status)) problems.push("Row " + n + ": unsupported human state.");
+      if (!safeString(row.question, 450, false)) problems.push("Row " + n + ": question is too long or contains unsafe control text.");
+    });
+    return problems;
+  }
+
+  function snapshot() {
+    return {
+      schema: SCHEMA, posture: "PREPARATION_ONLY", authority: { ...FENCE },
+      project: state.project, client: state.client, contact: state.contact,
+      start: state.start, end: state.end, risk: state.risk,
+      purpose: state.purpose, evidence: state.evidence,
+      rows: state.rows.map(row => ({...row}))
+    };
+  }
+
+  function decodeOwnExport(raw) {
+    if (typeof raw !== "string" || textBytes(raw) > MAX_BYTES) throw Error("Input exceeds the 64 KiB limit.");
+    let doc;
+    try { doc = JSON.parse(raw); } catch (_) { throw Error("Not a valid canonical LightUp PRIVATE draft JSON."); }
+    // Our own exporter writes one exact representation. Noncanonical JSON, duplicate keys,
+    // re-ordered or hidden keys are refused atomically before touching the live document.
+    if (raw !== JSON.stringify(doc, null, 2) + "\n") throw Error("Not canonical: altered formatting, duplicate keys or unknown serialization.");
+    if (!exactKeys(doc, DOC_KEYS) || doc.schema !== SCHEMA || doc.posture !== "PREPARATION_ONLY" ||
+        !exactKeys(doc.authority, Object.keys(FENCE)) ||
+        Object.keys(FENCE).some(k => doc.authority[k] !== false)) {
+      throw Error("Unsupported PRIVATE draft version or non-false authority claim.");
+    }
+    const fields = {...doc}; delete fields.schema; delete fields.posture; delete fields.authority;
+    const problems = validate(fields);
+    if (problems.length) throw Error(problems[0] + (problems.length > 1 ? " (" + problems.length + " issues)" : ""));
+    return fields;
+  }
+
+  function optionSelect(values, selected, change, aria) {
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", aria);
+    for (const [value, label] of Object.entries(values)) {
+      const option = document.createElement("option");
+      option.value = value; option.textContent = label; select.append(option);
+    }
+    select.value = selected;
+    select.addEventListener("change", event => change(event.target.value));
+    return select;
+  }
+  function cell(row) { const td = document.createElement("td"); row.append(td); return td; }
+  function editText(value, max, label, change, multi = false) {
+    const input = document.createElement(multi ? "textarea" : "input");
+    if (!multi) input.type = "text";
+    input.value = value; input.maxLength = max; input.autocomplete = "off";
+    input.setAttribute("aria-label", label);
+    input.addEventListener("input", event => { change(event.target.value); refresh(); });
+    return input;
+  }
+  function rowButton(title, action, danger = false) {
+    const button = document.createElement("button");
+    button.type = "button"; button.textContent = title; button.setAttribute("aria-label", title);
+    if (danger) button.classList.add("danger");
+    button.addEventListener("click", action);
+    return button;
+  }
+  function visibleRows() {
+    const query = $("filter").value.toLowerCase();
+    const filter = $("status-filter").value;
+    return state.rows.filter(row =>
+      (filter === "all" || row.status === filter) &&
+      (!query || (row.asset + " " + row.question).toLowerCase().includes(query)));
+  }
+
+  function clearTriagePreview(keepUndo = true) {
+    pendingTriage = null;
+    $("triage-preview-box").hidden = true;
+    $("triage-preview-box").textContent = "";
+    $("triage-apply").disabled = true;
+    if (!keepUndo) humanUndo.length = 0;
+    $("triage-undo").disabled = humanUndo.length === 0;
+  }
+
+  function updateTriageValues() {
+    const field = $("triage-field").value;
+    const values = field === "status" ? STATUS : OWNERSHIP;
+    const select = $("triage-value");
+    select.replaceChildren();
+    for (const [key, name] of Object.entries(values)) {
+      const option = document.createElement("option");
+      option.value = key; option.textContent = name;
+      select.append(option);
+    }
+    clearTriagePreview();
+  }
+
+  function previewTriage() {
+    clearTriagePreview();
+    const field = $("triage-field").value;
+    const option = $("triage-value").value;
+    if (!Object.hasOwn(field === "status" ? STATUS : OWNERSHIP, option)) {
+      announce("HOLD: invalid HUMAN bulk value.", true); return;
+    }
+    const rows = visibleRows();
+    if (!rows.length) { announce("No visible proposed rows to update.", true); return; }
+    const patches = rows.filter(row => row[field] !== option).map(row => ({
+      id: row.id, asset: row.asset, field, before: row[field], after: option
+    }));
+    if (!patches.length) { announce("Visible HUMAN values already match; nothing to change."); return; }
+    pendingTriage = patches;
+    const summary = patches.map(item => item.asset + ": " + item.before + " → " + item.after);
+    $("triage-preview-box").textContent =
+      "HUMAN ONLY · " + patches.length + " literal changes, NO ownership/grant/consent approval:\n" +
+      summary.join("\n");
+    $("triage-preview-box").hidden = false;
+    $("triage-apply").disabled = false;
+    announce("Preview created. Changes are not applied until you explicitly confirm.");
+  }
+
+  function applyTriage() {
+    const patches = pendingTriage;
+    if (!patches?.length) return;
+    const byId = new Map(state.rows.map(row => [row.id, row]));
+    if (patches.some(patch => !byId.has(patch.id) ||
+        byId.get(patch.id).asset !== patch.asset ||
+        byId.get(patch.id)[patch.field] !== patch.before)) {
+      clearTriagePreview();
+      announce("HOLD: proposal changed after HUMAN preview; review changes again.", true);
+      return;
+    }
+    if (!confirm("Apply " + patches.length + " HUMAN-only review labels? This never validates ownership or authorizes work.")) return;
+    for (const patch of patches) byId.get(patch.id)[patch.field] = patch.after;
+    humanUndo.push(patches);
+    if (humanUndo.length > 20) humanUndo.shift();
+    renderRows(); refresh(true);
+    announce(patches.length + " HUMAN draft labels changed. This is NOT consent, approval, grant or authorization.");
+  }
+
+  function undoTriage() {
+    if (!humanUndo.length) return;
+    const patches = humanUndo[humanUndo.length - 1];
+    const byId = new Map(state.rows.map(row => [row.id, row]));
+    if (patches.some(patch => !byId.has(patch.id) ||
+        byId.get(patch.id).asset !== patch.asset ||
+        byId.get(patch.id)[patch.field] !== patch.after)) {
+      humanUndo.length = 0;
+      clearTriagePreview();
+      announce("HOLD: previous HUMAN labels have changed; undo canceled.", true);
+      return;
+    }
+    for (const patch of patches) byId.get(patch.id)[patch.field] = patch.before;
+    humanUndo.pop();
+    renderRows(); refresh(true);
+    announce("Last HUMAN label change reverted. This has no consent/revocation meaning.");
+  }
+
+  function renderRows() {
+    clearTriagePreview();
+    const tbody = $("rows"); tbody.replaceChildren();
+    const filter = $("filter").value.toLowerCase();
+    const statusFilter = $("status-filter").value;
+    let shown = 0;
+    for (const row of state.rows) {
+      if (statusFilter !== "all" && row.status !== statusFilter) continue;
+      if (filter && !(row.asset + " " + row.question).toLowerCase().includes(filter)) continue;
+      shown++;
+      const tr = document.createElement("tr");
+      const identity = cell(tr);
+      identity.append(editText(row.asset, 253, "Proposed literal asset for " + row.id, value => row.asset = value));
+      identity.append(editText(row.question, 450, "Human question for " + row.id, value => row.question = value, true));
+      const boundary = cell(tr);
+      boundary.append(optionSelect({included:"Proposed inclusion",excluded:"Explicit exclusion"},
+        row.excluded ? "excluded" : "included", value => {
+          row.excluded = value === "excluded";
+          row.capability = row.excluded ? "none" : "inventory";
+          renderRows(); refresh();
+        }, "Boundary for " + row.id));
+      const capability = cell(tr);
+      capability.append(optionSelect(CAPABILITIES, row.capability, value => {
+        row.capability = value; refresh();
+      }, "Proposed capability for " + row.id));
+      const ownership = cell(tr);
+      ownership.append(optionSelect(OWNERSHIP, row.ownership, value => {
+        row.ownership = value; refresh();
+      }, "Declared ownership evidence for " + row.id));
+      const status = cell(tr);
+      status.append(optionSelect(STATUS, row.status, value => {
+        row.status = value; renderRows(); refresh();
+      }, "Human preparation status for " + row.id));
+      const tools = cell(tr); tools.className = "row-tools";
+      tools.append(rowButton("Copy " + row.id, () => duplicateRow(row.id)));
+      tools.append(rowButton("Remove " + row.id, () => removeRow(row.id), true));
+      tbody.append(tr);
+    }
+    $("empty-rows").hidden = shown > 0;
+    $("empty-rows").textContent = state.rows.length ?
+      "No rows match the local filter." : "No proposed assets yet.";
+  }
+
+  function bulkAdd() {
+    const raw = $("bulk-lines").value;
+    if (raw.length > 4096 || !raw.trim()) {
+      announce("HOLD: paste 1–32 bounded literal proposal lines.", true); return;
+    }
+    const lines = raw.trim().split(/\r?\n/);
+    const distinct = new Set(state.rows.map(row => row.asset));
+    const staging = [];
+    for (let i = 0; i < lines.length; i++) {
+      const value = lines[i].trim();
+      if (!value) {
+        announce("HOLD: blank bulk line " + (i + 1) + " — no rows added.", true); return;
+      }
+      const excluded = value.startsWith("!");
+      const asset = excluded ? value.slice(1).trim() : value;
+      if (!validAsset(asset) || distinct.has(asset)) {
+        announce("HOLD: invalid or duplicate literal on line " + (i + 1) + " — no rows added.", true); return;
+      }
+      distinct.add(asset);
+      staging.push({asset, excluded});
+    }
+    if (staging.length > 32 || staging.length + state.rows.length > 32) {
+      announce("HOLD: the draft cannot exceed 32 total proposed assets. No rows added.", true); return;
+    }
+    const exclusions = staging.filter(row => row.excluded).length;
+    if (!confirm("Add " + staging.length + " unverified proposed DRAFT assets (" + exclusions +
+      " explicit exclusions)? No approval, permission, grant or scan is issued.")) return;
+    for (const proposed of staging) {
+      state.rows.push({
+        id: nextRowId(), asset: proposed.asset, excluded: proposed.excluded,
+        capability: proposed.excluded ? "none" : "inventory",
+        ownership: "unverified", status: "draft", question: ""
+      });
+    }
+    $("bulk-lines").value = "";
+    $("filter").value = ""; $("status-filter").value = "all";
+    renderRows(); refresh();
+    announce("Atomic local bulk draft: " + staging.length +
+      " literals added for HUMAN review, not authorized.");
+  }
+
+  function nextRowId() {
+    const existing = new Set(state.rows.map(row => row.id));
+    for (let i = 1; i <= 33; i++) {
+      const candidate = "r" + i;
+      if (!existing.has(candidate)) return candidate;
+    }
+    throw Error("HOLD: no available canonical row identity.");
+  }
+
+  function addRow() {
+    if (state.rows.length >= 32) { announce("Maximum 32 proposed assets.", true); return; }
+    state.rows.push({
+      id: nextRowId(), asset: "", excluded: false, capability: "inventory",
+      ownership: "unverified", status: "draft", question: ""
+    });
+    $("filter").value = ""; $("status-filter").value = "all";
+    renderRows(); refresh();
+  }
+  function duplicateRow(id) {
+    if (state.rows.length >= 32) { announce("Maximum 32 proposed assets.", true); return; }
+    const source = state.rows.find(row => row.id === id);
+    if (!source) return;
+    state.rows.push({...source, id: nextRowId(), asset: ""});
+    $("filter").value = ""; $("status-filter").value = "all";
+    renderRows(); refresh();
+  }
+  function removeRow(id) {
+    const index = state.rows.findIndex(row => row.id === id);
+    if (index >= 0) state.rows.splice(index, 1);
+    renderRows(); refresh();
+  }
+  function announce(message, isError = false) {
+    $("notice").textContent = message;
+    $("notice").classList.toggle("danger-text", isError);
+  }
+  function refresh(preserveBulkUndo = false) {
+    // Monotonic guard for async file reads and encryption; no stale snapshot may replace/export current edits.
+    draftRevision++;
+    clearTriagePreview(preserveBulkUndo);
+    // Any actual proposal mutation makes the previously rendered comparison stale.
+    $("compare-section").hidden = true;
+    lastComparison = null;
+    clearMembershipPreview();
+    $("total-count").textContent = state.rows.length;
+    $("excluded-count").textContent = state.rows.filter(row => row.excluded).length;
+    $("review-count").textContent = state.rows.filter(row => row.status === "needs-client-review").length;
+    $("blocked-count").textContent = state.rows.filter(row => row.status === "blocked").length;
+    const issues = validate(state);
+    renderCoverage();
+    renderAgenda();
+    announce(issues.length ? "DRAFT INCOMPLETE (" + issues.length + "): " +
+      issues.slice(0, 5).join(" ") + (issues.length > 5 ? " …" : "") :
+      "Locally complete PREPARATION ONLY. No consent, grant, authority, scanning right, verified finding or release has been established.",
+      issues.length > 0);
+  }
+  function syncForm() {
+    for (const field of FORM_FIELDS) $(field).value = state[field];
+  }
+  function download(name, text, type = "application/json") {
+    const blob = new Blob([text], { type: type + ";charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.append(a);
+    a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  function exportDraft() {
+    const errors = validate(state);
+    if (errors.length) { announce("Cannot export incomplete draft: " + errors.join(" "), true); return; }
+    if (!confirm("PRIVATE unencrypted asset/client details. Save only to a trusted local location? This does NOT authorize anything.")) return;
+    const serialized = JSON.stringify(snapshot(), null, 2) + "\n";
+    if (textBytes(serialized) > MAX_BYTES) { announce("Draft exceeds 64 KiB export cap.", true); return; }
+    download("lightup-scope-intake-PRIVATE.json", serialized);
+    announce("PRIVATE draft prepared for local download. Still PREPARATION ONLY / DRAFT.");
+  }
+
+  const ENCRYPTED_SCHEMA = "lightup.scope_intake.encrypted_private.v1";
+  const PURPOSE = "lightup.scope_intake.encrypted_private.v1;PREPARATION_ONLY";
+  const KDF_ROUNDS = 600000;
+  const MAX_ENCRYPTED = 100000;
+  const ENCRYPTED_KEYS = [
+    "schema", "posture", "cipher", "kdf", "iterations", "salt_b64", "nonce_b64", "sealed_b64"
+  ];
+
+  function requireCrypto() {
+    if (!globalThis.isSecureContext || !globalThis.crypto?.subtle ||
+        typeof globalThis.crypto.getRandomValues !== "function") {
+      throw Error("Secure offline WebCrypto unavailable. Use a browser that supports secure local file contexts. Plaintext fallback is never automatic.");
+    }
+  }
+
+  function strictBase64(bytes) {
+    let encoded = "";
+    for (let at = 0; at < bytes.length; at += 4096) {
+      encoded += String.fromCharCode(...bytes.subarray(at, at + 4096));
+    }
+    return btoa(encoded);
+  }
+
+  function readCanonicalBase64(value, expectedSize = null) {
+    if (typeof value !== "string" || value.length > MAX_ENCRYPTED ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+      throw Error("Invalid canonical encrypted package.");
+    }
+    let bytes;
+    try { bytes = Uint8Array.from(atob(value), c => c.charCodeAt(0)); }
+    catch (_) { throw Error("Invalid canonical encrypted package."); }
+    if (strictBase64(bytes) !== value || (expectedSize !== null && bytes.length !== expectedSize)) {
+      bytes.fill(0); throw Error("Invalid canonical encrypted package.");
+    }
+    return bytes;
+  }
+
+  function passphraseInput(confirmNew) {
+    const first = prompt(confirmNew ?
+      "New PRIVATE encryption password (14–256 characters). Keep it safe: it cannot be recovered." :
+      "Password for this PRIVATE encrypted workroom:");
+    if (first === null) return null;
+    const length = textBytes(first);
+    if (length < 14 || length > 256 || !first.trim() ||
+        /[\u0000-\u001f\u007f]/u.test(first)) {
+      throw Error("Password must contain 14–256 safe UTF-8 bytes.");
+    }
+    if (confirmNew) {
+      const second = prompt("Confirm new PRIVATE encryption password:");
+      if (second === null) return null;
+      if (first !== second) throw Error("Password confirmation does not match.");
+    }
+    return first;
+  }
+
+  async function derivePrivateKey(password, salt) {
+    const material = new TextEncoder().encode(password);
+    try {
+      const parent = await globalThis.crypto.subtle.importKey("raw", material, "PBKDF2", false, ["deriveKey"]);
+      return await globalThis.crypto.subtle.deriveKey(
+        {name: "PBKDF2", salt, iterations: KDF_ROUNDS, hash: "SHA-256"},
+        parent,
+        {name: "AES-GCM", length: 256},
+        false,
+        ["encrypt", "decrypt"]
+      );
+    } finally {
+      material.fill(0); // Strings and browser internals cannot be reliably zeroized.
+    }
+  }
+
+  async function encryptPrivatePayload(payload, fileName, expectedRevision = null) {
+    try {
+      requireCrypto();
+      const pwd = passphraseInput(true);
+      if (pwd === null) { announce("Encryption canceled; existing draft unchanged."); return; }
+      if (!confirm("Encrypt this PRIVATE draft locally? This is NOT client/operator authentication, consent, a grant or permission. Keep the password separately.")) return;
+      const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
+      const nonce = globalThis.crypto.getRandomValues(new Uint8Array(12));
+      const aad = new TextEncoder().encode(PURPOSE);
+      const plain = new TextEncoder().encode(JSON.stringify(payload, null, 2) + "\n");
+      try {
+        if (plain.length > MAX_BYTES) throw Error("Draft exceeds original 64 KiB source limit.");
+        const key = await derivePrivateKey(pwd, salt);
+        if (expectedRevision !== null && expectedRevision !== draftRevision)
+          throw Error("Draft changed during encryption; stale snapshot discarded. Encrypt the current draft again.");
+        const bytes = new Uint8Array(await globalThis.crypto.subtle.encrypt(
+          {name: "AES-GCM", iv: nonce, additionalData: aad, tagLength: 128}, key, plain
+        ));
+        try {
+          if (expectedRevision !== null && expectedRevision !== draftRevision)
+            throw Error("Draft changed during encryption; stale snapshot discarded. Encrypt the current draft again.");
+          const envelope = {
+            schema: ENCRYPTED_SCHEMA, posture: "PREPARATION_ONLY", cipher: "AES-256-GCM",
+            kdf: "PBKDF2-SHA256", iterations: KDF_ROUNDS,
+            salt_b64: strictBase64(salt), nonce_b64: strictBase64(nonce), sealed_b64: strictBase64(bytes)
+          };
+          const raw = JSON.stringify(envelope, null, 2) + "\n";
+          if (textBytes(raw) > MAX_ENCRYPTED) throw Error("Encrypted envelope exceeds size cap.");
+          download(fileName, raw);
+          announce("New-password AES-256-GCM PRIVATE workroom downloaded. Retain the password securely; no identity, consent or grant authenticated.");
+        } finally { bytes.fill(0); }
+      } finally {
+        plain.fill(0); salt.fill(0); nonce.fill(0); aad.fill(0);
+      }
+    } catch (error) {
+      announce("PRIVATE ENCRYPTION FAILED: " + error.message + " Existing workroom was retained.", true);
+    }
+  }
+
+  async function encryptWorkroom() {
+    const issues = validate(state);
+    if (issues.length) {
+      announce("Complete the PRIVATE draft before encryption: " + issues[0], true);
+      return;
+    }
+    const revision = draftRevision;
+    await encryptPrivatePayload(snapshot(), "lightup-scope-PRIVATE-encrypted.luie", revision);
+  }
+
+  async function rekeyPrivateFile(file) {
+    try {
+      const source = await decryptWorkroom(file);
+      if (!confirm("Re-encrypt this authenticated encrypted FILE with a fresh password/salt/nonce WITHOUT altering the current local draft? The sender/recipient is still not authenticated, and permission remains HOLD.")) {
+        announce("PRIVATE re-encryption canceled; current draft remains unchanged."); return;
+      }
+      const prepared = {
+        schema: SCHEMA, posture: "PREPARATION_ONLY", authority: {...FENCE},
+        project: source.project, client: source.client, contact: source.contact,
+        start: source.start, end: source.end, risk: source.risk,
+        purpose: source.purpose, evidence: source.evidence,
+        rows: source.rows.map(row => ({...row}))
+      };
+      await encryptPrivatePayload(prepared, "lightup-scope-PRIVATE-rekeyed.luie");
+    } catch (error) {
+      announce("PRIVATE RE-ENCRYPTION REFUSED: " + error.message +
+        " Existing in-memory draft remains intact.", true);
+    }
+  }
+
+  async function decryptWorkroom(file) {
+    requireCrypto();
+    if (!file || file.size > MAX_ENCRYPTED) throw Error("Encrypted PRIVATE file is over 100 KiB.");
+    const original = new Uint8Array(await file.arrayBuffer());
+    let raw;
+    try { raw = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(original); }
+    catch (_) { throw Error("Encrypted file is not UTF-8."); }
+    if (textBytes(raw) !== original.length || raw.length > MAX_ENCRYPTED) {
+      throw Error("Encrypted file is not canonical UTF-8.");
+    }
+    let obj;
+    try { obj = JSON.parse(raw); } catch (_) { throw Error("Invalid encrypted envelope."); }
+    if (raw !== JSON.stringify(obj, null, 2) + "\n" ||
+        !exactKeys(obj, ENCRYPTED_KEYS) || obj.schema !== ENCRYPTED_SCHEMA ||
+        obj.posture !== "PREPARATION_ONLY" || obj.cipher !== "AES-256-GCM" ||
+        obj.kdf !== "PBKDF2-SHA256" || obj.iterations !== KDF_ROUNDS) {
+      throw Error("Unsupported, ambiguous or noncanonical encrypted envelope.");
+    }
+    const salt = readCanonicalBase64(obj.salt_b64, 16);
+    const nonce = readCanonicalBase64(obj.nonce_b64, 12);
+    const sealed = readCanonicalBase64(obj.sealed_b64);
+    if (sealed.length < 18 || sealed.length > MAX_BYTES + 16) {
+      salt.fill(0); nonce.fill(0); sealed.fill(0);
+      throw Error("Encrypted payload size is invalid.");
+    }
+    try {
+      const pwd = passphraseInput(false);
+      if (pwd === null) throw Error("Password entry canceled.");
+      const key = await derivePrivateKey(pwd, salt);
+      let opened;
+      try {
+        opened = new Uint8Array(await globalThis.crypto.subtle.decrypt(
+          {name: "AES-GCM", iv: nonce, additionalData: new TextEncoder().encode(PURPOSE), tagLength: 128},
+          key, sealed
+        ));
+      } catch (_) { throw Error("Password incorrect, content altered or envelope authentication failed."); }
+      try {
+        if (opened.length > MAX_BYTES) throw Error("Decrypted draft exceeds 64 KiB.");
+        let plaintext;
+        try { plaintext = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(opened); }
+        catch (_) { throw Error("Decrypted draft is not valid UTF-8."); }
+        if (textBytes(plaintext) !== opened.length) throw Error("Decrypted UTF-8 is not canonical.");
+        // Original source validator enforces all false authority claims, strict fields
+        // and correct original canonical bytes before the current draft can be replaced.
+        return decodeOwnExport(plaintext);
+      } finally { opened.fill(0); }
+    } finally { salt.fill(0); nonce.fill(0); sealed.fill(0); original.fill(0); }
+  }
+
+  function exportCounts() {
+    const problems = validate(state);
+    if (problems.length) { announce("Complete the draft before generating aggregate counts.", true); return; }
+    if (!confirm("Export only aggregate numbers? Small groups may still be sensitive. No authorization claims.")) return;
+    const counts = Object.fromEntries(Object.keys(STATUS).map(k => [k, state.rows.filter(r => r.status === k).length]));
+    const categories = Object.fromEntries(Object.keys(CAPABILITIES).map(k => [k, state.rows.filter(r => r.capability === k).length]));
+    const coverage = computeCoverage();
+    const receipt = {
+      schema: "lightup.scope_intake.anonymous_counts.v1",
+      posture: "PREPARATION_ONLY",
+      authority: {...FENCE},
+      proposed_count: state.rows.length,
+      excluded_count: state.rows.filter(r => r.excluded).length,
+      ownership_claimed_unverified_count: state.rows.filter(r => r.ownership === "claimed").length,
+      human_status_counts: counts, proposed_capability_counts: categories,
+      human_boundary_attention_counts: {
+        total_numeric_overlap_pairs: coverage.pairs.length,
+        included_excluded_exception_pairs: coverage.pairs.filter(p => p.cross).length,
+        overlapping_inclusion_pairs: coverage.pairs.filter(p => p.includes).length,
+        repeated_exclusion_pairs: coverage.pairs.filter(p => !p.cross && !p.includes).length,
+        static_special_address_family_rows: coverage.classifications.filter(c =>
+          c.description !== "Other IPv4 literal; ownership/routability UNVERIFIED").length
+      }
+    };
+    download("lightup-scope-intake-COUNTS.json", JSON.stringify(receipt, null, 2) + "\n");
+    announce("Counts-only receipt prepared. No target, client, identity or scope evidence included; still not an authorization.");
+  }
+
+  // Strictly literal local arithmetic: never DNS-resolve, infer owner, issue policy or fetch.
+  function parseIpv4Literal(asset) {
+    if (!validAsset(asset)) return null;
+    const match = /^(\d{1,3}(?:\.\d{1,3}){3})(?:\/(\d{1,2}))?$/.exec(asset);
+    if (!match) return null;
+    const prefix = match[2] === undefined ? 32 : Number(match[2]);
+    const octets = match[1].split(".").map(Number);
+    const ip = octets.reduce((a, b) => a * 256 + b, 0);
+    const span = 2 ** (32 - prefix);
+    return {start: Math.floor(ip / span) * span, end: Math.floor(ip / span) * span + span - 1,
+      prefix, asset};
+  }
+
+  function groupOfIpv4(range) {
+    if (!range) return null;
+    const groups = [
+      ["Loopback / lab-facing address family", "127.0.0.0", 8],
+      ["RFC1918 private address family", "10.0.0.0", 8],
+      ["RFC1918 private address family", "172.16.0.0", 12],
+      ["RFC1918 private address family", "192.168.0.0", 16],
+      ["Link-local / special-use address family", "169.254.0.0", 16],
+      ["Documentation / special-use address family", "192.0.2.0", 24],
+      ["Documentation / special-use address family", "198.51.100.0", 24],
+      ["Documentation / special-use address family", "203.0.113.0", 24],
+      ["CGNAT / special-use address family", "100.64.0.0", 10],
+      ["Benchmark / special-use address family", "198.18.0.0", 15],
+      ["Unspecified / special-use address family", "0.0.0.0", 8],
+      ["Multicast / special-use address family", "224.0.0.0", 4],
+      ["Reserved / special-use address family", "240.0.0.0", 4]
+    ];
+    for (const [description, ip, mask] of groups) {
+      const octets = ip.split(".").map(Number);
+      const start = octets.reduce((a, b) => a * 256 + b, 0);
+      const span = 2 ** (32 - mask);
+      if (range.start >= start && range.end < start + span) return description;
+    }
+    return "Other IPv4 literal; ownership/routability UNVERIFIED";
+  }
+
+  function computeCoverage(rows = state.rows) {
+    const numeric = rows.map(row => ({row, range: parseIpv4Literal(row.asset)}))
+      .filter(item => item.range);
+    const pairs = [];
+    for (let i = 0; i < numeric.length; i++) {
+      for (let j = i + 1; j < numeric.length; j++) {
+        const a = numeric[i], b = numeric[j];
+        if (a.range.start > b.range.end || b.range.start > a.range.end) continue;
+        const cross = a.row.excluded !== b.row.excluded;
+        const relation = cross ? "Inclusion with explicit exception" :
+          a.row.excluded ? "Overlapping exclusions" : "Overlapping proposed inclusions";
+        const advice = cross
+          ? "HUMAN HOLD: explicit exception must not be flattened into broad grant or forgotten."
+          : a.row.excluded
+            ? "HUMAN follow-up: repeated exclusions are declarations, not verified restrictions."
+            : "HUMAN HOLD: overlapping proposed capabilities/ownership must not be silently widened.";
+        pairs.push({
+          a: a.row.asset, b: b.row.asset, relation, advice, cross,
+          includes: !a.row.excluded && !b.row.excluded
+        });
+      }
+    }
+    const classifications = numeric.map(item => ({
+      asset: item.row.asset,
+      excluded: item.row.excluded,
+      description: groupOfIpv4(item.range),
+      start: item.range.start,
+      end: item.range.end
+    }));
+    return {pairs, classifications};
+  }
+
+  function renderCoverage() {
+    const coverage = computeCoverage();
+    const cross = coverage.pairs.filter(pair => pair.cross).length;
+    const included = coverage.pairs.filter(pair => pair.includes).length;
+    const nonordinary = coverage.classifications.filter(item =>
+      item.description !== "Other IPv4 literal; ownership/routability UNVERIFIED").length;
+    $("overlap-count").textContent = coverage.pairs.length;
+    $("cross-boundary-count").textContent = cross;
+    $("overlap-include-count").textContent = included;
+    $("special-address-count").textContent = nonordinary;
+    $("overlap-notice").textContent = coverage.pairs.length ?
+      coverage.pairs.length + " pairs overlap numerically; " + cross +
+      " inclusion/exclusion exception(s). HUMAN REVIEW ONLY: not a scope verdict." :
+      "No overlapping IPv4 literals detected in currently valid rows. DNS literals were NOT resolved; no authority has been established.";
+    const tbody = $("overlap-rows"); tbody.replaceChildren();
+    for (const pair of coverage.pairs) {
+      const tr = document.createElement("tr");
+      for (const value of [pair.a, pair.b, pair.relation, pair.advice]) {
+        const td = document.createElement("td"); td.textContent = value; tr.append(td);
+      }
+      tbody.append(tr);
+    }
+    const labels = coverage.classifications.map(item =>
+      (item.excluded ? "EXCLUDED " : "PROPOSED ") + item.asset + " — " + item.description);
+    $("address-classification").textContent = labels.join("\n") ||
+      "No canonical numeric IPv4 literals. DNS proposals are never automatically resolved.";
+  }
+
+  function queueOverlapReview() {
+    const coverage = computeCoverage();
+    const relevant = new Set();
+    for (const pair of coverage.pairs) {
+      for (const asset of [pair.a, pair.b]) relevant.add(asset);
+    }
+    const patches = state.rows.filter(row =>
+      relevant.has(row.asset) && !row.excluded && row.status !== "needs-client-review"
+    ).map(row => ({
+      id: row.id, asset: row.asset, field: "status",
+      before: row.status, after: "needs-client-review"
+    }));
+    if (!patches.length) {
+      announce("No included overlapping HUMAN proposals need a new review status."); return;
+    }
+    const preview = patches.map(p => p.asset + ": " + p.before + " → " + p.after).join("\n");
+    if (!confirm("Queue " + patches.length +
+      " INCLUDED, numerically overlapping proposed literals for HUMAN client review?\n" +
+      preview + "\n\nThis is only a preparation status: no actual client has approved anything.")) return;
+    const byId = new Map(state.rows.map(row => [row.id, row]));
+    if (patches.some(p => !byId.has(p.id) || byId.get(p.id).asset !== p.asset ||
+      byId.get(p.id).status !== p.before)) {
+      announce("HOLD: source proposal changed; no bulk review status was applied.", true);
+      return;
+    }
+    for (const patch of patches) byId.get(patch.id).status = patch.after;
+    humanUndo.push(patches);
+    if (humanUndo.length > 20) humanUndo.shift();
+    $("triage-panel").open = true;
+    renderRows(); refresh(true);
+    announce(patches.length + " overlapping included proposals queued for HUMAN-only review. Undo is available in HUMAN triage. No client permission issued.");
+  }
+
+  function exportCoverageBrief() {
+    const errors = validate(state);
+    if (errors.length) { announce("Complete the draft before private coverage briefing: " + errors[0], true); return; }
+    const {pairs, classifications} = computeCoverage();
+    if (!confirm("Download an UNENCRYPTED PRIVATE human-only IPv4 scope exception brief? It contains literal proposed targets; share only through a separately approved channel. It is NOT authority.")) return;
+    const bullets = (title, array) => "<h2>" + escapeHtml(title) + "</h2><ul>" +
+      (array.length ? array.map(x => "<li>" + escapeHtml(x) + "</li>").join("") :
+        "<li>No literal items identified. No authorization implied.</li>") + "</ul>";
+    const pairLines = pairs.map(p => p.a + " / " + p.b + " — " + p.relation + ": " + p.advice);
+    const classificationLines = classifications.map(c =>
+      c.asset + ": " + c.description + (c.excluded ? " (human excluded)" : " (human included)"));
+    const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">' +
+      '<title>LightUp PRIVATE proposed IPv4 boundary review</title>' +
+      '<style>body{font:15px/1.55 system-ui,sans-serif;max-width:940px;margin:40px auto;padding:0 20px;color:#192a34}li{margin:9px 0}aside{padding:14px;border-left:4px solid #9e4444;background:#fff3f3}footer{margin-top:35px;color:#566}</style>' +
+      '</head><body><h1>PRIVATE proposed IPv4 boundary review</h1>' +
+      '<aside>PREPARATION ONLY. Human-declared scope, arithmetic overlap and static address-family labels DO NOT prove reachable targets, approved boundaries, consent, revocation or security assurance.</aside>' +
+      '<p>Self-declared PRIVATE client label: ' + escapeHtml(state.client) + '</p>' +
+      bullets("Literal IPv4/CIDR overlapping proposals", pairLines) +
+      bullets("Static address family notes", classificationLines) +
+      '<footer>LightUp INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD. Original authenticated and at-use-revoked scope/consent validation, owner approval, CI and HUMAN GO must occur separately before any action.</footer>' +
+      '</body></html>';
+    if (textBytes(html) > MAX_ENCRYPTED) { announce("PRIVATE boundary brief exceeds 100 KiB.", true); return; }
+    download("lightup-proposed-boundaries-PRIVATE.html", html, "text/html");
+    announce("PRIVATE IPv4/CIDR human exception brief exported; no permission asserted.");
+  }
+
+
+  function clearMembershipPreview() {
+    membershipPreview = null;
+    $("membership-result").replaceChildren();
+    $("membership-status").textContent =
+      "Local membership preview is empty or stale. Never treat this as an authorization.";
+  }
+
+  function proposedMembership(query, rows = state.rows) {
+    const queryRange = parseIpv4Literal(query);
+    const exactHost = queryRange && queryRange.prefix === 32;
+    const included = [], excluded = [];
+    for (const row of rows) {
+      if (!validAsset(row.asset)) continue;
+      const proposed = parseIpv4Literal(row.asset);
+      const match = exactHost && proposed ?
+        queryRange.start >= proposed.start && queryRange.start <= proposed.end :
+        !queryRange && !proposed && query === row.asset;
+      if (!match) continue;
+      (row.excluded ? excluded : included).push(row);
+    }
+    let status;
+    if (excluded.length) {
+      status = included.length ?
+        "HUMAN HOLD: inclusion AND exclusion declarations intersect. NOT AUTHORIZED." :
+        "Explicit HUMAN exclusion only. NOT AUTHORIZED.";
+    } else if (included.length) {
+      status = "Matches HUMAN proposed inclusion, NOT AUTHORIZED.";
+    } else {
+      status = "No matching declared row. NOT AUTHORIZED.";
+    }
+    return {target: query, included: included.map(row => ({asset: row.asset, capability: row.capability,
+      human_status: row.status})), excluded: excluded.map(row => row.asset), status};
+  }
+
+  function previewMembership() {
+    clearMembershipPreview();
+    const raw = $("membership-lines").value;
+    if (raw.length > 4096 || !raw.trim()) {
+      announce("Enter 1–16 exact target literals for a local HUMAN-only preview.", true); return;
+    }
+    const lines = raw.trim().split(/\r?\n/);
+    if (lines.length > 16 || !lines.length) {
+      announce("HOLD: at most 16 exact candidate target literals per preview.", true); return;
+    }
+    const seen = new Set();
+    const targets = [];
+    for (let i = 0; i < lines.length; i++) {
+      const target = lines[i].trim();
+      const ip = parseIpv4Literal(target);
+      if (!validAsset(target) || target.includes("/") || (ip && ip.prefix !== 32) ||
+          !target || seen.has(target)) {
+        announce("HOLD: invalid, duplicate or non-host literal on preview line " + (i + 1) +
+          ". No partial preview produced.", true);
+        return;
+      }
+      seen.add(target);
+      targets.push(target);
+    }
+    const result = targets.map(value => proposedMembership(value));
+    membershipPreview = {
+      client: state.client, draft: state.project, entries: result
+    };
+    const body = $("membership-result");
+    for (const entry of result) {
+      const tr = document.createElement("tr");
+      const columns = [
+        entry.target,
+        entry.included.map(item => item.asset + " [" + item.capability + "; " + item.human_status + "]").join("\n") || "(none)",
+        entry.excluded.join("\n") || "(none)",
+        entry.status
+      ];
+      for (const value of columns) {
+        const td = document.createElement("td");
+        td.textContent = value; td.style.whiteSpace = "pre-line";
+        tr.append(td);
+      }
+      body.append(tr);
+    }
+    const cross = result.filter(item => item.included.length && item.excluded.length).length;
+    $("membership-status").textContent = result.length + " wholly local proposed membership previews; " +
+      cross + " conflicting inclusion/exclusion literal(s). Zero authorizations or DNS queries.";
+    announce("Local human-declared membership preview complete. All targets remain NOT AUTHORIZED.");
+  }
+
+  function exportMembershipPreview() {
+    if (!membershipPreview || !membershipPreview.entries.length) {
+      announce("Create a fresh private HUMAN membership preview first.", true); return;
+    }
+    if (validate(state).length) {
+      announce("Complete the original proposed draft before exporting private membership preview.", true); return;
+    }
+    if (!confirm("Download UNENCRYPTED PRIVATE scriptless proposed-target membership preview? It contains literal targets and declared rows. This is NOT a policy decision or permission.")) return;
+    const rows = membershipPreview.entries.map(entry => {
+      const includes = entry.included.map(item => item.asset + " [" + item.capability + "]").join("; ") || "(none)";
+      return "<tr><td>" + escapeHtml(entry.target) + "</td><td>" + escapeHtml(includes) +
+        "</td><td>" + escapeHtml(entry.excluded.join("; ") || "(none)") +
+        "</td><td>" + escapeHtml(entry.status) + "</td></tr>";
+    }).join("\n");
+    const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<title>LightUp PRIVATE proposed membership preview</title>' +
+      '<style>body{font:15px/1.5 system-ui,sans-serif;max-width:1040px;margin:35px auto;padding:0 18px;color:#24344b}table{width:100%;border-collapse:collapse}th,td{padding:10px;text-align:left;border-bottom:1px solid #ccd}aside{padding:15px;background:#fff1ee;border-left:4px solid #ad5050}</style>' +
+      '</head><body><h1>PRIVATE proposed membership preview</h1>' +
+      '<aside>UNTRUSTED LOCAL INPUT · NO DNS OR NETWORK · NO AUTHENTICATION, PERMISSION, REVOCATION OR GRANT. Every result is NOT AUTHORIZED regardless of rows.</aside>' +
+      '<p>Human-declared client label: ' + escapeHtml(membershipPreview.client) +
+      ' · PRIVATE draft: ' + escapeHtml(membershipPreview.draft) + '</p>' +
+      '<table><thead><tr><th>Literal target</th><th>Proposed inclusion</th><th>Explicit exclusion</th><th>HUMAN-only status</th></tr></thead><tbody>' +
+      rows + '</tbody></table></body></html>';
+    if (textBytes(html) > MAX_ENCRYPTED) {
+      announce("PRIVATE membership handoff exceeds 100 KiB.", true); return;
+    }
+    download("lightup-proposed-membership-PRIVATE.html", html, "text/html");
+    announce("PRIVATE HUMAN membership report downloaded; still no target permission.");
+  }
+
+  function humanAgenda() {
+    const items = [];
+    items.push("Confirm the authentic current client and independently authenticated operator outside this offline draft.");
+    items.push("Obtain original request/grant/risk decisions and check current action-time revocation through the source-owned LightUp process.");
+    items.push("Confirm the requested LOCAL planning window with a trusted reference clock; local input is not a signed validity interval.");
+    if (state.risk === "high") items.push("HIGH proposed ceiling: independent human risk decision needed; do not infer permission.");
+    for (const row of state.rows) {
+      const name = row.asset || "(missing proposed asset)";
+      if (row.excluded) {
+        items.push("EXCLUDED " + name + ": keep excluded from any future reviewed authorization; no revocation is proven.");
+      } else {
+        items.push("PROPOSED " + name + ": request independent ownership, exact scope and " +
+          (CAPABILITIES[row.capability] || "unknown capability") + " decisions.");
+      }
+      if (row.ownership === "claimed") {
+        items.push(name + ": human ownership CLAIM is not independently authenticated.");
+      } else if (row.ownership === "docs_requested") {
+        items.push(name + ": gather the requested independent ownership documents.");
+      } else {
+        items.push(name + ": no ownership evidence was declared.");
+      }
+      if (row.status === "blocked") items.push(name + ": BLOCKED — clear only through external independent human review.");
+      if (row.status === "needs-client-review") items.push(name + ": explicitly pending client review.");
+      if (row.question) items.push(name + ": PRIVATE human question — " + row.question);
+    }
+    for (const pair of computeCoverage().pairs) {
+      if (pair.cross || pair.includes) {
+        items.push("IPv4 boundary HUMAN review: " + pair.a + " overlaps " + pair.b +
+          " — " + pair.relation + "; never infer consent.");
+      }
+    }
+    for (const item of computeCoverage().classifications) {
+      if (item.description.includes("special-use") ||
+          item.description.includes("Reserved") ||
+          item.description.includes("Benchmark")) {
+        items.push("Special-address HUMAN review: " + item.asset + " — " +
+          item.description + "; never infer routability or lab authorization.");
+      }
+    }
+    items.push("Before any real work: original owner/security/privacy approvals, #177/#182/#829, exact-head hosted and named VPS CI, authentic consent plus action-time revocation and explicit HUMAN GO remain mandatory.");
+    return items;
+  }
+
+  function renderAgenda() {
+    const items = humanAgenda();
+    const list = $("agenda-items"); list.replaceChildren();
+    for (const item of items) {
+      const li = document.createElement("li"); li.textContent = item; list.append(li);
+    }
+    $("agenda-count").textContent = items.length + " self-declared HUMAN follow-up items — zero verified approvals";
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  }
+
+  function exportAgenda() {
+    const problems = validate(state);
+    if (problems.length) {
+      announce("Complete all draft fields before exporting a PRIVATE agenda: " + problems[0], true);
+      return;
+    }
+    if (!confirm("This PRIVATE agenda includes original client labels, proposed targets and human questions. It is UNENCRYPTED and NOT authorization. Download to a trusted private location?")) return;
+    const lines = humanAgenda().map(x => "<li>" + escapeHtml(x) + "</li>").join("\n");
+    const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">' +
+      '<title>LightUp PRIVATE human preparation agenda</title>' +
+      '<style>body{font:16px/1.55 system-ui,sans-serif;max-width:850px;margin:40px auto;padding:0 20px;color:#1d2734}li{padding:7px 0}header{border-bottom:2px solid #3e665d;padding-bottom:16px}strong{color:#9b2020}aside{border-left:4px solid #9b2020;padding:12px;background:#fff3f3}footer{margin-top:35px;color:#555;font-size:12px}</style>' +
+      '</head><body><header><h1>PRIVATE human scope follow-up</h1><p><strong>PREPARATION ONLY · NO VERIFIED CONSENT / GRANT / PERMISSION</strong></p>' +
+      '<p>Internal draft: ' + escapeHtml(state.project) + ' · Client-declared label: ' + escapeHtml(state.client) + '</p>' +
+      '<p>Requested local window: ' + escapeHtml(state.start) + ' → ' + escapeHtml(state.end) +
+      ' · Proposed ceiling: ' + escapeHtml(state.risk) + '</p></header>' +
+      '<aside>This is untrusted human-entered preparation. No real-world execution, activation, scanning, revocation or release is authorized.</aside>' +
+      '<ol>' + lines + '</ol><footer>LightUp Incubate M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · This unsigned PRIVATE paper does not prove any named person, client, source, risk decision or consent.</footer>' +
+      '</body></html>';
+    if (textBytes(html) > MAX_BYTES) {
+      announce("Agenda exceeds the 64 KiB PRIVATE export cap.", true);
+      return;
+    }
+    download("lightup-scope-human-agenda-PRIVATE.html", html, "text/html");
+    announce("Standalone scriptless PRIVATE human agenda prepared for local download — still not authorized.");
+  }
+
+  async function readFile(file) {
+    if (!file || file.size > MAX_BYTES) throw Error("Select a JSON file no larger than 64 KiB.");
+    // Decode original file bytes strictly: File.text() can silently replace invalid UTF-8.
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (bytes.byteLength > MAX_BYTES) throw Error("PRIVATE draft file exceeds 64 KiB.");
+    let raw;
+    try { raw = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(bytes); }
+    catch (_) { throw Error("PRIVATE draft is not valid UTF-8."); }
+    if (textBytes(raw) !== bytes.byteLength) throw Error("Noncanonical UTF-8 bytes refused.");
+    return decodeOwnExport(raw);
+  }
+  async function importDraft(file, encrypted = false) {
+    const ticket = ++draftImportTicket;
+    const startingRevision = draftRevision;
+    try {
+      const next = encrypted ? await decryptWorkroom(file) : await readFile(file);
+      if (ticket !== draftImportTicket) return;
+      if (startingRevision !== draftRevision) {
+        announce("OPEN CANCELLED: the current PRIVATE draft changed while the file was being read. Current edits were retained; select the file again to replace intentionally.", true);
+        return;
+      }
+      if (!confirm("Replace all current unsaved PRIVATE draft data with the selected validated file?")) return;
+      if (ticket !== draftImportTicket || startingRevision !== draftRevision) return;
+      state = next;
+      $("filter").value = ""; $("status-filter").value = "all";
+      $("compare-section").hidden = true;
+      syncForm(); updateTriageValues(); renderRows(); refresh();
+      announce("PRIVATE draft opened locally after full strict admission. Still DRAFT/HOLD.");
+    } catch (error) {
+      if (ticket !== draftImportTicket) return;
+      announce("OPEN REJECTED: " + error.message + " Existing draft was retained.", true);
+    }
+  }
+  function proposedScopeImpact(before, after) {
+    const oldRows = new Map(before.rows.map(row => [row.asset, row]));
+    const newRows = new Map(after.rows.map(row => [row.asset, row]));
+    const widen = [];
+    const narrow = [];
+    const attention = [];
+    const humanOnly = [];
+    const caps = row => row.excluded || row.capability === "none" ? new Set() :
+      new Set(row.capability.split("+"));
+    for (const row of after.rows) {
+      const previous = oldRows.get(row.asset);
+      if (!previous) {
+        if (!row.excluded) widen.push("NEW proposed included literal " + row.asset +
+          " (unverified; not approved)");
+        else attention.push("NEW explicit exclusion " + row.asset + " (human declared only)");
+        continue;
+      }
+      if (previous.excluded && !row.excluded) {
+        widen.push("Removed explicit exclusion for " + row.asset + " (HUMAN HOLD; not authorized)");
+      }
+      if (!previous.excluded && row.excluded) {
+        narrow.push("Proposed newly excluded literal " + row.asset + " (NOT a proven revocation)");
+      }
+      const oldCaps = caps(previous), newCaps = caps(row);
+      const added = [...newCaps].filter(x => !oldCaps.has(x));
+      const removed = [...oldCaps].filter(x => !newCaps.has(x));
+      if (added.length) widen.push(row.asset + ": requested extra capabilities " + added.join(", ") +
+        " (NOT granted)");
+      if (removed.length) narrow.push(row.asset + ": removed proposed capabilities " +
+        removed.join(", ") + " (NOT proof of runtime disablement)");
+      if (row.ownership !== previous.ownership || row.status !== previous.status ||
+          row.question !== previous.question) {
+        humanOnly.push(row.asset + ": HUMAN preparation labels/questions changed (not validated)");
+      }
+    }
+    for (const row of before.rows) {
+      if (newRows.has(row.asset)) continue;
+      if (row.excluded) {
+        widen.push("Removed previous explicit exclusion " + row.asset +
+          " (HUMAN HOLD; absent ≠ authorized)");
+      } else {
+        narrow.push("Removed proposed included literal " + row.asset +
+          " (NOT a real-world revoked authorization)");
+      }
+    }
+    const ranks = {informational: 0, low: 1, medium: 2, high: 3};
+    if (ranks[after.risk] > ranks[before.risk]) widen.push(
+      "Requested descriptive ceiling increased " + before.risk + " → " + after.risk);
+    if (ranks[after.risk] < ranks[before.risk]) narrow.push(
+      "Requested descriptive ceiling decreased " + before.risk + " → " + after.risk);
+    if (after.start < before.start) widen.push(
+      "Requested local start moved earlier " + before.start + " → " + after.start);
+    if (after.start > before.start) narrow.push(
+      "Requested local start moved later " + before.start + " → " + after.start);
+    if (after.end > before.end) widen.push(
+      "Requested local end moved later " + before.end + " → " + after.end);
+    if (after.end < before.end) narrow.push(
+      "Requested local end moved earlier " + before.end + " → " + after.end);
+    if (before.client !== after.client) attention.push(
+      "Client-declared label CHANGED; identity matching is not authenticated. Stop HUMAN reconciliation.");
+    for (const field of ["project", "contact", "purpose", "evidence"]) {
+      if (before[field] !== after[field]) humanOnly.push("Private HUMAN field changed: " + field);
+    }
+    return {widen, narrow, attention, humanOnly};
+  }
+
+  function exportChangeBrief() {
+    const impact = lastComparison;
+    if (!impact || $("compare-section").hidden) {
+      announce("Create a valid exact PRIVATE revision comparison before export.", true); return;
+    }
+    if (!confirm("Export UNENCRYPTED PRIVATE change brief with client labels and proposed asset literals? A diff, hash or note NEVER authenticates consent or scope. Keep the recipient private.")) return;
+    const bullets = (lines, label) =>
+      "<h2>" + escapeHtml(label) + "</h2><ul>" +
+      (lines.length ? lines.map(line => "<li>" + escapeHtml(line) + "</li>").join("") : "<li>(none)</li>") +
+      "</ul>";
+    const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">' +
+      '<title>LightUp PRIVATE human scope change brief</title>' +
+      '<style>body{font:16px/1.55 system-ui,sans-serif;max-width:900px;margin:40px auto;padding:0 18px;color:#1c2734}h1{border-bottom:2px solid #457364}h2{font-size:19px;margin-top:28px}li{margin:8px 0}aside{border-left:4px solid #a13a3a;background:#fff3f3;padding:14px}footer{margin:40px 0;color:#555}</style>' +
+      '</head><body><h1>PRIVATE HUMAN scope proposal change brief</h1>' +
+      '<aside>Unverified literal proposal changes only. No PASS, approval, signed timestamp, actual revocation, permission or verified risk.</aside>' +
+      '<p>Previous self-declared client: ' + escapeHtml(impact.beforeClient) +
+      '<br>Current self-declared client: ' + escapeHtml(impact.afterClient) + '</p>' +
+      bullets(impact.widen, "Potential requested widening — HUMAN HOLD") +
+      bullets(impact.narrow, "Potential proposed reduction — not verified revocation") +
+      bullets(impact.attention, "Human identity/exclusion attention") +
+      bullets(impact.humanOnly, "Other HUMAN label changes") +
+      '<footer>LightUp Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD. Revalidate every source, authentic separate operator/client consent and at-use revocation in the original domain before any active work. This unsigned PRIVATE brief does not authorize action.</footer>' +
+      '</body></html>';
+    if (textBytes(html) > MAX_ENCRYPTED) { announce("PRIVATE change brief exceeds 100 KiB.", true); return; }
+    download("lightup-scope-change-PRIVATE.html", html, "text/html");
+    announce("PRIVATE human change-impact brief downloaded locally. No actual authorization or revocation proven.");
+  }
+
+  async function compareDraft(file, encrypted = false) {
+    const ticket = ++draftCompareTicket;
+    const startingRevision = draftRevision;
+    lastComparison = null;
+    $("compare-section").hidden = true;
+    try {
+      const before = encrypted ? await decryptWorkroom(file) : await readFile(file);
+      if (ticket !== draftCompareTicket) return;
+      if (startingRevision !== draftRevision) {
+        announce("COMPARISON CANCELLED: the current PRIVATE draft changed while the selected file was being read. Compare again against the current draft.", true);
+        return;
+      }
+      const problems = validate(state);
+      if (problems.length) throw Error("Complete current draft before comparing: " + problems[0]);
+      const oldAssets = new Map(before.rows.map(row => [row.asset, row]));
+      const newAssets = new Map(state.rows.map(row => [row.asset, row]));
+      const added = state.rows.filter(row => !oldAssets.has(row.asset)).map(row => row.asset);
+      const removed = before.rows.filter(row => !newAssets.has(row.asset)).map(row => row.asset);
+      const changed = state.rows.filter(row => {
+        const old = oldAssets.get(row.asset);
+        return old && ROW_KEYS.filter(key => key !== "id" && key !== "asset")
+          .some(key => JSON.stringify(old[key]) !== JSON.stringify(row[key]));
+      }).map(row => row.asset + " — proposed boundary/capability/review fields changed");
+      const impact = proposedScopeImpact(before, state);
+      lastComparison = {
+        ...impact, beforeClient: before.client, afterClient: state.client
+      };
+      $("expansions").textContent = [...impact.widen, ...impact.attention].join("\n") ||
+        "(no detectable literal widening; this is NOT an authorization verdict)";
+      $("restrictions").textContent = impact.narrow.join("\n") ||
+        "(no detectable literal narrowing; this is NOT a revocation verdict)";
+      for (const info of impact.humanOnly) if (!changed.includes(info)) changed.push(info);
+      const headerChanged = FORM_FIELDS.filter(key => before[key] !== state[key]);
+      if (headerChanged.length) changed.unshift("Proposed engagement fields changed: " + headerChanged.join(", "));
+      $("added").textContent = added.join("\n") || "(none)";
+      $("removed").textContent = removed.join("\n") || "(none)";
+      $("changed").textContent = changed.join("\n") || "(none)";
+      $("compare-section").hidden = false;
+      announce("Literal PRIVATE draft comparison only. Additions are NOT approved and removals are NOT verified revocations.");
+    } catch (error) {
+      if (ticket !== draftCompareTicket) return;
+      announce("COMPARISON REJECTED: " + error.message + " No draft was modified.", true);
+    }
+  }
+
+  function init() {
+    for (const field of FORM_FIELDS) {
+      $(field).addEventListener("input", event => {
+        state[field] = field === "risk" ? event.target.value : event.target.value.trim();
+        refresh();
+      });
+      // On blur the visible input and serialized draft must agree.
+      $(field).addEventListener("blur", event => {
+        event.target.value = state[field];
+      });
+    }
+    $("add").addEventListener("click", addRow);
+    $("add-bottom").addEventListener("click", addRow);
+    $("bulk-add").addEventListener("click", bulkAdd);
+    $("triage-field").addEventListener("change", updateTriageValues);
+    $("triage-value").addEventListener("change", () => clearTriagePreview());
+    $("triage-preview").addEventListener("click", previewTriage);
+    $("triage-apply").addEventListener("click", applyTriage);
+    $("triage-undo").addEventListener("click", undoTriage);
+    $("filter").addEventListener("input", renderRows);
+    $("status-filter").addEventListener("change", renderRows);
+    $("export-encrypted").addEventListener("click", encryptWorkroom);
+    $("export").addEventListener("click", exportDraft);
+    $("receipt").addEventListener("click", exportCounts);
+    $("export-agenda").addEventListener("click", exportAgenda);
+    $("export-overlap").addEventListener("click", exportCoverageBrief);
+    $("queue-overlap-review").addEventListener("click", queueOverlapReview);
+    $("preview-membership").addEventListener("click", previewMembership);
+    $("download-membership").addEventListener("click", exportMembershipPreview);
+    $("membership-lines").addEventListener("input", clearMembershipPreview);
+    $("print").addEventListener("click", () => {
+      const problems = validate(state);
+      if (problems.length) { announce("Complete draft before printing: " + problems[0], true); return; }
+      if (confirm("Print PRIVATE unverified scope proposal? Only use an approved destination.")) window.print();
+    });
+    $("choose-import").addEventListener("click", () => $("file-import").click());
+    $("choose-compare").addEventListener("click", () => $("file-compare").click());
+    $("choose-import-encrypted").addEventListener("click", () => $("file-import-encrypted").click());
+    $("choose-compare-encrypted").addEventListener("click", () => $("file-compare-encrypted").click());
+    $("choose-rekey").addEventListener("click", () => $("file-rekey").click());
+    $("file-import").addEventListener("change", async event => {
+      const file = event.target.files[0]; event.target.value = ""; if (file) await importDraft(file);
+    });
+    $("file-compare").addEventListener("change", async event => {
+      const file = event.target.files[0]; event.target.value = ""; if (file) await compareDraft(file);
+    });
+
+    $("file-import-encrypted").addEventListener("change", async event => {
+      const file = event.target.files[0]; event.target.value = ""; if (file) await importDraft(file, true);
+    });
+    $("file-compare-encrypted").addEventListener("change", async event => {
+      const file = event.target.files[0]; event.target.value = ""; if (file) await compareDraft(file, true);
+    });
+    $("file-rekey").addEventListener("change", async event => {
+      const file = event.target.files[0]; event.target.value = ""; if (file) await rekeyPrivateFile(file);
+    });
+    $("export-change-brief").addEventListener("click", exportChangeBrief);
+    $("close-compare").addEventListener("click", () => $("compare-section").hidden = true);
+    $("clear").addEventListener("click", () => {
+      if (!confirm("Discard all current PRIVATE draft state in this page? This cannot be undone.")) return;
+      state = blankDocument();
+      $("filter").value = ""; $("status-filter").value = "all";
+      $("compare-section").hidden = true;
+      syncForm(); renderRows(); refresh();
+    });
+    syncForm(); renderRows(); refresh();
+  }
+  document.addEventListener("DOMContentLoaded", init, {once: true});
+}());
+</script>
+<script>"use strict";
+/*
+ * LightUp original Casebook observation companion.
+ * READ-ONLY · PRIVATE · all imported statements are source-declared, not independently verified.
+ * Separate from the proposed-intake source and original DomainStore/scanner/permission code.
+ */
+(() => {
+  const SCHEMA = "lightup.auth_casebook.v1";
+  const LIMIT = 512 * 1024;
+  const ROW_LIMIT = 200;
+  const FALSE_AUTHORITY = Object.freeze([
+    "source_authenticated", "client_consent_verified", "operator_consent_verified",
+    "authorization_granted", "execution_allowed", "release_approved"
+  ]);
+  const TOP_KEYS = Object.freeze([
+    "schema", "status", "source", "as_of", "client_id", "requests", "engagements",
+    "grants", "risk_approvals", "case_overview", "declared_counts", ...FALSE_AUTHORITY
+  ]);
+  const COUNTS = Object.freeze([
+    "requests", "engagements", "grants", "risk_approvals", "grant_link_hold",
+    "risk_tenant_hold", "case_attention_hold", "foreign_tenant_row_count",
+    "recorded_window_review", "risk_provenance_hold", "pending_risk_review"
+  ]);
+  const CASE_FIELDS = Object.freeze([
+    "engagement_id", "status", "grant_count", "risk_record_count", "attention", "next_review_action"
+  ]);
+  const VALID_HUMAN = Object.freeze({
+    unreviewed: "Unreviewed (local HUMAN)",
+    investigating: "Investigating (local HUMAN)",
+    escalated: "Escalated (local HUMAN)",
+    documented: "Documented (local HUMAN; NOT resolved)"
+  });
+  const $ = id => document.getElementById(id);
+  let source = null;
+  let human = new Map();
+  let privateNotes = new Map();
+  let requestHuman = new Map();
+  let requestQueueUndo = null;
+  let digestHex = null;
+  let rawPrivateSource = null;
+
+  // Fully recursive bounded parser: unlike a JSON.parse + stringify roundtrip,
+  // each object's duplicate-key check is independent of key order and original
+  // Unicode escaping. Numeric and string grammar is delegated to JSON.parse.
+  function parseDuplicateSafeJson(raw) {
+    let offset = 0;
+    let nodes = 0;
+    const whitespace = () => {
+      while (offset < raw.length && /[\u0020\t\n\r]/.test(raw[offset])) offset++;
+    };
+    function quoted() {
+      const rest = raw.slice(offset);
+      const match = /^"(?:\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})|[^"\\\u0000-\u001f])*"/u.exec(rest);
+      if (!match) throw Error("Invalid JSON string or escape.");
+      offset += match[0].length;
+      return JSON.parse(match[0]);
+    }
+    function value(depth = 0) {
+      if (depth > 24 || ++nodes > 18000) throw Error("Original Casebook nesting or node budget exceeded.");
+      whitespace();
+      const c = raw[offset];
+      if (c === '"') return quoted();
+      if (c === "{") {
+        offset++; whitespace();
+        const obj = Object.create(null);
+        if (raw[offset] === "}") { offset++; return obj; }
+        let count = 0;
+        while (true) {
+          if (++count > 2000) throw Error("Source object key budget exceeded.");
+          whitespace();
+          if (raw[offset] !== '"') throw Error("Invalid source object key.");
+          const key = quoted();
+          if (Object.hasOwn(obj, key)) throw Error("Duplicate source JSON key: ambiguous packet.");
+          whitespace();
+          if (raw[offset++] !== ":") throw Error("Invalid source object separator.");
+          obj[key] = value(depth + 1);
+          whitespace();
+          if (raw[offset] === "}") { offset++; break; }
+          if (raw[offset++] !== ",") throw Error("Invalid source object delimiter.");
+        }
+        return obj;
+      }
+      if (c === "[") {
+        offset++; whitespace();
+        const items = [];
+        if (raw[offset] === "]") { offset++; return items; }
+        while (true) {
+          if (items.length >= 2000) throw Error("Source array exceeds parser item budget.");
+          items.push(value(depth + 1)); whitespace();
+          if (raw[offset] === "]") { offset++; break; }
+          if (raw[offset++] !== ",") throw Error("Invalid source array delimiter.");
+        }
+        return items;
+      }
+      if (raw.startsWith("true", offset)) { offset += 4; return true; }
+      if (raw.startsWith("false", offset)) { offset += 5; return false; }
+      if (raw.startsWith("null", offset)) { offset += 4; return null; }
+      const number = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/.exec(raw.slice(offset));
+      if (!number) throw Error("Invalid source JSON literal.");
+      const parsed = JSON.parse(number[0]);
+      if (!Number.isFinite(parsed)) throw Error("Nonfinite numeric source input.");
+      offset += number[0].length;
+      return parsed;
+    }
+    const obj = value();
+    whitespace();
+    if (offset !== raw.length) throw Error("Unexpected bytes after original source JSON.");
+    return obj;
+  }
+
+  const sameKeys = (value, keys) => value && typeof value === "object" &&
+    !Array.isArray(value) && Object.keys(value).length === keys.length &&
+    keys.every(k => Object.hasOwn(value, k));
+  const textField = (v, max = 180) => typeof v === "string" &&
+    v.length > 0 && v.length <= max && v === v.trim() &&
+    !/[\u0000-\u001f\u007f]|\p{Cf}|\p{Cs}/u.test(v);
+  const countField = (v, max = ROW_LIMIT) =>
+    Number.isSafeInteger(v) && v >= 0 && v <= max;
+  const riskField = v => Number.isSafeInteger(v) && v >= 0 && v <= 5;
+  const linkedId = v => v === null || textField(v);
+  const sourceText = (v,max = 80) => typeof v === "string" && v.length <= max &&
+    !/[\u0000-\u001f\u007f]/u.test(v);
+  const storedTimestamp = v => typeof v === "string" && v.length <= 80 &&
+    !/[\u0000-\u001f\u007f]/u.test(v);
+  const safeArray = v => Array.isArray(v) && v.length <= ROW_LIMIT;
+
+  function inspectOriginal(doc) {
+    if (!sameKeys(doc, TOP_KEYS) || doc.schema !== SCHEMA ||
+        doc.status !== "REVIEW_ONLY" ||
+        doc.source !== "original_persisted_domain_unverified" ||
+        !textField(doc.client_id) || !textField(doc.as_of, 80) ||
+        FALSE_AUTHORITY.some(k => doc[k] !== false)) {
+      throw Error("HOLD: unsupported original Casebook or source asserted authority.");
+    }
+    if (!safeArray(doc.requests) || !safeArray(doc.engagements) ||
+        !safeArray(doc.grants) || !safeArray(doc.risk_approvals) ||
+        !safeArray(doc.case_overview) || !sameKeys(doc.declared_counts, COUNTS)) {
+      throw Error("HOLD: original Casebook collections or counts invalid.");
+    }
+    if (COUNTS.some(k => !countField(doc.declared_counts[k], 2000))) {
+      throw Error("HOLD: original source counts invalid.");
+    }
+    const ids = new Map([
+      ["requests", new Set()], ["engagements", new Set()],
+      ["grants", new Set()], ["risk_approvals", new Set()]
+    ]);
+    const accept = (category, id) => {
+      if (!textField(id) || ids.get(category).has(id)) {
+        throw Error("HOLD: duplicated or invalid original source identity.");
+      }
+      ids.get(category).add(id);
+    };
+    for (const r of doc.requests) {
+      if (!sameKeys(r, ["request_id", "status", "requested_mode", "requested_risk", "created_at", "decision_recorded"]) ||
+          !["submitted", "under_review", "approved", "rejected"].includes(r.status) ||
+          !(typeof r.requested_mode === "string" && r.requested_mode.length <= 80) || !textField(r.created_at, 80) ||
+          !riskField(r.requested_risk) || typeof r.decision_recorded !== "boolean") {
+        throw Error("HOLD: invalid original request fields.");
+      }
+      accept("requests", r.request_id);
+    }
+    for (const r of doc.engagements) {
+      if (!sameKeys(r, ["engagement_id", "status", "created_at"]) ||
+          !sourceText(r.status, 80) || !textField(r.created_at, 80)) {
+        throw Error("HOLD: invalid original engagement fields.");
+      }
+      accept("engagements", r.engagement_id);
+    }
+    const allowedLinks = new Set([
+      "HOLD_TENANT_OR_ENGAGEMENT_MISMATCH", "HOLD_NO_REQUEST_BINDING",
+      "HOLD_REQUEST_SOURCE_MISSING", "HOLD_REQUEST_NOT_APPROVED",
+      "HOLD_REQUEST_SCOPE_OR_PROVENANCE_MISMATCH", "REQUEST_SCOPE_COMPATIBLE_UNVERIFIED"
+    ]);
+    const windows = new Set([
+      "HOLD_INVALID_RECORDED_WINDOW", "EXPIRED_RECORDED_WINDOW",
+      "FUTURE_RECORDED_WINDOW", "WITHIN_RECORDED_WINDOW_NOT_AUTHORITY"
+    ]);
+    for (const r of doc.grants) {
+      if (!sameKeys(r, ["grant_id", "engagement_id", "approved_request_id",
+        "request_link_observation", "max_risk", "valid_from", "valid_until", "validity_observation"]) ||
+          !linkedId(r.engagement_id) || !linkedId(r.approved_request_id) ||
+          !allowedLinks.has(r.request_link_observation) || !windows.has(r.validity_observation) ||
+          !riskField(r.max_risk) || !storedTimestamp(r.valid_from) || !storedTimestamp(r.valid_until)) {
+        throw Error("HOLD: malformed original grant source row.");
+      }
+      accept("grants", r.grant_id);
+      if (r.engagement_id !== null && !ids.get("engagements").has(r.engagement_id)) {
+        throw Error("HOLD: unresolved grant engagement reference.");
+      }
+    }
+    const allowedRiskObservations = new Set([
+      "HOLD_RISK_SOURCE_IDENTITY_OR_STATUS", "HOLD_RISK_PENDING_WITH_DECISION",
+      "HOLD_RISK_DECIDER_PROVENANCE", "RISK_DECISION_PENDING_REVIEW",
+      "RISK_DECISION_RECORDED_UNVERIFIED"
+    ]);
+    for (const r of doc.risk_approvals) {
+      if (!sameKeys(r, ["approval_id", "engagement_id", "status", "requested_risk",
+        "source_tenant_matches", "decision_recorded", "decision_provenance_observation"]) ||
+          !linkedId(r.engagement_id) || !sourceText(r.status, 80) ||
+          !riskField(r.requested_risk) ||
+          typeof r.source_tenant_matches !== "boolean" ||
+          typeof r.decision_recorded !== "boolean" ||
+          !allowedRiskObservations.has(r.decision_provenance_observation)) {
+        throw Error("HOLD: malformed original risk review row.");
+      }
+      if (!["pending", "approved", "denied"].includes(r.status) &&
+          r.decision_provenance_observation !== "HOLD_RISK_SOURCE_IDENTITY_OR_STATUS") {
+        throw Error("HOLD: unknown risk status without original provenance HOLD.");
+      }
+      accept("risk_approvals", r.approval_id);
+      if (r.engagement_id !== null && !ids.get("engagements").has(r.engagement_id)) {
+        throw Error("HOLD: unresolved risk engagement reference.");
+      }
+    }
+    const seenCases = new Set();
+    for (const c of doc.case_overview) {
+      if (!sameKeys(c, CASE_FIELDS) || !ids.get("engagements").has(c.engagement_id) ||
+          seenCases.has(c.engagement_id) || !sourceText(c.status, 80) ||
+          !textField(c.attention, 120) || !textField(c.next_review_action, 160) ||
+          !countField(c.grant_count) || !countField(c.risk_record_count)) {
+        throw Error("HOLD: malformed or duplicated original case overview.");
+      }
+      seenCases.add(c.engagement_id);
+      const eng = doc.engagements.find(x => x.engagement_id === c.engagement_id);
+      if (c.status !== eng.status ||
+          c.grant_count !== doc.grants.filter(x => x.engagement_id === c.engagement_id).length ||
+          c.risk_record_count !== doc.risk_approvals.filter(x => x.engagement_id === c.engagement_id).length) {
+        throw Error("HOLD: case overview contradicts original source relations.");
+      }
+    }
+    if (seenCases.size !== doc.engagements.length) {
+      throw Error("HOLD: missing engagement overview in original snapshot.");
+    }
+    const d = doc.declared_counts;
+    const computed = {
+      requests: doc.requests.length,
+      engagements: doc.engagements.length,
+      grants: doc.grants.length,
+      risk_approvals: doc.risk_approvals.length,
+      grant_link_hold: doc.grants.filter(g => g.request_link_observation.startsWith("HOLD_")).length,
+      risk_tenant_hold: doc.risk_approvals.filter(r => !r.source_tenant_matches).length,
+      case_attention_hold: doc.case_overview.filter(c => c.attention.startsWith("HOLD_")).length,
+      recorded_window_review: doc.grants.filter(g =>
+        g.validity_observation !== "WITHIN_RECORDED_WINDOW_NOT_AUTHORITY").length,
+      risk_provenance_hold: doc.risk_approvals.filter(r =>
+        r.decision_provenance_observation.startsWith("HOLD_")).length,
+      pending_risk_review: doc.risk_approvals.filter(r =>
+        r.decision_provenance_observation === "RISK_DECISION_PENDING_REVIEW").length
+    };
+    if (Object.keys(computed).some(k => d[k] !== computed[k])) {
+      throw Error("HOLD: original declared counts contradict source records.");
+    }
+    // foreign_tenant_row_count is an original-SQL aggregate, not reconstructable
+    // from privacy-reduced JSON; preserve the unverified declared aggregate only.
+    return doc;
+  }
+
+  function show(text, error = false) {
+    $("casebook-import-status").textContent = text;
+    $("casebook-import-status").classList.toggle("danger-text", error);
+  }
+  function clearOriginal(confirmHuman = false) {
+    if (confirmHuman && source && !confirm("Discard the PRIVATE original Casebook source and local HUMAN labels from browser memory? Your proposed scope draft will remain untouched.")) return;
+    source = null;
+    digestHex = null;
+    rawPrivateSource = null;
+    human.clear();
+    privateNotes.clear();
+    requestHuman.clear();
+    requestQueueUndo = null;
+    $("casebook-selected").hidden = true;
+    $("casebook-selected").textContent = "";
+    renderCases();
+    show("No Casebook original source in memory. No original authorization exists in this workroom.");
+  }
+
+  function priority(c) {
+    if (c.attention.startsWith("HOLD_")) return 0;
+    if (c.attention.includes("RISK_")) return 1;
+    if (c.attention.includes("EXPIRED") || c.attention.includes("FUTURE")) return 2;
+    return 3;
+  }
+
+  function renderCases() {
+    const cases = source?.case_overview || [];
+    $("casebook-engagement-count").textContent = cases.length;
+    $("casebook-grant-hold-count").textContent = source?.declared_counts.grant_link_hold ?? 0;
+    $("casebook-risk-review-count").textContent = source ?
+      source.declared_counts.risk_provenance_hold + source.declared_counts.pending_risk_review : 0;
+    $("casebook-case-attention-count").textContent = source?.declared_counts.case_attention_hold ?? 0;
+    renderRequestInbox();
+    const query = $("casebook-filter").value.trim().toLowerCase();
+    const category = $("casebook-category").value;
+    const tbody = $("casebook-cases"); tbody.replaceChildren();
+    for (const c of [...cases].sort((a, b) => priority(a) - priority(b))) {
+      if (query && !(c.engagement_id + " " + c.attention + " " + c.next_review_action)
+        .toLowerCase().includes(query)) continue;
+      if (category === "hold" && !c.attention.startsWith("HOLD_")) continue;
+      if (category === "risk" && !c.attention.includes("RISK_")) continue;
+      if (category === "other" && (c.attention.startsWith("HOLD_") ||
+          c.attention.includes("RISK_"))) continue;
+      const tr = document.createElement("tr");
+      for (const value of [
+        c.engagement_id, c.status || "(empty stored state · HUMAN HOLD)",
+        c.grant_count + " stored / " + c.risk_record_count + " risk",
+        c.attention, c.next_review_action
+      ]) {
+        const td = document.createElement("td");
+        td.textContent = String(value); tr.append(td);
+      }
+      const tools = document.createElement("td");
+      const button = document.createElement("button"); button.type = "button";
+      button.textContent = "Inspect PRIVATE original";
+      button.addEventListener("click", () => inspectCase(c.engagement_id));
+      tools.append(button);
+      const stage = document.createElement("select");
+      stage.setAttribute("aria-label", "Local HUMAN review stage for " + c.engagement_id);
+      for (const [key, label] of Object.entries(VALID_HUMAN)) {
+        const opt = document.createElement("option"); opt.value = key; opt.textContent = label; stage.append(opt);
+      }
+      stage.value = human.get(c.engagement_id) || "unreviewed";
+      stage.addEventListener("change", event => {
+        human.set(c.engagement_id, event.target.value);
+        show("PRIVATE human stage stored only in this browser tab; no original source records changed.");
+      });
+      tools.append(stage);
+      tr.append(tools);
+      tbody.append(tr);
+    }
+  }
+
+  function sourceRequests() {
+    if (!source) return [];
+    return source.requests.map(req => {
+      const linked = source.grants.filter(g => g.approved_request_id === req.request_id);
+      let attention;
+      if (req.status === "approved" && !req.decision_recorded) {
+        attention = "HOLD_APPROVED_BUT_DECISION_ABSENT";
+      } else if (linked.some(g => g.request_link_observation.startsWith("HOLD_"))) {
+        attention = "HOLD_ORIGINAL_GRANT_LINK";
+      } else if (req.status === "approved" && !linked.length) {
+        attention = "HUMAN_APPROVED_REQUEST_NO_GRANT_RECORD";
+      } else if (req.status === "approved") {
+        attention = "ORIGINAL_LINKS_RECORDED_UNVERIFIED";
+      } else if (req.status === "under_review" || req.status === "submitted") {
+        attention = "ORIGINAL_REQUEST_NOT_REVIEWED_TO_APPROVAL";
+      } else {
+        attention = "ORIGINAL_REQUEST_REJECTED_UNVERIFIED";
+      }
+      return {req, linked, attention};
+    });
+  }
+
+  function inspectOriginalRequest(id) {
+    if (!source) return;
+    const item = sourceRequests().find(x => x.req.request_id === id);
+    if (!item) return;
+    const box = $("casebook-request-detail");
+    box.replaceChildren();
+    const heading = document.createElement("h3");
+    heading.textContent = "PRIVATE original request " + id + " · HUMAN retrospective only";
+    box.append(heading);
+    const info = text => {
+      const p = document.createElement("p"); p.textContent = text; box.append(p);
+    };
+    const {req,linked,attention} = item;
+    info("Original persisted state " + req.status + "; decision recorded flag: " +
+      req.decision_recorded + "; original requested mode: " + req.requested_mode +
+      "; recorded risk " + req.requested_risk + ". SOURCE observation, not live consent.");
+    info("Human attention: " + attention + ". The Casebook deliberately does not expose approved asset lists, so this request CANNOT be joined to your proposed target inputs.");
+    for (const grant of linked) {
+      info("Recorded reference grant " + grant.grant_id + " / original engagement " +
+        (grant.engagement_id || "(source missing)") + ": " +
+        grant.request_link_observation + ", " + grant.validity_observation +
+        ", recorded max-risk " + grant.max_risk +
+        ". Nothing here independently verifies permission, request asset coverage or at-use revocation.");
+    }
+    if (!linked.length) {
+      info("No stored grant references this request in the selected source. This does NOT prove a grant does not exist at the current original database snapshot or at action time.");
+    }
+    box.hidden = false;
+  }
+
+  function clearRequestQueueUndo() {
+    requestQueueUndo = null;
+    $("undo-unbound-requests").disabled = true;
+  }
+
+  function queueUnboundRequests() {
+    if (!source) {show("Load a real original PRIVATE Casebook first.",true); return;}
+    const patches = sourceRequests().filter(item =>
+      (item.req.status === "approved" && !item.linked.length) ||
+      item.attention.startsWith("HOLD_")
+    ).filter(item => !requestHuman.has(item.req.request_id) ||
+      requestHuman.get(item.req.request_id) === "unreviewed"
+    ).map(item => ({id:item.req.request_id,before:requestHuman.get(item.req.request_id) || null}));
+    if (!patches.length) {show("No currently unreviewed original request source gaps to queue."); return;}
+    if (!confirm("Mark " + patches.length +
+      " ORIGINAL request source gap(s) as HUMAN investigating?\n\nThis does not validate the original client/operator, create a grant, or approve target scope.")) return;
+    for (const patch of patches) requestHuman.set(patch.id,"investigating");
+    requestQueueUndo = patches;
+    $("undo-unbound-requests").disabled = false;
+    renderRequestInbox();
+    show(patches.length + " original request SOURCE gaps marked for HUMAN investigation only.");
+  }
+
+  function undoUnboundRequests() {
+    if (!requestQueueUndo?.length || !source) return;
+    if (requestQueueUndo.some(patch => requestHuman.get(patch.id) !== "investigating")) {
+      clearRequestQueueUndo();
+      show("HOLD: HUMAN request stages changed since bulk action. No stale undo applied.",true);
+      return;
+    }
+    for (const patch of requestQueueUndo) {
+      if (patch.before === null) requestHuman.delete(patch.id);
+      else requestHuman.set(patch.id,patch.before);
+    }
+    clearRequestQueueUndo();
+    renderRequestInbox();
+    show("HUMAN-only request queue action reverted. Original source unchanged.");
+  }
+
+  function renderRequestInbox() {
+    const tbody = $("casebook-requests"); tbody.replaceChildren();
+    const query = $("request-filter").value.trim().toLowerCase();
+    const category = $("request-category").value;
+    const lines = sourceRequests();
+    let shown = 0;
+    for (const line of lines) {
+      const {req,linked,attention} = line;
+      if (query && !(req.request_id + " " + req.status + " " + attention).toLowerCase().includes(query)) continue;
+      if (category === "unbound" && !(req.status === "approved" && !linked.length)) continue;
+      if (category === "hold" && !attention.startsWith("HOLD_")) continue;
+      if (category === "pending" && !["under_review","submitted","rejected"].includes(req.status)) continue;
+      const tr = document.createElement("tr");
+      for (const value of [
+        req.request_id,
+        (req.status || "(empty source status)") + (req.decision_recorded ? " / decision recorded (UNVERIFIED)" : " / no stored decision"),
+        req.requested_mode + " / " + req.requested_risk,
+        String(linked.length) + " stored links (NOT AUTHORITY)",
+        attention
+      ]) {
+        const td = document.createElement("td");td.textContent=value;tr.append(td);
+      }
+      const td = document.createElement("td");
+      const sel = document.createElement("select");
+      sel.setAttribute("aria-label","Local HUMAN stage for original request " + req.request_id);
+      for (const [value,label] of Object.entries(VALID_HUMAN)) {
+        const opt = document.createElement("option"); opt.value=value; opt.textContent=label; sel.append(opt);
+      }
+      sel.value = requestHuman.get(req.request_id) || "unreviewed";
+      sel.addEventListener("change",event => {
+        clearRequestQueueUndo();
+        requestHuman.set(req.request_id,event.target.value);
+        show("Original request HUMAN stage updated only in browser memory — no approval or source mutation.");
+      });
+      td.append(sel);
+      const inspect = document.createElement("button");inspect.type="button";
+      inspect.textContent="Inspect PRIVATE request";
+      inspect.addEventListener("click",() => inspectOriginalRequest(req.request_id));
+      td.append(inspect);
+      tr.append(td);tbody.append(tr);shown++;
+    }
+    $("casebook-request-status").textContent = source ?
+      shown + " original request rows shown. " + lines.filter(x =>
+        x.req.status === "approved" && !x.linked.length).length +
+      " approved-looking original request(s) have no stored grant binding in this source; this is NOT permission or proof of absent grants." :
+      "No original request source is loaded. This is NOT an authorization.";
+  }
+
+  function inspectCase(id) {
+    if (!source) return;
+    const item = source.case_overview.find(c => c.engagement_id === id);
+    if (!item) return;
+    const grants = source.grants.filter(g => g.engagement_id === id);
+    const risks = source.risk_approvals.filter(r => r.engagement_id === id);
+    const box = $("casebook-selected"); box.replaceChildren();
+    const head = document.createElement("h3");
+    head.textContent = "PRIVATE ORIGINAL source case " + id + " — not authorization";
+    box.append(head);
+    const line = (value) => {
+      const p = document.createElement("p");
+      p.textContent = value; box.append(p);
+    };
+    line("Source attention: " + item.attention + " · Suggested human follow-up: " +
+      item.next_review_action + ". Neither is independently authenticated.");
+    for (const g of grants) {
+      const request = source.requests.find(r => r.request_id === g.approved_request_id);
+      line("Recorded grant ID " + g.grant_id + " — binding ID " +
+        (g.approved_request_id || "(missing)") + ", original request status " +
+        (request?.status || "(source not available)") +
+        "; source linkage " + g.request_link_observation + "; source window " +
+        g.validity_observation + "; recorded max-risk " + g.max_risk +
+        " (NO live permission).");
+    }
+    for (const risk of risks) {
+      line("Recorded risk ID " + risk.approval_id + ": " + risk.status +
+        "; provenance " + risk.decision_provenance_observation +
+        "; declared tenant match " + risk.source_tenant_matches +
+        " (NOT fresh operator/client consent).");
+    }
+    if (!grants.length && !risks.length) {
+      line("No source-linked grants or risks in this case. This does NOT prove absent authorizations or permission.");
+    }
+    const label = document.createElement("label");
+    label.textContent = "PRIVATE HUMAN follow-up note (up to 500 characters; never authority):";
+    const input = document.createElement("textarea");
+    input.maxLength = 500;
+    input.setAttribute("aria-label", "PRIVATE HUMAN follow-up note for selected original case");
+    input.autocomplete = "off";
+    input.value = privateNotes.get(id) || "";
+    input.addEventListener("input", event => {
+      const value = event.target.value;
+      if (value.length > 500 || /[\u0000-\u0008\u000b-\u001f\u007f]|\p{Cf}|\p{Cs}/u.test(value)) {
+        show("HOLD: control or invisible formatting in PRIVATE note.", true);
+        return;
+      }
+      if (value.trim()) privateNotes.set(id, value);
+      else privateNotes.delete(id);
+      show("HUMAN note held only in this private browser tab until an optional encrypted handoff.");
+    });
+    label.append(input);
+    box.append(label);
+    box.hidden = false;
+  }
+
+  async function openPrivateFile(file) {
+    if (!file || file.size === 0 || file.size > LIMIT) throw Error("PRIVATE Casebook source must be 1–512 KiB.");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (bytes.length > LIMIT) throw Error("PRIVATE Casebook source exceeded bound.");
+    let raw;
+    try { raw = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(bytes); }
+    catch (_) { throw Error("PRIVATE source has invalid UTF-8 bytes."); }
+    if (new TextEncoder().encode(raw).length !== bytes.length) {
+      throw Error("Original PRIVATE source UTF-8 bytes noncanonical.");
+    }
+    const parsed = inspectOriginal(parseDuplicateSafeJson(raw));
+    // Byte fingerprint ties only this local input to subsequent HUMAN review;
+    // it is NOT a signed origin/source/timestamp proof.
+    const hash = globalThis.crypto?.subtle ?
+      await globalThis.crypto.subtle.digest("SHA-256", bytes) : null;
+    const fingerprint = hash ? Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, "0")).join("") : null;
+    return {parsed, fingerprint, raw};
+  }
+
+  function download(name, payload) {
+    const blob = new Blob([payload], {type: "application/json;charset=utf-8"});
+    const url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  const HANDOFF_SCHEMA = "lightup.scope_intake.casebook_private_handoff.v1";
+  const HANDOFF_BYTES = 1150000;
+  const HANDOFF_ROUNDS = 600000;
+  const HANDOFF_PURPOSE = "lightup.scope_intake.casebook_private_handoff.v1;REVIEW_ONLY";
+  const HANDOFF_KEYS = ["schema", "posture", "cipher", "kdf", "iterations", "salt_b64",
+    "nonce_b64", "ciphertext_b64"];
+  const CONTENT_KEYS = ["schema", "posture", "source_raw", "source_sha256", "human_stages",
+    "request_stages", ...FALSE_AUTHORITY];
+  const LEGACY_CONTENT_KEYS = ["schema", "posture", "source_raw", "source_sha256", "human_stages",
+    ...FALSE_AUTHORITY];
+
+  function mustHavePrivateCrypto() {
+    if (!globalThis.isSecureContext || !globalThis.crypto?.subtle ||
+        typeof globalThis.crypto.getRandomValues !== "function") {
+      throw Error("Secure offline WebCrypto unavailable; plaintext fallback is forbidden.");
+    }
+  }
+  function userPassword(isNew) {
+    const value = prompt(isNew ?
+      "Enter NEW private Casebook handoff password (14–256 UTF-8 bytes). Never send it with the file." :
+      "Enter PRIVATE Casebook handoff password:");
+    if (value === null) return null;
+    const bytes = new TextEncoder().encode(value);
+    if (bytes.length < 14 || bytes.length > 256 ||
+        /[\u0000-\u001f\u007f]/u.test(value) || !value.trim()) {
+      bytes.fill(0);
+      throw Error("Casebook password must be 14–256 noncontrol UTF-8 bytes.");
+    }
+    bytes.fill(0);
+    if (isNew) {
+      const again = prompt("Confirm NEW PRIVATE Casebook handoff password:");
+      if (again === null) return null;
+      if (again !== value) throw Error("Passwords do not match.");
+    }
+    return value;
+  }
+
+  async function privateKey(password, salt) {
+    const raw = new TextEncoder().encode(password);
+    try {
+      const imported = await globalThis.crypto.subtle.importKey(
+        "raw", raw, "PBKDF2", false, ["deriveKey"]);
+      return await globalThis.crypto.subtle.deriveKey(
+        {name:"PBKDF2", salt, iterations:HANDOFF_ROUNDS, hash:"SHA-256"},
+        imported, {name:"AES-GCM", length:256}, false, ["encrypt", "decrypt"]);
+    } finally { raw.fill(0); }
+  }
+
+  function encode64(bytes) {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 4096) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 4096));
+    }
+    return btoa(binary);
+  }
+  function decode64(value, length = null) {
+    if (typeof value !== "string" || value.length > HANDOFF_BYTES ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+      throw Error("HOLD: invalid original Casebook transfer encoding.");
+    }
+    let result;
+    try { result = Uint8Array.from(atob(value), c => c.charCodeAt(0)); }
+    catch (_) { throw Error("HOLD: invalid original Casebook transfer encoding."); }
+    if (encode64(result) !== value || (length !== null && result.length !== length)) {
+      result.fill(0); throw Error("HOLD: noncanonical original Casebook transfer bytes.");
+    }
+    return result;
+  }
+  async function digestOfRaw(raw) {
+    const bytes = new TextEncoder().encode(raw);
+    try {
+      const sha = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+      return Array.from(new Uint8Array(sha), b => b.toString(16).padStart(2, "0")).join("");
+    } finally { bytes.fill(0); }
+  }
+
+  async function saveEncryptedHandoff() {
+    try {
+      mustHavePrivateCrypto();
+      if (!source || !rawPrivateSource) throw Error("Import an original PRIVATE Casebook first.");
+      const pwd = userPassword(true);
+      if (pwd === null) return;
+      if (!confirm("Encrypt original PRIVATE source plus your own HUMAN follow-up labels locally? This file is confidential and does not authenticate the producer, client/operator consent or authority. Keep its password separately.")) return;
+      const humanStages = source.case_overview.map(c => ({
+        engagement_id: c.engagement_id, stage: human.get(c.engagement_id) || "unreviewed",
+        note: privateNotes.get(c.engagement_id) || ""
+      }));
+      const payload = {
+        schema: HANDOFF_SCHEMA, posture:"REVIEW_ONLY",
+        source_raw: rawPrivateSource,
+        source_sha256: await digestOfRaw(rawPrivateSource),
+        human_stages: humanStages,
+        request_stages: source.requests.map(req => ({
+          request_id: req.request_id, stage: requestHuman.get(req.request_id) || "unreviewed"
+        })),
+        ...Object.fromEntries(FALSE_AUTHORITY.map(x => [x,false]))
+      };
+      const plain = new TextEncoder().encode(JSON.stringify(payload, null, 2) + "\n");
+      if (plain.length > LIMIT + 100000) {
+        plain.fill(0); throw Error("Bounded Casebook private handoff data too large.");
+      }
+      const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
+      const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+      let sealed;
+      try {
+        const key = await privateKey(pwd, salt);
+        const ciphertext = await globalThis.crypto.subtle.encrypt(
+          {name:"AES-GCM", iv, additionalData:new TextEncoder().encode(HANDOFF_PURPOSE), tagLength:128},
+          key, plain);
+        sealed = new Uint8Array(ciphertext);
+        const packet = {
+          schema: HANDOFF_SCHEMA, posture:"REVIEW_ONLY", cipher:"AES-256-GCM",
+          kdf:"PBKDF2-SHA256", iterations:HANDOFF_ROUNDS,
+          salt_b64:encode64(salt), nonce_b64:encode64(iv), ciphertext_b64:encode64(sealed)
+        };
+        const text = JSON.stringify(packet, null, 2) + "\n";
+        if (new TextEncoder().encode(text).length > HANDOFF_BYTES) {
+          throw Error("Encrypted original Casebook packet exceeds private size limit.");
+        }
+        download("lightup-original-casebook-PRIVATE-encrypted.lucb", text);
+        show("Encrypted PRIVATE Casebook source + HUMAN follow-up downloaded. No original authority or consent granted.");
+      } finally { plain.fill(0); salt.fill(0); iv.fill(0); sealed?.fill(0); }
+    } catch (e) {
+      show("PRIVATE encrypted handoff refused: " + e.message + " Existing original source retained.", true);
+    }
+  }
+
+  async function openEncryptedHandoff(file) {
+    mustHavePrivateCrypto();
+    if (!file || !file.size || file.size > HANDOFF_BYTES) throw Error("Encrypted source handoff too large.");
+    const encryptedBytes = new Uint8Array(await file.arrayBuffer());
+    if (encryptedBytes.length > HANDOFF_BYTES) throw Error("Encrypted original source exceeded limit.");
+    let envelopeText;
+    try { envelopeText = new TextDecoder("utf-8", {fatal:true,ignoreBOM:true}).decode(encryptedBytes); }
+    catch (_) { throw Error("Original encrypted handoff has invalid UTF-8."); }
+    if (new TextEncoder().encode(envelopeText).length !== encryptedBytes.length) {
+      throw Error("Noncanonical encrypted source UTF-8.");
+    }
+    const packet = parseDuplicateSafeJson(envelopeText);
+    if (!sameKeys(packet, HANDOFF_KEYS) ||
+        envelopeText !== JSON.stringify(packet,null,2) + "\n" ||
+        packet.schema !== HANDOFF_SCHEMA || packet.posture !== "REVIEW_ONLY" ||
+        packet.cipher !== "AES-256-GCM" || packet.kdf !== "PBKDF2-SHA256" ||
+        packet.iterations !== HANDOFF_ROUNDS) {
+      throw Error("HOLD: unsupported or noncanonical original Casebook encryption packet.");
+    }
+    const salt = decode64(packet.salt_b64,16);
+    const iv = decode64(packet.nonce_b64,12);
+    const ciphertext = decode64(packet.ciphertext_b64);
+    let opened;
+    try {
+      const pwd = userPassword(false);
+      if (pwd === null) throw Error("Password entry canceled.");
+      const key = await privateKey(pwd,salt);
+      try {
+        opened = new Uint8Array(await globalThis.crypto.subtle.decrypt(
+          {name:"AES-GCM",iv,additionalData:new TextEncoder().encode(HANDOFF_PURPOSE),tagLength:128},
+          key,ciphertext));
+      } catch (_) {
+        throw Error("Wrong password, changed bytes or PRIVATE source authentication failed.");
+      }
+      if (opened.length > LIMIT + 100000) throw Error("Decrypted source exceeds human packet limit.");
+      let payloadText;
+      try { payloadText = new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(opened); }
+      catch (_) { throw Error("Decrypted source is not UTF-8."); }
+      if (new TextEncoder().encode(payloadText).length !== opened.length) {
+        throw Error("Decrypted original Casebook handoff is not canonical UTF-8.");
+      }
+      const payload = parseDuplicateSafeJson(payloadText);
+      if (!(sameKeys(payload,CONTENT_KEYS) || sameKeys(payload,LEGACY_CONTENT_KEYS)) ||
+          payloadText !== JSON.stringify(payload,null,2) + "\n" ||
+          payload.schema !== HANDOFF_SCHEMA || payload.posture !== "REVIEW_ONLY" ||
+          FALSE_AUTHORITY.some(k => payload[k] !== false) ||
+          typeof payload.source_raw !== "string" ||
+          new TextEncoder().encode(payload.source_raw).length > LIMIT ||
+          !/^[0-9a-f]{64}$/.test(payload.source_sha256) ||
+          !Array.isArray(payload.human_stages)) {
+        throw Error("HOLD: source or HUMAN metadata structure violates original private contract.");
+      }
+      if (await digestOfRaw(payload.source_raw) !== payload.source_sha256) {
+        throw Error("HOLD: original source byte fingerprint mismatch.");
+      }
+      const original = inspectOriginal(parseDuplicateSafeJson(payload.source_raw));
+      if (payload.human_stages.length !== original.case_overview.length) {
+        throw Error("HOLD: incomplete HUMAN source-bound cases.");
+      }
+      const restored = new Map();
+      const restoredNotes = new Map();
+      for (let i = 0; i < payload.human_stages.length; i++) {
+        const record = payload.human_stages[i];
+        if (!(sameKeys(record,["engagement_id","stage","note"]) ||
+              sameKeys(record,["engagement_id","stage"])) ||
+            (record.note !== undefined && (typeof record.note !== "string" ||
+              record.note.length > 500 ||
+              /[\u0000-\u0008\u000b-\u001f\u007f]|\p{Cf}|\p{Cs}/u.test(record.note))) ||
+            record.engagement_id !== original.case_overview[i].engagement_id ||
+            !Object.hasOwn(VALID_HUMAN,record.stage) ||
+            restored.has(record.engagement_id)) {
+          throw Error("HOLD: HUMAN labels do not belong to the exact original source cases.");
+        }
+        restored.set(record.engagement_id,record.stage);
+        if (record.note?.trim()) restoredNotes.set(record.engagement_id,record.note);
+      }
+      const restoredRequests = new Map();
+      if (payload.request_stages !== undefined) {
+        if (!Array.isArray(payload.request_stages) ||
+            payload.request_stages.length !== original.requests.length) {
+          throw Error("HOLD: original request HUMAN follow-up is incomplete.");
+        }
+        for (let i = 0; i < payload.request_stages.length; i++) {
+          const record = payload.request_stages[i];
+          if (!sameKeys(record, ["request_id","stage"]) ||
+              record.request_id !== original.requests[i].request_id ||
+              !Object.hasOwn(VALID_HUMAN,record.stage) ||
+              restoredRequests.has(record.request_id)) {
+            throw Error("HOLD: original request HUMAN stage identity/order mismatch.");
+          }
+          restoredRequests.set(record.request_id,record.stage);
+        }
+      }
+      return {parsed:original,fingerprint:payload.source_sha256,raw:payload.source_raw,
+        stages:restored,notes:restoredNotes,requestStages:restoredRequests};
+    } finally {
+      salt.fill(0); iv.fill(0); ciphertext.fill(0); opened?.fill(0); encryptedBytes.fill(0);
+    }
+  }
+
+  function exportAggregate() {
+    if (!source) { show("Open original PRIVATE Casebook source first.", true); return; }
+    if (!confirm("Export only source-free aggregate counts and local HUMAN stage totals? Small-cohort totals remain sensitive. No original client/record IDs, assets or timestamp included. This is never authorization.")) return;
+    const stages = Object.fromEntries(Object.keys(VALID_HUMAN).map(k => [k, 0]));
+    for (const c of source.case_overview) stages[human.get(c.engagement_id) || "unreviewed"]++;
+    const requestStages = Object.fromEntries(Object.keys(VALID_HUMAN).map(k => [k, 0]));
+    for (const r of source.requests) requestStages[requestHuman.get(r.request_id) || "unreviewed"]++;
+    const unlinkedApproved = sourceRequests().filter(v =>
+      v.req.status === "approved" && !v.linked.length).length;
+    const data = {
+      schema: "lightup.scope_intake.casebook_human_counts.v1",
+      posture: "REVIEW_ONLY",
+      authority: Object.fromEntries(FALSE_AUTHORITY.map(x => [x, false])),
+      original_source_counts: {...source.declared_counts},
+      local_human_stages: stages,
+      local_original_request_stages: requestStages,
+      approved_requests_without_stored_link_count: unlinkedApproved,
+      original_source_authenticated_by_this_browser: false,
+      consent_or_permission_granted_by_this_browser: false
+    };
+    download("lightup-casebook-human-counts-NO-SOURCE.json", JSON.stringify(data, null, 2) + "\n");
+    show("Aggregate-only source-free HUMAN counts prepared; still no original source authenticity or permission.");
+  }
+
+  function initialize() {
+    $("choose-casebook").addEventListener("click", () => $("casebook-file").click());
+    $("clear-casebook").addEventListener("click", () => clearOriginal(true));
+    $("casebook-filter").addEventListener("input", renderCases);
+    $("casebook-category").addEventListener("change", renderCases);
+    $("request-filter").addEventListener("input", renderRequestInbox);
+    $("request-category").addEventListener("change", renderRequestInbox);
+    $("casebook-aggregate").addEventListener("click", exportAggregate);
+    $("queue-unbound-requests").addEventListener("click", queueUnboundRequests);
+    $("undo-unbound-requests").addEventListener("click", undoUnboundRequests);
+    $("save-casebook-secure").addEventListener("click", saveEncryptedHandoff);
+    $("open-casebook-secure").addEventListener("click", () => $("casebook-secure-file").click());
+    $("casebook-secure-file").addEventListener("change", async event => {
+      const file = event.target.files[0]; event.target.value = "";
+      if (!file) return;
+      try {
+        const result = await openEncryptedHandoff(file);
+        if (!confirm("Replace original PRIVATE Casebook and local HUMAN labels with this decrypted, byte-bound package? This does NOT grant authorization or change your separate proposed scope.")) return;
+        source = result.parsed;
+        digestHex = result.fingerprint;
+        rawPrivateSource = result.raw;
+        human = result.stages;
+        privateNotes = result.notes;
+        requestHuman = result.requestStages;
+        requestQueueUndo = null;
+        $("casebook-filter").value = "";
+        $("casebook-category").value = "all";
+        $("request-filter").value = "";
+        $("request-category").value = "all";
+        $("casebook-selected").hidden = true;
+        $("casebook-selected").textContent = "";
+        $("casebook-request-detail").hidden = true;
+        $("casebook-request-detail").textContent = "";
+        $("undo-unbound-requests").disabled = true;
+        renderCases();
+        show("Encrypted ORIGINAL Casebook + local HUMAN stages restored. SHA-256 " + digestHex +
+          ". No present-tense origin/consent/grant reauthenticated.");
+      } catch (e) {
+        show("PRIVATE ENCRYPTED SOURCE HOLD: " + e.message +
+          " Existing Casebook and human stages retained.", true);
+      }
+    });
+    $("casebook-file").addEventListener("change", async (event) => {
+      const file = event.target.files[0]; event.target.value = "";
+      if (!file) return;
+      try {
+        const result = await openPrivateFile(file);
+        if (!confirm("Replace the previous PRIVATE original Casebook tab state with this schema-checked, UNAUTHENTICATED local file? This does not import any approval or authorization into the proposed scope.")) {
+          show("PRIVATE source replacement canceled; previous Casebook remains intact."); return;
+        }
+        source = result.parsed;
+        digestHex = result.fingerprint;
+        rawPrivateSource = result.raw;
+        human.clear();
+        privateNotes.clear();
+        requestHuman.clear();
+        requestQueueUndo = null;
+        $("casebook-selected").hidden = true;
+        $("casebook-selected").textContent = "";
+        $("casebook-filter").value = "";
+        $("casebook-category").value = "all";
+        renderCases();
+        show("PRIVATE Casebook-shaped source loaded locally. Declared tenant ID: " + source.client_id +
+          ". Local unsigned source SHA-256: " + (digestHex || "unavailable") +
+          ". No original account, client consent, operator consent or grant reauthenticated.");
+      } catch (e) {
+        show("SOURCE HOLD: " + e.message + " Existing workroom/source retained.", true);
+      }
+    });
+    clearOriginal(false);
+  }
+  document.addEventListener("DOMContentLoaded", initialize, {once: true});
+})();
+</script>
+</head>
+<body>
+<header><div class="brand">LIGHTUP <strong>Scope Intake Matrix</strong></div><div class="fence">PREPARATION ONLY · NOT AUTHORIZED</div></header>
+<main>
+<p class="intro">Prepare a human-readable, offline scope request and compare local revisions. This tool <b>does not issue or verify consent, approvals, grants, findings, revocation, or permission to scan</b>. Every item remains an untrusted human proposal until the original authenticated LightUp workflow independently validates it.</p>
+<section class="section" aria-labelledby="project-heading">
+<h2 id="project-heading">01 / Proposed engagement</h2>
+<div class="grid">
+<label>Internal draft name <input id="project" maxlength="80" placeholder="e.g. October lab baseline" autocomplete="off"></label>
+<label>Client-provided label (unverified) <input id="client" maxlength="100" placeholder="Organisation label" autocomplete="off"></label>
+<label>Human review contact (alias) <input id="contact" maxlength="80" placeholder="Reviewer alias, no credentials" autocomplete="off"></label>
+<label>Requested window start (local, unverified) <input id="start" type="datetime-local"></label>
+<label>Requested window end (local, unverified) <input id="end" type="datetime-local"></label>
+<label>Requested ceiling (descriptive only) <select id="risk"><option value="informational">Informational</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High — HOLD for review</option></select></label>
+<label class="wide">Proposed purpose / explicit human review questions <textarea id="purpose" maxlength="1800" placeholder="What are we asking reviewers to assess?"></textarea></label>
+<label>Evidence reference label (not verified) <input id="evidence" maxlength="120" placeholder="Do not paste a secret or token" autocomplete="off"></label>
+</div>
+<p class="small muted">Date/time is a requested local planning window, not a trusted authorization clock or approval. Keep real client details PRIVATE.</p>
+</section>
+<section class="section" aria-labelledby="assets-heading">
+<div class="actions"><h2 id="assets-heading">02 / Proposed boundaries</h2><button id="add" type="button" class="primary right">+ Add proposed asset</button></div>
+<p class="muted small">Up to 32 exact DNS hostnames, canonical IPv4 addresses or IPv4 CIDRs of /24–/32. No schemes, ports, paths, wildcards or implied subnet expansion. Each asset is a literal proposal only. Excluded rows are never silently treated as covered.</p>
+<div class="actions"><label class="filter">Find local rows <input id="filter" aria-label="Filter proposed rows" placeholder="Filter by asset or question"></label><label class="filter">Show status <select id="status-filter"><option value="all">All</option><option value="draft">Draft</option><option value="needs-client-review">Needs client review</option><option value="blocked">Blocked</option></select></label></div>
+<details id="bulk-panel">
+<summary><b>Bulk add exact proposed assets</b> — one per line, prefix ! for an explicit exclusion</summary>
+<p class="small muted">Local-only atomic import. Valid canonical DNS / IPv4 / narrow /24–/32 networks only. All included entries default to passive inventory proposals, all exclusions to no capability. No partial row insertion on a malformed, duplicate or oversized input.</p>
+<label>PRIVATE asset lines<textarea id="bulk-lines" rows="5" maxlength="4096" placeholder="example.internal\n!excluded.example.internal\n192.168.10.0/24" autocomplete="off"></textarea></label>
+<div class="actions"><button id="bulk-add" type="button">Add all valid lines as DRAFT (atomic)</button></div>
+</details>
+<div class="table-wrap"><table><thead><tr><th>Asset (literal)</th><th>Boundary</th><th>Requested capability</th><th>Ownership evidence</th><th>Human status</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p id="empty-rows" class="muted">No proposed assets yet.</p>
+<details id="triage-panel">
+<summary><b>HUMAN bulk review of the currently visible proposals</b></summary>
+<p class="small muted">This only changes untrusted HUMAN preparation labels. It cannot approve ownership, risk, consent, grants or execution. The visible filter defines which literal proposals will be included in the preview.</p>
+<div class="grid">
+<label>Field to update<select id="triage-field"><option value="status">HUMAN review status</option><option value="ownership">Ownership evidence label (unverified)</option></select></label>
+<label>Proposed HUMAN value<select id="triage-value"><option value="needs-client-review">Needs client review</option><option value="blocked">Blocked</option><option value="draft">Draft</option></select></label>
+</div>
+<div class="actions"><button type="button" id="triage-preview">Preview change for visible rows</button><button type="button" class="primary" id="triage-apply" disabled>Confirm HUMAN changes</button><button type="button" id="triage-undo" disabled>Undo last bulk change</button></div>
+<div id="triage-preview-box" class="notice" aria-live="polite" hidden></div>
+</details>
+<div class="actions"><button id="add-bottom" type="button">+ Add row</button></div>
+</section>
+<section class="section" id="overlap-section" aria-labelledby="overlap-heading">
+<div class="actions"><h2 id="overlap-heading">03 / Local IPv4 scope boundaries &amp; exceptions</h2><button type="button" id="queue-overlap-review">Queue affected included rows for HUMAN review</button><button type="button" id="export-overlap" class="right">Export PRIVATE boundary brief</button></div>
+<p class="muted">Deterministic comparisons of human-declared IPv4 addresses and narrow CIDRs only. No DNS lookup, reachability check or authority inference. A host inside an included subnet is not automatically approved, and exclusions must be resolved by the original source-owned policy.</p>
+<div class="stats"><div class="stat"><strong id="overlap-count">0</strong><span>Overlapping literal pairs</span></div><div class="stat"><strong id="cross-boundary-count">0</strong><span>Inclusion/exclusion pairs for HUMAN review</span></div><div class="stat"><strong id="overlap-include-count">0</strong><span>Overlapping proposed inclusions</span></div><div class="stat"><strong id="special-address-count">0</strong><span>Numeric nonordinary ranges to review</span></div></div>
+<div id="overlap-notice" class="notice" role="status">Add literal IPv4/CIDR proposals to see boundary review.</div>
+<div class="table-wrap"><table id="overlap-table"><thead><tr><th>Proposed literal A</th><th>Proposed literal B</th><th>Relationship</th><th>Human follow-up</th></tr></thead><tbody id="overlap-rows"></tbody></table></div>
+<h3>Literal address classifications — not network discovery</h3>
+<div id="address-classification" class="notice"></div>
+<div class="actions"><h3>Read-only proposed target membership preview</h3><button type="button" id="preview-membership" class="right">Preview literal membership</button><button type="button" id="download-membership">PRIVATE human preview handoff</button></div>
+<p class="small muted">Enter up to 16 exact literal IPv4 hosts or lowercase DNS names, one per line. Strictly local numeric/literal comparison with the proposed rows only. No DNS resolution, external contact, permission, exception resolution or original-policy invocation. Every result remains NOT AUTHORIZED.</p>
+<label>PRIVATE target literals (never contacted)<textarea id="membership-lines" maxlength="4096" rows="4" placeholder="192.168.10.22&#10;example.internal"></textarea></label>
+<div id="membership-status" class="notice" aria-live="polite">No target membership preview. The app never checks actual target reachability.</div>
+<div class="table-wrap"><table><thead><tr><th>Human-entered target</th><th>Proposed included rows</th><th>Explicit exclusions</th><th>Human-only conclusion</th></tr></thead><tbody id="membership-result"></tbody></table></div>
+</section>
+<section class="section" id="source-casebook-section" aria-labelledby="casebook-heading">
+<div class="actions"><h2 id="casebook-heading">04 / Original Casebook source review — PRIVATE / read-only</h2><button id="choose-casebook" class="primary right" type="button">Open original PRIVATE Casebook JSON</button><button id="save-casebook-secure" type="button">Save encrypted PRIVATE source + HUMAN stages</button><button id="open-casebook-secure" type="button">Open encrypted PRIVATE source + HUMAN stages</button><button id="clear-casebook" type="button">Clear source from memory</button></div>
+<p class="muted">Independent offline view of an existing <code>lightup.auth_casebook.v1</code> exported through the original credential-backed, read-only Casebook CLI. Importing a file here does NOT reauthenticate the source producer, original tenant, client consent, operator consent or revocation. All six source authority flags must remain false. No original database, network, scanner or grant is accessed.</p>
+<input id="casebook-file" type="file" accept=".json,application/json" hidden>
+<input id="casebook-secure-file" type="file" accept=".lucb,application/json" hidden>
+<div id="casebook-import-status" class="notice" role="status">No original source loaded. Your proposed scope is independent and NOT AUTHORIZED.</div>
+<div class="stats"><div class="stat"><strong id="casebook-engagement-count">0</strong><span>Source engagements</span></div><div class="stat"><strong id="casebook-grant-hold-count">0</strong><span>Grant linkage HOLDs</span></div><div class="stat"><strong id="casebook-risk-review-count">0</strong><span>Risk source reviews</span></div><div class="stat"><strong id="casebook-case-attention-count">0</strong><span>HOLD case overviews</span></div></div>
+<div class="actions"><label class="filter">Filter source cases <input id="casebook-filter" placeholder="Search local source case ID or attention" autocomplete="off"></label><label class="filter">Source attention <select id="casebook-category"><option value="all">All</option><option value="hold">HOLD only</option><option value="risk">Risk-review cases</option><option value="other">Other review</option></select></label><button id="casebook-aggregate" type="button">Export source-free HUMAN counts</button></div>
+<p class="small warning">Original CASE ID and request/grant lineage remain PRIVATE in this tab only. A prior recorded approval/grant is NOT authentic current consent or permission. No source ID is automatically tied to any untrusted draft asset.</p>
+<div class="table-wrap"><table><thead><tr><th>Original source engagement</th><th>Recorded state</th><th>Recorded grants / risks</th><th>Original source attention</th><th>HUMAN next action</th><th>Local source detail</th></tr></thead><tbody id="casebook-cases"></tbody></table></div>
+<div id="casebook-selected" class="notice" hidden></div>
+<h3>Original approved-request and unbound-request HUMAN inbox (#177 companion)</h3>
+<p class="small muted">Purely local retrospective request/source records. A prior approved request, linked grant, or local HUMAN stage never proves action-time consent, tenant identity, approved scope or execution authority.</p>
+<div class="actions"><label class="filter">Source request filter <input id="request-filter" placeholder="Original request ID or source state" autocomplete="off"></label><label class="filter">Source request attention<select id="request-category"><option value="all">All source requests</option><option value="unbound">Approved without recorded grant binding</option><option value="hold">Recorded link HOLD</option><option value="pending">Pending/not approved</option></select></label></div>
+<div class="actions"><button type="button" id="queue-unbound-requests">Queue approved-looking unbound requests for HUMAN follow-up</button><button type="button" id="undo-unbound-requests" disabled>Undo latest request queue action</button></div>
+<div class="table-wrap"><table><thead><tr><th>Original request (PRIVATE)</th><th>Stored decision</th><th>Proposed mode/risk</th><th>Stored grant links</th><th>Source attention (UNVERIFIED)</th><th>Local HUMAN follow-up</th></tr></thead><tbody id="casebook-requests"></tbody></table></div>
+<div class="notice" id="casebook-request-status" role="status">No stored original request data loaded. No authorization can be inferred.</div>
+<div id="casebook-request-detail" class="notice" hidden></div>
+</section>
+<section class="section" aria-labelledby="result-heading">
+<h2 id="result-heading">05 / Local completeness & handoff</h2>
+<div class="stats"><div class="stat"><strong id="total-count">0</strong><span>Proposed rows</span></div><div class="stat"><strong id="excluded-count">0</strong><span>Explicit exclusions</span></div><div class="stat"><strong id="review-count">0</strong><span>Explicit client-review requests</span></div><div class="stat"><strong id="blocked-count">0</strong><span>Blocked proposals</span></div></div>
+<div id="notice" role="status" class="notice">Add and review draft details. Nothing is saved automatically.</div>
+<div class="actions">
+<button id="export-encrypted" class="primary" type="button">Save encrypted PRIVATE workroom</button>
+<button id="choose-import-encrypted" type="button">Open encrypted workroom</button>
+<button id="choose-compare-encrypted" type="button">Compare encrypted older workroom</button>
+<button id="choose-rekey" type="button">Re-encrypt PRIVATE file for new recipient</button>
+<button id="receipt" type="button">Export anonymous counts</button>
+<button id="print" type="button">Print private human brief</button>
+<button id="clear" class="danger" type="button">Clear memory</button>
+</div>
+<details><summary>Advanced: unencrypted PRIVATE drafts (legacy compatibility)</summary>
+<p class="small warning">These plain JSON downloads expose client and asset details; prefer encrypted workrooms. Plain downloads are never permission, consent or approval.</p>
+<div class="actions">
+<button id="export" type="button">Export UNENCRYPTED PRIVATE JSON</button>
+<button id="choose-import" type="button">Open old unencrypted draft</button>
+<button id="choose-compare" type="button">Compare old unencrypted draft</button>
+</div>
+</details>
+<input id="file-import" type="file" accept=".json,application/json" hidden>
+<input id="file-compare" type="file" accept=".json,application/json" hidden>
+<input id="file-import-encrypted" type="file" accept=".luie,application/json" hidden>
+<input id="file-compare-encrypted" type="file" accept=".luie,application/json" hidden>
+<input id="file-rekey" type="file" accept=".luie,application/json" hidden>
+<div class="privacy"><b>Privacy / release boundary:</b> Encrypted workrooms use local AES-256-GCM and PBKDF2 but do not authenticate the actual client, operator, consent or grant. Strong passwords and separate authenticated delivery are necessary. Legacy JSON, printed pages and agenda HTML remain UNENCRYPTED. Export only to an approved private location; recipient delivery requires a separate human privacy and identity decision. Counts omit labels/targets but small groups can still disclose context. Nothing is uploaded or retained by this page; there is no browser storage or remote call. Never treat a saved file or receipt as consent.</div>
+</section>
+<section class="section" id="agenda-section" aria-labelledby="agenda-heading">
+<div class="actions"><h2 id="agenda-heading">06 / PRIVATE human follow-up agenda</h2><button id="export-agenda" type="button" class="right">Export standalone PRIVATE agenda</button></div>
+<p class="muted">Human review questions inferred only from this self-declared proposal. These are reminders, not validation, permission, or compliance evidence. Original authenticated operators and clients must still make their own decisions.</p>
+<p id="agenda-count" class="small warning" role="status"></p>
+<ol id="agenda-items"></ol>
+</section>
+<section class="section" id="compare-section" hidden aria-labelledby="compare-heading"><h2 id="compare-heading">07 / Exact local revision comparison</h2><p class="muted">Compares literal draft data only. Added or removed asset ≠ authorized or revoked asset. Comparisons are not a safety verdict.</p><div class="compare-items"><div><h3>Added proposals</h3><pre id="added"></pre></div><div><h3>Removed proposals</h3><pre id="removed"></pre></div><div><h3>Changed HUMAN fields</h3><pre id="changed"></pre></div></div><h3 class="warning">Potential requested scope widening — HUMAN HOLD</h3><pre class="notice" id="expansions"></pre><h3>Potential reduction — NOT proven revocation</h3><pre class="notice" id="restrictions"></pre><div class="actions"><button id="export-change-brief" type="button">Export PRIVATE scriptless change brief</button><button id="close-compare" type="button">Close comparison</button></div></section>
+<p class="footer">LightUp • independent offline preparation companion • INCUBATE M3/M7 PLAN/LAB ONLY • no scans, network, grants, bypasses, approvals, deployment or main release.</p>
+</main>
+</body>
+</html>
