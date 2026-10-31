@@ -1,0 +1,1187 @@
+"""Two admitted synthetic ZIPs; human-only delta, never automatic remediation."""
+from __future__ import annotations
+import gc
+import csv
+import io
+import json
+import shutil
+import tempfile
+import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
+from lightup import lab_score_calibration as app
+from lightup.lab_score_portable_html_safety import admit_inert_html
+
+
+def run(*args):
+    # Keep warnings from previously discarded test DBs outside CLI stderr capture.
+    gc.collect()
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        status = app.main([str(x) for x in args])
+    return status, out.getvalue(), err.getvalue()
+
+
+class TwoTransportHumanComparisonTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.root = Path(cls.tmp.name)
+        a,b,c,d = (cls.root/x for x in ('a','b','c','d'))
+        for source in (a,b,c):
+            if not app.run_lab_score_calibration(source)['passed']:
+                raise AssertionError('synthetic source failed')
+        shutil.copytree(a,d)
+        hroom,hzip = cls.root/'hold-room',cls.root/'hold-zip'
+        proom,pzip = cls.root/'pass-room',cls.root/'pass-zip'
+        assert run('--compare-history',a,b,c,d,'--format','html',
+                   '--html-output-dir',hroom)[0]==2
+        assert run('--compare-history',a,b,c,d,'--format','html',
+                   '--verify-html-output-dir',hroom,
+                   '--portable-review-output-dir',hzip)[0]==2
+        assert run('--compare-history',b,c,'--format','html',
+                   '--html-output-dir',proom)[0]==0
+        assert run('--compare-history',b,c,'--format','html',
+                   '--verify-html-output-dir',proom,
+                   '--portable-review-output-dir',pzip)[0]==0
+        cls.hold=hzip/'LightUp-SYNTHETIC-OFFLINE-REVIEW.zip'
+        cls.passing=pzip/'LightUp-SYNTHETIC-OFFLINE-REVIEW.zip'
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_source_local_human_hold_focus_direct_saved_and_fail_closed(self):
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        comparison = compare_portable_review_transports(str(self.hold), str(self.passing))
+        actions = build_review_actions(comparison, str(self.hold), str(self.passing))
+        row = next(a for a in actions["actions"][:-1] if a["transport"] == "baseline")
+        selector = ("baseline", str(row["anonymous_previous"]),
+                    str(row["anonymous_current"]))
+        room = self.root / "source-local-focus-room"
+        status, out, err = run("--compare-portable-reviews", self.hold,
+                               self.passing, "--comparison-output-dir", room,
+                               "--include-actions", "--include-briefs")
+        self.assertEqual((status, err), (2, ""))
+        before = {p.name: p.read_bytes() for p in room.iterdir()}
+        for fmt in ("actions-focus-json", "actions-focus-text", "actions-focus-html"):
+            direct = run("--compare-portable-reviews", self.hold, self.passing,
+                         "--format", fmt, "--focus-action", *selector)
+            saved = run("--verify-comparison-workroom", self.hold, self.passing,
+                        "--comparison-output-dir", room, "--export-comparison",
+                        "--format", fmt, "--focus-action", *selector)
+            self.assertEqual(direct, saved)
+            self.assertEqual((direct[0], direct[2]), (2, ""))
+            self.assertIn("HOLD", direct[1])
+            self.assertNotIn(str(self.root), direct[1])
+            if fmt.endswith("json"):
+                data = json.loads(direct[1])
+                self.assertTrue(data["other_original_pairs_hidden"])
+                self.assertFalse(data["authorization_granted"])
+                self.assertFalse(data["remediation_verified"])
+                self.assertEqual(data["source"], "baseline")
+            if fmt.endswith("html"):
+                admit_inert_html(direct[1].encode())
+        self.assertEqual(before, {p.name: p.read_bytes() for p in room.iterdir()})
+        for invalid in (("candidate", *selector[1:]),
+                        ("baseline", "01", selector[2]),
+                        ("baseline", "1", "1"),
+                        ("baseline", "-1", "2")):
+            status, out, err = run("--compare-portable-reviews", self.hold,
+                                   self.passing, "--format", "actions-focus-json",
+                                   "--focus-action", *invalid)
+            self.assertEqual((status, out), (2, ""))
+            self.assertIn("not verified", err)
+        (room / "actions.csv").write_text("tampered unrelated saved HUMAN row")
+        status, out, err = run("--verify-comparison-workroom", self.hold, self.passing,
+                               "--comparison-output-dir", room, "--export-comparison",
+                               "--format", "actions-focus-json", "--focus-action", *selector)
+        self.assertEqual((status, out), (2, ""))
+        self.assertIn("not verified", err)
+
+    def test_private_source_local_focus_room_publish_verify_and_tamper(self):
+        import stat
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_review_actions import build_review_actions
+        room = self.root / "four-file-focus"
+        actions = build_review_actions(
+            compare_portable_review_transports(str(self.hold), str(self.passing)),
+            str(self.hold), str(self.passing))
+        row = next(x for x in actions["actions"][:-1] if x["transport"] == "baseline")
+        pair = ("baseline", str(row["anonymous_previous"]), str(row["anonymous_current"]))
+        opts = ["--focus-room-dir", room, "--focus-action", *pair]
+        status, out, err = run("--publish-action-focus", self.hold, self.passing, *opts)
+        self.assertEqual((status, err), (2, ""))
+        self.assertIn("four private files verified", out)
+        self.assertEqual(stat.S_IMODE(room.stat().st_mode), 0o700)
+        originals = {p.name: p.read_bytes() for p in room.iterdir()}
+        self.assertEqual(set(originals), {"focus.json", "focus.txt", "focus.html", "manifest.json"})
+        for p in room.iterdir():
+            self.assertEqual(stat.S_IMODE(p.stat().st_mode), 0o600)
+        for fmt, filename in (("actions-focus-json", "focus.json"),
+                              ("actions-focus-text", "focus.txt"),
+                              ("actions-focus-html", "focus.html")):
+            saved = run("--verify-action-focus", self.hold, self.passing,
+                        *opts, "--format", fmt)
+            direct = run("--compare-portable-reviews", self.hold, self.passing,
+                         "--focus-action", *pair, "--format", fmt)
+            self.assertEqual(saved, direct)
+            self.assertEqual((saved[0], saved[2]), (2, ""))
+            self.assertEqual(saved[1].encode(), originals[filename])
+        self.assertEqual(originals, {p.name: p.read_bytes() for p in room.iterdir()})
+        status, out, err = run("--publish-action-focus", self.hold, self.passing, *opts)
+        self.assertEqual((status, out), (2, ""))
+        (room / "focus.txt").write_text("forged APPROVED")
+        for fmt in ("actions-focus-json", "actions-focus-html"):
+            status, out, err = run("--verify-action-focus", self.hold, self.passing,
+                                   *opts, "--format", fmt)
+            self.assertEqual((status, out), (2, ""))
+            self.assertIn("not verified", err)
+            self.assertNotIn("APPROVED", err)
+
+    def test_private_source_local_focus_rejects_invalid_pair_without_writes(self):
+        room = self.root / "invalid-focus"
+        for pair in (("candidate", "1", "4"), ("baseline", "01", "4"),
+                     ("baseline", "1", "1"), ("baseline", "1", "9")):
+            status, out, err = run("--publish-action-focus", self.hold, self.passing,
+                                   "--focus-room-dir", room, "--focus-action", *pair)
+            self.assertEqual((status, out), (2, ""))
+            self.assertFalse(room.exists())
+            self.assertIn("not verified", err)
+
+    def test_selected_human_batch_real_zip_roundtrip(self):
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        items = build_review_actions(compare_portable_review_transports(
+            str(self.hold),str(self.passing)),str(self.hold),str(self.passing))
+        row = items['actions'][0]
+        selected = f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        room = self.root/'original-batch-workroom'
+        self.assertEqual(run('--compare-portable-reviews',self.hold,self.passing,
+                             '--comparison-output-dir',room,'--include-actions')[0],2)
+        saved = {p.name:p.read_bytes() for p in room.iterdir()}
+        for fmt in ('actions-batch-json','actions-batch-markdown','actions-batch-html','actions-batch-csv'):
+            direct = run('--compare-portable-reviews',self.hold,self.passing,
+                         '--focus-batch',selected,'--format',fmt)
+            reopened = run('--verify-comparison-workroom',self.hold,self.passing,
+                           '--comparison-output-dir',room,'--export-comparison',
+                           '--focus-batch',selected,'--format',fmt)
+            self.assertEqual(direct,reopened)
+            self.assertEqual((direct[0],direct[2]),(2,''))
+            self.assertNotIn(str(self.root),direct[1])
+            if fmt.endswith('json'):
+                packet=json.loads(direct[1])
+                self.assertEqual(packet['selected_pair_count'],1)
+                self.assertFalse(packet['authorization_granted'])
+            if fmt.endswith('html'):
+                admit_inert_html(direct[1].encode())
+        self.assertEqual(saved,{p.name:p.read_bytes() for p in room.iterdir()})
+        for malformed in ('candidate:1-2',selected+','+selected,'baseline:01-2',
+                          'baseline:1-1','baseline:1-9',selected+';<script>'):
+            code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                             '--focus-batch',malformed,'--format','actions-batch-json')
+            self.assertEqual((code,out),(2,''))
+            self.assertIn('not verified',err)
+        (room/'actions.csv').write_text('fake approval')
+        code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                         '--comparison-output-dir',room,'--export-comparison',
+                         '--focus-batch',selected,'--format','actions-batch-json')
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)
+
+    def test_batch_multiple_canonical_original_holds(self):
+        from copy import deepcopy
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_action_batch import render_human_batch
+        original=build_review_actions(compare_portable_review_transports(
+            str(self.hold),str(self.passing)),str(self.hold),str(self.passing))
+        row=original['actions'][0]
+        self.assertEqual(row['reason'],'evidence_reused')
+        second=dict(row,anonymous_previous=1,anonymous_current=2,reason='score_drift',
+                    human_action='REVIEW_ISOLATED_SYNTHETIC_SCORER_DRIFT')
+        combined=deepcopy(original)
+        combined['actions'].insert(1,second)
+        combined['hold_action_rows']+=1
+        select=f"baseline:1-2,baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        packet=json.loads(render_human_batch(combined,select,'actions-batch-json'))
+        self.assertEqual(packet['selected_pair_count'],2)
+        self.assertEqual(packet['global_review_status'],'HOLD')
+        self.assertEqual(packet['selected_original_pairs'][0]['hold_reasons'],
+                         ['evidence_reused'])
+        for fmt in ('actions-batch-markdown','actions-batch-html','actions-batch-csv'):
+            result=render_human_batch(combined,select,fmt)
+            self.assertIn('NOT_VERIFIED',result)
+            if fmt.endswith('html'):
+                admit_inert_html(result.encode())
+        self.assertFalse(packet['authorization_granted'])
+        bad=deepcopy(combined)
+        bad['review_status']='PASS'
+        with self.assertRaises(ValueError):
+            render_human_batch(bad,select,'actions-batch-json')
+        with self.assertRaises(ValueError):
+            render_human_batch(combined,select+','+select,'actions-batch-json')
+
+    def test_private_selected_batch_atomic_source_reopen_and_tamper(self):
+        import stat
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions=build_review_actions(compare_portable_review_transports(
+            str(self.hold),str(self.passing)),str(self.hold),str(self.passing))
+        row=actions['actions'][0]
+        selector=f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        room=self.root/'atomic-batch-selection-room'
+        args=['--focus-room-dir',room,'--focus-batch',selector]
+        code,out,err=run('--publish-batch-focus',self.hold,self.passing,*args)
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('five private files',out)
+        saved={p.name:p.read_bytes() for p in room.iterdir()}
+        self.assertEqual(set(saved),{'batch.json','batch.md','batch.html','batch.csv','manifest.json'})
+        self.assertEqual(stat.S_IMODE(room.stat().st_mode),0o700)
+        self.assertTrue(all(stat.S_IMODE(p.stat().st_mode)==0o600 for p in room.iterdir()))
+        for fmt,name in (('actions-batch-json','batch.json'),
+                         ('actions-batch-markdown','batch.md'),
+                         ('actions-batch-html','batch.html'),
+                         ('actions-batch-csv','batch.csv')):
+            verified=run('--verify-batch-focus',self.hold,self.passing,
+                         *args,'--format',fmt)
+            direct=run('--compare-portable-reviews',self.hold,self.passing,
+                       '--focus-batch',selector,'--format',fmt)
+            self.assertEqual(verified,direct)
+            self.assertEqual((verified[0],verified[2]),(2,''))
+            self.assertEqual(verified[1].encode(),saved[name])
+            if fmt.endswith('html'):
+                admit_inert_html(verified[1].encode())
+        self.assertEqual(saved,{p.name:p.read_bytes() for p in room.iterdir()})
+        code,out,err=run('--publish-batch-focus',self.hold,self.passing,*args)
+        self.assertEqual((code,out),(2,''))
+        (room/'batch.md').write_text('forged PASS')
+        code,out,err=run('--verify-batch-focus',self.hold,self.passing,
+                         *args,'--format','actions-batch-json')
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)
+        self.assertNotIn('forged',err)
+
+    def test_batch_csv_is_safe_action_queue_and_legacy_room_reopens(self):
+        import os
+        from lightup.lab_score_focus_workroom import _canonical
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)), str(self.hold), str(self.passing))
+        row = actions['actions'][0]
+        selector = f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        result = run('--compare-portable-reviews', self.hold, self.passing,
+                     '--focus-batch', selector, '--format', 'actions-batch-csv')
+        self.assertEqual((result[0], result[2]), (2, ''))
+        records = list(csv.DictReader(io.StringIO(result[1])))
+        self.assertGreaterEqual(len(records), 1)
+        self.assertEqual({r['completion'] for r in records}, {'NOT_VERIFIED'})
+        self.assertEqual({r['authorization_granted'] for r in records}, {'false'})
+        self.assertEqual({r['global_review_status'] for r in records}, {'HOLD'})
+        self.assertTrue(all(not value.startswith(('=', '+', '-', '@'))
+                            for record in records for value in record.values()))
+        self.assertNotIn(str(self.root), result[1])
+
+        # Genuine four-file v1 workrooms must remain verifiable after v2 ships.
+        _, payloads = _canonical(str(self.hold), str(self.passing),
+                                 selector, legacy_batch=True)
+        legacy = self.root / 'existing-batch-v1'
+        legacy.mkdir(mode=0o700)
+        for name, body in payloads.items():
+            fd = os.open(legacy/name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, 'wb') as output:
+                output.write(body)
+        for fmt, name in (('actions-batch-json','batch.json'),
+                          ('actions-batch-markdown','batch.md'),
+                          ('actions-batch-html','batch.html')):
+            actual = run('--verify-batch-focus', self.hold, self.passing,
+                         '--focus-room-dir', legacy, '--focus-batch', selector,
+                         '--format', fmt)
+            self.assertEqual((actual[0], actual[2]), (2, ''))
+            self.assertEqual(actual[1].encode(), payloads[name])
+        code, out, err = run('--verify-batch-focus', self.hold, self.passing,
+                             '--focus-room-dir', legacy, '--focus-batch', selector,
+                             '--format','actions-batch-csv')
+        self.assertEqual((code, out), (2, ''))
+        self.assertIn('not verified', err)
+        self.assertEqual({p.name: p.read_bytes() for p in legacy.iterdir()}, payloads)
+
+    def test_private_focus_reopen_from_manifest_no_selector_and_tamper(self):
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)), str(self.hold), str(self.passing))
+        row = actions['actions'][0]
+        select = ('baseline', str(row['anonymous_previous']),
+                  str(row['anonymous_current']))
+        room = self.root / 'human-focus-original-reopen'
+        flags = ('--focus-room-dir', room)
+        created = run('--publish-action-focus', self.hold, self.passing,
+                      *flags, '--focus-action', *select)
+        self.assertEqual((created[0], created[2]), (2, ''))
+        saved = {p.name: p.read_bytes() for p in room.iterdir()}
+        self.assertEqual(set(saved), {'focus.json','focus.txt','focus.html','manifest.json'})
+        for fmt,name in (('actions-focus-json','focus.json'),
+                         ('actions-focus-text','focus.txt'),
+                         ('actions-focus-html','focus.html')):
+            inferred = run('--verify-action-focus', self.hold, self.passing,
+                           *flags, '--format', fmt)
+            specified = run('--verify-action-focus', self.hold, self.passing,
+                            *flags, '--focus-action', *select, '--format', fmt)
+            self.assertEqual(inferred, specified)
+            self.assertEqual((inferred[0], inferred[2]), (2, ''))
+            self.assertEqual(inferred[1].encode(), saved[name])
+            if fmt.endswith('html'):
+                admit_inert_html(inferred[1].encode())
+        self.assertEqual({p.name:p.read_bytes() for p in room.iterdir()}, saved)
+        corrupted = json.loads(saved['manifest.json'])
+        corrupted['selector'] = ['candidate', *select[1:]]
+        (room/'manifest.json').write_text(json.dumps(corrupted, indent=2, sort_keys=True)+'\n')
+        for fmt in ('actions-focus-json','actions-focus-html'):
+            denied = run('--verify-action-focus', self.hold, self.passing,
+                         *flags, '--format', fmt)
+            self.assertEqual((denied[0], denied[1]), (2, ''))
+            self.assertIn('not verified', denied[2])
+        (room/'manifest.json').write_bytes(saved['manifest.json'])
+        (room/'focus.txt').write_text('forged AUTHORIZED')
+        denied = run('--verify-action-focus', self.hold, self.passing,
+                     *flags, '--format', 'actions-focus-json')
+        self.assertEqual((denied[0], denied[1]), (2, ''))
+        self.assertIn('not verified', denied[2])
+
+    def test_private_self_contained_original_HOLD_transfer_relocated_and_source_bound(self):
+        import hashlib
+        import os
+        import stat
+        source=self.root/'source-embedded-transfer'
+        published=run('--publish-batch-bundle',self.hold,self.passing,
+                      '--bundle-output-dir',source,'--focus-batch','ALL')
+        self.assertEqual((published[0],published[2]),(2,''))
+        self.assertIn('private two-source bundle verified',published[1])
+        self.assertEqual({p.name for p in source.iterdir()},
+                         {'sources','review','bundle.json'})
+        self.assertEqual(stat.S_IMODE(source.stat().st_mode),0o700)
+        self.assertEqual({p.name for p in (source/'review').iterdir()},
+                         {'batch.json','batch.md','batch.html','batch.csv','manifest.json'})
+        embedded={}
+        for name in ('baseline','candidate'):
+            f=source/'sources'/name/'LightUp-SYNTHETIC-OFFLINE-REVIEW.zip'
+            embedded[name]=f
+            self.assertEqual(stat.S_IMODE(f.stat().st_mode),0o600)
+            self.assertEqual(f.read_bytes(),(self.hold if name=='baseline'
+                                            else self.passing).read_bytes())
+        original=json.loads((source/'bundle.json').read_bytes())
+        self.assertEqual(original['global_review_status'],'HOLD')
+        self.assertIs(original['authorization_granted'],False)
+        self.assertIs(original['original_source_authenticated'],False)
+        self.assertEqual(original['selector'],'baseline:1-4')
+        self.assertEqual(original['source_zip_sha256']['baseline'],
+                         hashlib.sha256(embedded['baseline'].read_bytes()).hexdigest())
+        self.assertEqual(stat.S_IMODE((source/'bundle.json').stat().st_mode),0o600)
+        # Move the entire directory; no caller path to original external ZIPs
+        # is needed for source-bound reinspection after relocation.
+        relocated=self.root/'moved-source-bundle'
+        shutil.move(str(source),str(relocated))
+        self.assertFalse(source.exists())
+        original_saved={f.name:f.read_bytes() for f in (relocated/'review').iterdir()}
+        for fmt,name in (('actions-batch-json','batch.json'),
+                         ('actions-batch-markdown','batch.md'),
+                         ('actions-batch-html','batch.html'),
+                         ('actions-batch-csv','batch.csv')):
+            result=run('--verify-batch-bundle',relocated,'--format',fmt)
+            self.assertEqual((result[0],result[2]),(2,''))
+            self.assertEqual(result[1].encode(),original_saved[name])
+            if fmt=='actions-batch-html':
+                admit_inert_html(result[1].encode())
+        self.assertEqual(run('--verify-batch-bundle',relocated),
+                         (2,'LightUp synthetic HUMAN bundle reverified: GLOBAL HOLD; NOT VERIFIED; no authorization.\n',''))
+        self.assertEqual({f.name:f.read_bytes() for f in (relocated/'review').iterdir()},
+                         original_saved)
+        self.assertFalse((relocated/'sources'/'baseline'/'LightUp-SYNTHETIC-OFFLINE-REVIEW.zip').is_symlink())
+        self.assertTrue(all(stat.S_IMODE(f.stat().st_mode)==0o600 for f in
+                            (relocated/'review').iterdir()))
+
+    def test_private_synthetic_transfer_tamper_and_alias_fail_closed(self):
+        import os
+        import json
+        room=self.root/'transfer-invariant-original'
+        self.assertEqual(run('--publish-batch-bundle',self.hold,self.passing,
+                             '--bundle-output-dir',room,'--focus-batch','ALL')[0],2)
+        truth={p.name:p.read_bytes() for p in (room/'review').iterdir()}
+        for name in ('bundle.json','review/batch.csv','review/manifest.json',
+                     'sources/baseline/LightUp-SYNTHETIC-OFFLINE-REVIEW.zip'):
+            cloned=self.root/('tampered-'+name.replace('/','-'))
+            shutil.copytree(room,cloned)
+            member=cloned/name
+            member.write_bytes(b'FORGED_APPROVAL\n')
+            for fmt in ('actions-batch-json','actions-batch-csv'):
+                result=run('--verify-batch-bundle',cloned,'--format',fmt)
+                self.assertEqual((result[0],result[1]),(2,''))
+                self.assertIn('not verified',result[2])
+                self.assertNotIn('FORGED',result[2])
+        for type_ in ('symlink-zip','symlink-review','additional-file','world-readable'):
+            cloned=self.root/('malicious-'+type_)
+            shutil.copytree(room,cloned)
+            if type_=='symlink-zip':
+                member=cloned/'sources/baseline/LightUp-SYNTHETIC-OFFLINE-REVIEW.zip'
+                member.unlink()
+                member.symlink_to(self.hold)
+            elif type_=='symlink-review':
+                path=cloned/'review'
+                shutil.rmtree(path)
+                path.symlink_to(room/'review')
+            elif type_=='additional-file':
+                (cloned/'extra').write_text('untrusted')
+            else:
+                (cloned/'bundle.json').chmod(0o644)
+            result=run('--verify-batch-bundle',cloned,'--format','actions-batch-html')
+            self.assertEqual((result[0],result[1]),(2,''))
+            self.assertIn('not verified',result[2])
+        self.assertEqual({p.name:p.read_bytes() for p in (room/'review').iterdir()},truth)
+
+    def test_private_transfer_rejects_invalid_origin_and_existing_target(self):
+        room=self.root/'invalid-pass-transfer'
+        result=run('--publish-batch-bundle',self.passing,self.passing,
+                   '--bundle-output-dir',room,'--focus-batch','ALL')
+        self.assertEqual((result[0],result[1]),(2,''))
+        self.assertFalse(room.exists())
+        real=self.root/'transfer-no-overwrite'
+        self.assertEqual(run('--publish-batch-bundle',self.hold,self.passing,
+                             '--bundle-output-dir',real,'--focus-batch','ALL')[0],2)
+        before={str(p.relative_to(real)):p.read_bytes() for p in real.rglob('*') if p.is_file()}
+        repeated=run('--publish-batch-bundle',self.hold,self.passing,
+                     '--bundle-output-dir',real,'--focus-batch','ALL')
+        self.assertEqual((repeated[0],repeated[1]),(2,''))
+        self.assertEqual(before,{str(p.relative_to(real)):p.read_bytes()
+                                 for p in real.rglob('*') if p.is_file()})
+        alias=self.root/'symlink-transfer-baseline'
+        alias.symlink_to(self.hold)
+        refused=run('--publish-batch-bundle',alias,self.passing,
+                    '--bundle-output-dir',self.root/'bad-symlink-transfer')
+        self.assertEqual((refused[0],refused[1]),(2,''))
+        self.assertFalse((self.root/'bad-symlink-transfer').exists())
+    def test_all_source_local_original_holds_direct_publish_reopen_and_csv(self):
+        from lightup.lab_score_action_batch import select_all_original_holds
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        checked = compare_portable_review_transports(str(self.hold), str(self.passing))
+        actions = build_review_actions(checked, str(self.hold), str(self.passing))
+        selector = select_all_original_holds(actions)
+        self.assertTrue(selector.startswith('baseline:'))
+        self.assertLessEqual(len(selector.split(',')), 16)
+        direct_auto = run('--compare-portable-reviews', self.hold, self.passing,
+                          '--focus-batch', 'ALL', '--format', 'actions-batch-json')
+        direct_explicit = run('--compare-portable-reviews', self.hold, self.passing,
+                              '--focus-batch', selector, '--format', 'actions-batch-json')
+        self.assertEqual(direct_auto, direct_explicit)
+        self.assertEqual((direct_auto[0], direct_auto[2]), (2, ''))
+        payload = json.loads(direct_auto[1])
+        self.assertEqual(payload['selected_pair_count'], len(selector.split(',')))
+        self.assertEqual(payload['global_review_status'], 'HOLD')
+        self.assertFalse(payload['authorization_granted'])
+        room = self.root / 'all-actual-original-HOLD'
+        flags = ('--focus-room-dir', room)
+        published = run('--publish-batch-focus', self.hold, self.passing,
+                        *flags, '--focus-batch', 'ALL')
+        self.assertEqual((published[0], published[2]), (2, ''))
+        self.assertIn('five private files', published[1])
+        before = {f.name:f.read_bytes() for f in room.iterdir()}
+        self.assertEqual(set(before),
+                         {'batch.json', 'batch.md', 'batch.html',
+                          'batch.csv', 'manifest.json'})
+        manifest = json.loads(before['manifest.json'])
+        self.assertEqual(manifest['selector'], selector)
+        self.assertNotIn('ALL', before['manifest.json'].decode())
+        for fmt,name in (('actions-batch-json','batch.json'),
+                         ('actions-batch-markdown','batch.md'),
+                         ('actions-batch-html','batch.html'),
+                         ('actions-batch-csv','batch.csv')):
+            recovered = run('--verify-batch-focus', self.hold, self.passing,
+                            *flags, '--format', fmt)
+            explicit = run('--verify-batch-focus', self.hold, self.passing,
+                           *flags, '--focus-batch', selector, '--format', fmt)
+            alias = run('--verify-batch-focus', self.hold, self.passing,
+                        *flags, '--focus-batch', 'ALL', '--format', fmt)
+            direct = run('--compare-portable-reviews', self.hold, self.passing,
+                         '--focus-batch', 'ALL', '--format', fmt)
+            self.assertEqual(recovered, direct)
+            self.assertEqual(recovered, explicit)
+            self.assertEqual(recovered, alias)
+            self.assertEqual((recovered[0], recovered[2]), (2, ''))
+            self.assertEqual(recovered[1].encode(), before[name])
+        self.assertEqual(before,{f.name:f.read_bytes() for f in room.iterdir()})
+        forged = run('--verify-batch-focus', self.passing, self.hold,
+                     *flags, '--format', 'actions-batch-json')
+        self.assertEqual((forged[0], forged[1]), (2, ''))
+        self.assertIn('not verified', forged[2])
+        (room/'batch.csv').write_text('forged APPROVAL')
+        refused = run('--verify-batch-focus', self.hold, self.passing,
+                      *flags, '--focus-batch', 'ALL', '--format', 'actions-batch-json')
+        self.assertEqual((refused[0],refused[1]),(2,''))
+        self.assertIn('not verified',refused[2])
+
+    def test_all_original_holds_rejects_pass_empty_and_excess_without_truncation(self):
+        from copy import deepcopy
+        from lightup.lab_score_action_batch import select_all_original_holds
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        original = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)),
+            str(self.hold), str(self.passing))
+        passing = deepcopy(original)
+        passing['review_status'] = 'PASS'
+        passing['hold_action_rows'] = 0
+        passing['actions'] = [original['actions'][-1]]
+        with self.assertRaises(ValueError):
+            select_all_original_holds(passing)
+        no_room = self.root / 'all-source-PASS-invalid'
+        result = run('--publish-batch-focus', self.passing, self.passing,
+                     '--focus-room-dir',no_room,'--focus-batch','ALL')
+        self.assertEqual((result[0],result[1]),(2,''))
+        self.assertFalse(no_room.exists())
+        self.assertIn('not verified',result[2])
+        original=build_review_actions(compare_portable_review_transports(
+            str(self.hold),str(self.passing)),str(self.hold),str(self.passing))
+        synthetic=deepcopy(original)
+        prototype=next(a for a in original['actions'][:-1]
+                       if a['reason']=='evidence_reused')
+        pairs=[(p,c) for p in range(1,9) for c in range(p+1,9)][:17]
+        synthetic['actions']=[
+            dict(prototype,transport='baseline',anonymous_previous=p,
+                 anonymous_current=c) for p,c in pairs] + [original['actions'][-1]]
+        synthetic['hold_action_rows']=17
+        self.assertEqual(synthetic['review_status'],'HOLD')
+        with self.assertRaisesRegex(ValueError,'exceeds 16'):
+            select_all_original_holds(synthetic)
+        for fmt in ('actions-batch-json','actions-batch-csv'):
+            from lightup.lab_score_action_batch import render_human_batch
+            with self.assertRaises(ValueError):
+                render_human_batch(synthetic,'ALL',fmt)
+        with self.assertRaises(ValueError):
+            select_all_original_holds(dict(synthetic,review_status='PASS'))
+
+    def test_private_batch_reopen_from_saved_manifest_selector(self):
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)), str(self.hold), str(self.passing))
+        row = actions['actions'][0]
+        selector = f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        room = self.root / 'operator-reopen-batch-v2'
+        flags = ('--focus-room-dir', room)
+        self.assertEqual(run('--publish-batch-focus', self.hold, self.passing,
+                             *flags, '--focus-batch', selector)[0], 2)
+        before = {p.name:p.read_bytes() for p in room.iterdir()}
+        for fmt,name in (('actions-batch-json','batch.json'),
+                         ('actions-batch-markdown','batch.md'),
+                         ('actions-batch-html','batch.html'),
+                         ('actions-batch-csv','batch.csv')):
+            automatic = run('--verify-batch-focus', self.hold, self.passing,
+                            *flags, '--format', fmt)
+            explicit = run('--verify-batch-focus', self.hold, self.passing,
+                           *flags, '--focus-batch', selector, '--format', fmt)
+            self.assertEqual(automatic, explicit)
+            self.assertEqual((automatic[0], automatic[2]), (2, ''))
+            self.assertEqual(automatic[1].encode(), before[name])
+        self.assertEqual({p.name:p.read_bytes() for p in room.iterdir()}, before)
+        # The pinned manifest does not authorize an alternate selector.
+        invalid = run('--verify-batch-focus', self.hold, self.passing,
+                      *flags, '--focus-batch', 'baseline:1-2',
+                      '--format', 'actions-batch-csv')
+        self.assertEqual((invalid[0], invalid[1]), (2, ''))
+        # This is an untrusted local manifest, never a standalone approval.
+        (room/'manifest.json').write_text('{"selector":"baseline:1-2"}')
+        for fmt in ('actions-batch-json','actions-batch-csv'):
+            denied = run('--verify-batch-focus', self.hold, self.passing,
+                         *flags, '--format', fmt)
+            self.assertEqual((denied[0], denied[1]), (2, ''))
+            self.assertIn('not verified', denied[2])
+        (room/'manifest.json').write_bytes(before['manifest.json'])
+        forged = json.loads(before['manifest.json'])
+        forged['selector'] = 'candidate:1-2'
+        (room/'manifest.json').write_text(json.dumps(forged, indent=2, sort_keys=True)+'\n')
+        denied = run('--verify-batch-focus', self.hold, self.passing,
+                     *flags, '--format', 'actions-batch-csv')
+        self.assertEqual((denied[0], denied[1]), (2, ''))
+        (room/'manifest.json').write_bytes(before['manifest.json'])
+        (room/'batch.csv').write_text('forged APPROVED')
+        denied = run('--verify-batch-focus', self.hold, self.passing,
+                     *flags, '--format', 'actions-batch-json')
+        self.assertEqual((denied[0], denied[1]), (2, ''))
+        self.assertIn('not verified', denied[2])
+
+    def test_private_batch_legacy_manifest_reopen_without_selector(self):
+        from lightup.lab_score_focus_workroom import _canonical
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)), str(self.hold), str(self.passing))
+        row = actions['actions'][0]
+        selector = f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        _, payloads = _canonical(str(self.hold), str(self.passing),
+                                 selector, legacy_batch=True)
+        room = self.root / 'manifest-reopen-v1'
+        room.mkdir(mode=0o700)
+        import os
+        for name, data in payloads.items():
+            fd = os.open(room/name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, 'wb') as output:
+                output.write(data)
+        args = ('--verify-batch-focus', self.hold, self.passing,
+                '--focus-room-dir', room)
+        for fmt,name in (('actions-batch-json','batch.json'),
+                         ('actions-batch-markdown','batch.md'),
+                         ('actions-batch-html','batch.html')):
+            result = run(*args, '--format', fmt)
+            self.assertEqual((result[0], result[2]), (2, ''))
+            self.assertEqual(result[1].encode(), payloads[name])
+        self.assertEqual(run(*args,'--format','actions-batch-csv')[:2], (2,''))
+        self.assertEqual({p.name:p.read_bytes() for p in room.iterdir()}, payloads)
+
+    def test_private_batch_bad_selection_leaves_no_room(self):
+        root=self.root/'batch-invalid-dir'
+        for bad in ('candidate:1-2','baseline:1-1','baseline:1-9',
+                    'baseline:01-2','baseline:1-2;<script>'):
+            status,out,err=run('--publish-batch-focus',self.hold,self.passing,
+                               '--focus-room-dir',root,'--focus-batch',bad)
+            self.assertEqual((status,out),(2,''))
+            self.assertFalse(root.exists())
+            self.assertIn('not verified',err)
+
+    def test_private_human_room_rejects_symbolic_original_zip_aliases(self):
+        from lightup.lab_score_review_actions import build_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        actions = build_review_actions(compare_portable_review_transports(
+            str(self.hold), str(self.passing)), str(self.hold), str(self.passing))
+        row = actions['actions'][0]
+        selection = f"baseline:{row['anonymous_previous']}-{row['anonymous_current']}"
+        alias_file = self.root / 'alias-to-original.zip'
+        alias_file.symlink_to(self.hold)
+        alias_parent = self.root / 'alias-to-original-parent'
+        alias_parent.symlink_to(self.hold.parent, target_is_directory=True)
+        for index, alias in enumerate((alias_file, alias_parent / self.hold.name)):
+            for operation in ('--publish-batch-focus', '--publish-action-focus'):
+                room = self.root / f'alias-rejected-{index}-{operation[2:]}'
+                flags = (['--focus-batch', selection] if operation == '--publish-batch-focus'
+                         else ['--focus-action', 'baseline',
+                               row['anonymous_previous'], row['anonymous_current']])
+                code, out, err = run(operation, alias, self.passing,
+                                     '--focus-room-dir', room, *flags)
+                self.assertEqual((code, out), (2, ''))
+                self.assertIn('not verified', err)
+                self.assertFalse(room.exists())
+
+    def test_count_delta_never_closes_old_hold(self):
+        status,out,err=run('--compare-portable-reviews',
+                           self.hold,self.passing,'--format','json')
+        self.assertEqual((status,err),(2,''))
+        item=json.loads(out)
+        self.assertEqual(item['review_status'],'HOLD')
+        self.assertTrue(item['baseline_hold_preserved'])
+        self.assertEqual(item['baseline']['original_archives'],4)
+        self.assertEqual(item['candidate']['original_archives'],2)
+        self.assertEqual(item['baseline']['hold_pairs'],1)
+        self.assertEqual(item['candidate']['hold_pairs'],0)
+        self.assertEqual(item['count_change_candidate_minus_baseline']['hold_pairs'],-1)
+        self.assertEqual(item['count_change_candidate_minus_baseline']['original_pairs'],-5)
+        for k in ('original_source_authenticated','same_originals_proven',
+                  'remediation_verified','authorization_granted',
+                  'external_targets_contacted','deployment'):
+            self.assertIs(item[k],False)
+        self.assertNotIn(str(self.root),out)
+
+    def test_outputs_safe_inert_and_source_free(self):
+        for fmt in ('text','csv','html'):
+            with self.subTest(fmt=fmt):
+                status,out,err=run('--compare-portable-reviews',
+                                   self.hold,self.passing,'--format',fmt)
+                self.assertEqual((status,err),(2,''))
+                self.assertNotIn(str(self.root),out)
+                if fmt=='html':
+                    admit_inert_html(out.encode())
+                    self.assertIn('GLOBAL STATUS HOLD',out)
+                    self.assertNotIn('<script',out)
+                if fmt=='csv':
+                    rows=list(csv.DictReader(io.StringIO(out)))
+                    self.assertEqual(len(rows),5)
+                    self.assertTrue(all(row['authorization_granted']=='false'
+                                        and row['remediation_verified']=='false'
+                                        for row in rows))
+                if fmt=='text':
+                    self.assertIn('Original HOLD preserved',out)
+
+    def test_invalid_or_same_source_no_partial_output(self):
+        for a,b in ((self.hold,self.hold),
+                    (self.root/'missing.zip',self.passing)):
+            status,out,err=run('--compare-portable-reviews',
+                               a,b,'--format','json')
+            self.assertEqual((status,out),(2,''))
+            self.assertIn('not verified',err)
+
+    def test_atomic_five_file_human_comparison_pub_and_read_only_verify(self):
+        import hashlib
+        from lightup.lab_score_review_delta import verify_private_comparison
+        directory=self.root/'source-free-comparison-room'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',directory)
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('five private files saved',out)
+        expected={'comparison.json','comparison.txt','comparison.csv',
+                  'comparison.html','manifest.json'}
+        self.assertEqual({p.name for p in directory.iterdir()},expected)
+        self.assertEqual(directory.stat().st_mode&0o777,0o700)
+        self.assertTrue(all(p.stat().st_mode&0o777==0o600
+                            for p in directory.iterdir()))
+        stored={p.name:p.read_bytes() for p in directory.iterdir()}
+        manifest=json.loads(stored['manifest.json'])
+        self.assertEqual(set(manifest['file_sha256']),expected-{'manifest.json'})
+        for name,digest in manifest['file_sha256'].items():
+            self.assertEqual(hashlib.sha256(stored[name]).hexdigest(),digest)
+        self.assertFalse(manifest['authorization_granted'])
+        self.assertFalse(manifest['remediation_verified'])
+        code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                         '--comparison-output-dir',directory)
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('five saved files reverified',out)
+        self.assertEqual(verify_private_comparison(self.hold,self.passing,directory)
+                         ['review_status'],'HOLD')
+        self.assertEqual(stored,{p.name:p.read_bytes() for p in directory.iterdir()})
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',directory)
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)
+        (directory/'comparison.html').write_text('tampered')
+        code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                         '--comparison-output-dir',directory)
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)
+
+    def test_reject_bad_originals_without_creating_a_private_comparison_room(self):
+        dest=self.root/'must-not-be-created'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.hold,
+                         '--comparison-output-dir',dest)
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)
+        self.assertFalse(dest.exists())
+
+    def test_verified_five_file_workroom_reexports_all_original_outputs(self):
+        """Source ZIPs -> private room -> four byte-exact recipient views."""
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        room=self.root/'immutable-private-four-views'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',room)
+        self.assertEqual((code,err),(2,''))
+        original={p.name:p.read_bytes() for p in room.iterdir()}
+        for fmt,name in (('text','comparison.txt'),('json','comparison.json'),
+                         ('csv','comparison.csv'),('html','comparison.html')):
+            with self.subTest(fmt=fmt):
+                code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                                 '--comparison-output-dir',room,
+                                 '--export-comparison','--format',fmt)
+                self.assertEqual((code,err),(2,''))
+                self.assertEqual(out.encode('utf-8'),original[name])
+                self.assertNotIn(str(self.root),out)
+                if fmt=='html':
+                    admit_inert_html(out.encode('utf-8'))
+                    self.assertIn('GLOBAL STATUS HOLD',out)
+                if fmt=='json':
+                    receipt=json.loads(out)
+                    self.assertEqual(receipt['review_status'],'HOLD')
+                    self.assertFalse(receipt['authorization_granted'])
+        self.assertEqual(original,{p.name:p.read_bytes() for p in room.iterdir()})
+        (room/'comparison.txt').write_text('changed non-requested saved member')
+        for fmt in ('text','json','csv','html'):
+            with self.subTest(tamper=fmt):
+                code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                                 '--comparison-output-dir',room,
+                                 '--export-comparison','--format',fmt)
+                self.assertEqual((code,out),(2,''))
+                self.assertIn('not verified',err)
+
+    def test_saved_eight_file_action_roundtrip_and_fail_closed(self):
+        room=self.root/'private-eight-actions'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',room,'--include-actions')
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('eight private files',out)
+        saved={p.name:p.read_bytes() for p in room.iterdir()}
+        self.assertEqual(len(saved),8)
+        self.assertEqual(json.loads(saved['manifest.json'])['schema'],
+            'lightup.lab-score-human-two-transport-workroom.v2')
+        self.assertEqual(room.stat().st_mode&0o777,0o700)
+        self.assertTrue(all(p.stat().st_mode&0o777==0o600 for p in room.iterdir()))
+        for fmt,name in (('actions-json','actions.json'),('actions-csv','actions.csv'),
+                         ('actions-html','actions.html'),('csv','comparison.csv')):
+            code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                             '--comparison-output-dir',room,'--export-comparison',
+                             '--format',fmt)
+            self.assertEqual((code,err),(2,''))
+            self.assertEqual(out.encode(),saved[name])
+        admit_inert_html(saved['actions.html'])
+        self.assertEqual(json.loads(saved['actions.json'])['hold_action_rows'],1)
+        self.assertEqual(saved,{p.name:p.read_bytes() for p in room.iterdir()})
+        (room/'actions.csv').write_text('tampered non-requested file')
+        for fmt in ('actions-json','json','html'):
+            code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                             '--comparison-output-dir',room,'--export-comparison',
+                             '--format',fmt)
+            self.assertEqual((code,out),(2,''))
+            self.assertIn('not verified',err)
+
+    def test_include_actions_requires_private_publish_dir(self):
+        with self.assertRaises(SystemExit):
+            run('--compare-portable-reviews',self.hold,self.passing,'--include-actions')
+        with self.assertRaises(SystemExit):
+            run('--verify-comparison-workroom',self.hold,self.passing,
+                '--comparison-output-dir',self.root/'missing','--include-actions')
+
+    def test_human_source_briefs_direct_saved_and_holding_original(self):
+        room=self.root/'action-brief-room'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',room,'--include-actions')
+        self.assertEqual((code,err),(2,''))
+        before={p.name:p.read_bytes() for p in room.iterdir()}
+        for fmt in ('actions-brief-markdown','actions-brief-html'):
+            direct=run('--compare-portable-reviews',self.hold,self.passing,
+                       '--format',fmt)
+            saved=run('--verify-comparison-workroom',self.hold,self.passing,
+                      '--comparison-output-dir',room,'--export-comparison',
+                      '--format',fmt)
+            self.assertEqual(direct,saved)
+            self.assertEqual((direct[0],direct[2]),(2,''))
+            self.assertIn('NOT_VERIFIED',direct[1])
+            self.assertIn('GLOBAL STATUS HOLD',direct[1])
+            self.assertIn('Baseline',direct[1])
+            self.assertIn('Candidate',direct[1])
+            self.assertNotIn(str(self.root),direct[1])
+            if fmt.endswith('html'):
+                admit_inert_html(direct[1].encode())
+                for dest in ('baseline','candidate','independent'):
+                    self.assertIn("id='"+dest+"'",direct[1])
+            else:
+                self.assertIn('Anonymous pair',direct[1])
+                self.assertIn('- [ ]',direct[1])
+        self.assertEqual(before,{p.name:p.read_bytes() for p in room.iterdir()})
+        (room/'actions.csv').write_text('forged approval not selected')
+        for fmt in ('actions-brief-markdown','actions-brief-html'):
+            status,output,error=run('--verify-comparison-workroom',
+                    self.hold,self.passing,'--comparison-output-dir',room,
+                    '--export-comparison','--format',fmt)
+            self.assertEqual((status,output),(2,''))
+            self.assertIn('not verified',error)
+
+    def test_human_brief_refuses_untrusted_actions_before_render(self):
+        from lightup.lab_score_action_brief import render_action_brief
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_review_actions import build_review_actions
+        data=build_review_actions(
+            compare_portable_review_transports(str(self.hold),str(self.passing)),
+            str(self.hold),str(self.passing))
+        for fmt in ('actions-brief-markdown','actions-brief-html'):
+            with self.subTest(fmt=fmt):
+                changed=json.loads(json.dumps(data))
+                changed['actions'][-1]['completion']='APPROVED'
+                with self.assertRaises(ValueError):
+                    render_action_brief(changed,fmt)
+                changed=json.loads(json.dumps(data))
+                changed['actions'][0]['anonymous_previous']='=<script>'
+                with self.assertRaises(ValueError):
+                    render_action_brief(changed,fmt)
+
+    def test_original_human_brief_refuses_forged_reordered_or_duplicate_reviewer_actions(self):
+        from copy import deepcopy
+        from lightup.lab_score_action_brief import render_action_brief
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_review_actions import build_review_actions
+        canonical=build_review_actions(
+            compare_portable_review_transports(str(self.hold),str(self.passing)),
+            str(self.hold),str(self.passing))
+        forged=[]
+        changed=deepcopy(canonical)
+        changed['actions'].insert(1,deepcopy(changed['actions'][0]))
+        changed['hold_action_rows']+=1
+        forged.append(('duplicate HOLD',changed))
+        changed=deepcopy(canonical)
+        changed['review_status']='PASS'
+        forged.append(('false local PASS with original HOLD',changed))
+        changed=deepcopy(canonical)
+        changed['unsigned_transport_sha256']['candidate']='not-an-original-receipt'
+        forged.append(('forged source fingerprint',changed))
+        changed=deepcopy(canonical)
+        changed['unsigned_transport_sha256']['baseline']=True
+        forged.append(('type-confused fingerprint',changed))
+        changed=deepcopy(canonical)
+        changed['hold_action_rows']=True
+        forged.append(('type-confused HOLD count',changed))
+        changed=deepcopy(canonical)
+        changed['actions'].insert(0,dict(changed['actions'][0],
+                                        transport='candidate'))
+        changed['hold_action_rows']+=1
+        forged.append(('interleaved baseline/candidate ordinal',changed))
+        for name,data in forged:
+            for fmt in ('actions-brief-markdown','actions-brief-html'):
+                with self.subTest(name=name,fmt=fmt),self.assertRaises(ValueError):
+                    render_action_brief(data,fmt)
+        for fmt in ('actions-brief-markdown','actions-brief-html'):
+            self.assertIn('NOT_VERIFIED',render_action_brief(canonical,fmt))
+
+    def test_comparison_exports_reject_forged_counts_and_html(self):
+        from copy import deepcopy
+        from lightup.lab_score_review_delta import (
+            compare_portable_review_transports, render_comparison)
+        from lightup.lab_score_review_actions import build_review_actions
+        original = compare_portable_review_transports(
+            str(self.hold), str(self.passing))
+        for fmt in ('json', 'text', 'csv', 'html'):
+            self.assertIn('HOLD', render_comparison(original, fmt))
+        cases = []
+        for key, value in (
+            ('review_status', 'PASS'), ('baseline_hold_preserved', False),
+            ('authorization_granted', True), ('hidden_original_path', '/secret'),
+        ):
+            modified = deepcopy(original); modified[key] = value; cases.append(modified)
+        for source, key, value in (
+            ('baseline', 'unsigned_transport_sha256', 'not-a-digest'),
+            ('baseline', 'global_status', '<svg onload=alert(1)>'),
+            ('baseline', 'original_archives', 8),
+            ('baseline', 'hold_pairs', True),
+            ('candidate', 'pass_pairs', 100),
+            ('candidate', 'injected_field', 'private provenance'),
+        ):
+            modified = deepcopy(original); modified[source][key] = value
+            cases.append(modified)
+        # A forged local PASS must never bury even one original HOLD pair.
+        modified = deepcopy(original)
+        self.assertGreater(modified['baseline']['hold_pairs'], 0)
+        modified['baseline']['global_status'] = 'PASS'
+        modified['baseline_hold_preserved'] = False
+        modified['review_status'] = 'PASS'
+        cases.append(modified)
+        modified = deepcopy(original)
+        modified['count_change_candidate_minus_baseline']['hold_pairs'] = 0
+        cases.append(modified)
+        modified = deepcopy(original)
+        modified['count_change_candidate_minus_baseline']['new_private_key'] = 'secret'
+        cases.append(modified)
+        for idx, item in enumerate(cases):
+            for fmt in ('json', 'text', 'csv', 'html'):
+                with self.subTest(idx=idx, fmt=fmt), self.assertRaises(ValueError):
+                    render_comparison(item, fmt)
+            with self.subTest(idx=idx, fmt='actions'), self.assertRaises(ValueError):
+                build_review_actions(item, str(self.hold), str(self.passing))
+
+    def test_action_exports_admit_only_ordered_closed_synthetic_inventory(self):
+        from copy import deepcopy
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_review_actions import build_review_actions, render_review_actions
+        from lightup.lab_score_action_brief import render_action_brief
+        original = build_review_actions(
+            compare_portable_review_transports(str(self.hold), str(self.passing)),
+            str(self.hold), str(self.passing))
+        formats = ('actions-json', 'actions-csv', 'actions-html',
+                   'actions-brief-markdown', 'actions-brief-html')
+        def render(value, fmt):
+            if fmt.startswith('actions-brief'):
+                return render_action_brief(value, fmt)
+            return render_review_actions(value, fmt)
+        for fmt in formats:
+            self.assertIn('NOT_VERIFIED', render(original, fmt))
+        cases = []
+        changed = deepcopy(original)
+        changed['hidden_source_original'] = 'DO_NOT_EXPORT'
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['actions'][-1]['original_customer_name'] = 'DO_NOT_EXPORT'
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['actions'][-1]['completion'] = 'APPROVED'
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['actions'][-1]['human_action'] = 'GRANT_LIVE_ACCESS'
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['actions'][-1]['authorization_granted'] = True
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['unsigned_transport_sha256']['baseline'] = 'private-source'
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['hold_action_rows'] = True
+        cases.append(changed)
+        changed = deepcopy(original)
+        changed['review_status'] = 'PASS'
+        cases.append(changed)
+        for invalid_reason in ([], {}):
+            changed = deepcopy(original)
+            changed['actions'][0]['reason'] = invalid_reason
+            cases.append(changed)
+        for idx, value in enumerate(cases):
+            for fmt in formats:
+                with self.subTest(case=idx, fmt=fmt), self.assertRaises(ValueError):
+                    render(value, fmt)
+
+    def test_multi_hold_uses_canonical_priority_and_rejects_reordering(self):
+        from copy import deepcopy
+        from lightup.lab_score_review_actions import build_review_actions, render_review_actions
+        from lightup.lab_score_review_delta import compare_portable_review_transports
+        from lightup.lab_score_action_brief import render_action_brief
+        canonical = build_review_actions(
+            compare_portable_review_transports(str(self.hold), str(self.passing)),
+            str(self.hold), str(self.passing))
+        replay = deepcopy(canonical['actions'][0])
+        self.assertEqual(replay['reason'], 'evidence_reused')
+        drift = dict(replay, anonymous_previous=1, anonymous_current=2,
+                     reason='score_drift',
+                     human_action='REVIEW_ISOLATED_SYNTHETIC_SCORER_DRIFT')
+        multi = deepcopy(canonical)
+        multi['actions'].insert(1, drift)
+        multi['hold_action_rows'] += 1
+        both = deepcopy(canonical)
+        both['actions'].insert(1, dict(drift,
+            anonymous_previous=replay['anonymous_previous'],
+            anonymous_current=replay['anonymous_current']))
+        both['hold_action_rows'] += 1
+        def validate_all(value, succeeds):
+            for fmt in ('actions-json','actions-csv','actions-html',
+                        'actions-brief-markdown','actions-brief-html'):
+                renderer = (render_action_brief if fmt.startswith('actions-brief')
+                            else render_review_actions)
+                with self.subTest(fmt=fmt, succeeds=succeeds):
+                    if succeeds:
+                        self.assertIn('NOT_VERIFIED',renderer(value,fmt))
+                    else:
+                        with self.assertRaises(ValueError):
+                            renderer(value,fmt)
+        validate_all(multi,True)
+        validate_all(both,True)
+        for item in (multi,both):
+            reversed_item=deepcopy(item)
+            reversed_item['actions'][:2]=reversed_item['actions'][1::-1]
+            validate_all(reversed_item,False)
+        interleaved=deepcopy(multi)
+        interleaved['actions'].insert(2,deepcopy(replay))
+        interleaved['hold_action_rows'] += 1
+        validate_all(interleaved,False)
+
+    def test_atomic_ten_file_original_bound_human_brief_room(self):
+        from hashlib import sha256
+        room=self.root/'full-private-ten-view-room'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',room,'--include-actions',
+                         '--include-briefs')
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('ten private files',out)
+        snapshot={p.name:p.read_bytes() for p in room.iterdir()}
+        self.assertEqual(len(snapshot),10)
+        self.assertEqual(set(snapshot),{'comparison.json','comparison.txt',
+            'comparison.csv','comparison.html','actions.json','actions.csv',
+            'actions.html','human-brief.md','human-brief.html','manifest.json'})
+        self.assertEqual(room.stat().st_mode&0o777,0o700)
+        self.assertTrue(all(p.stat().st_mode&0o777==0o600 for p in room.iterdir()))
+        manifest=json.loads(snapshot['manifest.json'])
+        self.assertEqual(manifest['schema'],
+            'lightup.lab-score-human-two-transport-workroom.v3')
+        self.assertEqual(set(manifest['file_sha256']),
+                         set(snapshot)-{'manifest.json'})
+        self.assertTrue(all(sha256(snapshot[name]).hexdigest()==digest
+                            for name,digest in manifest['file_sha256'].items()))
+        admit_inert_html(snapshot['human-brief.html'])
+        self.assertIn(b'GLOBAL STATUS HOLD',snapshot['human-brief.html'])
+        for fmt,name in (('actions-brief-markdown','human-brief.md'),
+                         ('actions-brief-html','human-brief.html'),
+                         ('actions-json','actions.json'),('json','comparison.json')):
+            code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                             '--comparison-output-dir',room,'--export-comparison',
+                             '--format',fmt)
+            self.assertEqual((code,err),(2,''))
+            self.assertEqual(out.encode(),snapshot[name])
+        self.assertEqual(snapshot,{p.name:p.read_bytes() for p in room.iterdir()})
+        code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                         '--comparison-output-dir',room)
+        self.assertEqual((code,err),(2,''))
+        self.assertIn('ten saved files reverified',out)
+        (room/'human-brief.md').write_text('forged independent review')
+        for fmt in ('json','actions-brief-html','actions-csv'):
+            code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                             '--comparison-output-dir',room,
+                             '--export-comparison','--format',fmt)
+            self.assertEqual((code,out),(2,''))
+            self.assertIn('not verified',err)
+
+    def test_ten_file_private_briefs_require_explicit_actions_and_new_room(self):
+        with self.assertRaises(SystemExit):
+            run('--compare-portable-reviews',self.hold,self.passing,
+                '--include-briefs','--comparison-output-dir',self.root/'missing')
+        with self.assertRaises(SystemExit):
+            run('--verify-comparison-workroom',self.hold,self.passing,
+                '--include-actions','--include-briefs',
+                '--comparison-output-dir',self.root/'missing')
+        with self.assertRaises(SystemExit):
+            run('--compare-portable-reviews',self.hold,self.passing,
+                '--include-actions','--include-briefs')
+
+    def test_export_requires_original_source_and_saved_private_room(self):
+        with self.assertRaises(SystemExit):
+            run('--compare-portable-reviews',self.hold,self.passing,
+                '--export-comparison','--format','html')
+        with self.assertRaises(SystemExit):
+            run('--verify-comparison-workroom',self.hold,self.passing,
+                '--comparison-output-dir',self.root/'missing','--format','html')
+
+    def test_original_hold_action_plan_is_source_bound_and_human_only(self):
+        """The old original replay stays actionable even after candidate PASS."""
+        from lightup.lab_score_portable_html_safety import admit_inert_html
+        for fmt in ('actions-json','actions-csv','actions-html'):
+            code,out,err=run('--compare-portable-reviews',
+                             self.hold,self.passing,'--format',fmt)
+            self.assertEqual((code,err),(2,''))
+            self.assertNotIn(str(self.root),out)
+            if fmt=='actions-json':
+                data=json.loads(out)
+                self.assertEqual(data['review_status'],'HOLD')
+                self.assertEqual(data['hold_action_rows'],1)
+                self.assertEqual(len(data['actions']),2)
+                self.assertEqual(data['actions'][0]['transport'],'baseline')
+                self.assertEqual(data['actions'][0]['reason'],'evidence_reused')
+                self.assertEqual(data['actions'][0]['human_action'],
+                                 'RECAPTURE_INDEPENDENT_SYNTHETIC_ORIGINALS')
+                self.assertEqual(data['actions'][1]['transport'],
+                                 'both_independent_origins')
+                self.assertFalse(data['same_originals_proven'])
+                self.assertFalse(data['authorization_granted'])
+                self.assertFalse(data['remediation_verified'])
+            elif fmt=='actions-csv':
+                rows=list(csv.DictReader(io.StringIO(out)))
+                self.assertEqual(len(rows),2)
+                self.assertTrue(all(row['completion']=='NOT_VERIFIED'
+                                    and row['authorization_granted']=='false'
+                                    for row in rows))
+                self.assertEqual(rows[0]['reason'],'evidence_reused')
+            else:
+                admit_inert_html(out.encode())
+                self.assertIn('GLOBAL STATUS HOLD',out)
+                self.assertIn('baseline',out)
+                self.assertNotIn('<script',out)
+
+    def test_saved_room_rebuilds_human_action_plan_and_rejects_other_tampering(self):
+        room=self.root/'safe-action-source-room'
+        code,out,err=run('--compare-portable-reviews',self.hold,self.passing,
+                         '--comparison-output-dir',room)
+        self.assertEqual((code,err),(2,''))
+        original={p.name:p.read_bytes() for p in room.iterdir()}
+        for fmt in ('actions-json','actions-csv','actions-html'):
+            status,content,err=run('--verify-comparison-workroom',
+                                   self.hold,self.passing,'--comparison-output-dir',room,
+                                   '--export-comparison','--format',fmt)
+            self.assertEqual((status,err),(2,''))
+            self.assertTrue(content)
+        self.assertEqual(original,{p.name:p.read_bytes() for p in room.iterdir()})
+        (room/'comparison.html').write_text('tampered even when JSON actions requested')
+        code,out,err=run('--verify-comparison-workroom',self.hold,self.passing,
+                         '--comparison-output-dir',room,
+                         '--export-comparison','--format','actions-json')
+        self.assertEqual((code,out),(2,''))
+        self.assertIn('not verified',err)
