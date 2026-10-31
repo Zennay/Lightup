@@ -35,6 +35,7 @@ from .lab_score_review_delta import (compare_portable_review_transports, render_
 from .lab_score_review_actions import build_review_actions, render_review_actions
 from .lab_score_action_focus import render_action_focus
 from .lab_score_action_batch import render_human_batch, select_all_original_holds
+from .lab_score_review_bundle import publish_human_transfer, verify_human_transfer
 from .lab_score_focus_workroom import (publish_private_focus, verify_private_focus,
                                        read_private_batch_selection,
                                        read_private_action_selection)
@@ -514,10 +515,17 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--verify-batch-focus", nargs=2,
                       metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
                       help="reverify saved private HOLD batch (selection optional via original manifest)")
+    mode.add_argument("--publish-batch-bundle", nargs=2,
+                      metavar=("BASELINE_ZIP", "CANDIDATE_ZIP"),
+                      help="publish all/selected synthetic original HOLDs and BOTH originals in one private offline transfer folder")
+    mode.add_argument("--verify-batch-bundle", metavar="PRIVATE_DIR",
+                      help="source-recheck a relocated self-contained private HUMAN HOLD transfer without external ZIP paths")
     mode.add_argument("--compare-history", nargs="+", metavar="ARCHIVE",
                       help="compare 2 to 8 private archived calibrations offline")
     parser.add_argument("--format", choices=("json", "text", "csv", "html", "navigator-html", "review-json", "review-markdown", "triage-markdown", "triage-html", "triage-csv", "review-csv", "actions-json", "actions-csv", "actions-html", "actions-brief-markdown", "actions-brief-html", "actions-focus-json", "actions-focus-text", "actions-focus-html", "actions-batch-json", "actions-batch-markdown", "actions-batch-html", "actions-batch-csv"),
                         default="text")
+    parser.add_argument("--bundle-output-dir", metavar="NEW_DIR",
+                        help="exclusive owner-private synthetic HOLD source + HUMAN review folder for offline transfer")
     parser.add_argument("--focus-room-dir", metavar="DIR",
                         help="new/existing private source-local HOLD review room")
     parser.add_argument("--focus-batch", metavar="SOURCE:PREVIOUS-CURRENT,...",
@@ -555,6 +563,45 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--unpack-output-dir",
                         help="new 0700 private directory for verified source-free review files")
     args = parser.parse_args(argv)
+    if args.publish_batch_bundle is not None or args.verify_batch_bundle is not None:
+        creating = args.publish_batch_bundle is not None
+        bundle_formats = ("text", "actions-batch-json", "actions-batch-markdown",
+                          "actions-batch-html", "actions-batch-csv")
+        if (args.format not in (("text",) if creating else bundle_formats)
+                or (creating and args.bundle_output_dir is None)
+                or (not creating and (args.bundle_output_dir is not None
+                                      or args.focus_batch is not None))
+                or any((args.focus_action is not None, args.focus_room_dir is not None,
+                        args.include_actions, args.include_briefs,
+                        args.export_comparison, args.focus_archive_index is not None,
+                        args.focus_pair is not None, args.review_queue, args.include_triage,
+                        args.comparison_output_dir is not None,
+                        args.queue_workroom_dir is not None,
+                        args.html_output_dir is not None,
+                        args.verify_html_output_dir is not None,
+                        args.portable_review_output_dir is not None,
+                        args.unpacked_review_dir is not None,
+                        args.unpack_output_dir is not None))):
+            parser.error("private HUMAN transfer publish requires --bundle-output-dir; "
+                         "relocated verify needs only the saved folder and optional --format")
+        try:
+            if creating:
+                publish_human_transfer(*args.publish_batch_bundle,
+                                       args.bundle_output_dir,
+                                       selection=args.focus_batch or "ALL")
+                output = ("LightUp original SYNTHETIC HUMAN transfer: "
+                          "private two-source bundle verified; GLOBAL HOLD; no approval.\n")
+            else:
+                output = verify_human_transfer(args.verify_batch_bundle, fmt=args.format)
+        except Exception:
+            print("LightUp HUMAN source-local transfer: HOLD; originals or saved room not verified.",
+                  file=sys.stderr)
+            return 2
+        sys.stdout.write(output)
+        return 2
+
+    if args.bundle_output_dir is not None:
+        parser.error("--bundle-output-dir requires --publish-batch-bundle")
     if args.publish_batch_focus is not None or args.verify_batch_focus is not None:
         creating = args.publish_batch_focus is not None
         if ((creating and args.focus_batch is None)

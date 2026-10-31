@@ -352,6 +352,117 @@ class TwoTransportHumanComparisonTests(unittest.TestCase):
         self.assertEqual((denied[0], denied[1]), (2, ''))
         self.assertIn('not verified', denied[2])
 
+    def test_private_self_contained_original_HOLD_transfer_relocated_and_source_bound(self):
+        import hashlib
+        import os
+        import stat
+        source=self.root/'source-embedded-transfer'
+        published=run('--publish-batch-bundle',self.hold,self.passing,
+                      '--bundle-output-dir',source,'--focus-batch','ALL')
+        self.assertEqual((published[0],published[2]),(2,''))
+        self.assertIn('private two-source bundle verified',published[1])
+        self.assertEqual({p.name for p in source.iterdir()},
+                         {'sources','review','bundle.json'})
+        self.assertEqual(stat.S_IMODE(source.stat().st_mode),0o700)
+        self.assertEqual({p.name for p in (source/'review').iterdir()},
+                         {'batch.json','batch.md','batch.html','batch.csv','manifest.json'})
+        embedded={}
+        for name in ('baseline','candidate'):
+            f=source/'sources'/name/'LightUp-SYNTHETIC-OFFLINE-REVIEW.zip'
+            embedded[name]=f
+            self.assertEqual(stat.S_IMODE(f.stat().st_mode),0o600)
+            self.assertEqual(f.read_bytes(),(self.hold if name=='baseline'
+                                            else self.passing).read_bytes())
+        original=json.loads((source/'bundle.json').read_bytes())
+        self.assertEqual(original['global_review_status'],'HOLD')
+        self.assertIs(original['authorization_granted'],False)
+        self.assertIs(original['original_source_authenticated'],False)
+        self.assertEqual(original['selector'],'baseline:1-4')
+        self.assertEqual(original['source_zip_sha256']['baseline'],
+                         hashlib.sha256(embedded['baseline'].read_bytes()).hexdigest())
+        self.assertEqual(stat.S_IMODE((source/'bundle.json').stat().st_mode),0o600)
+        # Move the entire directory; no caller path to original external ZIPs
+        # is needed for source-bound reinspection after relocation.
+        relocated=self.root/'moved-source-bundle'
+        shutil.move(str(source),str(relocated))
+        self.assertFalse(source.exists())
+        original_saved={f.name:f.read_bytes() for f in (relocated/'review').iterdir()}
+        for fmt,name in (('actions-batch-json','batch.json'),
+                         ('actions-batch-markdown','batch.md'),
+                         ('actions-batch-html','batch.html'),
+                         ('actions-batch-csv','batch.csv')):
+            result=run('--verify-batch-bundle',relocated,'--format',fmt)
+            self.assertEqual((result[0],result[2]),(2,''))
+            self.assertEqual(result[1].encode(),original_saved[name])
+            if fmt=='actions-batch-html':
+                admit_inert_html(result[1].encode())
+        self.assertEqual(run('--verify-batch-bundle',relocated),
+                         (2,'LightUp synthetic HUMAN bundle reverified: GLOBAL HOLD; NOT VERIFIED; no authorization.\n',''))
+        self.assertEqual({f.name:f.read_bytes() for f in (relocated/'review').iterdir()},
+                         original_saved)
+        self.assertFalse((relocated/'sources'/'baseline'/'LightUp-SYNTHETIC-OFFLINE-REVIEW.zip').is_symlink())
+        self.assertTrue(all(stat.S_IMODE(f.stat().st_mode)==0o600 for f in
+                            (relocated/'review').iterdir()))
+
+    def test_private_synthetic_transfer_tamper_and_alias_fail_closed(self):
+        import os
+        import json
+        room=self.root/'transfer-invariant-original'
+        self.assertEqual(run('--publish-batch-bundle',self.hold,self.passing,
+                             '--bundle-output-dir',room,'--focus-batch','ALL')[0],2)
+        truth={p.name:p.read_bytes() for p in (room/'review').iterdir()}
+        for name in ('bundle.json','review/batch.csv','review/manifest.json',
+                     'sources/baseline/LightUp-SYNTHETIC-OFFLINE-REVIEW.zip'):
+            cloned=self.root/('tampered-'+name.replace('/','-'))
+            shutil.copytree(room,cloned)
+            member=cloned/name
+            member.write_bytes(b'FORGED_APPROVAL\n')
+            for fmt in ('actions-batch-json','actions-batch-csv'):
+                result=run('--verify-batch-bundle',cloned,'--format',fmt)
+                self.assertEqual((result[0],result[1]),(2,''))
+                self.assertIn('not verified',result[2])
+                self.assertNotIn('FORGED',result[2])
+        for type_ in ('symlink-zip','symlink-review','additional-file','world-readable'):
+            cloned=self.root/('malicious-'+type_)
+            shutil.copytree(room,cloned)
+            if type_=='symlink-zip':
+                member=cloned/'sources/baseline/LightUp-SYNTHETIC-OFFLINE-REVIEW.zip'
+                member.unlink()
+                member.symlink_to(self.hold)
+            elif type_=='symlink-review':
+                path=cloned/'review'
+                shutil.rmtree(path)
+                path.symlink_to(room/'review')
+            elif type_=='additional-file':
+                (cloned/'extra').write_text('untrusted')
+            else:
+                (cloned/'bundle.json').chmod(0o644)
+            result=run('--verify-batch-bundle',cloned,'--format','actions-batch-html')
+            self.assertEqual((result[0],result[1]),(2,''))
+            self.assertIn('not verified',result[2])
+        self.assertEqual({p.name:p.read_bytes() for p in (room/'review').iterdir()},truth)
+
+    def test_private_transfer_rejects_invalid_origin_and_existing_target(self):
+        room=self.root/'invalid-pass-transfer'
+        result=run('--publish-batch-bundle',self.passing,self.passing,
+                   '--bundle-output-dir',room,'--focus-batch','ALL')
+        self.assertEqual((result[0],result[1]),(2,''))
+        self.assertFalse(room.exists())
+        real=self.root/'transfer-no-overwrite'
+        self.assertEqual(run('--publish-batch-bundle',self.hold,self.passing,
+                             '--bundle-output-dir',real,'--focus-batch','ALL')[0],2)
+        before={str(p.relative_to(real)):p.read_bytes() for p in real.rglob('*') if p.is_file()}
+        repeated=run('--publish-batch-bundle',self.hold,self.passing,
+                     '--bundle-output-dir',real,'--focus-batch','ALL')
+        self.assertEqual((repeated[0],repeated[1]),(2,''))
+        self.assertEqual(before,{str(p.relative_to(real)):p.read_bytes()
+                                 for p in real.rglob('*') if p.is_file()})
+        alias=self.root/'symlink-transfer-baseline'
+        alias.symlink_to(self.hold)
+        refused=run('--publish-batch-bundle',alias,self.passing,
+                    '--bundle-output-dir',self.root/'bad-symlink-transfer')
+        self.assertEqual((refused[0],refused[1]),(2,''))
+        self.assertFalse((self.root/'bad-symlink-transfer').exists())
     def test_all_source_local_original_holds_direct_publish_reopen_and_csv(self):
         from lightup.lab_score_action_batch import select_all_original_holds
         from lightup.lab_score_review_actions import build_review_actions
